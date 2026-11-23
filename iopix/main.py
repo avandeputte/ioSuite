@@ -7,13 +7,12 @@ suite. The library (digiKam's database and the photo files) is only read here; t
 (sidecars, image files, digiKam's database on request) declare access.editor_write or access.admin_write on their route
 and go through the modules that own those writes."""
 import logging
-import threading
 from contextlib import asynccontextmanager
 
 from fastapi import Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi import HTTPException
-from iosuite_shared import demo as suite_demo, mcp as shared_mcp, pages
+from iosuite_shared import chores, demo as suite_demo, mcp as shared_mcp, pages
 from iosuite_shared.fastapi import public_user
 from iosuite_shared.updates import setup_log
 
@@ -28,11 +27,11 @@ from iopix.geo import maps, places
 from iopix.ai.semantic import enabled as semantic_enabled, semantic
 from fastapi import FastAPI
 from iopix.routes import auth as auth_routes, backup, browse, images, albums, editing, geo, tools, review, organize, faces, settings
-from iopix.runtime import state, kick, refresh, auto, watch, resolve, prewarmer, models_arrived, APP_NAME_DEFAULT, app_name, app_stamp, public_version
+from iopix.runtime import state, kick, look, refresh, auto, resolve, prewarmer, models_arrived, APP_NAME_DEFAULT, app_name, app_stamp, public_version
 from iopix import __version__ as APP_VERSION
 
 setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-__all__ = ["app", "state", "kick", "refresh", "auto", "watch", "resolve", "prewarmer"]  # tests and app.mcp reach these through app.main
+__all__ = ["app", "state", "kick", "refresh", "auto", "resolve", "prewarmer"]  # tests and app.mcp reach these through app.main
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -54,9 +53,15 @@ async def lifespan(_app):
     facemgr.resume_queue()  # and the face sidecar rewrites a restart interrupted
     refresh(initial=True)  # also starts the library when there is no digiKam database
     suite_demo.at_start(config.APP)  # the demo photos while the suite's demo switch is on (iosuite_demo); the watcher indexes them
-    threading.Thread(target=thumbs.keep_pruned, name="cache-prune", daemon=True).start()  # the previews and the cut-down thumbnails, under their caps
-    threading.Thread(target=watch, name="reindex", daemon=True).start()
-    scanner.start(events.after_write)  # the file scanner (Settings › Library › File scanner): passes only while it is on
+    # the copy's jobs (Settings › Servers › Jobs): the previews and the cut-down thumbnails kept under their caps, the
+    # look at whether the index is up to date (and at once when kicked), the file scanner (Settings › Library › File
+    # scanner: passes only while it is on)
+    looks = [chores.start(thumbs.prune_caches, every_s=thumbs.PRUNE_EVERY_S, first_s=20, name="cache prune", app=config.APP,
+                          title="Keep the previews and the small thumbnails under their size"),
+             chores.start(look, every_s=config.REINDEX_POLL, first_s=config.REINDEX_POLL, name="index", app=config.APP, quiet=True,
+                          title="Bring the photo index up to date with the library"),
+             scanner.start(events.after_write)]
+    kick.job = looks[1]
     if dkdb.no_digikam() and scanner.enabled():
         scanner.run_soon()  # no digiKam to have found what was added while iopix was stopped: a pass right after start-up
     updater.start_daily()  # the daily "is there a newer version" check, when the setting allows it
@@ -64,6 +69,10 @@ async def lifespan(_app):
         dlmodels.auto_download(config.AUTO_MODELS, on_done=models_arrived)
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield
+    kick.job = None
+    for j in looks:
+        if j is not None:
+            j.cancel()
 
 
 app = FastAPI(title="ioPix", version=APP_VERSION, lifespan=lifespan, docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",

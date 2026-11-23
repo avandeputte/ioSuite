@@ -123,7 +123,28 @@ def run_analysis_soon():
     threading.Thread(target=work, name="analysis-restart", daemon=True).start()
 
 
-kick = threading.Event()  # set after an edit so the index is rebuilt right away (events.kick() from the writers)
+class Kick:
+    """kick.set(): the index is looked at now rather than at the next poll. Set after an edit, so the index is
+    rebuilt right away (events.kick() from the writers). The look itself is one of the copy's jobs (look(), started
+    in main.py), which this has run now."""
+
+    def __init__(self):
+        self._asked = threading.Event()
+        self.job = None   # the copy's job, while the app runs
+
+    def set(self) -> None:
+        self._asked.set()
+        if self.job is not None:
+            self.job.soon()
+
+    def take(self) -> bool:
+        """Whether a look was asked for since the last one."""
+        asked = self._asked.is_set()
+        self._asked.clear()
+        return asked
+
+
+kick = Kick()
 
 
 tag_covers: dict = {}  # tag id -> the most typical photo of that tag (filled in the background)
@@ -239,15 +260,16 @@ def auto_apply():
         logging.getLogger("iopix.sync").warning("edits were not applied to digiKam's database: %s", e)
 
 
-def watch():
-    while True:
-        kicked = kick.wait(timeout=config.REINDEX_POLL)
-        kick.clear()
-        try:
-            refresh(initial=kicked)
-        except Exception as e:  # e.g. a wrong database setting (MySQL unreachable): the watcher must outlive it
-            state["error"] = str(e)[:jobs.ERROR_TEXT_MAX]
-            logging.getLogger("iopix.data.index").warning("index refresh failed: %s", e)
+def look() -> None:
+    """One look at whether the index is up to date (the copy's job "index": every REINDEX_POLL seconds, and at once
+    when kicked). A look that fails (a wrong database setting, MySQL unreachable) is said in the log and on the
+    status, and the next one still happens."""
+    kicked = kick.take()
+    try:
+        refresh(initial=kicked)
+    except Exception as e:
+        state["error"] = str(e)[:jobs.ERROR_TEXT_MAX]
+        logging.getLogger("iopix.data.index").warning("index refresh failed: %s", e)
 
 
 def models_arrived(keys: list):

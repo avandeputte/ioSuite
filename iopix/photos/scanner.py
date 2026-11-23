@@ -769,27 +769,40 @@ def scan(require_digikam_closed: bool = True) -> dict:
 
 
 def run_soon():
-    """Wake the scanner loop so a scan starts now instead of at the next interval."""
+    """Have a scan start now instead of at the next interval."""
     _wake.set()
+    if _job["job"] is not None:
+        _job["job"].soon()
+
+
+_job = {"job": None, "last": 0.0}   # the copy's job while the app runs, and when the last pass began
 
 
 def start(after_change):
-    """The background loop: a pass every interval() minutes while the setting is on, or when asked.
-    SCANNER_LOOP=0 (the test suite) leaves it out: passes then run only when scan() is called."""
+    """The scanner as one of the copy's jobs (iosuite_shared.jobs): a pass every interval() minutes while the setting
+    is on, or when asked. A heavy job: it waits for the copy's other heavy work (a backup) and that waits for it.
+    SCANNER_LOOP=0 (the test suite) leaves it out: passes then run only when scan() is called. Returns the job."""
+    from iosuite_shared import chores
     if not config.SCANNER_LOOP:
-        return
+        return None
+    _job["last"] = time.time()
 
-    def loop():
-        time.sleep(30)  # let the start-up index build go first
-        while True:
-            asked = _wake.wait(timeout=interval() * 60)
-            _wake.clear()
-            if not (enabled() or asked):
-                continue
-            try:
-                s = scan()
-                if s.get("added") or s.get("modified") or s.get("removed"):
-                    after_change()
-            except Exception as e:  # a pass that failed (digiKam running, a database hiccup) is tried again next time
-                log.warning("scanner: pass skipped: %s", e)
-    threading.Thread(target=loop, name="file-scanner", daemon=True).start()
+    def look() -> str:
+        """The job's look, every minute: is a pass due, or asked for?"""
+        asked = _wake.is_set()
+        _wake.clear()
+        if not asked and (not enabled() or time.time() - _job["last"] < interval() * 60):
+            return ""
+        _job["last"] = time.time()
+        try:
+            s = scan()
+        except SyncError as e:  # a pass that could not start (one is running already) is tried again next time
+            log.warning("scanner: pass skipped: %s", e)
+            return ""
+        if s.get("added") or s.get("modified") or s.get("removed"):
+            after_change()
+            return f"{s.get('added') or 0} added, {s.get('modified') or 0} changed, {s.get('removed') or 0} removed"
+        return ""
+    _job["job"] = chores.start(look, every_s=60, first_s=30, name="file scanner", app=config.APP, heavy=True, quiet=True,
+                               title="Look in the photo folders for what was added, changed or removed")
+    return _job["job"]

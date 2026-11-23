@@ -56,6 +56,37 @@ def claim(app: str) -> str | None:
         return None
 
 
+def claims(apps: list) -> dict:
+    """claim() for every app of a copy with one question: {app: action} for the ones something waits for. The rows
+    are written only when there is something to take, so a copy's look every few seconds is one statement."""
+    if not apps:
+        return {}
+    try:
+        marks = ", ".join(["%s"] * len(apps))
+        rows = db.q(f"SELECT app, action, requested_at FROM ios_updates WHERE action IS NOT NULL AND action <> '' AND app IN ({marks})", tuple(apps))
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+    for r in rows:
+        try:
+            n = db.ex("UPDATE ios_updates SET action = NULL WHERE app = %s AND action = %s", (r["app"], r["action"]))
+        except Exception:  # noqa: BLE001
+            continue
+        if n and time.time() - (r["requested_at"] or 0) < STALE_S:
+            out[r["app"]] = r["action"]
+    return out
+
+
+def beats(apps: list) -> None:
+    """beat() for every app of a copy, in one statement. Never raises."""
+    if not apps:
+        return
+    try:
+        db.ex(f"UPDATE ios_updates SET updated_at = %s WHERE app IN ({', '.join(['%s'] * len(apps))})", (int(time.time()), *apps))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def beat(app: str) -> None:
     """The app is running: its row says so every minute (updated_at), which is how summary() tells the apps that
     run from the ones that were stopped or removed. Never raises."""

@@ -121,6 +121,30 @@ def test_a_failed_backup_says_why(client, source, monkeypatch):
     assert sent == ["https://fcm.googleapis.com/fcm/send/b"], "the suite admin hears of it (Failed backups)"
 
 
+def test_the_copy_s_jobs_queue_what_is_due_and_carry_out_what_is_queued(client, source, monkeypatch):
+    """The scheduler and the runs are two of the copy's jobs (tasks.start()): what each does at its turn."""
+    import datetime
+
+    from iobackup import tasks
+    srv, dst, job = setup_all(client)
+    while not tasks._queue.empty():
+        tasks._queue.get_nowait()
+    assert tasks.carry_out() == ""  # nothing queued: nothing to say
+    tasks._looked["at"] = None
+    assert tasks.schedule_look() == ""  # the first look fires nothing
+    minute = datetime.datetime.now().replace(second=0, microsecond=0)
+    monkeypatch.setattr(tasks, "due", lambda jobs, minutes: [j for j in jobs if j["id"] == job["id"]] if minutes else [])
+    assert tasks.schedule_look() == ""  # within the same minute: nothing to look at
+    tasks._looked["at"] = minute - datetime.timedelta(minutes=1)
+    assert tasks.schedule_look() == "Nightly shop"
+    tasks._looked["at"] = minute - datetime.timedelta(minutes=1)
+    assert tasks.schedule_look() == ""  # still queued: this start is skipped
+    assert tasks.carry_out() == "1 run"
+    last = tasks.db.one("SELECT status, trigger_kind FROM bkp_runs ORDER BY id DESC LIMIT 1")
+    assert (last["status"], last["trigger_kind"]) == ("ok", "schedule")
+    assert tasks.carry_out() == ""
+
+
 def test_secrets_go_to_keys_and_tokens(client):
     from iosuite_shared import credentials
     srv, dst, job = setup_all(client)
