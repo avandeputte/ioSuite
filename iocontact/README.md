@@ -204,7 +204,7 @@ Covered: vCard 2.1/3.0/4.0 and jCard reading and writing (an Apple Contacts card
 The package `iocontact/` of the repository:
 
 ```
-main.py            the application: start-up (tables, first admin, LDAP), the suite's middleware, status and routes
+main.py            the application: what is ioContact's own (LDAP, its jobs, who reads, its routes), handed to iosuite_shared.application
 access.py          who may call a route: the markers every /api route carries (public, signed_in, admin)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioContact's own
 auth.py            iosuite_shared's Auth for this app, and the updater

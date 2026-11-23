@@ -6,6 +6,8 @@ follows them:
 """
 from __future__ import annotations
 
+import pymysql
+
 from iodns import db, model
 from iodns.providers import ProviderError
 
@@ -76,7 +78,7 @@ def refresh(by: str | None = None) -> list[str]:
         if v != r["value"]:
             try:
                 db.ex("UPDATE dns_records SET value = %s WHERE id = %s", (v, r["id"]))
-            except db.pymysql.err.IntegrityError:  # the same address is in that view already
+            except pymysql.err.IntegrityError:  # the same address is in that view already
                 db.ex("DELETE FROM dns_records WHERE id = %s", (r["id"],))
             notes.append(f"{r['name']}: {r['value']} → {v} (Tailscale)")
     if any("→" in n for n in notes):

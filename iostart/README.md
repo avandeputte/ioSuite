@@ -327,7 +327,7 @@ what a viewer may not change. CI runs them against MariaDB.
 The package `iostart/` of the repository:
 
 ```
-main.py            the application: start-up (tables, first admin, the update check), the suite's middleware, status and routes
+main.py            the application: what is ioStart's own (its jobs, routes and two pages), handed to iosuite_shared.application
 mcp.py             the suite's one MCP server (/mcp): every app's tools passed on as the person asking, suite_apps, suite_version and update_suite
 access.py          who may call a route: the markers every /api route carries (public, signed_in, editor, admin)
 api.py             the REST API: the apps and their settings (sign-in, accounts, status, the server, updates and the log: iosuite_shared's routers)
@@ -344,13 +344,12 @@ bookmarks.py       the bookmark groups and links
 news.py            the reader: feeds fetched once for everybody, each person's own subscriptions, read and starred; the loop
 newsapi.py         its routes (/api/news)
 feedread.py        RSS, Atom and JSON Feed as one shape, a site's feed found from its page, an article's HTML made safe, OPML
-timers.py          kitchen timers: the family's, from the search box; the "timer done" notification loop
+timers.py          kitchen timers: the family's, from the search box; the "timer done" notification, one of the copy's jobs
 rates.py           the exchange rates for the search box's currency conversions (ECB, through Frankfurter)
 auth.py            the shared accounts and the updater (iosuite_shared), as ioStart uses them
 db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
 cli.py             python -m iostart.cli: migrate, check
-__main__.py        python -m iostart: the server (HOST, PORT)
 static/            the web app: index.html, app.js (one module, no build step), app.css, the icons (each app's tile shows the icon it registered, served by that app)
 tests/             pytest, against a MariaDB of its own
 ```

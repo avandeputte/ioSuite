@@ -125,6 +125,64 @@ def add_suite_update_tools(server: MCPServer) -> None:
         return {"asked": asked, "note": "Each server runs update.sh within ten seconds and starts again; call suite_version(check=False) in a minute or two."}
 
 
+def stdio_user(app: str, named: str, accounts: list, argv: list = None, open_install=None) -> dict:
+    """The account a local MCP server acts as (`python -m <app>.mcp [--user NAME]`, over stdio): the one --user names,
+    else `named` (MCP_USER), else the only admin when there is just one. `accounts` are the app's, each with its role
+    there. The process ends with a line saying why when there is no such account, it has no access to the app, or
+    nobody is named and the admin cannot be told. `open_install`: who it is while the suite has no account at all.
+
+    The account and its role are read as the server starts: a role changed later counts from the next start (anyone
+    who can start the process holds the database password)."""
+    import sys
+
+    from iosuite_shared import catalog
+    argv = sys.argv[1:] if argv is None else argv
+    if "--user" in argv:
+        i = argv.index("--user")
+        named = argv[i + 1] if i + 1 < len(argv) else ""
+    label = catalog.name_of(app)
+    if named:
+        u = next((u for u in accounts if named.lower() in (u["name"].lower(), (u.get("email") or "").lower())), None)
+        if not u:
+            sys.exit(f"no {label} account named {named!r}")
+        if u.get("role") == "none":
+            sys.exit(f"the account {named!r} has no access to {label}")
+        return u
+    admins = [u for u in accounts if u.get("role") == "admin" or u.get("suiteAdmin")]
+    if len(admins) == 1:
+        return admins[0]
+    if not accounts and open_install is not None:
+        return open_install
+    sys.exit(f"name the account: python -m {app}.mcp --user NAME (or MCP_USER=NAME)")
+
+
+def diagnostics(config, version: str, updater, db, mcp_enabled, accounts: list, counts=None, **more) -> dict:
+    """What an app's `diagnostics` tool says of its server, the same in every app: version and commit, Python and
+    platform, where the app is, `more` (the app's own lines), the last update check and update, the database (its
+    server's version, the schema's, and `counts()`: the app's rows; or the error when it cannot be asked), the MCP
+    switch and the accounts with their roles in the app."""
+    import platform
+    import sys
+    out = {"version": version, "commit": updater.local_commit()[:7], "docker": updater.in_docker(),
+           "python": sys.version.split()[0], "platform": platform.platform(), "appDir": str(config.APP_DIR),
+           "publicUrl": config.PUBLIC_URL or None, **more, "update": updater.status()}
+    try:
+        out["database"] = {"host": f"{config.DB_HOST}:{config.DB_PORT}", "name": config.DB_NAME,
+                           "server": db.one("SELECT version() AS v")["v"], "schema": db.schema_version(),
+                           **(counts() if counts else {})}
+    except Exception as e:  # noqa: BLE001
+        out["database"] = {"error": str(e)[:200]}
+    out["mcp"] = {"enabled": mcp_enabled()}
+    out["accounts"] = [{"name": u["name"], "role": u.get("role")} for u in accounts]
+    return out
+
+
+def account_list(accounts: list) -> list:
+    """What an app's `list_accounts` tool answers: the accounts with their roles in the app."""
+    return [{"name": u["name"], "displayName": u.get("displayName"), "email": u.get("email") or None, "role": u.get("role")}
+            for u in accounts]
+
+
 def clamp(n, lo: int, hi: int) -> int:
     """A number a client asked for, kept between lo and hi (a page size: each tool's cap keeps its answer readable)."""
     try:

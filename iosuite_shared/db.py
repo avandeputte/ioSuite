@@ -619,7 +619,7 @@ class Pool:
 class Database:
     """One database as an app uses it: a Pool, a transaction that nested calls on the same thread share, and the
     helpers q / one / ex / many, which run inside the thread's open transaction when there is one and on their own
-    otherwise. The apps keep one for their own database (`_db = Database(connect)`; `tx, q, one, ex = _db.tx, ...`)."""
+    otherwise. The apps keep one for their own database (AppDatabase, below)."""
 
     def __init__(self, connect, size: int = 8):
         self.pool = Pool(connect, size)
@@ -670,6 +670,81 @@ class Database:
         if rows:
             with self.tx() as con, con.cursor() as cur:
                 cur.executemany(sql, rows)
+
+
+def marks(n: int) -> str:
+    """The placeholders of a list of n values in a statement (`IN (%s,%s,%s)`); NULL for none, which matches nothing."""
+    return ",".join(["%s"] * n) if n else "NULL"
+
+
+class AppDatabase(Database):
+    """An app's own database, beside the Shared ioSuite database: where it is (the app's config: DB_HOST, DB_PORT,
+    DB_NAME, DB_USER, DB_PASSWORD, read at every connection), its tables (made and completed at start: schema.create),
+    its `<prefix>_settings` table, and Database's q / one / ex / many / tx. An app's db.py holds its SCHEMA and one of
+    these, and names what the rest of the app calls: `tx, q, one, ex, many = _db.tx, _db.q, ...`."""
+
+    TABLE_OPTIONS = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+
+    def __init__(self, app_config, prefix: str, tables, version: int, size: int = 8):
+        """`tables`: the CREATE TABLE statements, or a function that gives them (asked at migrate())."""
+        self.config, self.prefix, self.tables, self.version = app_config, prefix, tables, version
+        super().__init__(self.connect, size)
+
+    def connect(self, database: str | None = None):
+        c = self.config
+        return pymysql.connect(host=c.DB_HOST, port=c.DB_PORT, user=c.DB_USER, password=c.DB_PASSWORD,
+                               database=database if database is not None else c.DB_NAME, charset="utf8mb4",
+                               cursorclass=DictCursor, autocommit=True, connect_timeout=8)
+
+    def get_setting(self, k: str, default: str | None = None) -> str | None:
+        r = self.one(f"SELECT value FROM {self.prefix}_settings WHERE name = %s", (k,))
+        return r["value"] if r else default
+
+    def set_setting(self, k: str, v: str | None) -> None:
+        if v is None:
+            self.ex(f"DELETE FROM {self.prefix}_settings WHERE name = %s", (k,))
+        else:
+            self.ex(f"INSERT INTO {self.prefix}_settings (name, value) VALUES (%s, %s) "
+                    "ON DUPLICATE KEY UPDATE value = VALUES(value)", (k, v))
+
+    def schema_version(self) -> int:
+        with self.tx() as con, con.cursor() as cur:
+            return schema.current_version(cur, self.prefix)
+
+    def ensure_database(self) -> None:
+        """Create the database when it is missing and the user may (CREATE privilege); otherwise leave it to the admin."""
+        try:
+            self.connect().close()
+            return
+        except pymysql.err.OperationalError as e:
+            if e.args[0] != 1049:  # anything but "unknown database"
+                raise
+        con = self.connect(database="")
+        try:
+            with con.cursor() as cur:
+                cur.execute(f"CREATE DATABASE IF NOT EXISTS `{self.config.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        finally:
+            con.close()
+
+    def migrate(self, after=None) -> None:
+        """The database and its tables, as SCHEMA says; then `after(cur)` in the same transaction (the rows an app
+        cannot be without: the family's list, the views)."""
+        self.ensure_database()
+        with self.tx() as con, con.cursor() as cur:
+            schema.create(cur, self.tables() if callable(self.tables) else self.tables, self.TABLE_OPTIONS)
+            schema.ensure_version_table(cur, self.prefix)
+            schema.record_version(cur, self.prefix, self.version)
+            if after is not None:
+                after(cur)
+
+    def reset_all(self) -> None:
+        """Tests only: drop every table of this app (<prefix>_*; the database may hold the other apps' too)."""
+        with self.tx() as con, con.cursor() as cur:
+            cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+            for t in schema.tables(cur):
+                if t.startswith(self.prefix + "_"):
+                    cur.execute(f"DROP TABLE `{t}`")
+            cur.execute("SET FOREIGN_KEY_CHECKS = 1")
 
 
 def _open(con) -> bool:

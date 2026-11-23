@@ -4,7 +4,7 @@ recreated per session, never a live one. Without a test server the suite is skip
 every test begins with empty tables and a fresh admin, alex."""
 import pytest
 
-from iosuite_shared import testing as _authtest
+from iosuite_shared import testing as _authtest, users as shared_users
 
 if _authtest.server() is None:
     pytest.skip(f"{_authtest.server.reason}: the tests need a MariaDB (Docker, or IOSUITE_TEST_DB=host:port:user:password)", allow_module_level=True)
@@ -12,7 +12,7 @@ _authtest.app_env("iocalendar", "calendar_test", TZ="America/New_York", HOLIDAYS
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from iocalendar import db, users  # noqa: E402
+from iocalendar import db  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -36,7 +36,7 @@ def client(_client):
     from iosuite_shared import apppasswords
     from iocalendar import members
     apppasswords.forget()
-    users.shared.invalidate()
+    shared_users.invalidate()
     members.forget()
     from iocalendar import model
     model._cache_clear()

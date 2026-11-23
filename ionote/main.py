@@ -7,59 +7,43 @@ suite. What is ioNote's own: whose notes a request works on (notes are private t
 space's, which everyone with a role reads and editors change).
 """
 import logging
-from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from iosuite_shared import chores, demo as suite_demo, mcp as shared_mcp, pages, users
-from iosuite_shared.updates import setup_log
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from iosuite_shared import application, chores, mcp as shared_mcp, users
 
 from ionote import __version__, config, db, mcp, suitedb, suiteitems
 from ionote import notes as notes_mod
 from ionote.auth import auth, updater
-from ionote.routes import auth as auth_routes, notes as notes_routes, settings
+from ionote.routes import notes as notes_routes, settings
 
-setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-log = logging.getLogger("app")
+log = logging.getLogger("ionote")
 
-# what a visitor may still fetch when sign-in is required: the app shell and its files, the API docs, and the MCP
-# endpoint (its gate below)
-OPEN_PATHS = ("/", "/sw.js", "/manifest.webmanifest", "/api/docs", "/api/openapi.json")
-OPEN_PREFIXES = ("/static/", "/mcp")
+# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
+mcp_switch = shared_mcp.Switch(config.APP,
+                               "Lets an AI assistant search, read and write your notes, as you.")
+mcp_enabled = mcp_switch.enabled
 
 
-@asynccontextmanager
-async def lifespan(_app):
+def _open() -> None:
     try:
         db.init()
     except Exception as e:
         db.error = str(e)[:300]
         log.error("the database could not be opened: %s", e)
         raise
-    users.init()
-    suite_demo.at_start(config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
-    updater.start_daily()
-    purge = chores.start(notes_mod.housekeeping, every_s=6 * 3600, name="purge of the trash and of what deletions left behind", app=config.APP)
-    c = db.settings()
-    log.info("ioNote %s started on %s (%s)", __version__,
-             f"MariaDB/MySQL {c['host']}:{c['port']}/{c['database']}",
-             "accounts exist" if users.any_users() else "no accounts yet: open to everyone until one is made")
-    sd = suitedb.public()
-    log.info("Shared ioSuite database (accounts, suite settings): %s@%s:%s/%s", sd["user"], sd["host"], sd["port"], sd["database"])
-    async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
-        yield
-    purge.cancel()
 
 
-app = FastAPI(title="ioNote", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,
-              openapi_url="/api/openapi.json",
-              description="Notes for the family: each account's own, and the Family space's. The API the Mac and iPhone apps use, and an MCP "
-                          "endpoint (/mcp) for AI assistants.")
+def _jobs() -> list:
+    return [chores.start(notes_mod.housekeeping, every_s=6 * 3600, name="purge of the trash and of what deletions left behind", app=config.APP)]
 
 
-# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
-mcp_switch = shared_mcp.Switch(config.APP,
-                               "Lets an AI assistant search, read and write your notes, as you.")
-mcp_enabled = mcp_switch.enabled
+def _where() -> str:
+    c, sd = db.settings(), suitedb.public()
+    return "on MariaDB/MySQL %s:%s/%s (%s); Shared ioSuite database (accounts, suite settings): %s@%s:%s/%s" % (
+        c["host"], c["port"], c["database"],
+        "accounts exist" if users.any_users() else "no accounts yet: open to everyone until one is made",
+        sd["user"], sd["host"], sd["port"], sd["database"])
 
 
 def _owner_of(request: Request) -> int:
@@ -104,11 +88,6 @@ def _before(request: Request):
     return None
 
 
-# who is asking, whether sign-in is required at all, the cross-site check on writes, and whose notes: iosuite_shared's
-# middleware. What each route needs beyond that is declared on the route (ionote/access.py).
-app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES, before=_before))
-
-
 def _limit_for(path: str, ctype: str) -> int:
     if "/api/import" in path:
         return config.MAX_IMPORT_BYTES
@@ -117,19 +96,6 @@ def _limit_for(path: str, ctype: str) -> int:
     if ctype.startswith("image/") or ctype in ("multipart/form-data", "application/octet-stream", "application/zip"):
         return config.MAX_IMAGE_BYTES
     return config.MAX_JSON_BYTES
-
-
-# 400 for bad input, the headers, no-store on the API, the body cap (counted as the body arrives, so nothing large is
-# ever held in memory), and the same 404 for another account's note as for none at all: iosuite_shared
-auth.install(app, limit_for=_limit_for, not_found=(notes_mod.NotFound,))
-
-
-@app.exception_handler(notes_mod.Stale)
-async def _stale(_request: Request, e: notes_mod.Stale):
-    """An edit older than the server's copy, or of a family note by someone who only reads those: 409 with the
-    server's copy, which the device takes."""
-    from fastapi.responses import JSONResponse
-    return JSONResponse({"detail": e.detail, "current": e.current}, status_code=409)
 
 
 def _status_extra(request: Request) -> dict:
@@ -141,15 +107,23 @@ def _status_extra(request: Request) -> dict:
     return out
 
 
-app.include_router(auth_routes.router)   # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People panel): the whole suite (suite admins)
-app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
-app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
-app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite: search, items, tile, as every app answers them (app.json)
-app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(notes_routes.router)
-app.include_router(settings.router)
-shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of everything else
+app = application.create(
+    auth, updater, __version__, config,
+    description="Notes for the family: each account's own, and the Family space's. The API the Mac and iPhone apps use, and an MCP "
+                "endpoint (/mcp) for AI assistants.",
+    prepare=(_open, users.init), jobs=_jobs, where=_where,
+    mcp=mcp, mcp_enabled=mcp_enabled, before=_before,  # whose notes a request works on, and the MCP endpoint's gate
+    open_paths=("/sw.js",),
+    # the body cap is counted as the body arrives, so nothing large is ever held in memory; another account's note
+    # answers the same 404 as none at all
+    limit_for=_limit_for, not_found=(notes_mod.NotFound,),
+    status=_status_extra, suite=suiteitems.PROVIDER,
+    routers=(notes_routes.router, settings.router),
+    service_worker=True)  # /, the manifest, /sw.js and /static
 
 
-pages.mount(app, config.STATIC_DIR, __version__, service_worker=True)  # /, the manifest, /sw.js and /static
+@app.exception_handler(notes_mod.Stale)
+async def _stale(_request: Request, e: notes_mod.Stale):
+    """An edit older than the server's copy, or of a family note by someone who only reads those: 409 with the
+    server's copy, which the device takes."""
+    return JSONResponse({"detail": e.detail, "current": e.current}, status_code=409)

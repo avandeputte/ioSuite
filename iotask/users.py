@@ -5,25 +5,10 @@ editor (changes the shared lists too), admin (also settings and users); an accou
 sessions are the suite's cookie (shared by the apps on the domain). Reminders apps (CalDAV), the REST API and MCP use
 HTTP Basic or a bearer app password (one per device, revocable, shown once).
 """
-from iosuite_shared import users as shared
+from iosuite_shared.users import AppUsers
 
 from iotask.auth import APP
 
-ROLES = shared.APP_ROLES
-
-
-def get(uid: int) -> dict | None:
-    return shared.get(uid, APP)
-
-
-def find(name_or_email: str) -> dict | None:
-    return shared.find(name_or_email, APP)
-
-
-def all_users() -> list[dict]:
-    return sorted(shared.list_users(APP), key=lambda u: u["name"].lower())
-
-
-def init() -> None:
-    """The Shared ioSuite database's tables, and the ADMIN_USER / ADMIN_PASSWORD account on a first start with no accounts."""
-    shared.init()
+# get and find with the role held here, the accounts by name, and what the app does at start (iosuite_shared.users.AppUsers)
+_users = AppUsers(APP)
+ROLES, get, find, all_users, init = _users.ROLES, _users.get, _users.find, _users.all_users, _users.init

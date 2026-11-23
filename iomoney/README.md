@@ -406,7 +406,7 @@ file turned around, an OFX file, and what comes back (found, missing, of another
 The package `iomoney/` of the repository:
 
 ```
-main.py            the application: start-up, the background chores (Monarch sync, quotes, estimates), routes
+main.py            the application: what is ioMoney's own (the Monarch sync, quotes and estimates as a job, its routes), handed to iosuite_shared.application
 api.py             the REST API
 model.py           accounts, balances, transactions and holdings in MariaDB: who sees and changes what, the sums
 monarch.py         Monarch Money: the sign-in (from the suite's keys and tokens) and the sync, accounts it reports as new

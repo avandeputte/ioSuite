@@ -216,7 +216,7 @@ CI runs them against MariaDB.
 The package `iorecipe/` of the repository:
 
 ```
-main.py            the application: start-up (tables, first admin), who is asking, routes
+main.py            the application: what is ioRecipe's own (its body limits, routes), handed to iosuite_shared.application
 api.py             the REST API: recipes, photos, favourites and ratings, cookbooks, import, export, the shopping list
 model.py           recipes in MariaDB: the fields, who sees and changes what, the search and the tags, photos, marks, cookbooks
 scrape.py          import from the web: fetching a page and reading its schema.org Recipe (JSON-LD, microdata), else its lists and text

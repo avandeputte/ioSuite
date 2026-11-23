@@ -7,29 +7,12 @@ account with no role here sees nothing, so the finances stay with the people giv
 everywhere. Web sessions are the suite's cookie (shared by the apps on the domain). The REST API and MCP use HTTP Basic
 or a bearer app password (one per program, revocable, shown once).
 """
-from iosuite_shared import db as shared_db, users as shared
+from iosuite_shared.users import AppUsers
 
 from iomoney.auth import APP
 
-ROLES = shared.APP_ROLES
-
-
-def get(uid: int) -> dict | None:
-    return shared.get(uid, APP)
-
-
-def find(name_or_email: str) -> dict | None:
-    return shared.find(name_or_email, APP)
-
-
-def all_users() -> list[dict]:
-    return sorted(shared.list_users(APP), key=lambda u: u["name"].lower())
-
-
-def init() -> None:
-    """The Shared ioSuite database's tables, the ADMIN_USER / ADMIN_PASSWORD account on a first start with no accounts,
-    and ioMoney's default role: none, until a suite admin says otherwise (Settings › Apps › The apps). Money is
-    not for everyone in the family, so each person is given a role here by name."""
-    shared.init()
-    if not shared_db.one("SELECT 1 AS x FROM ios_settings WHERE app = %s AND name = 'default_role'", (APP,)):
-        shared_db.set_setting("default_role", "none", APP)
+# get and find with the role held here, the accounts by name, and what the app does at start (iosuite_shared.users.AppUsers)
+# The default role is none, until a suite admin says otherwise (Settings › Apps › The apps): money is not for everyone
+# in the family, so each person is given a role here by name.
+_users = AppUsers(APP, default_role="none")
+ROLES, get, find, all_users, init = _users.ROLES, _users.get, _users.find, _users.all_users, _users.init

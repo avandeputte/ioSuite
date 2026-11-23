@@ -1,9 +1,9 @@
 """The server itself, for admins: health, the Birthdays calendar from ioContact and the Holidays calendars."""
-import platform
-import sys
 from typing import Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
+
+from iosuite_shared import mcp as shared_mcp
 
 from iocalendar import __version__, config, contacts, db, holiday, ical, users
 from iocalendar.auth import updater
@@ -15,25 +15,15 @@ def diagnostics() -> dict:
     """Admins: the server's health: version and commit, Python and platform, the time zone, the database (server
     version, tables, rows), ioContact, the MCP switch, the last update check and update, and the accounts."""
     need_admin()
-    out = {"version": __version__, "commit": updater.local_commit()[:7], "docker": updater.in_docker(),
-           "python": sys.version.split()[0], "platform": platform.platform(), "appDir": str(config.APP_DIR),
-           "publicUrl": config.PUBLIC_URL or None, "timezone": ical.default_tz(), "update": updater.status()}
-    try:
-        out["database"] = {"host": f"{config.DB_HOST}:{config.DB_PORT}", "name": config.DB_NAME,
-                           "server": db.one("SELECT version() AS v")["v"],
-                           "schema": db.schema_version(),
-                           "calendars": db.one("SELECT count(*) AS n FROM cal_calendars")["n"],
-                           "events": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 0")["n"],
-                           "tombstones": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 1")["n"]}
-    except Exception as e:  # noqa: BLE001
-        out["database"] = {"error": str(e)[:200]}
     from iocalendar.main import mcp_enabled
-    out["mcp"] = {"enabled": mcp_enabled()}
+    out = shared_mcp.diagnostics(config, __version__, updater, db, mcp_enabled, users.all_users(), counts=lambda: {
+        "calendars": db.one("SELECT count(*) AS n FROM cal_calendars")["n"],
+        "events": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 0")["n"],
+        "tombstones": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 1")["n"]}, timezone=ical.default_tz())
     s = contacts.public_settings()
     out["iocontact"] = {"url": s.get("url") or None, "connected": s["enabled"], "birthdays": s["birthdays"], "lastSync": s["lastSync"]}
     h = holiday.public_settings()
     out["holidays"] = {"countries": [{k: x[k] for k in ("country", "region", "language")} for x in h["items"]], "lastSync": h["lastSync"]}
-    out["accounts"] = [{"name": u["name"], "role": u.get("role")} for u in users.all_users()]
     return out
 
 
@@ -78,5 +68,4 @@ def holiday_regions(country: str) -> dict:
 def list_accounts() -> list:
     """Admins: the accounts, with their roles here (viewer, member, editor, admin)."""
     need_admin()
-    return [{"name": u["name"], "displayName": u.get("displayName"), "email": u.get("email") or None, "role": u.get("role")}
-            for u in users.all_users()]
+    return shared_mcp.account_list(users.all_users())

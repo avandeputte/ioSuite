@@ -2,7 +2,6 @@
 
     iosuite serve                          the apps the machine's file names (APPS; empty: every app that is installed)
     iosuite serve --apps iopix             a copy of its own for ioPix
-    python -m iocalendar                   the same thing for one app
 
 Each app stays what it was, a FastAPI application with its own database and its own start-up and background jobs.
 The host loads only the apps it is told to (an app that is not named is not imported, so its packages need not be

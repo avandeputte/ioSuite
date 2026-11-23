@@ -51,8 +51,7 @@ Cloudflare, AI assistants (MCP), updates, configuration, and a page for each app
 
 ```sh
 iosuite serve                      # the apps the machine's file names (APPS; none named: every app installed)
-iosuite serve --apps iopix         # a copy of its own for ioPix
-python -m iocalendar               # one app alone
+iosuite serve --apps iopix         # a copy of its own for ioPix, or any one app alone
 ```
 
 Each app keeps its own database; every database is reached with the one login of the Shared ioSuite database.
@@ -151,6 +150,16 @@ server is reached over the network. The switches are per app, under **Settings �
 A copy writes one log (`<DATA_DIR>/iosuite.log`, 20 MB at most with four older ones kept), every line marked with the
 app it came from. Suite admins read it under **Settings › Servers › Logs**, from any app: filtered to the app
 it was opened from, or every app on one timeline; with several copies, every copy's lines merged by time.
+
+## One shape for every app
+
+An app is a folder beside the others: `app.json` says what it is (its name, port, folder, colour, settings, what it
+serves to phones and devices), `db.py` holds its tables, `main.py` what is its own — its description, its jobs, its
+body limits, its routes — and hands the rest to `iosuite_shared.application.create`, which starts every app the same
+way: the tables and the accounts, the demo data while that switch is on, the jobs, who is asking, the routes every
+app answers (`/api/auth`, `/api/status`, `/api/live`, `/api/suite`…), the MCP endpoint, the page. The database
+helpers (`iosuite_shared.db.AppDatabase`), the accounts as an app sees them (`iosuite_shared.users.AppUsers`) and
+what a local MCP server and its diagnostics say (`iosuite_shared.mcp`) are kept once as well.
 
 ## From a checkout
 

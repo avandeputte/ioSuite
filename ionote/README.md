@@ -254,7 +254,7 @@ CI runs both.
 The package `ionote/` of the repository:
 
 ```
-main.py          the FastAPI app: the suite's middleware (who is asking, require sign-in, cross-site writes), whose notes, status, /mcp, static files
+main.py          the application: what is ioNote's own (whose notes a request works on, its status fields, its routes), handed to iosuite_shared.application
 access.py        who may call a route: the markers every /api route carries
 config.py        the settings: the suite's standard names (iosuite_shared.config) and ioNote's own
 db.py            the database (MariaDB/MySQL, through iosuite_shared.db), its tables, the rev counter
