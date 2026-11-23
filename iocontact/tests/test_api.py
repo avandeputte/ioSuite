@@ -189,10 +189,16 @@ def test_account_picker_and_one_click(client, family_id):
     assert r.status_code == 401
 
 
-def test_page_stamps_the_version(client):
-    from iocontact import __version__
+def test_page_names_its_script_and_style_sheet_by_what_is_in_them(client):
+    from iocontact import config
+    from iosuite_shared import pages
     html = client.get("/").text
-    assert f'static/app.js?v={__version__}"' in html and f'static/app.css?v={__version__}"' in html
+    js, css = pages.mark(config.STATIC_DIR / "app.js"), pages.mark(config.STATIC_DIR / "app.css")
+    assert f'static/app.js?v={js}"' in html and f'static/app.css?v={css}"' in html
+    # asked for that way it is kept for good; a module the script imports by name is asked for each time
+    assert "immutable" in client.get(f"/static/app.css?v={css}").headers["cache-control"]
+    assert client.get("/static/app.css").headers["cache-control"] == "no-cache"
+    assert client.get("/api/auth/frame.js").headers["cache-control"] == "no-cache"
 
 
 def test_registers_in_the_suite(client):
