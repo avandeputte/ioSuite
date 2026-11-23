@@ -183,6 +183,37 @@ def test_two_copies_on_one_machine_have_names_of_their_own(monkeypatch):
     assert suite.copy_name() == "nas:8080"
 
 
+def test_a_container_is_called_by_the_name_the_others_reach_it_at(monkeypatch):
+    """A container's own name is a number, new each time it is made again."""
+    monkeypatch.setattr("socket.gethostname", lambda: "3f2a9c1d7b21")
+    monkeypatch.setattr(suite, "in_container", lambda: True)
+    _machine(monkeypatch, HOST="0.0.0.0", PORT=80, INTERNAL_URL="http://iosuite")
+    assert suite.copy_name() == "iosuite"
+    _machine(monkeypatch, INTERNAL_URL="")
+    assert suite.copy_name() == "3f2a9c1d7b21"  # it did not say: its own name
+    monkeypatch.setattr(suite, "in_container", lambda: False)
+    _machine(monkeypatch, INTERNAL_URL="http://192.168.1.20")
+    assert suite.copy_name() == "3f2a9c1d7b21"  # a machine has a name of its own
+
+
+def test_what_a_copy_no_longer_runs_leaves_the_list(monkeypatch):
+    """APPS changed in a stack file: the apps taken out of it are no longer in the suite's list (a tile that leads
+    nowhere, requests passed to a copy that does not run the app). What another copy runs stays."""
+    _machine(monkeypatch, HOST="0.0.0.0", PORT=80, SYNC_PORT=8443, MCP_PORT=8444, INTERNAL_URL="http://iosuite", TLS_CERT_FILE="", TLS_KEY_FILE="")
+    suite.invalidate()
+    for app in ("iostart", "iocalendar", "iobackup"):
+        suite.register(app, app, internal_url=suite.local_url(app))
+    suite.register("iopix", "ioPix", internal_url="http://iopix:80/pix")       # another container's
+    suite.register("iodns", "ioDNS", internal_url="http://iosuite:8080/dns")   # a second copy at the same address, on its own port
+    suite.register("iohealth", "ioHealth")                                     # one that gave no address
+    assert suite.left_behind(["iostart", "iocalendar"]) == ["iobackup"]
+    assert suite.get("iobackup") is None and {a["app"] for a in suite.apps()} == {"iostart", "iocalendar", "iopix", "iodns", "iohealth"}
+    assert suite.left_behind(["iostart", "iocalendar"]) == []
+    monkeypatch.setattr(suite, "in_container", lambda: True)
+    _machine(monkeypatch, INTERNAL_URL="")  # a container that does not say where it is: nothing to go by
+    assert suite.left_behind([]) == [] and len(suite.apps()) == 5
+
+
 def test_auth_registers_where_its_copy_is(monkeypatch):
     _machine(monkeypatch, HOST="0.0.0.0", PORT=80, SYNC_PORT=8443, MCP_PORT=8444, INTERNAL_URL="http://192.168.1.151", TLS_CERT_FILE="", TLS_KEY_FILE="")
     monkeypatch.setattr("socket.gethostname", lambda: "nas")

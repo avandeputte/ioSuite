@@ -351,17 +351,17 @@ LOOPBACK = (ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("::1/128")
 _forwarders = {"raw": None, "nets": LOOPBACK}
 
 
-def forwarders() -> tuple:
+def forwarders(fresh: bool = False) -> tuple:
     """The networks whose X-Forwarded-For and X-Forwarded-Proto are believed: this machine, the suite's other
     machines (a copy passing a request across: iosuite_shared.suite.machines), and the reverse proxies listed under
     Settings › Security (AUTH_PROXY_TRUSTED), whatever the sign-in mode. While the settings cannot be read, this
-    machine only."""
+    machine only. `fresh`: the suite's machines read again when the list is more than a moment old."""
     try:
         raw = db.get_setting("auth_proxy_trusted", "", "")
     except Exception:  # noqa: BLE001 - the database is away
         return LOOPBACK
     from iosuite_shared import suite
-    return _listed(raw) + suite.machines()
+    return _listed(raw) + suite.machines(fresh)
 
 
 def _listed(raw: str) -> tuple:
@@ -396,14 +396,14 @@ class Forwarded:
         return ""
 
     @staticmethod
-    def allows(peer: str) -> bool:
+    def allows(peer: str, fresh: bool = False) -> bool:
         try:
             ip = ipaddress.ip_address((peer or "").split("%")[0])
         except ValueError:
             return False
         if ip.version == 6 and ip.ipv4_mapped:
             ip = ip.ipv4_mapped
-        return any(ip in n for n in forwarders())
+        return any(ip in n for n in forwarders(fresh))
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") in ("http", "websocket") and scope.get("client"):

@@ -343,6 +343,27 @@ def test_a_request_passed_across_arrives_inside_the_app(monkeypatch):
     assert s == 200 and b["app"] == "iopix" and b["path"] == "/api/photos" and not b["folder"]
 
 
+def test_a_copy_that_started_a_moment_ago_is_believed(monkeypatch):
+    """The list of the suite's machines is read every half minute. A copy that registered since says it is one
+    (X-IoSuite-App): the list is read again before it is turned away, at most every few seconds."""
+    from iosuite_shared import db, suite
+    machine(monkeypatch)
+    suite.invalidate()
+    suite.register("iostart", "ioStart", internal_url="http://10.0.0.5")
+    h = a_host("iostart", "iocalendar")
+    said = [("x-iosuite-app", "iocalendar"), ("x-forwarded-prefix", "/calendar")]
+    s, _, b = ask(h, "/api/events", headers=said, peer="10.0.0.9")
+    assert s == 200 and b["app"] == "iostart"  # anybody can send that header: not believed
+    now = int(time.time())  # another copy starts, in a process of its own: its row is there, this copy's list is as it was
+    db.ex("INSERT INTO ios_apps (app, name, internal_url, created_at, updated_at, last_seen_at) VALUES ('iopix', 'ioPix', 'http://10.0.0.9/pix', %s, %s, %s)", (now, now, now))
+    suite._machines["at"] = time.time() - 1
+    assert ask(h, "/api/events", headers=said, peer="10.0.0.9")[2]["app"] == "iostart"  # the list was read a second ago
+    suite._machines["at"] = time.time() - 5
+    s, _, b = ask(h, "/api/events", headers=said, peer="10.0.0.9")
+    assert s == 200 and b["app"] == "iocalendar" and b["folder"] == "/calendar" and b["path"] == "/api/events"
+    assert ask(h, "/api/events", headers=said, peer="10.0.0.77")[2]["app"] == "iostart"  # and still nobody else
+
+
 def test_a_request_that_was_passed_across_is_never_passed_on_again(monkeypatch):
     machine(monkeypatch)
     h = a_host("iostart", remote={"iopix": {"web": "http://10.0.0.9"}})

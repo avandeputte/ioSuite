@@ -145,6 +145,10 @@ class Host:
         peer = (scope.get("client") or ("",))[0]
         try:
             trusted = proxyauth.Forwarded.allows(peer)
+            if not trusted and any(k.lower() == doors.APP_HEADER.encode() for k, _ in scope.get("headers") or []):
+                # it says it is a copy passing a request across, and is not on the list of the suite's machines: one
+                # that started after the list was read. Read again (at most every few seconds) before saying no.
+                trusted = await asyncio.to_thread(proxyauth.Forwarded.allows, peer, True)
         except Exception:  # noqa: BLE001
             trusted = False
         r = doors.route(scope, door, table, trusted, self.local)
@@ -230,6 +234,14 @@ class Host:
                 continue
             e.task = asyncio.create_task(self._run(e), name=f"app:{e.name}")
             await e.ready.wait()
+        from iosuite_shared import suite
+        try:  # what this copy ran before and no longer does leaves the suite's list of apps
+            gone = await asyncio.to_thread(suite.left_behind, [e.name for e in self.entries])
+            if gone:
+                self.forget_routes()
+                log.info("no longer run here, taken off the suite's list of apps: %s", ", ".join(gone))
+        except Exception as x:  # noqa: BLE001 - the list is a convenience, never a reason not to start
+            log.warning("could not look for apps this copy no longer runs: %s", x)
         up = [e.name for e in self.entries if e.state == "up"]
         down = [f"{e.name} ({e.error})" for e in self.entries if e.state != "up"]
         log.info("%d app(s) up in %.1f s: %s%s", len(up), time.monotonic() - began, ", ".join(up) or "none",

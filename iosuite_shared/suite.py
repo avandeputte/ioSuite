@@ -149,8 +149,11 @@ def local_url(app: str = None, door: str = "web", host: str = None, https: bool 
 
 def copy_name() -> str:
     """What this copy is called (the log viewer, the list of apps): the machine's name, with the port of its pages
-    when that is not 80 (two copies on one machine)."""
+    when that is not 80 (two copies on one machine). A container's own name is a number that changes each time it is
+    made again: there it is the name the other copies call it by (the host of INTERNAL_URL)."""
     name = socket.gethostname().split(".")[0] or "server"
+    if in_container() and config.INTERNAL_URL:
+        name = copy_address() or name
     return (name if config.PORT in (0, 80) else f"{name}:{config.PORT}")[:64]
 
 
@@ -303,15 +306,17 @@ def upstream_of(r: dict, key: str = "internalUrl") -> str | None:
 
 _machines = {"at": 0.0, "nets": ()}
 MACHINES_S = 30.0
+MACHINES_AGAIN_S = 2.0
 
 
-def machines() -> tuple:
+def machines(fresh: bool = False) -> tuple:
     """The addresses of the suite's own machines, as networks: where the copies recorded they are (internal_url). A
     copy believes what another copy of the suite says about a request it passes across (X-Forwarded-*, X-IoSuite-App),
     as it believes this machine and the listed reverse proxies. Read at most every MACHINES_S seconds; a name is
-    looked up."""
+    looked up. `fresh`: read now when the list is older than MACHINES_AGAIN_S, for a sender that says it is a copy
+    and is not on the list: a copy that started a moment ago."""
     now = time.time()
-    if now - _machines["at"] >= MACHINES_S:
+    if now - _machines["at"] >= (MACHINES_AGAIN_S if fresh else MACHINES_S):
         nets = []
         try:
             rows = db.q("SELECT DISTINCT internal_url FROM ios_apps WHERE internal_url IS NOT NULL")
@@ -463,6 +468,31 @@ def forget(app: str) -> bool:
         _tools["at"] = 0.0
         _door.update(at=0.0, rev=_door["rev"] + 1)
     return db.ex("DELETE FROM ios_apps WHERE app = %s", (app,)) > 0
+
+
+def _where(url) -> tuple | None:
+    """(host, port) of an address inside the network, the port its scheme implies when it names none."""
+    try:
+        u = urlsplit(url or "")
+        return (u.hostname.lower(), u.port or (443 if u.scheme == "https" else 80)) if u.hostname else None
+    except ValueError:
+        return None
+
+
+def left_behind(running) -> list:
+    """Take off the list the apps this copy ran before and no longer does (APPS changed in a stack file or the
+    machine's file): the rows that say this copy's address inside the network for an app that is not among `running`.
+    Nobody answers for them there any more, so the start page would show a tile that leads nowhere and the other
+    copies would pass their requests here. An app another copy took up says that copy's address, and stays. The apps
+    taken off; one registers again when a copy starts it. Nothing an app stored is touched."""
+    here = _where(local_url())
+    if not here:
+        return []
+    gone = []
+    for r in db.q("SELECT app, internal_url FROM ios_apps WHERE internal_url IS NOT NULL"):
+        if r["app"] not in running and _where(r["internal_url"]) == here and forget(r["app"]):
+            gone.append(r["app"])
+    return gone
 
 
 def invalidate():
