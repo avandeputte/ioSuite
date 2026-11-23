@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ioThing suite — self-hosted photos, notes, calendar, tasks, recipes, finances and more</title>
+<meta name="description" content="Small self-hosted apps for the family: ioPix for photos, ioNote, ioCalendar, ioTask, ioRecipe, ioThings, ioMoney, ioDocs, ioContact, ioHealth and the ioStart start page. One program runs just the one you need, or all of them, with one sign-in.">
+<link rel="canonical" href="https://iosuite.iothing.net/">
+<link rel="icon" type="image/svg+xml" href="img/icon.svg">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ioThing suite">
+<meta property="og:description" content="Photos, notes, calendar, tasks, recipes, an inventory, finances, contacts and health on your own server. Take one app, or all of them.">
+<meta property="og:url" content="https://iosuite.iothing.net/">
+<meta property="og:image" content="https://iosuite.iothing.net/img/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav wrap" aria-label="Main">
+    <a class="brand" href="#top">
+      <img src="img/icon.svg" alt="" width="34" height="34">
+      <b><span class="io">io</span>Thing <span class="suite">suite</span></b>
+    </a>
+    <a class="link" href="#apps">Apps</a>
+    <a class="link" href="#one-app">One or all</a>
+    <a class="link" href="#screenshots">Screenshots</a>
+    <a class="link" href="#install">Install</a>
+    <a class="link" href="/docs/">Docs</a>
+    <a class="gh" href="https://github.com/avandeputte/iosuite2" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub
+    </a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">self-hosted · free &amp; open source</span>
+        <h1>Take the app you need.<br>Leave the rest.</h1>
+        <p class="lede">Small self-hosted apps for the family: photos, notes, a calendar, tasks, recipes, an inventory of what you own, the household's finances, the family's papers, contacts and health data, on your own server. <strong>One small program runs the apps you tick</strong>: if all you want is a photo app, tick ioPix and you're done. Tick another whenever you like, and it signs in with the same accounts.</p>
+        <div class="meta">GPL-3.0 · Proxmox VE · Docker (amd64 / arm64) · any Linux or Mac · MariaDB / MySQL</div>
+        <div class="cta">
+          <a class="btn btn-primary" href="#install">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v8.6L4.7 6.3 3.3 7.7 8 12.4l4.7-4.7-1.4-1.4L8 9.6V1H8zM2 13h12v2H2v-2z"/></svg>
+            Pick your apps
+          </a>
+          <a class="btn btn-ghost" href="/docs/start/one-or-all/">One app or all of them?</a>
+        </div>
+      </div>
+
+      <figure class="mix" aria-label="Any combination of the apps is a complete install">
+        <div class="mix-grid" id="mix">
+          <div class="mix-app" data-app="iopix"><img src="img/iopix.svg" alt="" width="46" height="46"><b>ioPix</b><small>photos</small></div>
+          <div class="mix-app" data-app="ionote"><img src="img/ionote.svg" alt="" width="46" height="46"><b>ioNote</b><small>notes</small></div>
+          <div class="mix-app" data-app="iocalendar"><img src="img/iocalendar.svg" alt="" width="46" height="46"><b>ioCalendar</b><small>calendar</small></div>
+          <div class="mix-app" data-app="iotask"><img src="img/iotask.svg" alt="" width="46" height="46"><b>ioTask</b><small>tasks</small></div>
+          <div class="mix-app" data-app="iorecipe"><img src="img/iorecipe.svg" alt="" width="46" height="46"><b>ioRecipe</b><small>recipes</small></div>
+          <div class="mix-app" data-app="iothings"><img src="img/iothings.svg" alt="" width="46" height="46"><b>ioThings</b><small>inventory</small></div>
+          <div class="mix-app" data-app="iomoney"><img src="img/iomoney.svg" alt="" width="46" height="46"><b>ioMoney</b><small>finances</small></div>
+          <div class="mix-app" data-app="iodocs"><img src="img/iodocs.svg" alt="" width="46" height="46"><b>ioDocs</b><small>papers</small></div>
+          <div class="mix-app" data-app="iocontact"><img src="img/iocontact.svg" alt="" width="46" height="46"><b>ioContact</b><small>contacts</small></div>
+          <div class="mix-app" data-app="iohealth"><img src="img/iohealth.svg" alt="" width="46" height="46"><b>ioHealth</b><small>health</small></div>
+          <div class="mix-app" data-app="iostart"><img src="img/iostart.svg" alt="" width="46" height="46"><b>ioStart</b><small>start page</small></div>
+        </div>
+        <div class="mix-label" aria-live="polite"><b id="mix-name">Just the photos</b><span id="mix-count">1 app</span></div>
+        <figcaption>Every combination is a complete install: one program at one address, each app in its folder with its own database.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= APPS ================= -->
+  <section class="apps" id="apps">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">the apps</span>
+        <h2>Ten apps. Each one complete on its own.</h2>
+        <p>Every app has its own web app and its own database, and runs with or without the others inside one small program (Python, FastAPI). All built the same way: a single-page app, light and dark, a real phone layout, installable on a home screen.</p>
+      </div>
+      <div class="agroup"><h3>The family's days</h3><p>What is on, what is to do, and what is for dinner.</p></div>
+      <div class="agrid">
+        <article class="app" style="--c:#963522">
+          <div class="app-top"><img src="img/iocalendar.svg" alt="" width="44" height="44"><h3>ioCalendar<span class="tag">The family calendar</span></h3></div>
+          <ul>
+            <li>Shared and private calendars, repeating events, reminders, public holidays</li>
+            <li>CalDAV, so the same events are on every phone and in every calendar app</li>
+            <li>Tag events with the family member they're for</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> a family calendar every phone already speaks to.</p>
+          <div class="links"><a class="more-link" href="/ioCalendar/">More about ioCalendar</a><a href="/docs/apps/iocalendar/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iocalendar" rel="noopener">GitHub</a><span class="port">/calendar/</span></div>
+        </article>
+        <article class="app" style="--c:#146b5e">
+          <div class="app-top"><img src="img/iotask.svg" alt="" width="44" height="44"><h3>ioTask<span class="tag">The family's task lists</span></h3></div>
+          <ul>
+            <li>Shared and private lists, due dates, repeats, alerts, subtasks</li>
+            <li>CalDAV, so the same lists are in Apple Reminders and every tasks app</li>
+            <li>Tag tasks with the family member they're for</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> the family's to-dos, in the reminders app each phone already has.</p>
+          <div class="links"><a class="more-link" href="/ioTask/">More about ioTask</a><a href="/docs/apps/iotask/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iotask" rel="noopener">GitHub</a><span class="port">/tasks/</span></div>
+        </article>
+        <article class="app" style="--c:#4a7c23">
+          <div class="app-top"><img src="img/iorecipe.svg" alt="" width="44" height="44"><h3>ioRecipe<span class="tag">The family's recipes</span></h3></div>
+          <ul>
+            <li>Ingredients, steps, photos, cookbooks, favourites and ratings</li>
+            <li>Import from a web address, pasted text, a photo or Mealie</li>
+            <li>Scale the servings, print, send the ingredients to ioTask</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> the family's recipe book, on every screen in the kitchen.</p>
+          <div class="links"><a class="more-link" href="/ioRecipe/">More about ioRecipe</a><a href="/docs/apps/iorecipe/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iorecipe" rel="noopener">GitHub</a><span class="port">/recipes/</span></div>
+        </article>
+      </div>
+      <div class="agroup"><h3>What you keep</h3><p>Photos, notes and the people you know, on every device.</p></div>
+      <div class="agrid">
+        <article class="app" style="--c:#3b4a8c">
+          <div class="app-top"><img src="img/iopix.svg" alt="" width="44" height="44"><h3>ioPix<span class="tag">Photos</span></h3></div>
+          <ul>
+            <li>Browse, search, map and edit a photo library from any browser</li>
+            <li>Search by what is in the photos, faces and places, with AI that runs on your own server</li>
+            <li>A web companion for digiKam, or a library of its own without it</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> a complete photo app. Point it at a folder of photos.</p>
+          <div class="links"><a class="more-link" href="/ioPix/">More about ioPix</a><a href="/docs/apps/iopix/">Docs</a><a href="https://iopix.net" rel="noopener">iopix.net</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iopix" rel="noopener">GitHub</a><span class="port">/pix/</span></div>
+        </article>
+        <article class="app" style="--c:#1c5a5e">
+          <div class="app-top"><img src="img/ionote.svg" alt="" width="44" height="44"><h3>ioNote<span class="tag">Notes, clipboard snippets and screenshots</span></h3></div>
+          <ul>
+            <li>Notes with folders, tags, pins and full-text search, text in pictures included</li>
+            <li>Mac and iPhone apps: save anything from the clipboard, synced and offline</li>
+            <li>Notes are private to each account</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> your notes, searchable everywhere.</p>
+          <div class="links"><a class="more-link" href="/ioNote/">More about ioNote</a><a href="/docs/apps/ionote/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/ionote" rel="noopener">GitHub</a><span class="port">/notes/</span></div>
+        </article>
+        <article class="app" style="--c:#4f2f7d">
+          <div class="app-top"><img src="img/iocontact.svg" alt="" width="44" height="44"><h3>ioContact<span class="tag">Contacts for the family</span></h3></div>
+          <ul>
+            <li>Every field a phone has, relations and a family tree, birthdays</li>
+            <li>CardDAV and an LDAP directory for phones, mail apps and printers</li>
+            <li>Duplicates, data quality checks and merges you can undo</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> one family address book on every device.</p>
+          <div class="links"><a class="more-link" href="/ioContact/">More about ioContact</a><a href="/docs/apps/iocontact/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iocontact" rel="noopener">GitHub</a><span class="port">/contacts/</span></div>
+        </article>
+      </div>
+      <div class="agroup"><h3>The household</h3><p>What you own, what it is worth, the papers that prove it, and how everyone is doing.</p></div>
+      <div class="agrid">
+        <article class="app" style="--c:#2a6f97">
+          <div class="app-top"><img src="img/iothings.svg" alt="" width="44" height="44"><h3>ioThings<span class="tag">Everything you own</span></h3></div>
+          <ul>
+            <li>Places, labels, photos, manuals, receipts and warranties</li>
+            <li>Upkeep with a maintenance log, as repeating tasks in ioTask</li>
+            <li>Brings a Homebox inventory over, and exports it back</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> where everything is, what it cost, and when the boiler needs its service.</p>
+          <div class="links"><a class="more-link" href="/ioThings/">More about ioThings</a><a href="/docs/apps/iothings/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iothings" rel="noopener">GitHub</a><span class="port">/things/</span></div>
+        </article>
+        <article class="app" style="--c:#94650a">
+          <div class="app-top"><img src="img/iomoney.svg" alt="" width="44" height="44"><h3>ioMoney<span class="tag">The household's finances</span></h3></div>
+          <ul>
+            <li>Accounts, balances and transactions from Monarch Money</li>
+            <li>A portfolio with quotes from Yahoo Finance, in any currency</li>
+            <li>The house and the cars, with their loans and the equity left</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> the net worth, the spending and the portfolio, on your own server.</p>
+          <div class="links"><a class="more-link" href="/ioMoney/">More about ioMoney</a><a href="/docs/apps/iomoney/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iomoney" rel="noopener">GitHub</a><span class="port">/money/</span></div>
+        </article>
+        <article class="app" style="--c:#a03a6a">
+          <div class="app-top"><img src="img/iodocs.svg" alt="" width="44" height="44"><h3>ioDocs<span class="tag">The family's papers</span></h3></div>
+          <ul>
+            <li>Passports, licenses, policies and certificates, with their scans</li>
+            <li>Reads a passport's lines and a license's barcode off a photo</li>
+            <li>A reminder months before a passport expires, weeks before a policy</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> every family paper in one place, and nobody caught with an expired passport.</p>
+          <div class="links"><a class="more-link" href="/ioDocs/">More about ioDocs</a><a href="/docs/apps/iodocs/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iodocs" rel="noopener">GitHub</a><span class="port">/docs/</span></div>
+        </article>
+        <article class="app" style="--c:#e8445a">
+          <div class="app-top"><img src="img/iohealth.svg" alt="" width="44" height="44"><h3>ioHealth<span class="tag">Apple Health, on your own server</span></h3></div>
+          <ul>
+            <li>The ioHealthSync iPhone app copies your Health data into your own database</li>
+            <li>Dashboards, charts of any metric, workouts on a map, sleep, glucose, records</li>
+            <li>Everyone sees only their own data</li>
+          </ul>
+          <p class="alone"><b>On its own:</b> a fitness web app that needs no cloud service.</p>
+          <div class="links"><a class="more-link" href="/ioHealth/">More about ioHealth</a><a href="/docs/apps/iohealth/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iohealth" rel="noopener">GitHub</a><span class="port">/health/</span></div>
+        </article>
+      </div>
+      <div class="agroup"><h3>And a start page that ties them together</h3><p>Optional, for when you run two or more.</p></div>
+      <div class="agrid agrid-one">
+        <article class="app app-wide" style="--c:#2f3a5a">
+          <div class="app-top"><img src="img/iostart.svg" alt="" width="44" height="44"><h3>ioStart<span class="tag">The start page</span></h3></div>
+          <ul>
+            <li>A tile per installed app, with today's events, photos and steps on it</li>
+            <li>Search, quick add to the calendar, weather, Home Assistant, bookmarks that sync with your browsers (<a href="https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe" rel="noopener">Chrome extension</a>)</li>
+            <li>A wall display for a tablet in the kitchen</li>
+            <li>One MCP server for the whole suite: an AI assistant reaches every app through it</li>
+          </ul>
+          <p class="alone"><b>Optional:</b> worth it once you run two or more apps. It finds them by itself.</p>
+          <div class="links"><a class="more-link" href="/ioStart/">More about ioStart</a><a href="/docs/apps/iostart/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iostart" rel="noopener">GitHub</a><span class="port">/</span></div>
+        </article>
+      </div>
+      <div class="tools">
+        <h3>And two admin tools</h3>
+        <p>Utilities for the person who runs the servers. Only suite admins see them, and they are ticked like any other app.</p>
+        <div class="tgrid">
+          <div class="tool"><img src="img/iodns.svg" alt="" width="32" height="32"><div><b>ioDNS</b>
+            <p>One list of the house's DNS names, kept in sync on AdGuard Home, Pi-hole, a UniFi gateway and Cloudflare.</p>
+            <div class="links"><a href="/docs/apps/iodns/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iodns" rel="noopener">GitHub</a></div></div></div>
+          <div class="tool"><img src="img/iobackup.svg" alt="" width="32" height="32"><div><b>ioBackup</b>
+            <p>Scheduled backups of the MariaDB databases to a folder or Google Drive, and restores of exactly what you pick.</p>
+            <div class="links"><a href="/docs/apps/iobackup/">Docs</a><a href="https://github.com/avandeputte/iosuite2/tree/main/iobackup" rel="noopener">GitHub</a></div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ONE APP OR ALL ================= -->
+  <section id="one-app">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">one app or all of them</span>
+        <h2>You don't need the whole suite.</h2>
+        <p>One program holds every app and runs only the ones you tick. Each app is the whole product for what it does; the others only add to it.</p>
+      </div>
+      <div class="ogrid">
+        <div class="opt">
+          <span class="fk">just one</span>
+          <h3>A photo app, and nothing else? Fine.</h3>
+          <p>Install with one command and tick ioPix. It needs a MariaDB or MySQL server for its data and its accounts, and that's it: <strong>no start page, no other apps</strong>, nothing waiting for something you didn't tick.</p>
+        </div>
+        <div class="opt">
+          <span class="fk">add one later</span>
+          <h3>Grow when you want to</h3>
+          <p>Months later, run <code>iosuite install</code> and tick ioCalendar. <strong>Everyone already has an account</strong>, one sign-in covers both, and the new app appears in a folder of the same address. Nothing about the first app changes.</p>
+        </div>
+        <div class="opt">
+          <span class="fk">or all at once</span>
+          <h3>The whole suite in one go</h3>
+          <p>Tick everything: all thirteen run in one program that holds about 250 MB of memory, <strong>each with its own database</strong>, at one address. Heavy work can move to a second server later, and it is still one suite.</p>
+        </div>
+      </div>
+      <div class="together">
+        <div class="pair"><span class="icons"><img src="img/iocontact.svg" alt=""><img src="img/iocalendar.svg" alt=""></span><span><b>ioContact + ioCalendar:</b> a Birthdays calendar from your contacts, and the people on an event picked from them.</span></div>
+        <div class="pair"><span class="icons"><img src="img/iopix.svg" alt=""><img src="img/iocontact.svg" alt=""></span><span><b>ioPix + ioContact:</b> the face named in ioPix becomes the contact's photo, on every phone.</span></div>
+        <div class="pair"><span class="icons"><img src="img/iostart.svg" alt=""><img src="img/iohealth.svg" alt=""></span><span><b>ioStart + any app:</b> a tile with what matters today: the next events, the tasks due, photos from this day, last night's sleep.</span></div>
+        <div class="pair"><span class="icons"><img src="img/ionote.svg" alt=""><img src="img/iopix.svg" alt=""></span><span><b>Any two apps:</b> the same accounts, roles per app, one sign-in, one address, the same Settings in every app.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GALLERY ================= -->
+  <section class="shots" id="screenshots">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">screenshots</span>
+        <h2>The real applications.</h2>
+        <p>Every screenshot is the actual app, holding made-up data: the Parker family and their friends are invented.</p>
+      </div>
+      <div class="ggrid" id="gallery">
+        <button class="shot" data-full="img/iostart.jpg" data-cap="ioStart — the start page: a tile per app with today on it, birthdays, the week ahead and bookmarks">
+          <img src="img/iostart.jpg" loading="lazy" alt="ioStart start page" width="1600" height="1000">
+          <figcaption><img src="img/iostart.svg" alt="">ioStart — the start page</figcaption>
+        </button>
+        <button class="shot" data-full="img/iopix-explore.jpg" data-cap="ioPix — Explore: library totals, photos from this day in past years and a shuffle of older ones">
+          <img src="img/iopix-explore.jpg" loading="lazy" alt="ioPix Explore page" width="1600" height="1000">
+          <figcaption><img src="img/iopix.svg" alt="">ioPix — this day in past years</figcaption>
+        </button>
+        <button class="shot" data-full="img/iopix-viewer.jpg" data-cap="ioPix — the viewer with its info panel: rating, caption, named faces, tags and details">
+          <img src="img/iopix-viewer.jpg" loading="lazy" alt="ioPix photo viewer" width="1600" height="1000">
+          <figcaption><img src="img/iopix.svg" alt="">ioPix — the viewer, faces and tags</figcaption>
+        </button>
+        <button class="shot" data-full="img/ionote.jpg" data-cap="ioNote — folders and tags in the sidebar, the notes, and one open for editing">
+          <img src="img/ionote.jpg" loading="lazy" alt="ioNote with a note open" width="1600" height="1000">
+          <figcaption><img src="img/ionote.svg" alt="">ioNote — folders, tags, full-text search</figcaption>
+        </button>
+        <button class="shot" data-full="img/iocontact.jpg" data-cap="ioContact — the family tree, drawn from the relations in the address book">
+          <img src="img/iocontact.jpg" loading="lazy" alt="ioContact family tree" width="1600" height="1000">
+          <figcaption><img src="img/iocontact.svg" alt="">ioContact — the family tree</figcaption>
+        </button>
+        <button class="shot" data-full="img/iocalendar-week.jpg" data-cap="ioCalendar — the family's week, each event tagged with who it is for">
+          <img src="img/iocalendar-week.jpg" loading="lazy" alt="ioCalendar week view" width="1600" height="1000">
+          <figcaption><img src="img/iocalendar.svg" alt="">ioCalendar — the family's week</figcaption>
+        </button>
+        <button class="shot" data-full="img/iotask.jpg" data-cap="ioTask — the family's shared list: who does what, by when, with subtasks">
+          <img src="img/iotask.jpg" loading="lazy" alt="ioTask family list" width="1600" height="1000">
+          <figcaption><img src="img/iotask.svg" alt="">ioTask — the family's lists</figcaption>
+        </button>
+        <button class="shot" data-full="img/iorecipe.jpg" data-cap="ioRecipe — the family's recipes with favourites, ratings, cookbooks and tags">
+          <img src="img/iorecipe.jpg" loading="lazy" alt="ioRecipe recipe cards" width="1600" height="1000">
+          <figcaption><img src="img/iorecipe.svg" alt="">ioRecipe — every family recipe</figcaption>
+        </button>
+        <button class="shot" data-full="img/iothings.jpg" data-cap="ioThings — everything the household owns, by place and label, with upkeep and warranties">
+          <img src="img/iothings.jpg" loading="lazy" alt="ioThings item cards" width="1600" height="1000">
+          <figcaption><img src="img/iothings.svg" alt="">ioThings — what you own, and where</figcaption>
+        </button>
+        <button class="shot" data-full="img/iomoney.jpg" data-cap="ioMoney — net worth over time, with every account, investment, loan and asset">
+          <img src="img/iomoney.jpg" loading="lazy" alt="ioMoney overview" width="1600" height="1000">
+          <figcaption><img src="img/iomoney.svg" alt="">ioMoney — net worth over time</figcaption>
+        </button>
+        <button class="shot" data-full="img/iohealth.jpg" data-cap="ioHealth — the dashboard: activity rings, last night's sleep, the trend of every metric">
+          <img src="img/iohealth.jpg" loading="lazy" alt="ioHealth dashboard" width="1600" height="1000">
+          <figcaption><img src="img/iohealth.svg" alt="">ioHealth — the dashboard</figcaption>
+        </button>
+        <button class="shot" data-full="img/iohealth-sleep.jpg" data-cap="ioHealth — sleep stages per night, bedtimes and one night's timeline">
+          <img src="img/iohealth-sleep.jpg" loading="lazy" alt="ioHealth sleep page" width="1600" height="1000">
+          <figcaption><img src="img/iohealth.svg" alt="">ioHealth — sleep, night by night</figcaption>
+        </button>
+      </div>
+      <p class="credit">Photos in the ioPix screenshots: Wikimedia Commons, StockSnap, Unsplash and the project owner's own, under the licenses <a href="https://github.com/avandeputte/iosuite2/blob/main/iopix/docs/screenshots/CREDITS.md" rel="noopener">listed here</a>. Photos in the ioRecipe and ioThings screenshots: Wikimedia Commons, under the licenses <a href="https://github.com/avandeputte/iosuite2/blob/main/docs/CREDITS.md" rel="noopener">listed here</a>. The names are invented.</p>
+    </div>
+  </section>
+
+  <dialog class="lightbox" id="lightbox">
+    <img src="" alt="">
+    <div class="lb-foot">
+      <span id="lb-cap"></span>
+      <button id="lb-close" autofocus>Close</button>
+    </div>
+  </dialog>
+
+  <!-- ================= INSTALL ================= -->
+  <section class="install" id="install">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">install</span>
+        <h2>Pick your apps. One is enough.</h2>
+        <p>Tick what you want and copy the command. The installer asks for the database server and an admin, then starts one service that runs the apps you ticked. The <a href="/docs/start/requirements/">requirements</a> are short.</p>
+      </div>
+
+      <div class="pick" id="pick" role="group" aria-label="Apps to install">
+        <label><input type="checkbox" value="iopix" checked><img src="img/iopix.svg" alt="" width="38" height="38"><b>ioPix</b><small>photos</small></label>
+        <label><input type="checkbox" value="ionote"><img src="img/ionote.svg" alt="" width="38" height="38"><b>ioNote</b><small>notes</small></label>
+        <label><input type="checkbox" value="iocalendar"><img src="img/iocalendar.svg" alt="" width="38" height="38"><b>ioCalendar</b><small>calendar</small></label>
+        <label><input type="checkbox" value="iotask"><img src="img/iotask.svg" alt="" width="38" height="38"><b>ioTask</b><small>tasks</small></label>
+        <label><input type="checkbox" value="iorecipe"><img src="img/iorecipe.svg" alt="" width="38" height="38"><b>ioRecipe</b><small>recipes</small></label>
+        <label><input type="checkbox" value="iothings"><img src="img/iothings.svg" alt="" width="38" height="38"><b>ioThings</b><small>inventory</small></label>
+        <label><input type="checkbox" value="iomoney"><img src="img/iomoney.svg" alt="" width="38" height="38"><b>ioMoney</b><small>finances</small></label>
+        <label><input type="checkbox" value="iodocs"><img src="img/iodocs.svg" alt="" width="38" height="38"><b>ioDocs</b><small>papers</small></label>
+        <label><input type="checkbox" value="iocontact"><img src="img/iocontact.svg" alt="" width="38" height="38"><b>ioContact</b><small>contacts</small></label>
+        <label><input type="checkbox" value="iohealth"><img src="img/iohealth.svg" alt="" width="38" height="38"><b>ioHealth</b><small>health</small></label>
+        <label><input type="checkbox" value="iostart"><img src="img/iostart.svg" alt="" width="38" height="38"><b>ioStart</b><small>start page</small></label>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Where to install">
+        <button role="tab" aria-selected="true" data-way="oneline">One line, any Linux server or Mac</button>
+        <button role="tab" aria-selected="false" data-way="proxmox">Proxmox VE (LXC)</button>
+        <button role="tab" aria-selected="false" data-way="docker">Docker</button>
+        <button role="tab" aria-selected="false" data-way="checkout">From a checkout</button>
+      </div>
+
+      <div id="cmds">
+        <!-- filled in by the script below; this is what shows without JavaScript -->
+        <div class="term">
+          <div class="term-head"><span>any linux server or mac — the suite's installer</span><button class="copy" data-copy>copy</button></div>
+          <pre><code><span class="p">$ </span>curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash</code></pre>
+        </div>
+      </div>
+      <p class="pick-note" id="pick-note" aria-live="polite"></p>
+
+      <div class="istep">
+        <h3><span class="chip">then</span> Open <code>http://&lt;host&gt;/</code> and sign in</h3>
+        <div class="ports"><span>the pages <b>80</b></span><span>phones, native apps and devices <b>8443</b></span><span>AI assistants (MCP) <b>8444</b></span></div>
+        <p>The suite answers at one address: the start page at the address itself, every app in its folder (<code>/calendar/</code>, <code>/notes/</code>); without the start page, the address opens the first app. Three ports keep the kinds of traffic apart. The installer creates the admin you answered: one admin for every app, because the accounts live in one <a href="/docs/reference/databases/">Shared ioSuite database</a>.</p>
+        <p>Then put the suite behind your reverse proxy for HTTPS (<a href="/docs/run/reverse-proxy/">Caddy, nginx, HAProxy</a> or a <a href="/docs/run/cloudflare/">Cloudflare Tunnel</a>): one upstream per port, whatever the number of apps. One <strong>Update</strong> under Settings › Global settings › Updates brings the whole suite to its newest version.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DOCS ================= -->
+  <section class="docs" id="docs">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">documentation</span>
+        <h2>Detailed guides</h2>
+        <p>The <a href="/docs/">guide</a> covers what every app shares, how to install one or several, and how to run them. Start here:</p>
+      </div>
+      <div class="dgrid">
+        <a class="dcard" href="/docs/start/one-or-all/">
+          <h3>One app or all of them <span>→</span></h3>
+          <p>What a single app needs, what you gain by ticking another, and what stays separate.</p>
+        </a>
+        <a class="dcard" href="/docs/start/requirements/">
+          <h3>Requirements <span>→</span></h3>
+          <p>A MariaDB or MySQL server, and somewhere to run the program: Proxmox, Docker or any Linux or Mac.</p>
+        </a>
+        <a class="dcard" href="/docs/start/several-apps/">
+          <h3>Several copies and several servers <span>→</span></h3>
+          <p>ioPix in a copy of its own, apps on a second server: still one suite, one address, one sign-in.</p>
+        </a>
+        <a class="dcard" href="/compose/">
+          <h3>Docker Compose builder <span>→</span></h3>
+          <p>Pick the apps, answer a few questions, get one stack file: the databases, the first admin and HTTPS included.</p>
+        </a>
+        <a class="dcard" href="/docs/run/accounts/">
+          <h3>Accounts and roles <span>→</span></h3>
+          <p>One account for every app, a role per app, suite admins, app passwords, one-click accounts without a password.</p>
+        </a>
+        <a class="dcard" href="/docs/run/cloudflare/">
+          <h3>Cloudflare Tunnel and Access <span>→</span></h3>
+          <p>Three public hostnames for the suite, Access on the pages only, the optional edge check.</p>
+        </a>
+        <a class="dcard" href="/docs/run/assistants/">
+          <h3>AI assistants (MCP) <span>→</span></h3>
+          <p>ioPix, ioNote, ioCalendar, ioTask, ioRecipe, ioThings, ioMoney, ioDocs and ioContact are MCP servers, and ioStart passes them all on through one: connect Claude or another assistant with an app password.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="wrap">
+      <div class="frow">
+        <span class="fbrand"><img src="img/icon.svg" alt=""><span><span class="io">io</span>Thing suite</span></span>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iopix" rel="noopener">ioPix</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/ionote" rel="noopener">ioNote</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iocalendar" rel="noopener">ioCalendar</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iotask" rel="noopener">ioTask</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iorecipe" rel="noopener">ioRecipe</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iothings" rel="noopener">ioThings</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iomoney" rel="noopener">ioMoney</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iocontact" rel="noopener">ioContact</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iohealth" rel="noopener">ioHealth</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iodns" rel="noopener">ioDNS</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iobackup" rel="noopener">ioBackup</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/iostart" rel="noopener">ioStart</a>
+        <a href="https://github.com/avandeputte/iosuite2" rel="noopener">ioSuite</a>
+        <a href="https://github.com/avandeputte/iosuite2/tree/main/docs" rel="noopener">This site</a>
+      </div>
+      <div class="frow" style="margin-top:14px">
+        <span>More projects:</span>
+        <a href="https://ham.iothing.net" rel="noopener">HAProxy Cluster Manager</a>
+        <a href="https://splitflap.iothing.net" rel="noopener">SplitFlap — split-flap display ecosystem</a>
+        <a href="https://iopix.net" rel="noopener">iopix.net</a>
+      </div>
+      <p>Free and open source software, licensed under the GNU GPL v3 or later. An independent project. Apple Health, HealthKit and iPhone are trademarks of Apple Inc.; digiKam, Proxmox, Docker, MariaDB, MySQL and Cloudflare are trademarks of their owners.</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var APPS = {
+    iopix: "ioPix", ionote: "ioNote", iocalendar: "ioCalendar", iotask: "ioTask", iorecipe: "ioRecipe", iothings: "ioThings",
+    iomoney: "ioMoney", iodocs: "ioDocs", iocontact: "ioContact", iohealth: "ioHealth", iostart: "ioStart"
+  };
+  var ORDER = ["iopix","ionote","iocalendar","iotask","iorecipe","iothings","iomoney","iodocs","iocontact","iohealth","iostart"];
+  var RAW = "https://raw.githubusercontent.com/avandeputte/iosuite2/main/";
+  var BUILDER = 'The <a href="/compose/"><strong>Docker Compose builder</strong></a> writes the same file for the apps you pick, with MariaDB, the admin and HTTPS: nothing to edit.';
+
+  function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  /* --- copy buttons (delegated: the install commands are redrawn) --- */
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-copy]");
+    if(!btn) return;
+    var pre = btn.closest(".term").querySelector("pre code");
+    var text = "";
+    pre.childNodes.forEach(function(n){
+      if(n.nodeType === 1 && (n.classList.contains("p") || n.classList.contains("c"))) return;
+      text += n.textContent;
+    });
+    var lines = text.split("\n").map(function(l){ return l.replace(/\s+$/,""); }).filter(function(l){ return l; });
+    navigator.clipboard.writeText(lines.join("\n")).then(function(){
+      var old = btn.textContent;
+      btn.textContent = "copied";
+      setTimeout(function(){ btn.textContent = old; }, 1400);
+    });
+  });
+
+  /* --- hero: one app, a few, all of them --- */
+  var mix = document.getElementById("mix");
+  var mixName = document.getElementById("mix-name");
+  var mixCount = document.getElementById("mix-count");
+  var STEPS = [
+    {apps:["iopix"], name:"Just the photos"},
+    {apps:["iocalendar","iotask","iocontact"], name:"The family's calendar, tasks and contacts"},
+    {apps:["iorecipe","iotask"], name:"Recipes, and the shopping list"},
+    {apps:["ionote"], name:"Just the notes"},
+    {apps:["iothings","iomoney"], name:"What you own, and what it's worth"},
+    {apps:["iopix","iocalendar","iocontact","iostart"], name:"Photos, calendar, contacts, a start page"},
+    {apps:["iohealth"], name:"Just the health data"},
+    {apps:ORDER, name:"The whole suite"}
+  ];
+  function showStep(s){
+    mix.querySelectorAll(".mix-app").forEach(function(el){
+      el.classList.toggle("on", s.apps.indexOf(el.dataset.app) >= 0);
+    });
+    mixName.textContent = s.name;
+    mixCount.textContent = s.apps.length === 1 ? "1 app" : s.apps.length + " apps";
+  }
+  if(mix){
+    var step = 0;
+    showStep(STEPS[0]);
+    if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      setInterval(function(){ step = (step + 1) % STEPS.length; showStep(STEPS[step]); }, 3200);
+    }
+  }
+
+  /* --- install picker --- */
+  var pick = document.getElementById("pick");
+  var cmds = document.getElementById("cmds");
+  var note = document.getElementById("pick-note");
+  var way = "oneline";
+
+  function term(head, lines){
+    return '<div class="term"><div class="term-head"><span>' + esc(head) +
+      '</span><button class="copy" data-copy>copy</button></div><pre><code>' +
+      lines.map(function(l){
+        if(l.charAt(0) === "#") return '<span class="c">' + esc(l) + '</span>';
+        return '<span class="p">$ </span>' + esc(l);
+      }).join("\n") + '</code></pre></div>';
+  }
+  function names(list){
+    var n = list.map(function(a){ return APPS[a]; });
+    if(n.length < 2) return n.join("");
+    return n.slice(0,-1).join(", ") + " and " + n[n.length-1];
+  }
+
+  function draw(){
+    var sel = ORDER.filter(function(a){ return pick.querySelector('input[value="'+a+'"]').checked; });
+    var html = "", msg = "";
+    if(!sel.length){
+      cmds.innerHTML = "";
+      note.innerHTML = "Pick at least one app.";
+      return;
+    }
+    var all = sel.length === ORDER.length;
+    var apps = all ? "" : " --apps " + sel.join(",");   // every app is what the installer ticks by itself
+    var again = "<strong>Run <code>iosuite install</code> at any time</strong> to tick more apps or untick one; what an app stored stays.";
+    if(way === "oneline"){
+      html += term("any linux server or mac — " + (all ? "every app" : names(sel)), [
+        "curl -fsSL " + RAW + "install.sh | bash" + (apps ? " -s --" + apps : "")
+      ]);
+      msg = "<strong>The suite's installer.</strong> It asks for the database server, an admin and what an app cannot guess (ioPix's photos folder), then starts one service that runs " +
+        (sel.length === 1 ? APPS[sel[0]] : "the " + sel.length + " apps") + ". On a blank Debian or Ubuntu server, add <code>--mariadb</code> and it installs the database too. " + again;
+    } else if(way === "proxmox"){
+      var line = 'bash -c "$(curl -fsSL ' + RAW + 'proxmox/ct/iosuite.sh)"';
+      if(apps) line = 'IOSUITE_INSTALL="' + apps.slice(1) + '" ' + line;
+      html += term("proxmox ve host, as root — " + (all ? "every app" : names(sel)), [line]);
+      msg = "<strong>One container for the suite.</strong> The script asks for the container's resources" + (sel.indexOf("iopix") >= 0 ? " and the folder of photos on the host" : "") +
+        ", then runs the suite's installer inside it: the database server and the admin. " + again;
+    } else if(way === "docker"){
+      html += term("docker compose — mariadb and one container for the suite", [
+        "curl -fsSLO " + RAW + "docker-compose.yml",
+        "# set the passwords, the admin, the photos folder and the time zone (the CHANGE ME lines)" + (all ? "" : ", and APPS: " + sel.join(",")) + ", then",
+        "docker compose up -d"
+      ]);
+      msg = "<strong>One image, one container</strong> (<code>ghcr.io/avandeputte/iosuite2</code>, amd64 and arm64): it runs the apps its <code>APPS</code> line names and holds no data of its own. " + BUILDER;
+    } else {
+      html += term("any linux or mac — from the repository", [
+        "git clone https://github.com/avandeputte/iosuite2 && cd iosuite2",
+        'python3 -m venv .venv && .venv/bin/pip install -e ".[all]"',
+        ".venv/bin/iosuite install --no-service" + apps,
+        ".venv/bin/iosuite serve"
+      ]);
+      msg = "<strong>For development, or a look around.</strong> The same installer, without a service: <code>iosuite serve</code> runs the apps until you stop it.";
+    }
+    cmds.innerHTML = html;
+    note.innerHTML = msg;
+  }
+
+  if(pick){
+    pick.addEventListener("change", draw);
+    document.querySelectorAll(".tabs button").forEach(function(b){
+      b.addEventListener("click", function(){
+        way = b.dataset.way;
+        document.querySelectorAll(".tabs button").forEach(function(o){ o.setAttribute("aria-selected", o === b ? "true" : "false"); });
+        draw();
+      });
+    });
+    draw();
+  }
+
+  /* --- lightbox --- */
+  var box = document.getElementById("lightbox");
+  var boxImg = box.querySelector("img");
+  var boxCap = document.getElementById("lb-cap");
+  document.querySelectorAll(".shot").forEach(function(b){
+    b.addEventListener("click", function(){
+      boxImg.src = b.dataset.full;
+      boxImg.alt = b.dataset.cap;
+      boxCap.textContent = b.dataset.cap;
+      box.showModal();
+    });
+  });
+  document.getElementById("lb-close").addEventListener("click", function(){ box.close(); });
+  box.addEventListener("click", function(e){ if(e.target === box) box.close(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+---
+description: ioCalendar, the family calendar of the ioThing suite.
+---
+
+# ioCalendar <small>calendar</small>
+
+The family calendar: a web app for the whole family, and the standard protocols every calendar app already speaks, so
+the same events show up on phones, in Apple Calendar, Google Calendar, Outlook, Thunderbird and anywhere else.
+
+[The ioCalendar page on the website, with more screenshots →](https://iosuite.iothing.net/ioCalendar/)
+{ .md-button }
+
+![ioCalendar's week view, each event tagged with the family member it is for](../img/iocalendar-week.jpg)
+
+## What it does
+
+- **Events** with a place, people, reminders, notes and a link; all-day and multi-day; **repeating events** of every
+  kind, with "this one, this and later, or all of them" when you change one.
+- **Calendars**: a shared Family calendar, a private Personal one for each account, and as many more as you like, each
+  with its colour.
+- **Family members on events**: tag an event with who it's for, and show only one person's events.
+- **Public holidays** of one or more countries (and a region), worked out on the server, nothing fetched.
+- **Views**: month, week, day and agenda, drag and drop, search, keyboard shortcuts.
+- **Everywhere**: CalDAV for Apple Calendar, DAVx⁵ on Android, Thunderbird and Outlook; an Apple configuration profile
+  that sets up an iPhone in one step; private `webcal://` subscription links for Google Calendar and Outlook; free/busy;
+  a REST API with OpenAPI docs at `/api/docs`; an MCP server for AI assistants.
+
+## On its own
+
+ioCalendar is a complete family calendar. It needs its database and the Shared ioSuite database, and HTTPS if phones
+should sync away from home.
+
+## With the other apps
+
+- **ioContact**: a read-only **Birthdays** calendar with the birthdays and anniversaries kept in ioContact, brought up
+  to date every six hours; the people on an event come from your contacts.
+- **ioTask**: the tasks that are due show on their day, beside the events, in the month, week, day and agenda views.
+  Tick one off right on the calendar; a repeating task moves on to its next day.
+- **ioMoney**: the household's coming bills show on the day they are due, to the people with a role in ioMoney. Open one for its card: the amount, the account and how often it comes; once paid, the links of the transaction that paid it (the event it was for, a thing, a note), which you can open, add and remove right there.
+- **ioDocs**: the day a passport, a license or a policy expires, for the people who see that document in ioDocs.
+- **ioStart**: today's events on the tile, a This week card, and "Quick add" from the search box ("dentist tomorrow 9am").
+  The other way round, the calendar shows the weather at the start page's place (Settings › Weather there) on each of
+  the next seven days, and an event with a place shows the weather there at its time. The forecast is Open-Meteo's
+  (free, no key), so the start page's AccuWeather allowance is not touched; an event's place is looked up once with
+  OpenStreetMap, and only the place's text leaves the server.
+
+## Install
+
+ioCalendar is one of the suite's apps: tick it in the [installer](../start/linux-mac.md), the [Docker Compose builder](../start/docker.md) or the [Proxmox script](../start/proxmox.md), or add it later to a server that runs the suite:
+
+```sh
+iosuite install --add iocalendar
+```
+
+| | |
+| --- | --- |
+| Address | `/calendar/` at the suite's address (`https://home.example.com/calendar/`), and a name of its own if you give it one |
+| Devices | CalDAV at `/calendar/dav/`, subscription links at `/calendar/ics/…`, at the [address for devices](../reference/configuration.md#the-three-ports) |
+| MCP | `/calendar/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
+| Source | [iosuite2/iocalendar](https://github.com/avandeputte/iosuite2/tree/main/iocalendar) |

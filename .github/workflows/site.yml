@@ -1,0 +1,33 @@
+# The website's source (docs/) is built to check it: its claims about the suite against the code, the stack files the
+# Docker Compose builder writes, every link in the built site. Nothing is published from here: the workflow that
+# deploys the site is held back (.github/held/docs.yml).
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "*/app.json", "docker-compose.yml", "proxmox/ct/**", "iosuite_shared/config.py", "README.md", "*/README.md", ".github/workflows/site.yml"]
+  pull_request:
+    paths: ["docs/**", "*/app.json", "docker-compose.yml", "proxmox/ct/**", "iosuite_shared/config.py", "README.md", "*/README.md", ".github/workflows/site.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: docs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r requirements.txt
+      - run: sh build.sh
+        env:
+          NO_MKDOCS_2_WARNING: "1"
+          CHECK_COMPOSE_DOCKER: "1"
