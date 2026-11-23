@@ -37,6 +37,7 @@ HEAVY_AT_ONCE = 1   # heavy jobs that may run together in one copy
 ALIVE_S = 120       # a row not touched for this long: that copy is not running the job now
 KEEP_S = 7 * 86400  # a row of a job nothing registers any more is forgotten after a week
 QUIET_S = 60        # how often the row of a quiet job is written while its looks find nothing to say
+NEVER = float("inf")  # when a job that only runs when asked is next due
 
 
 def copy_name() -> str:
@@ -52,21 +53,23 @@ class Job:
     def __init__(self, app: str, name: str, fn, every_s: float, first_s: float, heavy: bool, title: str, quiet: bool = False):
         self.app, self.name, self.fn = app, name, fn
         self.every_s, self.heavy, self.title, self.quiet = float(every_s), bool(heavy), title or name, bool(quiet)
-        self.next_at = time.time() + float(first_s)
+        # every_s=0: a job that runs when asked (soon(), or Run now on the screen), never on a clock of its own
+        self.next_at = time.time() + float(first_s) if self.every_s else NEVER
         self.running = False
         self.cancelled = False
         self.again = False     # soon() was called while it ran: one more run right after
         self.wrote_at = 0.0    # when a quiet job's row was last written, and the runs since
         self.unwritten = 0
 
-    def soon(self) -> None:
+    def soon(self) -> bool:
         """Run now rather than at the next turn; from any thread. Asked while it runs, it runs once more right after,
-        so what was changed during the run is seen."""
+        so what was changed during the run is seen. False when nothing will run it (it was cancelled, or the copy's
+        loop is not running: a script, a test)."""
         if self.cancelled:
-            return
+            return False
         self.again = self.running
         self.next_at = 0.0
-        _runner.wake()
+        return _runner.wake()
 
     def cancel(self) -> None:
         """Stop running it (the app is shutting down). The row stays, so the screen still says when it last ran."""
@@ -102,15 +105,16 @@ class Runner:
         if self.jobs.get((job.app, job.name)) is job:
             self.jobs.pop((job.app, job.name), None)
 
-    def wake(self) -> None:
-        """Have the loop look now (a job asked to run soon), from whichever thread."""
+    def wake(self) -> bool:
+        """Have the loop look now (a job asked to run soon), from whichever thread; whether there is a loop to."""
         loop, wake = self._loop, self._wake
-        if loop is None or wake is None:
-            return
+        if loop is None or wake is None or loop.is_closed():
+            return False
         try:
             loop.call_soon_threadsafe(wake.set)
         except RuntimeError:  # the loop has closed: nothing runs any more
-            pass
+            return False
+        return True
 
     def _ensure(self) -> None:
         """One loop per copy, made by the first job that registers. The loop it belongs to is remembered too: a
@@ -171,7 +175,7 @@ class Runner:
                 await self._once(job, by)
         finally:
             job.running = False
-            job.next_at = 0.0 if job.again else time.time() + job.every_s
+            job.next_at = 0.0 if job.again else (time.time() + job.every_s if job.every_s else NEVER)
             job.again = False
             if self._wake is not None:
                 self._wake.set()
@@ -201,7 +205,7 @@ _runner = Runner()
 def register(fn, every_s: float = 86400, name: str = None, first_s: float = 5, app: str = "", heavy: bool = False,
              title: str = "", quiet: bool = False) -> Job:
     """Have `fn` run `first_s` seconds from now and then every `every_s` seconds, as this copy's job runner's turn
-    comes. `app` is the app it belongs to (""; the copy itself, for the suite's own jobs), `heavy` makes it wait for
+    comes; `every_s=0` is a job that runs only when asked (`.soon()`, or Run now on the screen). `app` is the app it belongs to (""; the copy itself, for the suite's own jobs), `heavy` makes it wait for
     the copy's other heavy jobs, `quiet` is for a look every few seconds (its row is written once a minute). Returns
     a handle with .cancel(), to call in the app's shutdown, and .soon(), to have it run now."""
     name = (name or getattr(fn, "__name__", "job"))[:64]
@@ -255,6 +259,11 @@ def _said(out) -> str:
     return str(out)[:300]
 
 
+def _when(at: float):
+    """A job's next turn as the row keeps it; nothing for a job that only runs when asked."""
+    return None if at == NEVER else int(at)
+
+
 def _fresh(row, within_s: float = ALIVE_S) -> bool:
     return bool(row.get("seen_at")) and row["seen_at"] > time.time() - within_s
 
@@ -267,7 +276,7 @@ def _declare(job: Job) -> None:
            "heavy = VALUES(heavy), seen_at = VALUES(seen_at), next_at = VALUES(next_at), "
            "state = IF(state = 'running', '', state)",
            (job.app, job.name, copy_name(), job.title[:120], int(job.every_s), 1 if job.heavy else 0,
-            int(time.time()), int(job.next_at)))
+            int(time.time()), _when(job.next_at)))
 
 
 def _asked(keys: list) -> dict:
@@ -300,7 +309,7 @@ def _ended(job: Job, started: float, state: str, message: str) -> None:
     _write("UPDATE ios_jobs SET state = %s, started_at = %s, finished_at = %s, took_ms = %s, message = %s, seen_at = %s, "
            "copy = %s, runs = runs + %s, failures = failures + %s, next_at = %s WHERE app = %s AND name = %s",
            (state, int(started), int(now), int((now - started) * 1000), message[:300] or None, int(now), copy_name(), runs,
-            1 if state == "failed" else 0, int(now + job.every_s), job.app, job.name))
+            1 if state == "failed" else 0, int(now + job.every_s) if job.every_s else None, job.app, job.name))
 
 
 def _write(sql: str, args: tuple) -> None:

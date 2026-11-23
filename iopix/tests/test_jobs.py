@@ -72,6 +72,39 @@ def test_a_failing_job_does_not_stop_the_worker():
     assert _wait(lambda: done == [1])
 
 
+def test_while_the_app_runs_the_queue_is_one_of_the_copy_s_jobs(client, monkeypatch):
+    """The app's start attached the queue: a pass is made by the copy's job runner (Settings › Servers › Jobs says
+    what it ran), not by a thread of the queue's own; once the app has stopped (detach) the queue's thread makes the
+    passes again."""
+    from iosuite_shared import db as shared_db
+    monkeypatch.setattr(jobs, "GRACE", 0.1)
+    assert jobs._job is not None and jobs._job.every_s == 0 and not jobs._job.heavy
+    done, threads = [], []
+
+    def work(name):
+        return lambda: (done.append(name), threads.append(threading.current_thread().name))
+
+    def row():
+        return shared_db.one("SELECT * FROM ios_jobs WHERE app = %s AND name = 'analysis'", (jobs.config.APP,)) or {}
+
+    jobs.submit("pixels", work("pixels"))
+    jobs.submit("thumbs", work("thumbs"))
+    assert _wait(lambda: len(done) == 2 and jobs.status()["running"] is None)
+    assert done == ["thumbs", "pixels"] and "jobs" not in threads, (done, threads)
+    assert _wait(lambda: row().get("state") == "ok" and row().get("message") == "thumbs, pixels"), row()
+    assert row()["every_s"] == 0 and not row()["heavy"] and row()["next_at"] is None
+    jobs.detach()
+    try:
+        jobs.submit("vision", work("vision"))
+        assert _wait(lambda: done[-1] == "vision" and jobs.status()["running"] is None)
+        assert threads[-1] == "jobs"
+    finally:
+        client.portal.call(jobs.attach)  # as the app's start does, on the copy's loop
+    jobs.submit("captions", work("captions"))
+    assert _wait(lambda: done[-1] == "captions" and jobs.status()["running"] is None)
+    assert threads[-1] != "jobs"
+
+
 def test_thread_budget_is_bounded(monkeypatch):
     n = os.cpu_count() or 4
     assert 1 <= jobs.threads() <= max(1, n - 1)

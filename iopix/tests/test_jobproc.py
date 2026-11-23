@@ -1,8 +1,7 @@
 """The job process (iopix/jobproc.py, iopix/jobworker.py): offloaded functions run in a second process, their Progress
 stays in step both ways, a process that is lost or too large is reported and not fatal, and jobs.py retries a lost
-job once and then holds it. Also memwatch's numbers."""
+job once and then holds it. Also memwatch's numbers (how the server's memory is read: iosuite_shared/tests/test_memory.py)."""
 import os
-import sys
 import threading
 import time
 from pathlib import Path
@@ -249,19 +248,3 @@ def test_memwatch_settings(monkeypatch):
     monkeypatch.setattr(config, "JOBS_MEMORY_MB", 2048)
     b = memwatch.budget()
     assert b["reserve"] is None and b["ceiling"] == 2048 * memwatch.MB
-
-
-def test_memwatch_takes_the_smallest_cgroup_limit(tmp_path, monkeypatch):
-    root = tmp_path / "cg"
-    leaf = root / "lxc" / "system.slice" / "iopix.service"
-    leaf.mkdir(parents=True)
-    (leaf / "memory.max").write_text("max\n")
-    (root / "lxc" / "memory.max").write_text(str(2 * 1024 ** 3) + "\n")
-    (root / "lxc" / "memory.current").write_text(str(1024 ** 3) + "\n")
-    (root / "lxc" / "memory.stat").write_text(f"anon 1\ninactive_file {200 * memwatch.MB}\nactive_file {100 * memwatch.MB}\nslab_reclaimable {24 * memwatch.MB}\n")
-    monkeypatch.setattr(memwatch, "CGROUP", root)
-    monkeypatch.setattr(memwatch, "_cgroup_dirs", lambda: [leaf, leaf.parent, root / "lxc", root])
-    monkeypatch.setattr(memwatch, "_meminfo", lambda: {"MemTotal": 64 * 1024 ** 3, "MemAvailable": 60 * 1024 ** 3})
-    assert memwatch.limit() == 2 * 1024 ** 3
-    assert memwatch.used() == 1024 ** 3 - 324 * memwatch.MB  # the file cache and reclaimable slab are not "in use"
-    assert sys.platform  # (keeps the import used on every platform)

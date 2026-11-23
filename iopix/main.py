@@ -51,6 +51,7 @@ async def lifespan(_app):
     if tagmanager.pending_jobs():  # finish sidecar updates left over from a previous run
         tagmanager.start_worker()
     facemgr.resume_queue()  # and the face sidecar rewrites a restart interrupted
+    bgjobs.attach()  # the analysis queue is one of the copy's jobs from here on (Settings › Servers › Jobs)
     refresh(initial=True)  # also starts the library when there is no digiKam database
     suite_demo.at_start(config.APP)  # the demo photos while the suite's demo switch is on (iosuite_demo); the watcher indexes them
     # the copy's jobs (Settings › Servers › Jobs): the previews and the cut-down thumbnails kept under their caps, the
@@ -70,6 +71,7 @@ async def lifespan(_app):
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield
     kick.job = None
+    bgjobs.detach()
     for j in looks:
         if j is not None:
             j.cancel()

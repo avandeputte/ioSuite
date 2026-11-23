@@ -9,8 +9,6 @@ ioTask is asked on the viewer's behalf (iosuite_shared.links.as_viewer: localhos
 address inside the network, its public one), with the suite's Cloudflare Access service token when one is set. One
 that did not answer is left alone for links.BREAK_S seconds.
 """
-import json
-import urllib.error
 
 from fastapi import Request
 from iosuite_shared import links
@@ -21,49 +19,9 @@ TIMEOUT = 8     # seconds, per request
 MAX_LINES = 200
 
 
-class Unavailable(Exception):
-    """ioTask could not be asked, or would not answer: (status, why)."""
-
-    def __init__(self, status: int, why: str):
-        super().__init__(why)
-        self.status = status
-
-
-def enabled() -> bool:
-    try:
-        return links.available(PROVIDER)
-    except Exception:  # noqa: BLE001 - no database yet
-        return False
-
-
-def url() -> str:
-    """Where the browser opens ioTask ('' when it is not part of the suite)."""
-    try:
-        return links.url(PROVIDER) or ""
-    except Exception:  # noqa: BLE001
-        return ""
-
-
-def ask(request: Request, path: str, params: dict | None = None, body: dict | None = None):
-    """GET path from ioTask as the viewer (with body: POST that JSON); its JSON answer, or Unavailable."""
-    if not enabled():
-        raise Unavailable(404, "ioTask is not part of the suite")
-    if links.resting(PROVIDER):
-        raise Unavailable(502, "ioTask did not answer a moment ago")
-    try:
-        return links.as_viewer(request, PROVIDER, path, params, body, timeout=TIMEOUT, user_agent="ioRecipe")
-    except urllib.error.HTTPError as e:  # it answered
-        if e.code in (401, 403) and body is None:
-            raise Unavailable(403, "ioTask does not let this account in: open it once and sign in there")
-        try:
-            detail = json.loads(e.read()).get("detail")
-        except (ValueError, AttributeError):
-            detail = None
-        if e.code in (400, 403, 404, 409, 412) and isinstance(detail, str):
-            raise Unavailable(e.code, detail)  # its own word on what it would not take
-        raise Unavailable(502, f"ioTask answered {e.code}")
-    except links.Unreachable as e:
-        raise Unavailable(502, f"ioTask is not reachable ({type(e.why).__name__ if e.why else 'no address'})")
+_app = links.App(PROVIDER, asker="ioRecipe", timeout=TIMEOUT)  # ioTask, asked as the viewer (iosuite_shared.links.App)
+Unavailable = links.Unavailable  # ioTask could not be asked, or would not answer: (status, why)
+enabled, url, ask = _app.enabled, _app.url, _app.ask
 
 
 def lists(request: Request) -> list[dict]:

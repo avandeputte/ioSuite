@@ -27,19 +27,14 @@ What it is:
 Its log lines go to the copy, which writes them to the one log like its own (marked with the app the module belongs to).
 """
 import atexit
-import importlib
 import logging
 import os
 import pickle
-import signal
 import subprocess
-import sys
 import threading
 import time
-from multiprocessing import Pipe
-from pathlib import Path
 
-from iosuite_shared import config
+from iosuite_shared import child, config, memory
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iosuite_shared.helper")
@@ -88,7 +83,7 @@ def ceiling() -> int | None:
             return n * MB if n > 0 else None
         except ValueError:
             pass
-    lim = _limit()
+    lim = memory.limit()
     return int(lim * MEMORY_SHARE) if lim else None
 
 
@@ -98,102 +93,17 @@ def status() -> dict:
         return {"on": enabled(), "running": _count, "idle": len(_idle), "ceilingMb": (ceiling() or 0) // MB, **_info}
 
 
-# ---- memory (Linux: /proc and the cgroup files; elsewhere nothing is known and nothing is stopped)
-
-def _int(path: Path):
-    try:
-        text = path.read_text().strip()
-    except OSError:
-        return None
-    return int(text) if text.isdigit() else None
-
-
-def _limit():
-    """Bytes this machine or container may use, or None."""
-    total = None
-    try:
-        for line in Path("/proc/meminfo").read_text().splitlines():
-            if line.startswith("MemTotal:"):
-                total = int(line.split()[1]) * 1024
-    except (OSError, ValueError, IndexError):
-        pass
-    best = None
-    try:
-        line = next(ln for ln in Path("/proc/self/cgroup").read_text().splitlines() if ln.startswith("0::"))
-        root = Path("/sys/fs/cgroup")
-        d = root / line[3:].strip().lstrip("/")
-        while True:
-            n = _int(d / "memory.max")
-            if n is not None and (best is None or n < best):
-                best = n
-            if d == root or root not in d.parents:
-                break
-            d = d.parent
-    except (OSError, StopIteration):
-        pass
-    if best is not None and total is not None:
-        return min(best, total)
-    return best if best is not None else total
-
-
-_PAGE = os.sysconf("SC_PAGE_SIZE") if hasattr(os, "sysconf") and "SC_PAGE_SIZE" in os.sysconf_names else 4096
-
-
-def _rss(pid: int) -> int:
-    try:
-        return int(Path(f"/proc/{pid}/statm").read_text().split()[1]) * _PAGE
-    except (OSError, ValueError, IndexError):
-        return 0
-
-
-def _tree(pid: int) -> int:
-    """Resident bytes of a helper and every program it started (tesseract, pdftoppm)."""
-    seen, todo, total = set(), [pid], 0
-    while todo and len(seen) < 200:
-        p = todo.pop()
-        if p in seen:
-            continue
-        seen.add(p)
-        total += _rss(p)
-        try:
-            for task in Path(f"/proc/{p}/task").iterdir():
-                todo += [int(c) for c in (task / "children").read_text().split()]
-        except (OSError, ValueError):
-            pass
-    return total
-
-
 # ---- the helpers
 
 def _spawn() -> dict:
-    here, there = Pipe()
-    try:
-        proc = subprocess.Popen([sys.executable, "-m", "iosuite_shared.helperworker", str(there.fileno())], pass_fds=[there.fileno()],
-                                cwd=str(config.BASE), start_new_session=True,
-                                env={**os.environ, "IOSUITE_HELPER_WORKER": "1", "IOSUITE_LOG_CHILD": "1", "DB_CONNECTIONS": config.child_connections()})
-    finally:
-        there.close()
+    proc, conn = child.spawn("iosuite_shared.helperworker", "IOSUITE_HELPER_WORKER")
     log.info("helper started (pid %d)", proc.pid)
-    return {"proc": proc, "conn": here, "since": time.monotonic()}
+    return {"proc": proc, "conn": conn, "since": time.monotonic()}
 
 
 def _kill(w: dict) -> None:
-    """The helper and whatever it started (it has its own process group)."""
-    try:
-        os.killpg(w["proc"].pid, signal.SIGKILL)
-    except (OSError, ProcessLookupError):
-        try:
-            w["proc"].kill()
-        except OSError:
-            pass
-    try:
-        w["conn"].close()
-    except OSError:
-        pass
-    try:
-        w["proc"].wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        pass
+    """The helper and whatever it started, gone and waited for."""
+    child.end(w["proc"], w["conn"])
 
 
 def _end(w: dict) -> None:
@@ -282,30 +192,6 @@ def shutdown() -> None:
 atexit.register(shutdown)
 
 
-def _why(w: dict, given: str | None) -> str:
-    if given:
-        return given
-    try:
-        rc = w["proc"].wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        rc = None
-    if rc == -signal.SIGKILL:
-        return "the system stopped it, most likely because the server ran out of memory"
-    if rc is not None and rc < 0:
-        try:
-            return f"it crashed ({signal.Signals(-rc).name})"
-        except ValueError:
-            return f"it crashed (signal {-rc})"
-    return f"it ended unexpectedly (exit code {rc})"
-
-
-def _resolve(module: str, name: str):
-    obj = importlib.import_module(module)
-    for part in name.split("."):
-        obj = getattr(obj, part)
-    return obj
-
-
 def call(fn, *args, timeout: float = DEFAULT_TIMEOUT, on_message=None, **kwargs):
     """fn(*args, **kwargs) in a helper; its result, or its error raised here. HelperLost when the helper ended first
     (crashed, out of memory, longer than `timeout` seconds). on_message(msg) hears what the function emit()s. With the
@@ -316,11 +202,7 @@ def call(fn, *args, timeout: float = DEFAULT_TIMEOUT, on_message=None, **kwargs)
             return fn(*args, **kwargs)
         finally:
             _local.on_message = before
-    try:
-        same = _resolve(fn.__module__, fn.__qualname__) is fn
-    except (AttributeError, ImportError):
-        same = False
-    if not same:
+    if not child.sendable(fn):
         raise TypeError(f"{fn.__module__}.{fn.__qualname__}: only a module-level function can go to the helper")
     what = f"{fn.__module__}.{fn.__qualname__}"
     limit = ceiling()
@@ -342,7 +224,7 @@ def call(fn, *args, timeout: float = DEFAULT_TIMEOUT, on_message=None, **kwargs)
                 try:
                     msg = w["conn"].recv()
                 except (EOFError, OSError):
-                    lost = _why(w, lost)
+                    lost = lost or child.why(w["proc"])
                     break
                 if msg[0] == "log":
                     logging.getLogger(msg[1]).log(msg[2], "%s", msg[3])
@@ -361,12 +243,12 @@ def call(fn, *args, timeout: float = DEFAULT_TIMEOUT, on_message=None, **kwargs)
                 _kill(w)
             elif lost is None and limit and now >= next_check:
                 next_check = now + CHECK_EVERY
-                held = _tree(w["proc"].pid)
+                held = memory.tree(w["proc"].pid)
                 if held > limit:
                     lost = f"it needed more memory than the helper may use ({held // MB} MB; the most is {limit // MB} MB)"
                     _kill(w)
             if w["proc"].poll() is not None and not _readable(w):
-                lost = _why(w, lost)
+                lost = lost or child.why(w["proc"])
                 break
     except BaseException:
         _kill(w)

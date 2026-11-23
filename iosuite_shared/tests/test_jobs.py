@@ -188,3 +188,28 @@ def test_a_job_asked_to_run_soon_runs_now_and_once_more_when_it_was_running():
             hold.set()
     asyncio.run(go())
 
+
+def test_a_job_that_runs_only_when_asked():
+    """every_s=0 (ioPix's analysis queue): no clock of its own; soon() and Run now start it, and its row says so."""
+    async def go():
+        ran = []
+        job = chores.start(lambda: ran.append(1) or "thumbs", every_s=0, first_s=0, app="iotest", name="analysis")
+        try:
+            await asyncio.sleep(0.4)
+            assert ran == [], "it ran without being asked"
+            r = db.one("SELECT * FROM ios_jobs WHERE app = 'iotest' AND name = 'analysis'")
+            assert r["every_s"] == 0 and r["next_at"] is None
+            assert job.soon() is True
+            assert await _until(lambda: len(ran) == 1)
+            assert await _until(lambda: (db.one("SELECT * FROM ios_jobs WHERE app = 'iotest' AND name = 'analysis'") or {}).get("state") == "ok")
+            await asyncio.sleep(0.4)
+            assert len(ran) == 1, "it ran again on its own"
+            r = db.one("SELECT * FROM ios_jobs WHERE app = 'iotest' AND name = 'analysis'")
+            assert r["message"] == "thumbs" and r["next_at"] is None
+            assert jobs.run_now("iotest", "analysis", by="morgan")
+            assert await _until(lambda: len(ran) == 2, timeout=6)
+        finally:
+            job.cancel()
+        assert job.soon() is False  # cancelled: nothing will run it
+    asyncio.run(go())
+    db.ex("DELETE FROM ios_jobs WHERE app = 'iotest'")

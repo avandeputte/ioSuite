@@ -13,6 +13,11 @@ and no offloaded job starts while the server is below that reserve. Should the k
 process is the one it picks (its oom_score_adj is raised), and the web app only sees that its job was lost.
 jobs.py decides what happens to a job that was lost: once more, then held.
 
+How a process is started beside the copy, ended with what it started, and why it went is the suite's
+(iosuite_shared.child, which the suite's helper for scans and PDFs uses too), and so is the reading of the server's
+memory (iosuite_shared.memory). What is ioPix's own is below: the jobs' Progress kept in step both ways, the cancels,
+and the two memory rules.
+
 The web app's side of a call:
 
     web app                                   job process (python -m iopix.jobworker)
@@ -30,18 +35,15 @@ function that is offloaded must be a module-level one, take arguments that pickl
 database, in files, in its Progress or in what it emits, never in a module's variables.
 """
 import atexit
-import importlib
 import logging
 import os
-import signal
 import subprocess
-import sys
 import threading
 import time
-from multiprocessing import Pipe
+
+from iosuite_shared import child
 
 from iopix import config, jobs, memwatch
-from iosuite_shared import config as shared_config
 
 log = logging.getLogger("iopix.jobproc")
 IN_WORKER = os.environ.get("IOPIX_JOB_WORKER") == "1"  # this is the job process itself (jobworker.py)
@@ -88,26 +90,14 @@ def _on_bump(name: str):
 
 
 def _spawn() -> dict:
-    here, there = Pipe()
-    try:
-        proc = subprocess.Popen([sys.executable, "-m", "iopix.jobworker", str(there.fileno())], pass_fds=[there.fileno()],
-                                cwd=str(config.APP_DIR.parent), env={**os.environ, "IOPIX_JOB_WORKER": "1", "IOSUITE_LOG_CHILD": "1", "DB_CONNECTIONS": shared_config.child_connections()},
-                                start_new_session=True)
-    finally:
-        there.close()
+    proc, conn = child.spawn("iopix.jobworker", "IOPIX_JOB_WORKER")
     log.info("job process started (pid %d)", proc.pid)
-    return {"proc": proc, "conn": here, "rss": 0}
+    return {"proc": proc, "conn": conn, "rss": 0}
 
 
 def _kill(w: dict):
     """End the process and whatever it started (ffmpeg, exiftool): it has its own process group."""
-    try:
-        os.killpg(w["proc"].pid, signal.SIGKILL)
-    except (OSError, ProcessLookupError):
-        try:
-            w["proc"].kill()
-        except OSError:
-            pass
+    child.kill(w["proc"])
 
 
 def _discard(w: dict):
@@ -115,15 +105,7 @@ def _discard(w: dict):
     with _state_lock:
         if _worker is w:
             _worker = None
-    try:
-        w["conn"].close()
-    except OSError:
-        pass
-    _kill(w)
-    try:
-        w["proc"].wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        pass
+    child.end(w["proc"], w["conn"])
 
 
 def shutdown():
@@ -191,13 +173,7 @@ def _over(w: dict):
 
 
 def _died(w: dict):
-    try:
-        rc = w["proc"].wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        rc = None
-    if rc == -signal.SIGKILL:
-        return jobs.WorkerLost("the system stopped it, most likely because the server ran out of memory")
-    return jobs.WorkerLost(f"its process ended unexpectedly (exit code {rc})")
+    return jobs.WorkerLost(child.why(w["proc"]))
 
 
 def _apply(call: dict, changed: dict, applied: dict):
@@ -208,13 +184,6 @@ def _apply(call: dict, changed: dict, applied: dict):
             continue
         dict.update(p, fields)
         call["touched"].add(name)
-
-
-def _resolve(module: str, name: str):
-    obj = importlib.import_module(module)
-    for part in name.split("."):
-        obj = getattr(obj, part)
-    return obj
 
 
 def call(fn, args: tuple, on_message=None):
@@ -230,11 +199,7 @@ def call(fn, args: tuple, on_message=None):
             return fn(*args)
         finally:
             _inline = before
-    try:
-        same = _resolve(fn.__module__, fn.__qualname__) is fn
-    except (AttributeError, ImportError):
-        same = False
-    if not same:
+    if not child.sendable(fn):
         raise TypeError(f"{fn.__module__}.{fn.__qualname__} cannot be offloaded: not a module-level function")
     with _call_lock:
         _wait_for_memory()

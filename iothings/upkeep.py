@@ -12,9 +12,7 @@ ticks the task off in ioTask as well. The log also takes one-off lines (a repair
 """
 import calendar
 import datetime as dt
-import json
 import logging
-import urllib.error
 
 from fastapi import Request
 from iosuite_shared import links
@@ -76,48 +74,9 @@ def _clean(data: dict, partial: bool = False) -> dict:
 
 # ------------------------------------------------------------------ ioTask, asked as the viewer
 
-class Unavailable(Exception):
-    """ioTask could not be asked, or would not do it: (status, why)."""
-
-    def __init__(self, status: int, why: str):
-        super().__init__(why)
-        self.status = status
-
-
-def tasks_enabled() -> bool:
-    try:
-        return links.available(TASKS)
-    except Exception:  # noqa: BLE001 - no database yet
-        return False
-
-
-def tasks_url() -> str:
-    try:
-        return links.url(TASKS) or ""
-    except Exception:  # noqa: BLE001
-        return ""
-
-
-def ask(request: Request, path: str, params: dict | None = None, body: dict | None = None, method: str | None = None):
-    """ioTask's answer to path, asked as the viewer; Unavailable when it is not in the suite or would not answer."""
-    if not tasks_enabled():
-        raise Unavailable(404, "ioTask is not part of the suite")
-    if links.resting(TASKS):
-        raise Unavailable(502, "ioTask did not answer a moment ago")
-    try:
-        return links.as_viewer(request, TASKS, path, params, body, method=method, timeout=TIMEOUT, user_agent="ioThings")
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403) and body is None and method is None:
-            raise Unavailable(403, "ioTask does not let this account in: open it once and sign in there") from None
-        try:
-            detail = json.loads(e.read()).get("detail")
-        except (ValueError, AttributeError):
-            detail = None
-        if e.code in (400, 403, 404, 409, 412) and isinstance(detail, str):
-            raise Unavailable(e.code, detail) from None
-        raise Unavailable(502, f"ioTask answered {e.code}") from None
-    except links.Unreachable as e:
-        raise Unavailable(502, f"ioTask is not reachable ({type(e.why).__name__ if e.why else 'no address'})") from None
+_tasks = links.App(TASKS, asker="ioThings", timeout=TIMEOUT)  # iosuite_shared.links.App
+Unavailable = links.Unavailable  # ioTask could not be asked, or would not do it: (status, why)
+tasks_enabled, tasks_url, ask = _tasks.enabled, _tasks.url, _tasks.ask
 
 
 def task_lists(request: Request) -> list[dict]:

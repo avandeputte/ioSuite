@@ -11,17 +11,15 @@ same machine's file and the same settings.
                                          <-   ("done", ok, value, text, traceback)
     ("exit",)                            ->   ends
 """
-import logging
 import os
 import pickle
 import sys
 import threading
 import traceback
-from multiprocessing.connection import Connection
 
 os.environ["IOSUITE_HELPER_WORKER"] = "1"  # before helper is imported: work asked of the helper here runs here
 
-from iosuite_shared import helper  # noqa: E402
+from iosuite_shared import child, helper  # noqa: E402
 
 _send_lock = threading.Lock()
 _conn = None
@@ -35,31 +33,9 @@ def send(msg) -> None:
             os._exit(0)  # the copy is gone
 
 
-class _ToCopy(logging.Handler):
-    """Log lines go to the copy, which writes them where its own go (one writer for the log file)."""
-
-    def emit(self, record):
-        try:
-            text = record.getMessage()
-            if record.exc_info:
-                text += "\n" + "".join(traceback.format_exception(*record.exc_info)).rstrip()
-            send(("log", record.name, record.levelno, text))
-        except Exception:  # noqa: BLE001
-            pass
-
-
-def _first_to_go() -> None:
-    """When memory runs out, the kernel stops this process before the copy (a process may raise its own score)."""
-    try:
-        with open("/proc/self/oom_score_adj", "w") as f:
-            f.write("1000")
-    except OSError:
-        pass
-
-
 def _run(module: str, name: str, args: tuple, kwargs: dict) -> tuple:
     try:
-        fn = helper._resolve(module, name)
+        fn = child.resolve(module, name)
         return ("done", True, fn(*args, **kwargs), "", "")
     except BaseException as e:  # noqa: BLE001  every failure goes back to the caller
         tb = traceback.format_exc()
@@ -73,12 +49,10 @@ def _run(module: str, name: str, args: tuple, kwargs: dict) -> tuple:
 
 def main(fd: int) -> None:
     global _conn
-    _conn = Connection(fd)
+    _conn = child.connection(fd)
     helper.worker_send = send
-    _first_to_go()
-    root = logging.getLogger()
-    root.handlers[:] = [_ToCopy()]
-    root.setLevel(logging.INFO)
+    child.first_to_go()        # when memory runs out, the kernel stops this process before the copy
+    child.log_to_parent(send)  # its log lines go to the copy, which writes them where its own go
     while True:
         try:
             msg = _conn.recv()

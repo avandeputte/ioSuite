@@ -62,6 +62,12 @@ copy (`iosuite_shared/helper.py`). If it crashes, that one upload or PDF fails a
 when it has nothing to do, so the memory it took goes back. Each copy has its own and never asks another server's.
 `HELPER=off` in the machine's file does the work inside the copy instead.
 
+ioPix's analysis (thumbnails, faces, search, captions: the jobs that load models) has a process of its own for the
+same reason, with rules of its own (its progress, a cancel, how much memory it may take). Both are started, ended and
+watched by the same code: `iosuite_shared/child.py` (a process beside the copy) and `iosuite_shared/memory.py` (what
+the server may use, what a process holds). ioPix's queue is itself one of the copy's jobs, "analysis" under
+**Settings › Servers › Jobs**, run when something is queued.
+
 ## Three ports
 
 A copy listens on three ports, so a firewall or a reverse proxy can treat each kind of traffic on its own:
@@ -166,6 +172,11 @@ sheet the suite serves beside them: `iosuite_shared/static/frame.js` (the icons 
 foot of the page, dialogs, the menus, the menu of the suite's apps, the account's menu, the sign-in screen, the
 sidebar, the theme), `account-panel.js` (`h()`, the client, Settings › Account) and `base.css`. A page imports
 them from its own app (`api/auth/frame.js`), so it works the same on whichever server the app runs.
+
+What two or three apps need in the same way is in the shared library too, not in each of them: family members as
+tags on events and tasks (`iosuite_shared.family.Tags`), files kept in an app's database (`stored.py`: ioDocs,
+ioThings, ioMoney's receipts), the server's time zone (`zones.py`), and another app asked on the viewer's behalf
+(`links.App`: the tasks, bills and papers on the calendar, the shopping list, a thing's upkeep).
 
 ## From a checkout
 

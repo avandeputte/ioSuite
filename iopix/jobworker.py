@@ -12,9 +12,10 @@ import sys
 import threading
 import time
 import traceback
-from multiprocessing.connection import Connection
 
 os.environ["IOPIX_JOB_WORKER"] = "1"  # before app.jobproc is imported: this is the job process, whoever started it
+
+from iosuite_shared import child  # noqa: E402
 
 from iopix import jobs, jobproc  # noqa: E402
 
@@ -36,19 +37,6 @@ def _send(msg):
             os._exit(0)  # the web app is gone
         except Exception as e:  # something that does not pickle: a programming error, said in the web app's log
             _conn.send(("log", "iopix.jobworker", logging.ERROR, f"a message could not be sent to the web app ({type(e).__name__}: {e})"))
-
-
-class _ToWebApp(logging.Handler):
-    """Log lines go to the web app, which writes them where its own go (one writer for the log file and its rotation)."""
-
-    def emit(self, record):
-        try:
-            text = record.getMessage()
-            if record.exc_info:
-                text += "\n" + "".join(traceback.format_exception(*record.exc_info)).rstrip()
-            _send(("log", record.name, record.levelno, text))
-        except Exception:
-            pass
 
 
 def _begin(baseline: dict):
@@ -118,22 +106,11 @@ def _reporter():
         _report()
 
 
-def _prefer_me_when_out_of_memory():
-    """Should the kernel have to end a process for memory, it is this one, not the web app or the database."""
-    try:
-        with open("/proc/self/oom_score_adj", "w") as f:
-            f.write("900")
-    except OSError:
-        pass
-
-
 def main():
     global _conn
-    _conn = Connection(int(sys.argv[1]))
-    _prefer_me_when_out_of_memory()
-    root = logging.getLogger()
-    root.handlers[:] = [_ToWebApp()]
-    root.setLevel(logging.INFO)
+    _conn = child.connection(sys.argv[1])
+    child.first_to_go(900)      # should the kernel have to end a process for memory, it is this one, not the web app or the database
+    child.log_to_parent(_send)  # log lines go to the web app, which writes them where its own go
     jobproc.worker_emit = lambda msg: _send(("emit", msg))
     importlib.import_module("iopix.ai.analysis")  # it sets jobs.finished_hook for the web app: replaced just below
     jobs.finished_hook = lambda: _send(("hook",))  # a run that did something: the web app folds the results in
@@ -143,10 +120,7 @@ def main():
         _kind, module, name, args, _baseline = _runs.get()
         error = tb = result = None
         try:
-            fn = importlib.import_module(module)
-            for part in name.split("."):
-                fn = getattr(fn, part)
-            result = fn(*args)
+            result = child.resolve(module, name)(*args)
         except BaseException as e:  # reported, not fatal: the next call gets the same process
             error, tb = f"{type(e).__name__}: {e}", traceback.format_exc()
             if isinstance(e, (KeyboardInterrupt, SystemExit)):
