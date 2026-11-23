@@ -56,7 +56,7 @@ def test_roles(client, fresh, lib):
     assert client.get("/api/status").json()["isAdmin"] is True
     assert "paths" in client.get("/api/tools").json()
     assert client.post("/api/settings", json={"bg_threads": 2}).status_code == 200
-    assert client.get("/api/users").status_code == 404, "accounts are a suite admin's, on Settings › Suite"
+    assert client.get("/api/users").status_code == 404, "accounts are a suite admin's, on Settings › Security"
 
 
 def test_wrong_password_and_bad_cookie(client, fresh):
@@ -129,7 +129,7 @@ def test_account_linked_to_a_person(client, fresh):
 def test_require_login_locks_everything_but_the_sign_in(client, fresh, lib):
     shared_users.create("alex", "correct horse", suite_admin=True)
     _login(client, "alex", "correct horse")
-    assert client.patch("/api/suite-admin/apps/iopix", json={"requireLogin": True}).status_code == 200  # Settings › Suite › Apps
+    assert client.patch("/api/suite-admin/apps/iopix", json={"requireLogin": True}).status_code == 200  # Settings › Global settings › Apps
     assert client.get("/api/status").json()["requireLogin"] is True
     client.cookies.clear()
     # a visitor: the shell and the sign-in endpoints work, nothing else does

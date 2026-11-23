@@ -129,7 +129,7 @@ else
   STAGE="$APP/.update-stage"; rm -rf "${STAGE:?}"; mkdir -p "$STAGE"
   ( cd "$TOP" && ls -A ) | while IFS= read -r item; do
     case "$KEEP" in *" $item "*) continue;; esac
-    case "$item" in .github|.gitignore|.dockerignore) continue;; esac
+    case "$item" in .github|.gitignore|.dockerignore|docs|devices|proxmox) continue;; esac  # what no server runs
     cp -R "$TOP/$item" "$STAGE/$item"
   done
   cp "$STAGE/pyproject.toml" "$TMP/pyproject.toml"

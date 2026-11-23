@@ -14,12 +14,12 @@ A session uses three databases: `iopix_test` for the API tests (the app imported
 the no-digiKam run's (tests/test_no_digikam.py), whose library starts empty. All are dropped and created again at
 the start of every session, never shared with anything real.
 """
-from iosuite_shared import testing as _testing
+from iosuite_shared import testing
 
 API_DB, UI_DB, NODK_DB = "iopix_test", "iopix_test_ui", "iopix_test_nodk"
-server = _testing.server  # {host, port, user, password} of a reachable MariaDB, or None (the reason in server.reason)
+server = testing.server  # {host, port, user, password} of a reachable MariaDB, or None (the reason in server.reason)
 
 
 def fresh_database(name: str) -> dict:
     """Drop and create `name` on the test server; the connection settings for it (appdb's KEYS)."""
-    return {"type": "mysql", **_testing.fresh_database(name)}
+    return {"type": "mysql", **testing.fresh_database(name)}

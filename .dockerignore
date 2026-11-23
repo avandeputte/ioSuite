@@ -13,3 +13,5 @@ devices
 tools
 .pytest_cache
 node_modules
+proxmox
+cloudflare

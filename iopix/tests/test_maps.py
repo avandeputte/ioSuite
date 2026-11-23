@@ -143,7 +143,7 @@ def test_maps_config_offers_satellite_and_street_view(client):
 
 
 def test_the_keys_are_the_suites(client):
-    """The Google keys are kept in the Shared ioSuite database (Settings › Suite › Keys and tokens), declared at start."""
+    """The Google keys are kept in the Shared ioSuite database (Settings › Global settings › Keys and tokens), declared at start."""
     maps.declare_keys()
     assert {k["name"] for k in credentials.listing("iopix")} >= {"google_maps_key", "google_server_key"}
     credentials.put("iopix", "google_server_key", "AIza-server")

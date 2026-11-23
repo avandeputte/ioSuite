@@ -1,5 +1,5 @@
 """Paths and tunables: ioPix's own settings are kept in the Shared ioSuite database and read once, as it starts
-(Settings › Suite › Apps changes them; app.json lists them). The settings every app of the suite shares come from
+(Settings › Global settings › Settings changes them; app.json lists them). The settings every app of the suite shares come from
 iosuite_shared.config.standard; the machine's file says only where that database is and where the server listens.
 
 Everything this app writes on its own (index, caches, state, models, backups)
@@ -29,11 +29,16 @@ def _path(name: str, default: Path) -> Path:
     return Path(env(name, str(default))).expanduser().resolve()
 
 
-DIGIKAM_DB_DIR = _path("DIGIKAM_DB_DIR", Path.home() / "Pictures" / "digikamDB")
+# With nothing stored, ioPix starts on a library of its own: no digiKam, the photos in a folder beside the data folders
+# (<the machine's DATA_DIR>/photos, made when missing). Settings › Global settings › Settings (or the installer's
+# question) names the real ones.
+DIGIKAM_DB_DIR = _path("DIGIKAM_DB_DIR", shared.DATA_DIR / "digikam")
 DIGIKAM_DB = DIGIKAM_DB_DIR / "digikam4.db"
 # Used when the library has a single album root; otherwise digiKam's own
 # per-root paths are used.
-PHOTOS_ROOT = _path("PHOTOS_ROOT", Path.home() / "Pictures" / "photos")
+PHOTOS_ROOT = _path("PHOTOS_ROOT", shared.DATA_DIR / "photos")
+if not env("PHOTOS_ROOT"):
+    PHOTOS_ROOT.mkdir(parents=True, exist_ok=True)
 
 INDEX_DB = DATA_DIR / "index.db"
 CACHE_DIR = DATA_DIR / "cache"
@@ -120,7 +125,7 @@ def is_system_folder(rel: str) -> bool:
 
 # digiKam's database (dkdb.py): these are the starting point, Settings › digiKam database can override them (and holds
 # the password of a MySQL one)
-DIGIKAM_DB_TYPE = env("DIGIKAM_DB_TYPE", "sqlite").lower()  # sqlite, mysql, or none (no digiKam at all)
+DIGIKAM_DB_TYPE = env("DIGIKAM_DB_TYPE", "none").lower()  # none (no digiKam at all: ioPix keeps the library itself), sqlite, or mysql
 DIGIKAM_DB_HOST = env("DIGIKAM_DB_HOST", "127.0.0.1")
 DIGIKAM_DB_PORT = env("DIGIKAM_DB_PORT", "3306")
 DIGIKAM_DB_NAME = env("DIGIKAM_DB_NAME", "digikam")

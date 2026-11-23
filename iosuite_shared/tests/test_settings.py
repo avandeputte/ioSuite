@@ -56,7 +56,7 @@ def test_the_screen_lists_what_may_be_set_with_what_is_stored(two_copies):
     assert cal["HOLIDAYS_COUNTRY"]["value"] == "BE" and cal["PUBLIC_URL"]["label"] == "Its own address"
     assert "default_role" not in cal and "suite" not in cal["PUBLIC_URL"]  # an app's own address never falls back to the suite's
     pix = by_name(got["apps"][1]["settings"])
-    assert pix["DIGIKAM_DB_TYPE"]["choices"] == ["sqlite", "mysql", "none"] and pix["EDITING"]["type"] == "switch" and pix["EDITING"]["value"] == ""
+    assert pix["DIGIKAM_DB_TYPE"]["choices"] == ["none", "sqlite", "mysql"] and pix["EDITING"]["type"] == "switch" and pix["EDITING"]["value"] == ""
 
 
 def test_a_setting_is_stored_as_the_apps_read_it(two_copies):
@@ -78,7 +78,7 @@ def test_a_setting_is_stored_as_the_apps_read_it(two_copies):
 @pytest.mark.parametrize("app,name,value,says", [
     ("iopix", "EDITING", "perhaps", "on or off"),
     ("iopix", "THUMB_HEIGHT", "tall", "whole number"),
-    ("iopix", "DIGIKAM_DB_TYPE", "postgres", "one of: sqlite, mysql, none"),
+    ("iopix", "DIGIKAM_DB_TYPE", "postgres", "one of: none, sqlite, mysql"),
     ("_suite", "PUBLIC_URL", "home.example.com", "is an address"),
     ("_suite", "PUBLIC_URL", "ftp://home.example.com", "is an address"),
     ("iocalendar", "PUBLIC_URL", "https://home.example.com/calendar", "has no folder"),

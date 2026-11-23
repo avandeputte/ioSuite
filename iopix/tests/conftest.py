@@ -44,7 +44,7 @@ _data.mkdir(parents=True, exist_ok=True)
 # the machine's settings point at fresh databases (the Shared ioSuite database among them, never the suite's `iosuite`),
 # and ioPix's stored settings at the scratch library: set BEFORE iopix.config is imported
 SETTINGS = {
-    "DATA_DIR": str(_data), "DIGIKAM_DB_DIR": str(_lib / "db"), "PHOTOS_ROOT": str(LIB["root"]),
+    "DATA_DIR": str(_data), "DIGIKAM_DB_TYPE": "sqlite", "DIGIKAM_DB_DIR": str(_lib / "db"), "PHOTOS_ROOT": str(LIB["root"]),
     "PREWARM": "0", "SEMANTIC": "0", "ANALYSIS": "0", "CAPTIONS": "0", "REINDEX_POLL": "3600",
     "DIGIKAM_CHECK": "none", "BG_THREADS": "2", "JOBS_PROCESS": "0",  # the jobs run in this process, where the tests can reach into them (test_jobproc.py turns the job process on)
     "SCANNER_LOOP": "0",

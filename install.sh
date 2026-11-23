@@ -19,6 +19,7 @@
 #   --mariadb               install MariaDB on this machine first when it has no database server
 #   --admin NAME            the first admin         --address URL    the suite's address (https://home.example.com)
 #   --host ADDR  --port N  --sync-port N  --mcp-port N    where it listens (every address; 80, 8443, 8444)
+#   --set APP.NAME=VALUE    a setting to store (iopix.PHOTOS_ROOT=/srv/photos); repeatable
 #   --extras iopix-ai,iorecipe-ai   optional sets of Python packages
 #   --user USER  --service | --no-service  --yes          the service's account; a systemd service or not; no questions
 #
@@ -37,7 +38,7 @@ main() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --into) base="$2"; shift 2;;
-      -h|--help) sed -n '2,28p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed 's/^# \{0,1\}//' || true
+      -h|--help) sed -n '2,29p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed 's/^# \{0,1\}//' || true
                  [ -n "${BASH_SOURCE[0]:-}" ] || echo "see the top of https://github.com/$REPO/blob/$BRANCH/install.sh"; exit 0;;
       *) rest+=("$1"); shift;;
     esac
@@ -97,7 +98,7 @@ PYEOF
   # the code only: a machine's file, data or environment that is here already (an install that stopped half-way) stays
   local item files=""
   for item in $(cd "$top" && ls -A); do
-    case "$item" in config.env|data|copies|.venv|.github|.gitignore|.dockerignore) continue;; esac
+    case "$item" in config.env|data|copies|.venv|.github|.gitignore|.dockerignore|docs|devices|proxmox) continue;; esac
     rm -rf "${base:?}/${item:?}"; cp -R "$top/$item" "$base/$item"; files="$files$item
 "
   done

@@ -87,6 +87,18 @@ def test_the_packages_of_the_apps():
     assert "ffmpeg" in install.system_packages(["iopix"]) and install.system_packages(["iostart", "iotask"]) == []
 
 
+def test_a_library_under_its_newer_name_is_there(monkeypatch):
+    """Debian 13 and Ubuntu 24.04 renamed libraries (libglib2.0-0t64): that is the package asked for, installed."""
+    have = {"ffmpeg", "libglib2.0-0t64"}
+
+    class Ran:
+        def __init__(self, code):
+            self.returncode = code
+    monkeypatch.setattr(install.shutil, "which", lambda name: "/usr/bin/dpkg")
+    monkeypatch.setattr(install, "system_packages", lambda apps: ["ffmpeg", "libglib2.0-0", "libheif1"])
+    assert install.missing_system(["iopix"], run=lambda cmd, **kw: Ran(0 if cmd[-1] in have else 1)) == ["libheif1"]
+
+
 def test_the_service_of_a_copy(tmp_path):
     u = install.unit(tmp_path, "iosuite")
     assert f"ExecStart={tmp_path}/.venv/bin/iosuite serve" in u and "User=iosuite" in u and "Restart=always" in u
@@ -142,11 +154,33 @@ def test_the_questions_of_a_new_machine(machine, monkeypatch):
                "",                          # no administrator: they exist
                "sh4red",                    # the login's password
                "alex", "long-enough-1",     # the first admin
-               ""]                          # no address
+               "",                          # no address
+               "/srv/photos", ""]           # ioPix is new here: the photos folder, no digiKam
     rc, said = go(machine, "--no-service", answers=answers)
     cfg = install.read_env(machine / "config.env")
     assert rc == 0 and cfg["APPS"] == "" and cfg["IOSUITE_DB_HOST"] == "127.0.0.1" and cfg["IOSUITE_DB_PASSWORD"] == "sh4red"
     assert (machine / "EXTRAS").read_text() == "all\n" and users.list_users()[0]["name"] == "alex" and "PUBLIC_URL" not in db.settings_of("")
+    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/srv/photos"}  # an empty answer stores nothing: no digiKam is the default
+
+
+def test_settings_on_the_command_line_and_what_a_new_app_asks(machine, monkeypatch):
+    os.environ["IOSUITE_DB_PASSWORD"] = "sh4red"
+    rc, said = go(machine, "--yes", "--apps", "iostart", "--db", "db.lan", "--admin", "", "--no-service", "--set", "suite.TZ=Europe/Brussels")
+    assert db.settings_of("")["TZ"] == "Europe/Brussels" and any("suite.TZ = Europe/Brussels" in s for s in said)
+    with pytest.raises(SystemExit, match="--set iostart.NOPE"):
+        go(machine, "--yes", "--no-service", "--set", "iostart.NOPE=1")
+    with pytest.raises(SystemExit, match="APP.NAME=VALUE"):
+        go(machine, "--yes", "--no-service", "--set", "nonsense")
+    # ioPix added later, at the keyboard: its two questions, and digiKam's folder brings the kind of database with it
+    monkeypatch.setattr(install.sys.stdin, "isatty", lambda: True, raising=False)
+    rc, said = go(machine, "--add", "iopix", "--no-service", answers=["/srv/photos", "/srv/digikam"])
+    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/srv/photos", "DIGIKAM_DB_DIR": "/srv/digikam", "DIGIKAM_DB_TYPE": "sqlite"}
+    # run again: it is not new any more, nothing is asked; given on the command line, nothing is asked either
+    rc, said = go(machine, "--no-service", "--add", "iopix")
+    db.ex("DELETE FROM ios_settings WHERE app='iopix'")
+    go(machine, "--yes", "--remove", "iopix", "--no-service")
+    rc, said = go(machine, "--add", "iopix", "--no-service", "--set", "iopix.PHOTOS_ROOT=/mnt/p", answers=[""])
+    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/mnt/p"}
 
 
 def test_an_administrator_makes_the_databases_and_the_login(machine, monkeypatch):

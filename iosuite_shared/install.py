@@ -23,6 +23,8 @@ What a new machine is asked, each with an option to answer it ahead (--yes: no q
     --mariadb               install MariaDB on this machine first (apt), when it has no database server
     --admin NAME            the first admin (password from ADMIN_PASSWORD, else asked; empty: made in the browser)
     --address URL           the suite's address (https://home.example.com): Settings › Global settings › Settings
+    --set APP.NAME=VALUE    a setting to store (iopix.PHOTOS_ROOT=/srv/photos, suite.TZ=Europe/Brussels); repeatable. An
+                            app added just now asks for the few it cannot guess (ioPix: the photos folder) unless given
     --host, --port, --sync-port, --mcp-port     where it listens (every address; 80, 8443, 8444; off: not opened)
     --extras LIST           optional sets of Python packages beside the apps' own (iopix-ai, iorecipe-ai)
     --user USER             the account the service runs as (default: the owner of the program folder), created when missing
@@ -161,10 +163,14 @@ def system_packages(apps: list) -> list:
 
 
 def missing_system(apps: list, run=subprocess.run) -> list:
-    """Those of them that are not installed (dpkg); none where there is no dpkg."""
+    """Those of them that are not installed (dpkg); none where there is no dpkg. A library that newer Debian and
+    Ubuntu renamed with t64 at its end (libglib2.0-0t64) is the one asked for."""
     if not shutil.which("dpkg"):
         return []
-    return [p for p in system_packages(apps) if run(["dpkg", "-s", p], capture_output=True).returncode != 0]
+
+    def there(p):
+        return any(run(["dpkg", "-s", name], capture_output=True).returncode == 0 for name in (p, p + "t64"))
+    return [p for p in system_packages(apps) if not there(p)]
 
 
 # ---- every copy of this folder
@@ -439,6 +445,7 @@ def add_parser(sub):
     p.add_argument("--mariadb", action="store_true", help="install MariaDB on this machine first when it has no database server (apt)")
     p.add_argument("--admin", default=None, help="the first admin's name (password from ADMIN_PASSWORD, else asked)")
     p.add_argument("--address", default=None, help="the suite's address (https://home.example.com)")
+    p.add_argument("--set", action="append", default=[], metavar="APP.NAME=VALUE", help="a setting to store (iopix.PHOTOS_ROOT=/srv/photos, suite.TZ=Europe/Brussels); repeatable")
     p.add_argument("--host", default=None, help="the addresses it listens on (default: every address; 127.0.0.1: behind a reverse proxy here)")
     p.add_argument("--port", default=None, help="the port of the pages (default 80)")
     p.add_argument("--sync-port", default=None, help="the port for phones, native apps and devices (default 8443; off: not opened)")
@@ -591,7 +598,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     apt_install(missing_system(all_apps(base), run), run, log)
 
     # ---- the databases, the tables, the first admin
-    from iosuite_shared import db, provision, users
+    from iosuite_shared import admin, db, provision, stack, users
     if db_admin:
         say("Databases")
         t = provision.target()
@@ -618,12 +625,32 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     address = a.address if a.address is not None else (asker.text("The suite's address behind your reverse proxy, e.g. https://home.example.com (empty: the address it is reached at)", "")
                                                        if new else None)
     if address or a.address is not None:  # an empty answer changes nothing; --address '' takes it away
-        from iosuite_shared import admin
         try:
             got = admin.set_setting(admin.SUITE, "PUBLIC_URL", address)
             log(f"  the suite's address: {got['value'] or 'the address it is reached at'}")
         except ValueError as e:
             die(str(e))
+    # settings given on the command line, then what an app added just now asks for (ioPix: where the photos are)
+    given = stack.parse_set(a.set)
+    for key, value in given.items():
+        app, name = key.split(".", 1)
+        try:
+            got = admin.set_setting(admin.SUITE if app in ("suite", "_suite") else app, name, value)
+            log(f"  {key} = {got['value'] or '(the default)'}")
+        except (LookupError, ValueError) as e:
+            die(f"--set {key}: {str(e).strip(chr(39))}")
+    for k in want:
+        for q in ([] if k in here else catalog.APPS[k].get("ask") or []):
+            if f"{k}.{q['name']}" in given or db.get_setting(q["name"], None, k) not in (None, ""):
+                continue
+            answer = asker.text(q["question"], "")
+            if answer:
+                try:
+                    for name, value in {q["name"]: answer, **(q.get("also") or {})}.items():
+                        admin.set_setting(k, name, value)
+                    log(f"  {k}.{q['name']} = {answer}")
+                except (LookupError, ValueError) as e:
+                    log(f"  note: {e}; set it under Settings › Global settings › Settings")
     # an app this copy no longer runs leaves the suite's list, unless another copy has taken it up
     from iosuite_shared import suite
     for k in here:

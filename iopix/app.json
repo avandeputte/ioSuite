@@ -57,19 +57,19 @@
       "name": "PHOTOS_ROOT",
       "label": "Photos folder",
       "type": "text",
-      "hint": "Where the photos are, when the library has a single album root."
+      "hint": "Where the photos are, when the library has a single album root. Empty: a folder named photos in the data folder."
     },
     {
       "name": "DIGIKAM_DB_TYPE",
       "label": "digiKam database",
       "type": "choice",
       "choices": [
+        "none",
         "sqlite",
-        "mysql",
-        "none"
+        "mysql"
       ],
-      "default": "sqlite",
-      "hint": "none: no digiKam at all, ioPix keeps the library itself."
+      "default": "none",
+      "hint": "none: no digiKam at all, ioPix keeps the library itself. sqlite: digikam4.db in the folder below. mysql: the server below."
     },
     {
       "name": "DIGIKAM_DB_DIR",
@@ -288,6 +288,21 @@
       "label": "exiftool to use",
       "type": "text",
       "hint": "Empty: the one on the PATH."
+    }
+  ],
+  "ask": [
+    {
+      "name": "PHOTOS_ROOT",
+      "option": "photos",
+      "question": "ioPix: the folder with the photos (empty: a new, empty one in the data folder)"
+    },
+    {
+      "name": "DIGIKAM_DB_DIR",
+      "option": "digikam",
+      "question": "ioPix: the folder with digiKam's digikam4.db (empty: no digiKam, ioPix keeps the library itself)",
+      "also": {
+        "DIGIKAM_DB_TYPE": "sqlite"
+      }
     }
   ]
 }

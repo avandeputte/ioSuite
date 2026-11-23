@@ -47,16 +47,19 @@ def lib(lib):
 
 @pytest.fixture(scope="session")
 def server(lib):
-    """uvicorn on a free port with the API tests' env overrides (set by conftest), its own data folder and
+    """uvicorn on a free port, on the session's Shared ioSuite database, with its own data folder, its own database and
     its own copy of the library (the `lib` above). Its stderr goes to a file (a pipe nobody reads would stall
     the server once full), so a server that dies can say why."""
     port = _free_port()
     import mariadb  # tests/mariadb.py: the browser tests' server gets a database of its own on the test MariaDB
     UI_DB.update(mariadb.fresh_database(mariadb.UI_DB))
-    env = dict(os.environ, DATA_DIR=str(Path(os.environ["DATA_DIR"]).parent / "data-ui"),
-               DIGIKAM_DB_DIR=str(Path(lib["db"]).parent), PHOTOS_ROOT=str(lib["root"]), **mariadb.env_for(UI_DB))
+    from iopix import config
+    data = config.DATA_DIR.parent / "data-ui"
+    # the server reads the session's Shared ioSuite database, with these in place of what is stored there for ioPix (ui/serve.py)
+    own = {"DATA_DIR": str(data), "DIGIKAM_DB_DIR": str(Path(lib["db"]).parent), "PHOTOS_ROOT": str(lib["root"]), "DB_NAME": UI_DB["database"]}
+    env = dict(os.environ, IOPIX_UI_SETTINGS=json.dumps(own), LOG_FILE=str(data / "iosuite.log"))
     log = tempfile.NamedTemporaryFile(prefix="iopix-ui-server-", suffix=".log", delete=False)
-    proc = subprocess.Popen([sys.executable, "-m", "uvicorn", "iopix.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
+    proc = subprocess.Popen([sys.executable, str(Path(__file__).with_name("serve.py")), str(port)],
                             cwd=str(APP), env=env, stdout=subprocess.DEVNULL, stderr=log)
     url = f"http://127.0.0.1:{port}"
 
