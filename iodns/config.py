@@ -24,4 +24,3 @@ CHECK_MINUTES = env_int("CHECK_MINUTES", 30)
 
 MAX_JSON_BYTES = 4 * 1024 * 1024   # any request body (an import of a few thousand entries fits)
 
-# Updates: IODNS_REPO, IODNS_BRANCH and UPDATE_CHECK are read by iosuite_shared.updates (app.auth.updater)

@@ -30,4 +30,3 @@ CACHE_DIR = Path(env("CACHE_DIR", str(_std["DATA_DIR"] / "cache"))).expanduser()
 
 MAX_JSON_BYTES = 1024 * 1024   # any request body (a service account key fits)
 
-# Updates: IOBACKUP_REPO, IOBACKUP_BRANCH and UPDATE_CHECK are read by iosuite_shared.updates (app.auth.updater)

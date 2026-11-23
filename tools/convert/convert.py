@@ -14,8 +14,8 @@ It reads the old install (each /opt/<app>/app/config.env, the service, the data 
      database's own machine needs no password);
   3. stores what the old files said as settings in the Shared ioSuite database: each app's own address, its
      database's name, its own settings, the keys an old file still held;
-  4. stops the old services, copies each app's data folder (--data move | stay), and has `iosuite install` make
-     the packages and the one service;
+  4. installs the packages the apps need, then stops the old services, copies each app's data folder (--data move |
+     stay), and has `iosuite install` make the one service: the apps are away for the time the copy takes;
   5. checks that every app answers, then switches the old services off. When the new program does not come up,
      the old services are started again.
 
@@ -316,6 +316,10 @@ def plan(olds: list, base: Path, data: str = "copy", device_address: str = "", m
         elif o["version"] and _version(o["version"]) < PORTED_FROM:
             p["problems"].append(f"{names[key]} is at {o['version']}: update the old suite to {'.'.join(map(str, PORTED_FROM))} or newer first "
                                  f"(its Settings › Server › Update), so that its database is as this program expects it")
+    newer = sorted({o["version"] for o in olds if o["folder"] is not None and o["version"] and _version(o["version"]) > PORTED_FROM})
+    if newer:
+        p["notes"].append(f"the old suite is at {', '.join(newer)}, newer than the version this program was made from "
+                          f"({'.'.join(map(str, PORTED_FROM))}): what it gained since is not in this program")
     if device_address:
         p["settings"].append(("suite", "SYNC_URL", device_address))
     if mcp_address:
@@ -502,6 +506,15 @@ def can_use(t: dict, names: list) -> list:
     return out
 
 
+FROM_FILES = ("COOKIE_DOMAIN", "TZ", "KEEP_DELETED_DAYS", "MCP_USER")  # the suite's settings read from whichever old files a machine has
+
+
+def suite_says(name: str) -> str:
+    """What the suite has stored under this name already."""
+    from iosuite_shared import db
+    return db.get_setting(name, "", "") or ""
+
+
 def carry(p: dict, log=print) -> None:
     """What the old files still held, into Keys and tokens and the apps' own settings tables."""
     import pymysql
@@ -582,6 +595,14 @@ def listening(p: dict, port_open=install.listening) -> list:
     return out
 
 
+def taken(p: dict, ports: tuple, host: str = "", port_open=install.listening) -> list:
+    """The program's ports that something else than an old app of this machine holds (a reverse proxy on port 80, say):
+    an old app's port is free once the app is stopped."""
+    at = next((h for h in (host or "").split(",") if h and h not in ("0.0.0.0", "::")), "127.0.0.1").strip("[]")
+    old = {str(p["old"][k]["port"]) for k in p["apps"] if p["old"][k]["here"]}
+    return [n for n in ports if n and str(n) not in old and port_open(at, n)]
+
+
 def apply(p: dict, a, base: Path, run=subprocess.run, log=print, systemd: bool = None, ask=getpass.getpass, check=answers, port_open=install.listening) -> int:
     from iosuite_shared import admin, db, provision, users
     if systemd is None:
@@ -629,9 +650,23 @@ def apply(p: dict, a, base: Path, run=subprocess.run, log=print, systemd: bool =
 
     say("Settings")
     for app, name, value in p["settings"]:
+        # a machine without the start page, moved after the one that has it: what the suite says already stays
+        there = suite_says(name) if app == "suite" and "iostart" not in p["apps"] and name in FROM_FILES else ""
+        if there:
+            log(f"  suite.{name} stays {there}" + ("" if there == value else f" (the apps of this machine said {value})"))
+            continue
         admin.set_setting(admin.SUITE if app == "suite" else app, name, value)
         log(f"  {app}.{name} = {value}")
     carry(p, log)
+
+    # what takes minutes is done while the old apps still run: `iosuite install` below then finds the packages there
+    say("Packages")
+    extras = install.extras_for(apps, p["extras"])
+    if extras != ((base / "EXTRAS").read_text().strip() if (base / "EXTRAS").exists() else None):
+        install.pip_install(base, extras, run, log)
+    else:
+        log(f"  Python packages: {extras} (there already)")
+    install.apt_install(install.missing_system(apps, run), run, log)
 
     stopped = [u for u, active in p["units"] if active] if service else []
     moved = []
@@ -658,13 +693,13 @@ def apply(p: dict, a, base: Path, run=subprocess.run, log=print, systemd: bool =
     try:
         say("Data")
         moved = move_data(p, log)
-        say("The program: packages, the service")
+        say("The program: its tables, its service")
         cmd = [sys.executable, "-m", "iosuite_shared.cli", "install", "--apps", ",".join(apps), "--yes", "--service" if service else "--no-service"]
         extras = ",".join(p["extras"])
         cmd += ["--extras", extras] if extras else []
         user = a.user or p["user"]
         cmd += ["--user", user] if user and service else []
-        done = run(cmd, env={**os.environ, "IOSUITE_CONFIG": str(file)})
+        done = run(cmd, env={**os.environ, "IOSUITE_CONFIG": str(file)}, cwd=str(base))  # in the folder: its own code, whatever folder this was started in
     except (OSError, shutil.Error) as e:
         back(f"it stopped: {e}")
     if done.returncode:
@@ -723,6 +758,11 @@ def main(argv=None) -> int:
     check_settings(p)
     ports = tuple(install.port_of(v, d) for v, d in ((a.port, 80 if os.geteuid() == 0 else 8080), (a.sync_port, 8443), (a.mcp_port, 8444)))
     systemd = os.geteuid() == 0 and shutil.which("systemctl") is not None and Path("/run/systemd/system").exists()
+    if p["apps"] and not install.read_env(base / "config.env").get("IOSUITE_DB_PASSWORD"):  # (set up already: the program holds them itself)
+        flags = dict(zip(ports, ("--port", "--sync-port", "--mcp-port")))
+        for n in taken(p, ports, a.host or p["machine"].get("HOST") or ""):
+            p["problems"].append(f"port {n} is in use on this machine by something that is not an old app (a reverse proxy?): "
+                                 f"give the program another with {flags[n]} N, and send the proxy there")
     show(p, olds, base, ports=ports, service=systemd and not a.no_service)
     if p["problems"]:
         return 1

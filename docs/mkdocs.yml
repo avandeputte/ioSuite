@@ -92,6 +92,7 @@ nav:
       - Several copies and several servers: start/several-apps.md
       - First run: start/first-run.md
       - Demo data: start/demo.md
+      - Moving from the first ioSuite: start/moving.md
   - The apps:
       - ioStart start page: apps/iostart.md
       - ioPix: apps/iopix.md

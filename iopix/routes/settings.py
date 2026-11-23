@@ -135,7 +135,7 @@ def _album_roots(value, _body):
 
 
 def _map_provider(value, _body):
-    """osm or google; google needs a key (setting or GOOGLE_MAPS_API_KEY)."""
+    """osm or google; google needs a key (in the suite's keys and tokens)."""
     if value not in ("osm", "google"):
         raise HTTPException(400, "Unknown map provider")
     appstate.set_setting("map_provider", value)

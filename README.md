@@ -5,7 +5,7 @@
 This repository is ioSuite as **one program**. The thirteen apps are packages of it; a copy of the program runs the
 ones it is told to, and several copies against the same Shared ioSuite database are one suite (ioPix on a server of
 its own, the rest on another, say). It follows [avandeputte/iosuite](https://github.com/avandeputte/iosuite), where
-every app was a program and a service of its own.
+every app was a program and a service of its own; [`tools/convert/`](tools/convert/) moves such an install here.
 
 ## Install
 
@@ -127,6 +127,7 @@ The tests need a MariaDB of their own (a Docker container they start, or `IOSUIT
 | [`cloudflare/edge-auth/`](cloudflare/edge-auth/) | an optional Cloudflare Worker that checks app passwords before a request reaches the server |
 | [`devices/`](devices/) | firmware for the wall display |
 | [`tools/`](tools/) | checks that run against a live suite (`smoke.py`, `twocopies.py`) and the measurements (`measure.py`); nothing imports them |
+| [`tools/convert/`](tools/convert/) | moves an install of the first ioSuite to this program; run once, apart from the program |
 | [`docs/`](docs/) | the guide and the website |
 
 ## License
