@@ -101,6 +101,7 @@ app.include_router(auth.profile_router(api.sync_url))  # /profile/<token>/<file>
 app.include_router(api.router)      # the contacts; also an account's own fields (its "me" contact, the face on its tile)
 app.include_router(auth.feeds_router(api.feed_links))  # /api/feeds: your birthday calendar links (Shared ioSuite database, shown once)
 app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the panel of Settings › People, Apps, Servers and Keys): the whole suite (suite admins)
+app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
 app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
 app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite: search, items, tile, as every app answers them (app.json)
 app.include_router(carddav.router)

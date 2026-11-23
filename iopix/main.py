@@ -229,6 +229,7 @@ app.include_router(tools.router)
 app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
 app.include_router(auth_routes.router)
 app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People, Apps, Servers and Keys panel): the whole suite (suite admins)
+app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
 app.include_router(geo.router)
 app.include_router(backup.router)
 app.include_router(review.router)

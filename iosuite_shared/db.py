@@ -276,6 +276,18 @@ SCHEMA = [
         PRIMARY KEY (app, name),
         INDEX idx_ios_jobs_run_now (run_now)
     )""",
+    # what changed, for the one live-refresh stream every page holds (iosuite_shared.live): a few minutes deep, each
+    # line only "app X's Y changed" and when, so any signed-in page may hear it; user_id keeps a line to one person.
+    """CREATE TABLE IF NOT EXISTS ios_changes (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        at BIGINT NOT NULL,
+        app VARCHAR(32) NOT NULL,
+        what VARCHAR(48) NOT NULL,
+        user_id INT NULL,
+        body VARCHAR(500) NULL,
+        origin VARCHAR(40) NOT NULL DEFAULT '',
+        INDEX idx_ios_changes_at (at)
+    )""",
 ]
 
 _overrides: dict = {}  # the tests point the library at another database

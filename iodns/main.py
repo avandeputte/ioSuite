@@ -59,6 +59,7 @@ async def provider_error(request: Request, e: ProviderError):
 
 app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
 app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js): the whole suite (suite admins)
+app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
 app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
 app.include_router(api.router)
 

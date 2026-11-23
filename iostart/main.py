@@ -83,6 +83,7 @@ auth.install(app, limit_for=_limit_for)
 
 app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
 app.include_router(auth.admin_router())  # /api/suite-admin: every account, role, app password, session and app of the suite (suite admins; Settings › People, Apps, Servers and Keys)
+app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
 app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
 app.include_router(api.router)
 app.include_router(newsapi.router)  # /api/news: the feed reader (the Feeds page) and the headlines card

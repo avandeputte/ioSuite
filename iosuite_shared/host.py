@@ -276,7 +276,10 @@ class Host:
         from iosuite_shared import chores, serve
         certs.attach(serve.reload, _restart)
         inside.attach(asyncio.get_running_loop(), self)  # the apps of this copy ask each other in this process
-        self._chores.append(chores.start(certs.tick, every_s=certs.EVERY_S, name="certificate", first_s=20))
+        self._chores.append(chores.start(certs.tick, every_s=certs.EVERY_S, name="certificate", first_s=20,
+                                         title="Keep the suite's certificate up to date"))
+        self._chores.append(chores.start(_housekeeping, every_s=300, name="housekeeping", first_s=120,
+                                         title="Clear what the suite's own tables no longer need"))
 
     async def _run(self, e: Entry) -> None:
         """The app's lifespan, entered and left in this one task (its task groups require that); tried again while it fails."""
@@ -322,6 +325,15 @@ class Host:
 
     def status(self) -> list[dict[str, Any]]:
         return [{"app": e.name, "state": e.state, "error": e.error} for e in self.entries]
+
+
+def _housekeeping() -> str:
+    """What the suite's own tables no longer need: the live stream's lines a reconnecting page is past, and the rows
+    of jobs no copy has registered for a week (an app that was removed, a job that was renamed)."""
+    from iosuite_shared import jobs as jobs_mod, live
+    lines, old = live.forget_old(), jobs_mod.forget_old()
+    said = ([f"{lines} change lines"] if lines else []) + ([f"{old} job rows"] if old else [])
+    return ", ".join(said)
 
 
 def _register(e: Entry) -> None:

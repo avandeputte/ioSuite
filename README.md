@@ -108,6 +108,16 @@ see every job under **Settings › Servers › Jobs**: what it is, which server 
 took, what it said, and **Run now**. With several servers, each job belongs to the one that runs its app and Run now
 reaches it there.
 
+## One live-refresh connection
+
+A page holds one connection (`GET /api/live`, server-sent events) and hears the changes of every app of the suite on
+it, so a task ticked off in ioTask refreshes the start page's Today card, a photo added in ioPix refreshes the strip,
+and an event moved in ioCalendar refreshes a calendar open in another tab. An app needs no code for it: every request
+that changed something says so. The lines go through the Shared ioSuite database (`ios_changes`, a few minutes deep),
+so a change made on one server reaches a page served by another, and a copy with nobody looking at it asks for
+nothing. A line says only which app's what changed, and when: never what changed, so it is safe for any signed-in
+page, and a line addressed to one person reaches only that person's own pages.
+
 ## One log
 
 A copy writes one log (`<DATA_DIR>/iosuite.log`, 20 MB at most with four older ones kept), every line marked with the

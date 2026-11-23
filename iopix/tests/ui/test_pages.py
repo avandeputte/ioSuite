@@ -26,7 +26,7 @@ def test_the_settings_page(page, server):
     page.wait_for_selector("h1:has-text('Settings')", timeout=10000)
     page.wait_for_selector(".stabs", timeout=10000)  # the sections arrive with /api/tools
     tabs = page.locator(".stabs button").all_inner_texts()
-    assert [t for t in tabs if t not in ("Account",)][:5] == ["Display", "Editing", "Library", "AI", "Server"], "the order every io app uses"
+    assert [t for t in tabs if t not in ("Account",)][:5] == ["Display", "Editing", "Library", "AI", "People"], "the order every io app uses"
     heads = page.locator("h2").evaluate_all("els => els.map((e) => e.textContent)")
     for h in ("Display", "AI analysis and models", "Editing", "Metadata templates", "Library", "Backups"):
         assert any(x.startswith(h) for x in heads), (h, heads)
@@ -52,10 +52,12 @@ def test_the_settings_page(page, server):
     page.locator(".stabs button", has_text="Library").click()
     assert page.locator(".srow b", has_text="digiKam database").count() == 1, "where the library is"
     assert page.locator(".srow b", has_text="Metadata consistency").count() == 0, "the tools have their own page"
-    page.locator(".stabs button", has_text="Server").click()
-    page.wait_for_selector(".iosv h2:has-text('Restart')", timeout=10000)
-    assert page.locator(".iosv h2", has_text="MCP server").count() == 1, "the MCP switch is in one place"
-    assert page.locator(".srow b", has_text="Download a backup").count() == 1, "the backups sit with the server"
+    assert page.locator(".srow b", has_text="Download a backup").count() == 1, "the backups sit with the library"
+    page.locator(".stabs button", has_text="Apps").click()
+    page.wait_for_selector(".iosa h2:has-text('Apps')", timeout=10000)
+    assert page.locator(".iosa tr:has-text('iopix') td:nth-child(5) input[type=checkbox]").count() == 1, "the MCP switch is in one place, per app"
+    page.locator(".stabs button", has_text="Servers").click()
+    page.wait_for_selector(".iosa h2:has-text('Jobs')", timeout=10000)
     assert page.locator(".navfoot a[data-v=maintenance]").count() == 0 and page.locator(".navfoot a[data-v=settings]").count() == 1, "at the foot of the sidebar"
 
 def test_the_tools_page(page, server):

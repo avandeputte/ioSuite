@@ -75,6 +75,7 @@ def _status_extra(request) -> dict:
 app.include_router(auth.router())        # /api/auth/*: login, accounts, logout, me, settings, password, setup, sessions, app-passwords, proxy
 app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite/tile: the start page's tile (app.json)
 app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People panel): the whole suite (suite admins)
+app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
 app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
 app.include_router(upload.router)
 app.include_router(webapi.router)

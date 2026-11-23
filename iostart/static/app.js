@@ -3277,6 +3277,11 @@ async function start() {
   // back from an app: the page again as it is now (in place); and every few minutes while it stays open (liveRefresh)
   document.addEventListener('visibilitychange', () => liveRefresh(true));
   setInterval(() => liveRefresh(), 60 * 1000);
+  // and the moment anything changes in any app of the suite: the one live-refresh stream (iosuite_shared/live.py), so a
+  // task ticked off in ioTask or an event moved in ioCalendar shows here at once, without a timer to wait for
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.onChange('*', () => { S.refreshedAt = 0; liveRefresh(true); }, { wait: 700 }))
+    .catch(() => { /* no stream on this server: the timer above keeps the page fresh */ });
   setInterval(updateNote, 15 * 60 * 1000);
 }
 start().catch(fail);

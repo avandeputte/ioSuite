@@ -372,6 +372,12 @@ class Auth:
         """GET /api/status, open to everyone: the same shape in every app."""
         return routers.status_router(self, updater, extra)
 
+    def live_router(self) -> APIRouter:
+        """GET /api/live: the one live-refresh stream a page holds, carrying every app's changes
+        (iosuite_shared.live)."""
+        from iosuite_shared import live
+        return live.router(self)
+
     def related_router(self) -> APIRouter:
         """/api/related/*: linked items (iosuite_shared.related), and the panel that shows them (GET /api/related/ui.js)."""
         from iosuite_shared import related
@@ -486,6 +492,9 @@ class Auth:
             response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'self'")
             if "cache-control" not in response.headers:
                 response.headers["Cache-Control"] = "no-store" if request.url.path.startswith(api_prefix) else "no-cache"
+            if request.method not in ("GET", "HEAD", "OPTIONS") and 200 <= response.status_code < 300:
+                from iosuite_shared import live
+                live.of_request(self.app, request.url.path, api_prefix)  # the pages' one live-refresh stream
             return response
 
         app.add_middleware(BodyCap, limit_for=limit_for, error=error)

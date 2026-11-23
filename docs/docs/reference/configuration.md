@@ -130,6 +130,21 @@ heavy (a scan, an index, a backup) wait for each other, so a server never has tw
 the suite runs on several servers, each job belongs to the server that runs its app, and **Run now** reaches it
 there: the screen is the same whether the apps share a server or not.
 
+## Pages that refresh themselves
+
+A page of any app holds **one live-refresh connection** (`GET /api/live`, server-sent events) and hears on it what
+changed in every app of the suite, so a page refreshes the moment there is a reason to instead of asking again on a
+timer. A task ticked off in ioTask refreshes the start page's Today card; an event moved in ioCalendar refreshes a
+calendar open in another tab; a photo added in ioPix refreshes the start page's strip.
+
+Nothing has to be configured, and an app needs no code of its own for it: every request that changed something says
+so. The lines travel through the Shared ioSuite database (`ios_changes`, kept a few minutes), so a change made on one
+server reaches a page served by another, and a copy nobody has a page open on asks for nothing.
+
+A line says only which app's what changed, and when — never what changed — so it is safe for any signed-in page, and
+a line addressed to one person is given only to that person's own pages. The connection is dropped while a tab is
+hidden and opened again when it comes back, and the browser reconnects by itself when a server restarts.
+
 ## The log
 
 A copy keeps one log for all its apps (`data/iosuite.log`), each line marked with the app it came from. Suite admins

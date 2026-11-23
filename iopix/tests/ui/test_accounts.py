@@ -120,7 +120,7 @@ def test_require_sign_in_shows_only_the_login_dialog(page, server, browser):
         assert visitor.locator(".modal-back").count() == 0 and visitor.locator("#main").is_visible()
         # the setting is under Settings › Apps (Sign-in required), for every app
         visitor.goto(server + "/#/settings/apps/apps"); visitor.wait_for_selector(".iosa h2:has-text('Apps')", timeout=10000)
-        assert visitor.locator(".iosa tr:has-text('iopix') input[type=checkbox]").is_checked()
+        assert visitor.locator(".iosa tr:has-text('iopix') td:nth-child(4) input[type=checkbox]").is_checked()
         ctx.close()
     finally:
         assert page.request.patch(server + "/api/suite-admin/apps/iopix", data={"requireLogin": False}).ok
