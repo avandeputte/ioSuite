@@ -21,6 +21,7 @@ static net_ap_t aps[24];
 static int naps;
 static char chosen_ssid[33];
 static char base[128];
+static char back_why[360];   /* why the display is back at its setup (the start page refused its sign-in): shown once */
 static char pair_token[64], pair_code[16], pair_url[200];
 static volatile bool pairing;   /* the poll runs while this is on */
 static int pair_gen;            /* a new code stops the old poll */
@@ -275,7 +276,7 @@ static void on_addr_next(lv_event_t *e)
     check_job_t *j = calloc(1, sizeof *j);
     if (!j) return;
     if (!api_normalize(lv_textarea_get_text(addr_ta), j->base, sizeof j->base)) {
-        lv_label_set_text(addr_status, "Type the address, e.g. 192.168.1.20:8600");
+        lv_label_set_text(addr_status, "Type the address, e.g. 192.168.1.20");
         free(j);
         return;
     }
@@ -293,11 +294,16 @@ static void step_address(void)
 {
     pairing = false;
     lv_obj_t *c = page("The start page's address",
-                       "As you reach it at home, with its port: e.g. 192.168.1.20:8600 or start.local:8600. An address behind "
-                       "Cloudflare Access does not work here (the display cannot sign in there).", true);
-    addr_ta = kit_textarea(c, "192.168.1.20:8600", false);
+                       "As you reach it at home: e.g. 192.168.1.20 or start.local (with its port when it is not 80). An "
+                       "address behind Cloudflare Access does not work here (the display cannot sign in there).", true);
+    addr_ta = kit_textarea(c, "192.168.1.20", false);
     if (S.server[0]) lv_textarea_set_text(addr_ta, S.server);
     addr_status = status_line(c);
+    if (back_why[0]) {  /* the start page refused this display: say so, once, where the address is typed */
+        lv_label_set_text(addr_status, back_why);
+        lv_obj_set_style_text_color(addr_status, BAD, 0);
+        back_why[0] = 0;
+    }
     lv_obj_t *b = buttons(c);
     kit_button(b, "Next", on_addr_next, NULL, true);
     kit_button(b, "Wi-Fi", on_addr_back, NULL, false);
@@ -527,6 +533,13 @@ static void step_password(void)
 }
 
 /* ------------------------------------------------------------------ the way in */
+
+void ui_show_setup_why(const char *why)
+{
+    strlcpy(back_why, why ? why : "", sizeof back_why);
+    ui_show_setup();
+    back_why[0] = 0;  /* a step that does not show it (no Wi-Fi yet) does not keep it for another day */
+}
 
 void ui_show_setup(void)
 {

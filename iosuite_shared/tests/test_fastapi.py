@@ -299,3 +299,26 @@ def test_routes_about_ones_own_account_need_an_account():
     for m, path in (("GET", "/api/auth/app-passwords"), ("POST", "/api/auth/app-passwords"), ("GET", "/api/auth/push"),
                     ("PATCH", "/api/auth/me"), ("POST", "/api/auth/settings")):
         assert c.request(m, path, json={}).status_code == 401, path
+
+
+def test_a_device_s_app_password_counts_at_the_pages_from_outside_but_not_for_the_account():
+    """A wall display, a widget or a script that was given the address people open: from outside the network the
+    pages' door takes its app password for the app's /api/, as the door for devices does; signing in or changing
+    the account with one (/api/auth/) stays refused from outside, and works from inside as before."""
+    from iosuite_shared import apppasswords, doors
+    app, _ = make_app()
+
+    async def at_the_pages(scope, receive, send):   # as iosuite_shared.host hands a request of the pages' port on
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.WEB}) if scope["type"] == "http" else scope, receive, send)
+
+    uid = users.create("alex", "secret123", "admin", "iopix", suite_admin=True)["id"]
+    sent = {"authorization": "Bearer " + apppasswords.create(uid, "iopix", "Kitchen wall", "")}
+    outside = TestClient(at_the_pages, base_url="https://photo.example.com", headers={"cf-connecting-ip": "203.0.113.9"})
+    home = TestClient(at_the_pages, base_url="http://photo.lan", client=("192.168.1.20", 50000))
+    assert outside.get("/api/private").status_code == 401                      # nobody
+    assert outside.get("/api/private", headers=sent).status_code == 200        # the device, from anywhere
+    assert outside.post("/api/edit", headers=sent).status_code == 200
+    assert outside.get("/api/auth/app-passwords", headers=sent).status_code == 200   # reading is the pages' and the devices'
+    assert outside.post("/api/auth/app-passwords", headers=sent, json={"label": "one more"}).status_code == 401
+    assert home.post("/api/auth/app-passwords", headers=sent, json={"label": "one more"}).status_code == 200
+    assert sorted(x["label"] for x in apppasswords.list_for(uid, "iopix")) == ["Kitchen wall", "one more"]

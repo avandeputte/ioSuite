@@ -19,9 +19,9 @@ screens, the wall display and scripts. They sign in there with an app password o
 sign-in is not read on that port. AI assistants have a third address, for MCP (port 8444).
 
 **Settings › Apps and devices** in each app shows the exact addresses to type. A calendar or contacts account set up
-with the pages' address is sent on to the right one. Inside your network an app password is taken at the pages'
-address too; from outside, only at the address for devices. The ioPix apps show ioPix's own pages, so they take the
-pages' address. See [The three ports](../reference/configuration.md#the-three-ports).
+with the pages' address is sent on to the right one. A widget, an e-ink screen, the wall display or a script given
+the pages' address works there too: an app password is taken for an app's `/api/` at either address. The ioPix apps
+show ioPix's own pages, so they take the pages' address. See [The three ports](../reference/configuration.md#the-three-ports).
 
 ## Native apps
 

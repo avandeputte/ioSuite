@@ -251,6 +251,7 @@ const lv_font_t *font_light(int px);
 const lv_font_t *font_symbols(int px);
 
 void ui_show_setup(void);        /* Wi-Fi, address, sign-in */
+void ui_show_setup_why(const char *why); /* the same, saying on the address screen why the display is back there */
 void ui_show_wall(void);
 void ui_wall_feed_changed(void); /* FEED was replaced */
 void ui_wall_photo(const lv_image_dsc_t *img, const char *caption); /* a new photo to fade in; NULL: none */

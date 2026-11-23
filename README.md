@@ -75,7 +75,9 @@ A copy listens on three ports, so a firewall or a reverse proxy can treat each k
 
 On every port an app answers both at a name of its own (`https://calendar.example.com/`) and in its folder at the
 suite's address (`https://home.example.com/calendar/`). A request that comes in by the wrong port is sent to the
-right one.
+right one. A device that was given the pages' address (a wall display, a widget, an e-ink screen, a script) is
+answered there: an app password is taken for an app's `/api/` at the pages' port too, from inside the network and
+from outside; signing in or changing an account with one from outside is not.
 
 For HTTPS, put a reverse proxy in front, or let the suite do it: under **Settings › Servers › Certificate**
 (or `iosuite cert --on`) it asks Let's Encrypt for a certificate for its names, renews it, and answers HTTPS itself,

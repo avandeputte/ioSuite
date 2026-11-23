@@ -85,7 +85,8 @@ A copy of the program opens three ports, so that each kind of traffic can have f
 
 The app is chosen the same way on all three: by its own host name (`calendar.example.com`) or by its folder at the
 suite's address (`home.example.com/calendar/`); both work at the same time. A request that arrives at the wrong port
-is sent on to the right one. ioContact's LDAP directory keeps its own port (3890).
+is sent on to the right one, and a device given the pages' address is answered there: an app password is taken for an
+app's `/api/` on the pages' port as well. ioContact's LDAP directory keeps its own port (3890).
 
 With [a certificate](../run/https.md) the pages are also answered over HTTPS, on `HTTPS_PORT` (443), and the ports
 for devices and MCP answer HTTPS as well as plain HTTP.

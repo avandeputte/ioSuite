@@ -83,10 +83,11 @@ Store an app's `SYNC_URL` or `MCP_URL` at its own name **only when the proxy sen
 device path that arrives with the pages is sent on to the address stored for devices, and that would be the same
 address again.
 
-!!! note "`/api/` from outside"
-    An app password or a token is taken on the pages' port from inside your network only. From outside, a native
-    app, a widget, a script or an e-ink screen uses the address for devices (`SYNC_URL`), where `/api/` answers to
-    an app password and no browser cookie is read.
+!!! note "`/api/` with an app password"
+    A native app, a widget, a script, an e-ink screen or the wall display can be given the address for devices
+    (`SYNC_URL`), where `/api/` answers to an app password and no browser cookie is read, or the address of the
+    pages: an app's `/api/` takes an app password or a token there too, from inside your network and from outside.
+    What nobody does from outside with an app password is sign in or change an account (`/api/auth/`).
 
 ## Caddy
 

@@ -35,7 +35,7 @@ From Chrome or Edge on a computer: **[iosuite.iothing.net/wall/](https://iosuite
 1. Connect the Tab5 with a USB-C cable that carries data.
 2. Hold the reset button about two seconds, until the green light inside blinks fast (download mode).
 3. Press Install, pick the port, wait about a minute, then press reset once.
-4. On the Tab5: pick the Wi-Fi, type the start page's address (`192.168.1.20:8600`, or `https://start.example.com`
+4. On the Tab5: pick the Wi-Fi, type the start page's address (`192.168.1.20`, or `https://start.example.com`
    when no sign-in page such as Cloudflare Access stands in front of it), then let it in. Scan the QR code with
    your phone, or open the start page at `#/pair` and type the code. Or sign in on the Tab5 with your name and
    password. The Tab5 gets an app password of yours ("Wall display (Tab5)", in Settings › Account), so it sees what

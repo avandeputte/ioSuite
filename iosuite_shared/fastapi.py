@@ -177,9 +177,14 @@ class Auth:
             elif request.state.proxy_ident and self.proxy.deny_unknown() and not request.url.path.startswith(tuple(self.deny_exempt) or ("\0",)):
                 request.state.user = None
                 return self.no_access(request, request.state.proxy_ident)
-        # the door for the pages takes an app password or a token from inside the network only (the apps calling each
-        # other): from outside, those belong at the sync and MCP doors, which a firewall can treat on their own
-        if not user and "authorization" in request.headers and not (door == doors.WEB and self.proxy.external(request.headers, peer)):
+        # the door for the pages takes an app password or a token from inside the network (the apps calling each
+        # other) and, from outside, for what the door for devices serves as well: an app's /api/ asked by a wall
+        # display, a widget, an e-ink screen or a script that was given the one address people know, as /dav and /mcp
+        # asked there already are. Signing in and changing an account with one (/api/auth/) stays refused from
+        # outside, as it is at the door for devices, and no page is ever asked with one.
+        refused = (door == doors.WEB and self.proxy.external(request.headers, peer)
+                   and not doors.allowed(doors.SYNC, self.app, request.url.path, request.method))
+        if not user and "authorization" in request.headers and not refused:
             user = await run_in_threadpool(self._authorization, request)
             if isinstance(user, JSONResponse):  # throttled: too many wrong passwords
                 request.state.user = None

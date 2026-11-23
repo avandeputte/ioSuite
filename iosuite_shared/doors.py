@@ -4,8 +4,10 @@ A copy listens on three ports (the machine's file: PORT, SYNC_PORT, MCP_PORT; io
 firewall or a reverse proxy can treat each kind of traffic on its own:
 
     web   (80)     the pages people open and what the pages ask for: signed in by the session cookie, a passkey, or
-                   the sign-in of a reverse proxy. An app password or a token in Authorization is taken here only from
-                   inside the network (the apps calling each other); from outside it is ignored.
+                   the sign-in of a reverse proxy. An app password or a token in Authorization is taken here from
+                   inside the network (the apps calling each other) and, from outside, for what the sync door
+                   serves too (an app's /api/, asked by a device that was given the address people know); never
+                   from outside for signing in or changing an account (/api/auth/), or for a page.
     sync  (8443)   what phones, native apps and devices talk to: CalDAV and CardDAV (/dav, /.well-known/), calendar
                    subscriptions (/ics/, /cal/), the bookmark sync, ioHealth's uploads
                    (/v1/) and each app's API (/api/) for native apps, widgets and e-ink screens. Signed in by an app

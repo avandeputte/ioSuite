@@ -285,12 +285,17 @@ static void fetch_once(void)
     }
     f->fetched = time(NULL);
     if (r.status == 401) {
-        ESP_LOGW(TAG_WALL, "the start page no longer takes this app password: set up again");
+        /* said on the setup screen, with the start page's own words: a display that goes back there without a
+         * word looks broken */
+        char why[sizeof S.server + sizeof r.why + 96];
+        snprintf(why, sizeof why, "The start page at %s did not take this display's sign-in (%s). Sign in again.",
+                 S.server, r.why[0] ? r.why : "401");
+        ESP_LOGW(TAG_WALL, "%s", why);
         api_free(&r);
         heap_caps_free(f);
         settings_forget_sign_in();
         ui_lock();
-        ui_show_setup();
+        ui_show_setup_why(why);
         ui_unlock();
         return;
     }

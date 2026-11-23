@@ -89,8 +89,9 @@ or tool, made under Settings › Account › App passwords, revocable on its own
 | read only | GET requests, outside MCP and sync |
 
 An app password belongs to the app it was made in; one made in ioStart for everything also signs in at every app's
-MCP address. From outside your network an app password is taken at the suite's addresses for devices and for MCP,
-not with the pages: see [The three ports](../reference/configuration.md#the-three-ports).
+MCP address. An app password is taken at the suite's addresses for devices and for MCP, and for an app's `/api/` at
+the pages' address as well; from outside your network it never signs in or changes the account itself. See
+[The three ports](../reference/configuration.md#the-three-ports).
 
 ## Sessions and passwords
 
