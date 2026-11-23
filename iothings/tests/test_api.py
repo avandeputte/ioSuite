@@ -177,3 +177,20 @@ def test_settings_currency(client):
     assert client.put("/api/things-settings", json={"currency": "eur"}).json()["currency"] == "EUR"
     assert client.get("/api/summary").json()["currency"] == "EUR"
     assert client.put("/api/things-settings", json={"currency": "dollars"}).status_code == 400
+
+
+def test_photos_are_made_small_in_the_helper(client, monkeypatch):
+    """With the helper on (as on a server), the small picture is made in the helper process and comes back the same."""
+    from iosuite_shared import helper
+    monkeypatch.setenv("HELPER", "on")
+    try:
+        it = new(client)
+        r = client.post(f"/api/items/{it['id']}/files", params={"ext": "png"}, content=png(800, 600), headers={"Content-Type": "image/png"})
+        assert r.status_code == 201 and r.json()["kind"] == "photo" and r.json()["thumb"], r.text
+        small = client.get(f"/api/items/{it['id']}/files/{r.json()['id']}", params={"size": "small"})
+        assert Image.open(io.BytesIO(small.content)).size == (files.THUMB_SIDE, files.THUMB_SIDE * 3 // 4)
+        assert helper.status()["calls"] >= 1 and helper.status()["running"] >= 1
+        # not a picture: refused as before, the helper still there
+        assert client.post(f"/api/items/{it['id']}/files", params={"kind": "photo"}, content=b"nope", headers={"Content-Type": "image/png"}).status_code == 400
+    finally:
+        helper.shutdown()

@@ -10,6 +10,7 @@ import re
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
+from iosuite_shared import helper
 from iosuite_shared.access import json_body
 
 from iorecipe import access, ai, config, model, ocr, portable, scrape, shopping, textimport
@@ -249,7 +250,7 @@ async def import_photo(request: Request):
     raw = await request.body()
 
     def go():
-        text = ocr.read(raw)
+        text = helper.call(ocr.read, raw, timeout=ocr.TIMEOUT + 30)  # in the helper (iosuite_shared.helper)
         return {"draft": textimport.parse(text), "text": text}
     return await run_in_threadpool(go)
 

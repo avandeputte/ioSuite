@@ -19,6 +19,8 @@ cannot be read from the database, and is the same on every machine but for the l
                                                       certificate is asked from (one no public authority signed)
     DATA_DIR                                          where the apps write on their own: <DATA_DIR>/<app> (default: data/ in the program folder)
     LOG_FILE                                          the copy's one log (default: <DATA_DIR>/iosuite.log; off: none)
+    HELPER, HELPER_MEMORY_MB                          the helper process for heavy work (iosuite_shared.helper): on (default) or
+                                                      off, and the most it may hold
     ADMIN_USER, ADMIN_PASSWORD                        the first admin, made on a first start with no accounts
     IOSUITE_REPO, IOSUITE_BRANCH                      what the update follows (development)
 

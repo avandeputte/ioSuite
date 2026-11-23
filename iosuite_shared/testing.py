@@ -18,6 +18,10 @@ import time
 
 from argon2 import PasswordHasher
 
+# The apps' tests run their heavy work (OCR, thumbnails, PDFs) in the test process, where their monkeypatches apply;
+# test_helper.py turns the helper on for its own tests
+os.environ.setdefault("HELPER", "off")
+
 # Cheap Argon2id for test suites: monkeypatch.setattr("iosuite_shared.passwords.HASHER", testing.FAST_HASHER)
 FAST_HASHER = PasswordHasher(time_cost=1, memory_cost=1024, parallelism=1)
 

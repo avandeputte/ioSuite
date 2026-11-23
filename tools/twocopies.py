@@ -85,6 +85,12 @@ def main() -> int:
         check("and shows lines of both on one timeline", len(from_copies) == 2, str(sorted(str(x) for x in from_copies)))
         code, tiles = js(f"{one}/api/apps", cookie)
         check(f"the start page lists {a.other_app}", code == 200 and a.other_app in json.dumps(tiles), str(code))
+        finds = [k for k in (a.other_app, mine) if (known[k].get("start") or {}).get("find")]
+        if finds:  # one search: the app in this copy asked inside it, the one in the other copy over the network
+            code, got = js(f"{one}/api/search?q=zq&wait=1&apps={','.join(finds)}", cookie)
+            answered = {k: v for k, v in (got.get("apps") or {}).items() if "more" in v}
+            check(f"one search asks {' and '.join(finds)} in both copies", code == 200 and sorted(answered) == sorted(finds),
+                  f"{code} {got.get('apps')} late {got.get('late')}")
     print(f"{'two copies, one suite' if not bad else str(len(bad)) + ' thing(s) not as they should be'}")
     return 1 if bad else 0
 

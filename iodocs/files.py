@@ -18,6 +18,7 @@ import re
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from iosuite_shared import helper
 from iosuite_shared.errors import Invalid
 
 from iodocs import config, db, ocr
@@ -27,6 +28,7 @@ log = logging.getLogger("iodocs.files")
 PART_BYTES = 4 * 1024 * 1024
 MAX_FILES = 100           # of one document
 THUMB_SIDE = 640
+READ_TIMEOUT = 600  # seconds one file may take to read (each run of tesseract may take ocr.TIMEOUT; a scan gets several)
 MAX_PIXELS = 80_000_000
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 INLINE = {"application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/avif", "text/plain"}
@@ -118,7 +120,8 @@ def add(u: dict, d: dict, raw: bytes, hint: str | None, mime: str | None) -> dic
         raise Invalid(f"Files up to {config.MAX_FILE_BYTES // (1024 * 1024)} MB")
     mime = _mime(hint or "", mime, raw)
     ext = _ext(hint, mime)
-    small = thumb(raw, mime) if mime.startswith("image/") or mime == "application/pdf" else None
+    # made in the helper (iosuite_shared.helper): a scan that crashes Pillow or pdftoppm is kept without a small picture
+    small = helper.call_or(None, thumb, raw, mime, timeout=120) if mime.startswith("image/") or mime == "application/pdf" else None
     with db.tx():
         n = db.one("SELECT COUNT(*) AS n, COALESCE(MAX(position), -1) AS last FROM doc_files WHERE doc_id = %s", (d["id"],))
         if n["n"] >= MAX_FILES:
@@ -177,7 +180,7 @@ def read(u: dict, d: dict, fid, apply: bool = True) -> dict:
         raise Invalid("Only pictures and PDFs can be read")
     if not can["ocr"] and mime != "application/pdf" and not can["barcodes"]:
         raise Invalid("Reading scans needs Tesseract on the server (apt install tesseract-ocr)")
-    got = ocr.read(raw, mime)
+    got = helper.call(ocr.read, raw, mime, timeout=READ_TIMEOUT)  # Tesseract, zxing-cpp and Pillow, in the helper
     found = {k: (_json(v) if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in got["found"].items()}
     if got["source"]:
         found["source"] = got["source"]

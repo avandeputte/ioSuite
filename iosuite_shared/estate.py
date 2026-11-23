@@ -34,7 +34,7 @@ import re
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor
 
-from iosuite_shared import links, suite, users
+from iosuite_shared import helper, links, suite, users
 
 log = logging.getLogger("iosuite_shared.estate")
 PATH = "/api/auth/estate/"
@@ -381,6 +381,17 @@ def render(person: dict, parts: list, made_by: str, fetch, today: dt.date | None
     return buf.getvalue()
 
 
+def _render_fetched(person: dict, parts: list, made_by: str, got: dict) -> bytes:
+    """render(), in the helper (iosuite_shared.helper), with the files fetched beforehand by the copy: got[(app, ref)]
+    is (bytes, mime), or the text of why it could not be had."""
+    def fetch(app, ref):
+        v = got.get((app, ref))
+        if v is None or isinstance(v, str):
+            raise LookupError(v or "not fetched")
+        return v
+    return render(person, parts, made_by, fetch)
+
+
 def filename(person: dict, today: dt.date | None = None) -> str:
     name = re.sub(r"[^A-Za-z0-9]+", "-", person.get("displayName") or person.get("name") or "person").strip("-") or "person"
     return f"Estate-planning-{name}-{(today or dt.date.today()).isoformat()}.pdf"
@@ -400,4 +411,18 @@ def build(auth, request, me: dict, user_id: int) -> tuple[bytes, str]:
         return _ask_file(request, app, user_id, ref)
     made_by = me.get("displayName") or me.get("name") or "?"
     log.info("%s: estate PDF of account %s made by %s", auth.app, user_id, me.get("name"))
-    return render(person, parts, made_by, fetch), filename(person)
+    # the scans are asked for here (as the viewer, from the apps that keep them); the PDF is put together in the
+    # helper, where decoding the scans and reading the PDFs among them cannot take the copy down
+    got: dict = {}
+    for p in parts:
+        for s in p["sections"]:
+            for i in s["items"]:
+                for f in i["files"]:
+                    key = (p["app"], f["ref"])
+                    if key in got:
+                        continue
+                    try:
+                        got[key] = fetch(*key)
+                    except Exception as e:  # noqa: BLE001  named in the PDF, so it can be found in the app
+                        got[key] = f"{type(e).__name__}: {e}"
+    return helper.call(_render_fetched, person, parts, made_by, got, timeout=600), filename(person)

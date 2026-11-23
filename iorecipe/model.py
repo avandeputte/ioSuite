@@ -10,7 +10,7 @@ private one is its owner's).
 import json
 import re
 
-from iosuite_shared import related, users as shared_users
+from iosuite_shared import helper, related, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iorecipe import db, images
@@ -294,7 +294,7 @@ def add_photo(u: dict, r: dict, raw: bytes, step: int | None = None) -> dict:
         if not 0 <= int(step) < len(r["steps"]):
             raise Invalid("This recipe has no such step")
         step = int(step)
-    pic = images.prepare(raw)
+    pic = helper.call(images.prepare, raw, timeout=120)  # decoded in the helper: a picture that crashes Pillow costs only itself
     with db.tx():
         if step is not None:
             db.ex("DELETE FROM rcp_photos WHERE recipe_id = %s AND step = %s", (r["id"], step))

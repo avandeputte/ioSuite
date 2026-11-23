@@ -36,6 +36,8 @@ HTTPS_PORT=443                     # the pages over HTTPS, once there is a certi
 TLS_CERT_FILE=…  TLS_KEY_FILE=…    # a certificate of your own, instead of the one the suite asks for
 DATA_DIR=/opt/iosuite/data         # what the apps write on their own, each in a folder of its name
 LOG_FILE=/opt/iosuite/data/iosuite.log   # the one log (off: the journal only)
+HELPER=on                          # heavy work in a helper process beside the copy (off: inside the copy)
+HELPER_MEMORY_MB=2048              # the most the helper may hold (default: half the machine's or container's memory)
 ADMIN_USER=…  ADMIN_PASSWORD=…     # the first admin, on an empty Shared ioSuite database
 ```
 
@@ -51,6 +53,25 @@ Only the five `IOSUITE_DB_*` lines are needed. Restart the service after changin
 | `127.0.0.1,192.168.1.151` | each address named |
 
 In Docker, leave `HOST` alone and publish the ports where you want them instead (`ports: ["127.0.0.1:80:80"]`).
+
+## The helper process
+
+Some work runs compiled libraries on what people upload: reading the text on a scan or a photo (Tesseract in ioDocs
+and ioRecipe, RapidOCR in ioNote), a license's barcode (ioDocs), decoding a picture to keep or to make its small copy
+(ioDocs, ioNote, ioRecipe, ioThings), and making the big PDFs (ioThings' inventory for the insurer, the estate PDF).
+A copy runs its apps in one process, so a crash in that work would stop every app of the copy. Instead it runs in a
+helper process beside the copy:
+
+- a crash there fails only that upload or that PDF, with a message saying so; the next one starts a new helper;
+- it is stopped when it takes longer than its time, when it holds more than `HELPER_MEMORY_MB`, and the system stops
+  it first when memory runs out;
+- it starts when there is work and ends after a minute and a half without, so a model it loaded (ioNote's text
+  reader, a few hundred MB) does not stay in memory;
+- each copy has its own, on its own machine: an app never asks another server's helper, so running some apps on one
+  server and others on another works as before.
+
+It reads the same machine's file and settings as the copy, and its log lines go to the copy's log. `HELPER=off` runs
+the work inside the copy, as before. ioPix keeps its own job process for its AI models and makes its thumbnails itself.
 
 ## The three ports
 
