@@ -1,15 +1,15 @@
 # ioBackup
 
-*The database backups of the ioThing suite ([ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar),
-[ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix),
-[ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioDNS](https://github.com/avandeputte/iosuite/tree/main/iodns)).*
+*The database backups of the ioThing suite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
+[ioContact](../iocontact/), [ioNote](../ionote/), [ioPix](../iopix/),
+[ioHealth](../iohealth/), [ioTask](../iotask/), [ioDNS](../iodns/)).*
 
 Backs up the MariaDB server the suite's apps keep their data on (and any other MariaDB or Galera server) on demand or
 on a schedule, to a folder or Google Drive, keeps the newest *N* backups of each job, and **restores exactly what you
 pick**: whole databases, single tables or views, stored routines, events, users and roles, onto the same server or
 another, under the same name or a new one. An admin tool of the suite, for suite admins only: the gear menu of the
 ioStart start page lists it for them, nobody else sees it. FastAPI and a single-page vanilla JS app, built the same
-way as the other io apps, signed in with the suite's shared accounts ([`iosuite-shared`](https://github.com/avandeputte/iosuite/tree/main/shared)),
+way as the other io apps, signed in with the suite's shared accounts ([`iosuite_shared`](../iosuite_shared/)),
 with its own settings in MariaDB / MySQL. It grew out of [mariadb-backup](https://github.com/avandeputte/mariadb-backup),
 whose backup files it reads and writes unchanged.
 
@@ -65,7 +65,7 @@ One file, `<job>-<YYYYmmdd-HHMMSS>.mdbk.tar`, holding:
   `python3 -m app.offline files Nightly-20261103-020000.mdbk.tar -o files`. This makes a backup larger by about the
   size of those files, which are in the dump as well.
 
-It is plain SQL inside a plain tar, readable without ioBackup, and `app/offline.py` restores it on any machine with
+It is plain SQL inside a plain tar, readable without ioBackup, and `iobackup/offline.py` restores it on any machine with
 Python 3 and the MariaDB client, with no web app, database or settings (for when the machine that ran ioBackup is gone):
 
 ```sh
@@ -124,74 +124,75 @@ Stop the apps whose database you restore over, and start them again after.
 
 ## Run
 
-ioBackup needs Python 3.10+, the MariaDB client programs (`mariadb-dump`, `mariadb`; `setup.sh` installs them) and a MariaDB or MySQL
-database for its own settings. Give it its own database and user, for example:
-
-```sql
-CREATE DATABASE iobackup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'iobackup'@'app-host' IDENTIFIED BY 'a-long-random-password';
-GRANT ALL ON iobackup.* TO 'iobackup'@'app-host';
-```
-
-The accounts and the suite-wide settings live in the Shared ioSuite database (`iosuite`, user `iosuite`; the one every
-app of the suite uses). The tables are created on the first start and updated by later versions by themselves.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/iobackup.sh` and `proxmox/install/iobackup-install.sh` follow the community-scripts (ProxmoxVE) framework
-layout, as the other io apps do. On the Proxmox host, as root:
+ioBackup is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioBackup in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iobackup/proxmox/ct/iobackup.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iobackup
 ```
 
-It asks for the ioBackup database, the Shared ioSuite database, the web port (8680), the time zone, the public address
-behind your reverse proxy (optional), the domain the sign-in is shared on (optional), the admin account and which other
-apps of the suite go in the same container, then runs the app's own `setup.sh` inside. For unattended runs set
-`IOBACKUP_DB` and `IOBACKUP_SUITE_DB` (`host:port/db:user:password`), `IOBACKUP_ADMIN` (`name:password`), `IOBACKUP_PORT`,
-`IOBACKUP_PUBLIC_URL` and `IOBACKUP_COOKIE_DOMAIN`. Local backups go to `/var/backups/iobackup` in the container: mount a
-disk or a NAS share there (`pct set <id> -mp0 /mnt/backups,mp=/var/backups/iobackup`) so they do not live on the same
-disk as the database.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iobackup       # --remove iobackup stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iobackup`) has the MariaDB client in it; mount the folder local backups go to at
-`/backups`, and `/data` for the work space a backup is put together in.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/backup/` at the suite's address (`https://home.example.com/backup/`), and a name of its own if you give it one |
+| Database | `iobackup`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+| On the server | the MariaDB client programs (`mariadb-dump`, `mariadb`); the installer, the Proxmox script and the container image have them |
+
+Local backups go to the folder `BACKUP_DIR` names (`/var/backups/iobackup`; `/backups` in the Docker stack): put it on another disk than the database. In a Proxmox container, mount a disk or a NAS share there (`pct set <id> -mp0 /mnt/backups,mp=/var/backups/iobackup`).
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iobackup
-./setup.sh          # asks for the databases, port and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iobackup.cli check     # connect to the databases and say what is there
+.venv/bin/python -m iobackup.cli jobs      # the jobs, with their schedule and next run
+.venv/bin/python -m iobackup.cli run JOB   # back up now (the job's name or number), here, without the web app; prints the log
+.venv/bin/python -m iobackup.cli runs      # the last runs
 ```
 
-`setup.sh` takes the same flags as in every app of the suite (`--db`, `--suite-db`, `--admin`, `--port`,
-`--public-url`, `--cookie-domain`, `--db-admin`, `--also`, `--service`, `--yes`); `--also` installs other apps of the
-suite beside it. From a shell: `python -m app.cli jobs`, `run JOB` (a backup now, without the web app), `runs`.
+Accounts are the suite's: `iosuite admin NAME --app iobackup` makes someone an admin of ioBackup only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment,
-which wins. The names are the suite's (`DB_*`, `IOSUITE_DB_*`, `PUBLIC_URL`, `COOKIE_DOMAIN`, `HOST`, `PORT`,
-`TLS_*`, `TZ`, `ADMIN_USER` / `ADMIN_PASSWORD`, `UPDATE_CHECK`, `DATA_DIR`, `LOG_FILE`), plus:
+ioBackup has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioBackup, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iobackup        # what may be set, with the value stored now
+iosuite set iobackup PUBLIC_URL https://backup.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `BACKUP_DIR` | the folder a new local destination suggests (`/var/backups/iobackup`; `/backups` in Docker) |
-| `WORK_DIR` | where a backup is put together before it is stored; room for two compressed backups (`DATA_DIR/work`) |
-| `CACHE_DIR` | where a backup read from Google Drive is kept while it is restored (`DATA_DIR/cache`) |
-| `BACKGROUND` | `0` turns the queue and the scheduler off (nothing runs, no schedule fires) |
-| `IOBACKUP_REPO`, `IOBACKUP_BRANCH` | what the version check and `update.sh` follow (`avandeputte/iosuite`, `main`) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://backup.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iobackup/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iobackup`) |
+| `BACKUP_DIR` | suggested backup folder (`/var/backups/iobackup`). The folder a new local destination suggests |
+| `WORK_DIR` | work folder. Where a backup is put together before it is stored (room for two compressed backups). Empty: in the data folder |
+| `CACHE_DIR` | cache folder. Where a backup read from Google Drive is kept while it is restored. Empty: in the data folder |
+| `BACKGROUND` | run the queue and the schedule (`1` or `0`; on by default). Off: nothing runs and no schedule fires; backups are only taken from a shell |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 Schedules run in `TZ` (or the host's time zone). The servers, destinations and jobs are set in the app itself.
 
 ## API
+
+The paths below are ioBackup's own: at the suite's address they are inside its folder (`https://home.example.com/backup/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/backup/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 Everything the web app does is a JSON API under `/api/` (documented at `/api/docs`), open to any client signed in with
 the user name and an app password (HTTP Basic or a bearer token): `GET /api/overview`, `POST /api/jobs/<id>/run`,
@@ -201,9 +202,8 @@ the user name and an app password (HTTP Basic or a bearer token): `GET /api/over
 ## Tests
 
 ```sh
-pip install -e ".[test]"
-IOSUITE_TEST_DB=127.0.0.1:3306:root:root python -m pytest -q tests
-IOBACKUP_TEST_DB_HOST=127.0.0.1 IOBACKUP_TEST_DB_USER=root IOBACKUP_TEST_DB_PASSWORD=root tests/integration.sh
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iobackup/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 The dump splitting, the schedules and Google Drive (against a stand-in of its API) are tested without a database; the
@@ -213,4 +213,4 @@ object, backs it up, drops everything, restores it and compares.
 
 ## License
 
-GPL-3.0-or-later.
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

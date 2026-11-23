@@ -1,6 +1,6 @@
 # ioDocs
 
-*The family's papers, in the ioThing suite (with [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioRecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe), [ioThings](https://github.com/avandeputte/iosuite/tree/main/iothings), [ioMoney](https://github.com/avandeputte/iosuite/tree/main/iomoney), [ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth) and the [ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart) start page).*
+*The family's papers, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted home for the family's papers: passports, ID cards, driver's licenses, visas, insurance policies, the car's
 registration, birth and marriage certificates, wills, health cards. Each one with its scans, who it belongs to, its
@@ -8,7 +8,7 @@ number and dates, and a reminder before it expires, early enough to renew it (a 
 month). Drop a scan or a photo and it is **read**: the text off the page, the machine-readable lines of a passport or
 an ID card, the barcode on the back of a US or Canadian driver's license, which fill the document in. FastAPI and a
 single-page vanilla JS app, everything stored in MariaDB / MySQL (the scans too), Tesseract for the reading, and the
-suite's shared library (`iosuite-shared`, in [shared](https://github.com/avandeputte/iosuite/tree/main/shared)).
+suite's shared library ([`iosuite_shared/`](../iosuite_shared/)).
 
 ## What it does
 
@@ -21,11 +21,11 @@ suite's shared library (`iosuite-shared`, in [shared](https://github.com/avandep
 - **Who sees it**, per document: *the family* (everyone with a role here), *its people and the grown-ups* (the people
   it is for, whoever added it, and the editors and admins; the usual), or *private* (only its people and whoever added
   it: a will). New accounts have no role here (as in ioMoney): an admin gives one in Settings › Security.
-- **Reading scans** (Tesseract on the server, `app/ocr.py`): a passport's or ID card's machine-readable zone (TD1, TD2
+- **Reading scans** (Tesseract on the server, `iodocs/ocr.py`): a passport's or ID card's machine-readable zone (TD1, TD2
   and TD3, with their check digits) gives the kind, number, country, name, birth date, sex and the expiry. The zone is
   found by reading each band of the picture (turned too, for a photo taken sideways or upside down) with a Tesseract
-  model trained on its font, `app/tessdata/mrz.traineddata` (from DoubangoTelecom/tesseractMRZ, BSD licence, see
-  `app/tessdata/NOTICE`), until one gives a zone whose check digits hold. The issue date is only in the printed words:
+  model trained on its font, `iodocs/tessdata/mrz.traineddata` (from DoubangoTelecom/tesseractMRZ, BSD licence, see
+  `iodocs/tessdata/NOTICE`), until one gives a zone whose check digits hold. The issue date is only in the printed words:
   it is filled in when every reading of the page gives the same day that fits the expiry (10, 7, 5, 6 or 3 years), else
   left empty and the person is told to type it in; the PDF417
   barcode on the back of a North American license (AAMVA) gives the number, the state, the dates, the address and the
@@ -45,96 +45,100 @@ suite's shared library (`iosuite-shared`, in [shared](https://github.com/avandep
 - **With the other apps**: ioCalendar shows the day each document expires; the start page has a *To renew* tile and
   finds documents in its search box.
 - **Settings › Security** and **Global settings** (suite admins): the suite's people, their role in every app, app
-  passwords and sign-in at the proxy; the apps, keys and tokens (iosuite-shared's panel, the same in every app).
+  passwords and sign-in at the proxy; the apps, keys and tokens (iosuite_shared's panel, the same in every app).
 - Light and dark, phone-sized screens (a photo straight from the phone's camera), installable as an app.
 
 ## Run
 
-ioDocs needs Python 3.10+, Tesseract and Poppler for reading scans (`apt install tesseract-ocr tesseract-ocr-eng
-poppler-utils`; `setup.sh` installs them), and a MariaDB or MySQL database, its own (`iodocs`), beside the Shared ioSuite database
-(`iosuite`) every app of the suite uses. The [one-line installer](../README.md#install) adds it to a server that has
-other apps of the suite, with the same answers.
-
-### Proxmox VE (LXC)
+ioDocs is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioDocs in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iodocs/proxmox/ct/iodocs.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iodocs
 ```
 
-It asks for the database, the Shared ioSuite database, the port (8720), the time zone, the public address, the
-sign-in domain and the admin, then makes a small Debian 13 container (1 CPU, 1 GB for reading scans, 8 GB: the files live in the
-database) and runs `setup.sh` inside. For unattended runs: `IODOCS_DB` and `IODOCS_SUITE_DB`
-(`host:port/db:user:password`), `IODOCS_ADMIN` (`name:password`), `IODOCS_DB_ADMIN`, `IODOCS_PORT`, `IODOCS_TIMEZONE`,
-`IODOCS_PUBLIC_URL` and `IODOCS_COOKIE_DOMAIN`. Its checklist puts other apps of the suite in the same container.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iodocs       # --remove iodocs stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iodocs`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/docs/` at the suite's address (`https://home.example.com/docs/`), and a name of its own if you give it one |
+| MCP | `/docs/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iodocs`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+| On the server | Tesseract and Poppler, for reading scans (`tesseract-ocr`, `tesseract-ocr-eng`, `poppler-utils`); the installer, the Proxmox script and the container image have them |
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iodocs
-./setup.sh          # asks for the databases, port, time zone and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iodocs.cli check       # connect to the databases and say what is there, and what this server can read off a scan
+.venv/bin/python -m iodocs.cli read FILE   # what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
 ```
 
-`setup.sh`'s flags (`--db`, `--suite-db`, `--db-admin`, `--admin`, `--port`, `--public-url`, `--cookie-domain`,
-`--timezone`, `--service`, `--yes`, `--also`, `--remove`, `--reconfigure`, `--apps`) are the same as in every app of
-the suite; its last step is the list of the suite's apps on this machine, to add or remove one. From a shell:
-`python -m app.cli check`, `python -m app.cli read SCAN.jpg` (what a scan would fill in).
+Accounts are the suite's: `iosuite admin NAME --app iodocs` makes someone an admin of ioDocs only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment,
-which wins:
+ioDocs has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioDocs, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iodocs        # what may be set, with the value stored now
+iosuite set iodocs PUBLIC_URL https://docs.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | the MariaDB / MySQL database (`iodocs`) |
-| `IOSUITE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD` | the Shared ioSuite database (`iosuite`): accounts, sessions, app passwords, roles and suite-wide settings |
-| `COOKIE_DOMAIN` | the domain the sign-in is shared on (`example.com`) |
-| `HOST`, `PORT` | where the server listens (every address, 8720) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | serve HTTPS directly instead of behind a reverse proxy |
-| `TZ` | the time zone of the server log |
-| `PUBLIC_URL` | the address people use, for links (the notifications, the MCP tools) |
-| `MAX_FILE_MB` | the largest file that may be attached (100) |
-| `TESSERACT`, `OCR_LANGS` | the Tesseract command (`off`: scans are kept, not read) and its languages (`eng`; `eng+fra`) |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the first admin, made on the first start when there are no accounts |
-| `MCP` | `1` keeps the MCP server on, whatever the setting says |
-| `MCP_USER` | the account `python -m app.mcp` (stdio) acts as |
-| `UPDATE_CHECK` | `0` turns the daily version check off for good |
-| `DATA_DIR`, `LOG_FILE` | where the app writes on its own (`data/`), and its log (`DATA_DIR/iodocs.log`) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://docs.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iodocs/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iodocs`) |
+| `MAX_FILE_MB` | largest file (MB) (`100`). One scan, photo or PDF as uploaded |
+| `TESSERACT` | OCR program (`tesseract`). The program that reads the scans; off: never read them |
+| `OCR_LANGS` | OCR languages (`eng`). Tesseract's languages (eng+fra+deu); each needs its tesseract-ocr-<lang> package |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 
-The suite has one version and its apps are updated together: Settings › Global settings › Updates (suite admins, in
-any app). Settings › Server shows the version, the server log and Restart. From a shell: `./update.sh`. In Docker,
-pull the image.
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioDocs runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 ## API
+
+The paths below are ioDocs' own: at the suite's address they are inside its folder (`https://home.example.com/docs/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/docs/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 | For | Standard | Where |
 | --- | --- | --- |
 | Web and JSON clients | **REST/JSON**: documents (list, search, by kind, person or status), one document, add, change, renew, delete; its files (add, read, put first, remove; each gets a name of its own, such as iodocs-000123.pdf, never the one it was uploaded under) | `/api/`, OpenAPI docs at `/api/docs` |
 | ioCalendar and the start page | the documents that expire between two days | `GET /api/expiring?start=&end=` |
-| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `https://host/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
+| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
 
 Settings › Account makes **app passwords**, for the REST API (HTTP Basic, or `Authorization: Bearer <app password>`)
 and for MCP.
 
 ```sh
-curl -u alex:APP-PASSWORD "https://docs.example.com/api/documents?status=expiring"
+curl -u alex:APP-PASSWORD "https://sync.example.com/docs/api/documents?status=expiring"
 curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: application/json' \
   -d '{"kind": "passport", "people": ["Ava"], "number": "C70224518", "expiresOn": "2031-12-28"}' \
-  https://docs.example.com/api/documents
+  https://sync.example.com/docs/api/documents
 curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: image/jpeg' --data-binary @passport.jpg \
-  "https://docs.example.com/api/documents/12/files?name=passport.jpg"     # read at once: {file, found, filled, differs}
+  "https://sync.example.com/docs/api/documents/12/files?name=passport.jpg"     # read at once: {file, found, filled, differs}
 ```
 
 The MCP tools: `overview`, `expiring`, `search_documents`, `get_document`, `scan_text`, `add_document`,

@@ -1,8 +1,8 @@
 # ioCalendar
 
-*The family calendar, in the ioThing suite (with [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth) and the [ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart) start page).*
+*The family calendar, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioTask](../iotask/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
-A self-hosted calendar: a web app for the whole family, and the standard protocols every calendar app already speaks, so the same events show up on phones, in Apple Calendar, Google Calendar, Outlook, Thunderbird and anywhere else. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library (`iosuite-shared`, in [iosuite-shared](https://github.com/avandeputte/iosuite/tree/main/shared)).
+A self-hosted calendar: a web app for the whole family, and the standard protocols every calendar app already speaks, so the same events show up on phones, in Apple Calendar, Google Calendar, Outlook, Thunderbird and anywhere else. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library (`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 
 ## What it does
 
@@ -21,98 +21,74 @@ A self-hosted calendar: a web app for the whole family, and the standard protoco
 - **Outside calendars**: subscribe to a calendar by its web address (`https://`, `http://` or `webcal://`: a school's, a sports club's, the bin collection) from the + beside Shared or Mine. It is kept as a read-only calendar beside the family's own, fetched again on a schedule (hourly to weekly, Settings › Calendars, or Fetch now), with its reminders dropped. The server only fetches hosts on the internet (not itself, the home network or link-local; every redirect checked the same way), at most 16 MB within 20 s; the address is shown only to those who manage the calendar (members their own, editors the shared ones).
 - **Family members on events**: tag an event with the people of the family it is for ("For Emma"). The tags show as coloured initials on the calendar, the sidebar's Family list shows only one person's (or a few people's) events, and the tag is kept as an iCalendar `CATEGORIES` value with the member's name, so phones and calendar apps show it and a category typed there tags the event here too. The REST API, the subscription links (`?member=emma`) and MCP filter by member as well. The family is the suite's one list (Settings › Security › Family, suite admins), the same in every app: each member's colour, initials and face (their ioPix person, else their ioContact card) match everywhere. An account that is not a person (an admin or guest) can be taken out there: it is not offered as a tag and gets no private calendar.
 - **Roles as in the other io apps**: viewers only read the shared calendars, members (the default) also keep their own private calendars, editors change shared events, admins also manage users and settings. The same accounts, passwords and app passwords as ioPix, ioNote and ioContact; one sign-in for all of them with a shared cookie domain.
-- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite-shared's `/api/suite-admin/ui.js`).
+- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - Light and dark, phone-sized screens, installable as an app.
 
 No tasks or to-dos: those belong in their own app.
 
 ## Run
 
-ioCalendar needs Python 3.10+ and a MariaDB or MySQL database. Give it its own database
-and user, for example:
-
-```sql
-CREATE DATABASE iocalendar CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'iocalendar'@'app-host' IDENTIFIED BY 'a-long-random-password';
-GRANT ALL ON iocalendar.* TO 'iocalendar'@'app-host';
-```
-
-`app-host` is the machine the app runs on (`localhost` when MariaDB is on the same machine); a user for any host (`'%'`)
-with a password someone could guess is what to avoid. The installers make the user this way when given a MariaDB administrator.
-
-The accounts and the suite-wide settings live in the Shared ioSuite database (`iosuite`, user `iosuite`; the one every
-app of the suite uses); a new install of the suite creates it the same way. The tables are created on the first start and updated by later versions by themselves.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/iocalendar.sh` and `proxmox/install/iocalendar-install.sh` follow the community-scripts (ProxmoxVE) framework layout, as the other io apps do. On the Proxmox host, as root:
+ioCalendar is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioCalendar in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iocalendar/proxmox/ct/iocalendar.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iocalendar
 ```
 
-It asks for the calendar database (host, port, database, user, password), the Shared ioSuite database, the web port (8620), the family's time zone, the public address behind your reverse proxy (optional), the domain the sign-in is shared on (optional) and the admin account; then the framework's own questions (resources, network). It creates a small Debian 13 container and runs the app's own `setup.sh` inside with those answers. The passwords reach `setup.sh` through its environment (a root-only file pushed in and removed again), never on a command line; the output is kept in `/opt/iocalendar/setup.log`. The container's `update` command pulls the latest code and keeps the settings. For unattended runs set `IOCALENDAR_DB` and `IOCALENDAR_SUITE_DB` (`host:port/db:user:password`), `IOCALENDAR_ADMIN` (`name:password`), `IOCALENDAR_PORT`, `IOCALENDAR_TIMEZONE`, `IOCALENDAR_PUBLIC_URL` and `IOCALENDAR_COOKIE_DOMAIN`.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iocalendar       # --remove iocalendar stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iocalendar`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/calendar/` at the suite's address (`https://home.example.com/calendar/`), and a name of its own if you give it one |
+| Devices | CalDAV at `/calendar/dav/`, subscription links at `/calendar/ics/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| MCP | `/calendar/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iocalendar`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iocalendar
-./setup.sh          # asks for the databases, port, time zone and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iocalendar.cli check                         # connect to the databases and say what is there
+.venv/bin/python -m iocalendar.cli import CALENDAR-ID FILE.ics   # events from an .ics file into a calendar
+.venv/bin/python -m iocalendar.cli sync-birthdays                # bring the Birthdays calendar up to date from ioContact
+.venv/bin/python -m iocalendar.cli sync-holidays                 # bring the Holidays calendars up to date (Settings › Holidays and birthdays)
 ```
 
-Its last step is the list of the suite's apps on this machine: tick one to add it, untick one to remove it (its database and data stay), `r` and its number to ask its questions again; `./setup.sh --apps` shows only that list, and the [one-line installer](../README.md#install) does the same from anywhere. Adding (flag `--also iocalendar,ionote`, `--also all`; `--remove` and `--reconfigure` take lists too; `IOCALENDAR_ALSO` in the environment), puts
-other apps of the suite in this same machine, beside ioCalendar (`/opt/iocalendar/app` next to `/opt/iocalendar/app`),
-each asking its own setup questions with the answers of the apps already here as the defaults (Enter keeps
-one; `--yes` takes them all): the same database server with a database of its own named after the app (`iostart`,
-`iocalendar`, `iothings`, ...; the user needs rights on those names too, or give a MariaDB administrator), the same Shared ioSuite
-database, sign-in domain and admin, a public address made like the others' (`iosuite-shared install`, from the shared library). Each app keeps its usual port
-and updates itself as always. The Proxmox installer offers the same as a checklist, for one container with several apps.
-
-The databases and users need not exist beforehand: give a MariaDB / MySQL administrator (the question after the
-databases; flag `--db-admin USER:PASSWORD`, or `IOCALENDAR_DB_ADMIN`, also in the Proxmox installer) and `setup.sh` creates
-the app's database and user, the Shared ioSuite database and user and, with other apps installed alongside, their
-databases too, with the passwords you answered (`iosuite-shared provision`). Nothing is dropped, and the administrator's
-password is used once and not written anywhere.
-
-`setup.sh` offers 127.0.0.1, database `iocalendar`, user `iocalendar`, password `iocalendar` as the defaults; its flags
-(`--db`, `--suite-db`, `--admin`, `--port`, `--public-url`, `--cookie-domain`, `--service`, `--yes`) are the same in
-every app of the suite. `python -m app.cli import CALENDAR-ID FILE.ics`, `sync-birthdays` and `check` work from a shell;
-accounts are the suite's: `.venv/bin/iosuite-shared --config . admin NAME --app iocalendar` (password from
-`ADMIN_PASSWORD`, or asked for) and `.venv/bin/iosuite-shared --config . password NAME`.
+Accounts are the suite's: `iosuite admin NAME --app iocalendar` makes someone an admin of ioCalendar only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment, which wins:
+ioCalendar has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioCalendar, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iocalendar        # what may be set, with the value stored now
+iosuite set iocalendar PUBLIC_URL https://calendar.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | the MariaDB / MySQL database (`iocalendar`) |
-| `IOSUITE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD` | the Shared ioSuite database (`iosuite`, on `DB_HOST` unless set): accounts, passwords, sessions, app passwords, roles and suite-wide settings, shared by every app of the suite |
-| `COOKIE_DOMAIN` | the domain the session cookie is shared on (`example.com`): signed in at `contacts.example.com`, signed in at `calendar.example.com` too |
-| `HOST`, `PORT` | where the server listens (`0.0.0.0`, 8620; every app of the suite has its own port) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | serve HTTPS directly instead of behind a reverse proxy |
-| `TZ` | the family's time zone (default: the server's), for times written without one and all-day events |
-| `PUBLIC_URL` | the address people use (behind a proxy), for links in Settings, the Apple profile and the MCP tools |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the first admin, made on the first start when there are no accounts |
-| `CF_KV_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`, `CF_KV_API_TOKEN` | optional edge check of app passwords: the Workers KV namespace a Cloudflare Worker on `/dav*` reads; normally stored once for the whole suite in Settings › Global settings › Keys and tokens, these override it ([setup](https://github.com/avandeputte/iosuite/blob/main/shared/cloudflare/edge-auth/README.md)) |
-| `HOLIDAYS_COUNTRY`, `HOLIDAYS_REGION`, `HOLIDAYS_LANGUAGE` | the first choice for Settings › Holidays and birthdays: a two-letter country code, or several comma-separated (`BE,NL`; `off`: no Holidays calendar), a region code and the language of the names for the first one; until set, the country of `TZ`, else US |
-| `MCP` | `1` keeps the MCP server on, whatever the setting says |
-| `KEEP_DELETED_DAYS` | how long a deleted event's marker is kept, so phones learn of the deletion at their next sync (`90`); a client that stayed away longer starts its sync over |
-| `MCP_USER` | the account `python -m app.mcp` (stdio) acts as |
-| `UPDATE_CHECK` | `0` turns the daily version check off for good |
-| `IOCALENDAR_REPO`, `IOCALENDAR_BRANCH` | what the version check and `update.sh` follow (`avandeputte/iosuite`, `main`) |
-| `DATA_DIR` | where the app writes on its own: the log and the update result (`data/` in the app folder) |
-| `LOG_FILE` | the server log shown at Settings › Server (`DATA_DIR/iocalendar.log`; `LOG_FILE=` with nothing after it: no file) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://calendar.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iocalendar/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iocalendar`) |
+| `HOLIDAYS_COUNTRY` | public holidays: countries. Until Settings › Holidays and birthdays is chosen: a two-letter country code or several (BE,NL); off: none. Empty: the time zone's |
+| `HOLIDAYS_REGION` | public holidays: region. A state or province code of the first country |
+| `HOLIDAYS_LANGUAGE` | public holidays: language. The language of the holidays' names |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ### ioContact
 
@@ -121,7 +97,7 @@ it from the server as its own service account (`iocalendar-app`) with a read-onl
 first use and listed on the start page's Settings › Security, where a suite admin can revoke them (a new one is made the
 next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Global settings › Keys and tokens)
 goes along. The Birthdays calendar is filled from ioContact's birthday feed and brought up to date every six hours
-(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `python -m app.cli sync-birthdays`).
+(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `python -m iocalendar.cli sync-birthdays`).
 
 ### ioTask
 
@@ -146,72 +122,39 @@ licenses and policies ioDocs shows them, on the day they expire. **Documents exp
 
 ## Updates
 
-The suite has one version, the same for every app, and the apps are updated together: **Settings › Global settings ›
-Updates** (suite admins, in any app) shows the installed version and the newest one on GitHub, with one **Update**
-button; each app's own line is under Details. Once a day every app asks GitHub whether a newer version exists (only
-the public commit list is read; nothing about the server is sent; the Updates page switches it off for the suite,
-`UPDATE_CHECK=0` locks it off for this app). **Settings › Server** shows the version ioCalendar runs, the tail of the
-server log (`data/iocalendar.log`; `LOG_FILE` moves it, empty switches it off) and **Restart**; the panel
-(`/api/server/ui.js`) is iosuite-shared's, the same in every app. Updating runs the app's own `update.sh`: the new
-version's Python packages first, then the code (a failed step leaves the running version as it was), the database is
-brought up to date, and the service restarts. In Docker, pull the image instead. From a shell: `./update.sh`
-(`--check` only looks, `IOCALENDAR_REF=<sha>` installs a given commit).
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioCalendar runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 Everything is under one Settings page (the sidebar and the avatar menu); a change is saved the moment it is made: your own tabs (account, display, apps and
 devices, calendars, holidays and birthdays), then for admins family and server (with Export: each calendar as an
 .ics file), and for suite admins security and global settings. Import is a page of its own in the sidebar.
 
-### Releases
-
-Every version of the suite merged into main is released by itself: when `__version__` (`shared/iosuite_shared/__init__.py`, one number for every app) has no GitHub release yet, CI makes the release `v<version>` with the merge's message as notes, and the image is published as `ghcr.io/avandeputte/iosuite/iocalendar:v<version>` (and `latest`). main sets the version by itself after a merge (`.github/workflows/version.yml`).
-
 ## Reverse proxy and HTTPS
 
-Run it behind a reverse proxy that terminates HTTPS (Caddy, Nginx Proxy Manager, HAProxy, Cloudflare Tunnel): iOS and
-macOS want HTTPS for CalDAV accounts outside the home network, and passwords travel with every CalDAV request.
+ioCalendar is reached through the suite's three ports: the pages (80), devices (8443) and MCP (8444). A reverse proxy gives each
+a name and HTTPS, for the whole suite at once, and can make people sign in first (Cloudflare Access, Authelia, oauth2-proxy):
+[Reverse proxy and HTTPS](../docs/docs/run/reverse-proxy.md) and [Cloudflare Tunnel and Access](../docs/docs/run/cloudflare.md) in the
+guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
+Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-### Cloudflare Tunnel and Cloudflare Access
-
-With a `cloudflared` tunnel in front, set `PUBLIC_URL` to the public address. To make people sign in at Cloudflare
-Access first, add a self-hosted Access application for that hostname, then turn on Settings › Security ›
-Sign-in at the proxy* › Cloudflare Access with your team (`myteam.cloudflareaccess.com`) and the application's AUD tag
-(one setting for the whole suite, kept in the Shared ioSuite database). ioCalendar checks Cloudflare's signed token and signs
-the person in to the matching account (by email, then by name). This is saved for the whole suite.
-
-Calendar apps cannot get through Access: Apple Calendar, DAVx⁵, Thunderbird and Google or Outlook subscriptions cannot
-open the Access sign-in page or send a service token (so neither can the Apple profile). In the Access application, add
-a policy with the action **Bypass** (Include: Everyone) for these paths, or a second Access application covering only
-them with a Bypass policy:
-
-| Path | Used by | Still protected by |
-|---|---|---|
-| `/dav/*` and `/.well-known/caldav` | CalDAV (Apple Calendar, the Apple profile, DAVx⁵, Thunderbird) | your user name and an app password |
-| `/ics/*` | subscription links and free/busy | the secret in the link (the request log keeps the address without it) |
-| `/mcp` | AI assistants (only if MCP is on) | an app password as a Bearer token |
-
-Everything else, the web app and `/api/`, stays behind Access. A script that calls `/api/` from outside needs a
-Cloudflare service token (`CF-Access-Client-Id` and `CF-Access-Client-Secret` headers) allowed in the policy, as well
-as an app password.
-
-### Checking app passwords at Cloudflare (optional)
-
-Cloudflare Access can't check what DAV clients send, so `/dav*` bypasses it. A small Cloudflare Worker on `/dav*` can
-check the app password there instead and turn wrong ones away before they reach the server. With the edge check's three
-settings stored for the whole suite (Settings › Global settings › Keys and tokens), the app keeps the Worker's KV namespace up to date with a SHA-256 of each app password (never the account
-password). The Worker, the rollout (monitor first, then enforce) and a WAF rate-limit rule for `/dav*` are in
-[iosuite-shared's cloudflare/edge-auth](https://github.com/avandeputte/iosuite/blob/main/shared/cloudflare/edge-auth/README.md). Once it enforces, DAV clients must sign in with an app password, not the
-account password.
+iOS and macOS want HTTPS for a CalDAV account outside the home network, and a password travels with every CalDAV request. Calendar apps cannot open a sign-in page at the proxy (Cloudflare Access, Authelia): the address for devices stays outside it, and takes app passwords only.
 
 ## API
 
+The paths below are ioCalendar's own: at the suite's address they are inside its folder (`https://home.example.com/calendar/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/calendar/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+
 | For | Standard | Where |
 | --- | --- | --- |
-| Calendar apps, two-way: Apple Calendar (Mac, iPhone, iPad), DAVx⁵ on Android, Thunderbird, Evolution, GNOME Calendar, KDE, Outlook with a CalDAV add-in | **CalDAV** (RFC 4791) with sync-collection (RFC 6578), getctag, MKCALENDAR and extended MKCOL, PROPPATCH (name, colour, description, time zone), calendar-query with time ranges and `expand`, calendar-multiget, free-busy-query, If-Match / If-None-Match, discovery via `/.well-known/caldav` (RFC 6764) and current-user-principal | `https://host/dav/` |
+| Calendar apps, two-way: Apple Calendar (Mac, iPhone, iPad), DAVx⁵ on Android, Thunderbird, Evolution, GNOME Calendar, KDE, Outlook with a CalDAV add-in | **CalDAV** (RFC 4791) with sync-collection (RFC 6578), getctag, MKCALENDAR and extended MKCOL, PROPPATCH (name, colour, description, time zone), calendar-query with time ranges and `expand`, calendar-multiget, free-busy-query, If-Match / If-None-Match, discovery via `/.well-known/caldav` (RFC 6764) and current-user-principal | `/dav/` |
 | Any app that reads calendar files | **iCalendar** (RFC 5545): every event is kept as the iCalendar object it came in as, so properties ioCalendar does not edit (attachments, other apps' X- properties) survive a round trip; VTIMEZONE, RRULE / RDATE / EXDATE, RECURRENCE-ID overrides and VALARM included | CalDAV, `/api/events/<id>?format=ics`, import/export |
 | Calendars that cannot sign in: Google Calendar, Outlook, Apple Calendar subscriptions | **iCalendar subscriptions** (`webcal://`), one calendar or all of them, and **free/busy** (VFREEBUSY): each link has a secret of its own, made in Settings › Apps and devices and shown once (one per app or device, stopped one at a time; only a hash of it is kept, in the Shared ioSuite database) | `/ics/<token>/<calendar>.ics`, `/ics/<token>/all.ics`, `/ics/<token>/freebusy.vfb` |
 | Web and JSON clients | **REST/JSON** with **jCal** (RFC 7265) and iCalendar by content negotiation (`Accept: application/calendar+json` or `text/calendar`): occurrences in a range (repeating events expanded), events, calendars, free/busy, import/export | `/api/`, OpenAPI docs at `/api/docs` |
 | iPhone, iPad and Mac in one step | **Apple configuration profile** (`com.apple.caldav.account`) | Settings › Apps and devices |
-| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `https://host/mcp` (switched on in Settings › Server) |
+| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server) |
 
 **iPhone, iPad and Mac in one step:** Settings › Apps and devices › *Download the profile* gives a configuration profile
 (`.mobileconfig`) with the CalDAV account and a new CalDAV-only app password for that device inside (or none, and the device asks).
@@ -228,13 +171,13 @@ always CalDAV only; scripts and AI assistants need one without that limit. The s
 the Shared ioSuite database (`ios_app_passwords.scope`), the same for every app of the suite.
 
 ```sh
-curl -u alex:APP-PASSWORD "https://calendar.example.com/api/occurrences?start=2026-11-01&end=2026-12-01"
-curl -u alex:APP-PASSWORD -H 'Accept: text/calendar' https://calendar.example.com/api/events/12
+curl -u alex:APP-PASSWORD "https://sync.example.com/calendar/api/occurrences?start=2026-11-01&end=2026-12-01"
+curl -u alex:APP-PASSWORD -H 'Accept: text/calendar' https://sync.example.com/calendar/api/events/12
 curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: application/json' \
   -d '{"title": "Dentist", "start": "2026-11-12T09:00", "end": "2026-11-12T10:00", "location": "12 Oak Street", "reminders": [60]}' \
-  https://calendar.example.com/api/events
+  https://sync.example.com/calendar/api/events
 curl -u alex:APP-PASSWORD -X PATCH -H 'Content-Type: application/json' -d '{"title": "Soccer (at the school)"}' \
-  "https://calendar.example.com/api/events/7?scope=this&recurrenceId=2026-11-19T17:30:00-05:00"
+  "https://sync.example.com/calendar/api/events/7?scope=this&recurrenceId=2026-11-19T17:30:00-05:00"
 ```
 
 ## MCP server
@@ -244,15 +187,15 @@ read the agenda, search events, find when people are free, add, change, move and
 ones after it, or the whole series), make calendars, import iCalendar files, and, for admins, check the server's health,
 bring the birthdays up to date, look for a new version and install it.
 
-It is off until an admin turns it on in **Settings › Server** (or `MCP=1` in the environment); off, `/mcp` does not answer
+It is off until an admin turns it on in **Settings › Server**; off, `/mcp` does not answer
 at all. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or
 `Authorization: Bearer <app password>`, and acts as that account, with its rights.
 
 ```sh
-claude mcp add --transport http iocalendar https://calendar.example.com/mcp --header "Authorization: Bearer APP-PASSWORD"
+claude mcp add --transport http iocalendar https://mcp.example.com/calendar/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m app.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `.venv/bin/python -m iocalendar.mcp --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_calendars`, `list_family_members`, `agenda`, `search_events`, `get_event`, `get_ics`,
 `free_busy`, `connection_details`; `create_event`, `update_event`, `delete_event`, `move_event`, `create_calendar`,
@@ -261,8 +204,8 @@ The tools: `overview`, `list_calendars`, `list_family_members`, `agenda`, `searc
 ## Tests
 
 ```sh
-pip install -e '.[test]'
-python -m pytest tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iocalendar/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 Covered: calendars and roles, every event field round-tripping through JSON, iCalendar and jCal, all-day events,
@@ -273,25 +216,26 @@ viewer's limits). CI runs them against MariaDB.
 
 ## Layout
 
+The package `iocalendar/` of the repository:
+
 ```
-app/main.py        the application: start-up (tables, first admin, birthdays sync), who is asking, routes
-app/api.py         the REST API: calendars, events, occurrences, free/busy, import/export, subscriptions, Apple profile
-app/caldav.py      CalDAV / WebDAV
-app/ical.py        iCalendar and jCal: reading, indexing, expanding repeating events, editing, writing
-app/model.py       calendars and events in MariaDB, sync tokens and tombstones for CalDAV
-app/contacts.py    the ioContact client: people and the Birthdays calendar
-app/tasks.py       the ioTask client: the tasks due on a day, ticked off from the calendar (asked as the viewer)
-app/bills.py       the ioMoney client: the household's coming bills on their day (asked as the viewer)
-app/papers.py      the ioDocs client: the documents that expire, on their day (asked as the viewer)
-app/holiday.py     the Holidays calendars (one per country, with region and language; filled daily)
-app/members.py     family members on events (kept as CATEGORIES), and the member filter
-app/mcp/           the MCP server: base (the server, finding events; who is asking comes from iosuite_shared.mcp), read, write and admin tools
-app/access.py      who may call a route (the markers come from iosuite-shared)
-app/users.py       accounts, app passwords and subscription links (the suite's, through iosuite-shared)
+main.py            the application: start-up (tables, first admin, birthdays sync), who is asking, routes
+api.py             the REST API: calendars, events, occurrences, free/busy, import/export, subscriptions, Apple profile
+caldav.py          CalDAV / WebDAV
+ical.py            iCalendar and jCal: reading, indexing, expanding repeating events, editing, writing
+model.py           calendars and events in MariaDB, sync tokens and tombstones for CalDAV
+contacts.py        the ioContact client: people and the Birthdays calendar
+tasks.py           the ioTask client: the tasks due on a day, ticked off from the calendar (asked as the viewer)
+bills.py           the ioMoney client: the household's coming bills on their day (asked as the viewer)
+papers.py          the ioDocs client: the documents that expire, on their day (asked as the viewer)
+holiday.py         the Holidays calendars (one per country, with region and language; filled daily)
+members.py         family members on events (kept as CATEGORIES), and the member filter
+mcp/               the MCP server: base (the server, finding events; who is asking comes from iosuite_shared.mcp), read, write and admin tools
+access.py          who may call a route (the markers come from iosuite_shared)
+users.py           accounts, app passwords and subscription links (the suite's, through iosuite_shared)
 static/            the web app (index.html, app.js, app.css, icons)
-proxmox/           the community-scripts LXC installer      setup.sh, run.sh, update.sh, Dockerfile
 ```
 
 ## License
 
-GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](LICENSE).
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

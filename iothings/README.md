@@ -1,12 +1,12 @@
 # ioThings
 
-*Everything you own, in the ioThing suite (with [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioRecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe), [ioMoney](https://github.com/avandeputte/iosuite/tree/main/iomoney), [ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth) and the [ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart) start page).*
+*Everything you own, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted inventory of everything you own, in place of Homebox: what the family has and where it is (the appliances,
 the tools, the furniture, the electronics, the car, the books, the camping gear, what is stored in the attic), with the manuals, receipts, photos and warranties, and the upkeep each thing
 needs (the boiler's yearly service, the car's MOT, the fridge's water filter) with a maintenance log. FastAPI and a
 single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files too), and the suite's shared library
-(`iosuite-shared`, in [shared](https://github.com/avandeputte/iosuite/tree/main/shared)).
+([`iosuite_shared/`](../iosuite_shared/)).
 
 ## What it does
 
@@ -45,7 +45,7 @@ single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files
   by place and thing. Keep it away from the house and make a new one now and then. Photos are made smaller so the
   file stays easy to copy. It is made in
   the background; the last one is kept until the next one or a restart. DejaVu Sans writes it when the system has it
-  (setup.sh and every update install `fonts-dejavu-core` when it is missing and they run as root), Helvetica otherwise.
+  (the installer installs `fonts-dejavu-core` when it is missing and it runs as root; the container image has it), Helvetica otherwise.
 - **Homebox, straight from the server** (editors, Import and export › From a Homebox server): give Homebox's address
   and the email and password you sign in to it with, and ioThings reads everything through Homebox's API: the things
   with all their details, the places, the labels with their colours, the own fields, the **photos, manuals, receipts
@@ -68,94 +68,98 @@ single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files
   and the log; editors change and delete everything, and keep the places and labels in order; admins also choose the
   currency (Settings › Things) and run the server. The same accounts, passwords and app passwords as the other io apps.
 - **Settings › Security** and **Global settings** (suite admins): the suite's people, their role in every app, app
-  passwords and sign-in at the proxy; the apps, keys and tokens (iosuite-shared's panel, the same in every app).
+  passwords and sign-in at the proxy; the apps, keys and tokens (iosuite_shared's panel, the same in every app).
 - Light and dark, phone-sized screens, installable as an app.
 
 ## Run
 
-ioThings needs Python 3.10+ and a MariaDB or MySQL database, its own (`things`), beside the Shared ioSuite database
-(`iosuite`) every app of the suite uses. The [one-line installer](../README.md#install) adds it to a server that has
-other apps of the suite, with the same answers.
-
-### Proxmox VE (LXC)
+ioThings is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioThings in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iothings/proxmox/ct/iothings.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iothings
 ```
 
-It asks for the database, the Shared ioSuite database, the port (8700), the time zone, the public address, the
-sign-in domain and the admin, then makes a small Debian 13 container (1 CPU, 512 MB, 8 GB: the files live in the
-database) and runs `setup.sh` inside. For unattended runs: `IOTHINGS_DB` and `IOTHINGS_SUITE_DB`
-(`host:port/db:user:password`), `IOTHINGS_ADMIN` (`name:password`), `IOTHINGS_DB_ADMIN`, `IOTHINGS_PORT`, `IOTHINGS_TIMEZONE`,
-`IOTHINGS_PUBLIC_URL` and `IOTHINGS_COOKIE_DOMAIN`. Its checklist puts other apps of the suite in the same container.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iothings       # --remove iothings stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iothings`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/things/` at the suite's address (`https://home.example.com/things/`), and a name of its own if you give it one |
+| MCP | `/things/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iothings`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+| On the server | the DejaVu fonts, for names in every script in the insurance PDF (`fonts-dejavu-core`); the installer, the Proxmox script and the container image have them |
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iothings
-./setup.sh          # asks for the databases, port, time zone and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iothings.cli check                        # connect to the databases and say what is there
+.venv/bin/python -m iothings.cli import-homebox FILE [NAME]   # the things in a Homebox CSV export, added as NAME (or the first admin)
 ```
 
-`setup.sh`'s flags (`--db`, `--suite-db`, `--db-admin`, `--admin`, `--port`, `--public-url`, `--cookie-domain`,
-`--timezone`, `--service`, `--yes`, `--also`, `--remove`, `--reconfigure`, `--apps`) are the same as in every app of
-the suite; its last step is the list of the suite's apps on this machine, to add or remove one. From a shell:
-`python -m app.cli check`, `python -m app.cli import-homebox export.csv [NAME]`.
+Accounts are the suite's: `iosuite admin NAME --app iothings` makes someone an admin of ioThings only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment,
-which wins:
+ioThings has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioThings, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iothings        # what may be set, with the value stored now
+iosuite set iothings PUBLIC_URL https://things.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | the MariaDB / MySQL database (`iothings`) |
-| `IOSUITE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD` | the Shared ioSuite database (`iosuite`): accounts, sessions, app passwords, roles and suite-wide settings |
-| `COOKIE_DOMAIN` | the domain the sign-in is shared on (`example.com`) |
-| `HOST`, `PORT` | where the server listens (every address, 8700) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | serve HTTPS directly instead of behind a reverse proxy |
-| `TZ` | the time zone of the server log |
-| `PUBLIC_URL` | the address people use, for links (the ioTask task's link back, the MCP tools) |
-| `MAX_FILE_MB` | the largest file that may be attached (100) |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the first admin, made on the first start when there are no accounts |
-| `MCP` | `1` keeps the MCP server on, whatever the setting says |
-| `MCP_USER` | the account `python -m app.mcp` (stdio) acts as |
-| `UPDATE_CHECK` | `0` turns the daily version check off for good |
-| `DATA_DIR`, `LOG_FILE` | where the app writes on its own (`data/`), and its log (`DATA_DIR/iothings.log`) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://things.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iothings/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iothings`) |
+| `MAX_FILE_MB` | largest attachment (MB) (`100`). One manual, receipt or photo as uploaded |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 
-The suite has one version and its apps are updated together: Settings › Global settings › Updates (suite admins, in
-any app). Settings › Server shows the version, the server log and Restart. From a shell: `./update.sh`. In Docker,
-pull the image.
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioThings runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 ## API
+
+The paths below are ioThings' own: at the suite's address they are inside its folder (`https://home.example.com/things/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/things/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 | For | Standard | Where |
 | --- | --- | --- |
 | Web and JSON clients | **REST/JSON**: things (list, search, by place or label, archived), one thing, add, change, duplicate, delete, its files (each gets a name of its own, such as iothings-000123.jpg, never the one it was uploaded under), upkeep and log; places and labels | `/api/`, OpenAPI docs at `/api/docs` |
 | Inventory PDF | everything, photos and receipts included, as one PDF | `POST`/`GET /api/export-pdf`, `GET /api/export-pdf/file` |
 | Homebox | Homebox's CSV, in and out; everything from a Homebox server, files and log too | `POST /api/import/homebox`, `GET /api/export.csv`, `POST`/`GET /api/import/homebox-server` |
-| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `https://host/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
+| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
 
 Settings › Account makes **app passwords**, for the REST API (HTTP Basic, or `Authorization: Bearer <app password>`)
 and for MCP.
 
 ```sh
-curl -u alex:APP-PASSWORD "https://things.example.com/api/items?q=boiler"
+curl -u alex:APP-PASSWORD "https://sync.example.com/things/api/items?q=boiler"
 curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: application/json' \
   -d '{"name": "Dishwasher", "manufacturer": "Bosch", "location": "House / Kitchen", "warrantyExpires": "2028-06-01"}' \
-  https://things.example.com/api/items
-curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: text/csv' --data-binary @homebox.csv https://things.example.com/api/import/homebox
+  https://sync.example.com/things/api/items
+curl -u alex:APP-PASSWORD -X POST -H 'Content-Type: text/csv' --data-binary @homebox.csv https://sync.example.com/things/api/import/homebox
 ```
 
 The MCP tools: `overview`, `search_items`, `get_item`, `create_item`, `update_item`, `delete_item`, `list_locations`,

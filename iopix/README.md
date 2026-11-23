@@ -29,172 +29,119 @@ You don't need digiKam to use it: point it at a folder of photos and it keeps th
 
 ## Run
 
-```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iopix
-./setup.sh
-```
-
-Its last step is the list of the suite's apps on this machine: tick one to add it, untick one to remove it (its database and data stay), `r` and its number to ask its questions again; `./setup.sh --apps` shows only that list, and the [one-line installer](../README.md#install) does the same from anywhere. Adding (flag `--also iocalendar,ionote`, `--also all`; `--remove` and `--reconfigure` take lists too; `IOPIX_ALSO` in the environment), puts
-other apps of the suite in this same machine, beside iopix (`/opt/iocalendar/app` next to `/opt/iopix/app`),
-each asking its own setup questions with the answers of the apps already here as the defaults (Enter keeps
-one; `--yes` takes them all): the same database server with a database of its own named after the app (`iostart`,
-`iocalendar`, `iothings`, ...; the user needs rights on those names too, or give a MariaDB administrator), the same Shared ioSuite
-database, sign-in domain and admin, a public address made like the others' (`iosuite-shared install`, from the shared library). Each app keeps its usual port
-and updates itself as always. The Proxmox installer offers the same as a checklist, for one container with several apps.
-
-The databases and users need not exist beforehand: give a MariaDB / MySQL administrator (the question after the
-databases; flag `--db-admin USER:PASSWORD`, or `IOPIX_DB_ADMIN`, also in the Proxmox installer) and `setup.sh` creates
-the app's database and user, the Shared ioSuite database and user and, with other apps installed alongside, their
-databases too, with the passwords you answered (`iosuite-shared provision`). Nothing is dropped, and the administrator's
-password is used once and not written anywhere.
-
-`setup.sh` is the installer: it asks where the photos are, whether you use digiKam with them and if so whether its database is the SQLite file or MySQL/MariaDB (and tests the connection), the MySQL/MariaDB server for iopix's own database (host, port, database, user, password; it tests the connection and creates the database when the account may), which features you want (content search, places, objects, text recognition, descriptions; each downloads its model), the port, an admin account, and whether to start the viewer at login (launchd on macOS, systemd on Linux). Then it creates the Python environment, installs the packages, downloads the models, writes `config.env`, creates the admin and starts the service. Run it again at any time to add a feature; it keeps what is there. Flags skip the questions (`./setup.sh --help`), e.g. `./setup.sh --yes --photos /srv/photos --digikam-db db:3306/digikam:digikam:secret --db db:3306/iopix:iopix:secret --features search,places --admin alex:secret` (`--db` is iopix's own database; without it iopix asks for one on its set-up page), or `./setup.sh --yes --photos /srv/photos --no-digikam` when you don't use digiKam.
-
-It also installs what the viewer needs from the system when it is missing: Python 3.10+, `exiftool` (metadata editing), `ffmpeg` (video thumbnails), `jpegtran` from libjpeg-turbo (lossless JPEG rotate and crop) and the MariaDB client (`mysqldump`, for the backups of iopix's database and of a MySQL/MariaDB digiKam database), with Homebrew on macOS (offering to install Homebrew first) or apt/dnf/zypper/pacman on Linux (`--no-system-deps` to skip). Without the service, `./run.sh` starts it in the foreground.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/iopix.sh` and `proxmox/install/iopix-install.sh` follow the community-scripts (ProxmoxVE) framework layout, so they can be submitted upstream as they are. Until then the ct script points the framework at this repository for the install script (`COMMUNITY_SCRIPTS_URL`), while the engine itself comes from community-scripts. On the Proxmox host, as root:
+ioPix is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioPix in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iopix/proxmox/ct/iopix.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iopix
 ```
 
-It asks about the app first: the photo folder, then where digiKam's database is (the digiKam folder on the host, or MariaDB host, port, database, user, password, or "I don't use digiKam"), where iopix keeps its own database (MariaDB installed in the container with the database created, or a server: host, port, database, user, password, the digiKam answers being the defaults), whether the viewer may write into the library (yes: sidecar edits; the mounts are read/write and the container is created privileged, since an unprivileged container cannot write files owned by a host user), which features to install (each downloads its model), and the admin account; then the framework's own questions (resources, network). It creates a Debian 13 container (4 CPU, 4 GB, 16 GB disk by default), bind-mounts the library at `/library/photos` and `/library/digikamDB` (the photos only, without digiKam), and runs the app's own `setup.sh` inside with those answers: packages, model downloads, settings, admin, and the `iopix` service on port 8600. For unattended runs set `IOPIX_PHOTOS`, `IOPIX_DB` (`sqlite:/path`, `mysql:host:port/db:user:pass` or `none`), `IOPIX_DB` (`local` or `host:port/db:user:pass`), `IOPIX_WRITE` (1/0), `IOPIX_FEATURES` and `IOPIX_ADMIN` in the environment. The passwords reach `setup.sh` inside the container through its environment (a root-only file pushed in and removed again), not on a command line. The setup's output inside the container is kept in `/opt/iopix/setup.log`; on failure its last lines are shown and the command to rerun it is printed. The container's `update` command pulls the latest code and keeps the settings and data. Because the container cannot see digiKam's process, it runs with `DIGIKAM_CHECK=none`: database writes go ahead without checking or asking. These scripts have not been run on a Proxmox host since the move to the iopix name and layout; they are checked for syntax in CI and mirror the tested `setup.sh`.
-
-### Docker
-
-`docker-compose.yml` pulls the published image (`ghcr.io/avandeputte/iosuite/iopix:latest`, built by the GitHub workflow for amd64 and arm64) and works as a stack in Dockge or Portainer: set the photos path, digiKam's database, the admin password and the database password and start it; `docker compose up -d --build` builds from the checkout instead. The image is public; no registry login is needed.
-
-The container runs as its own user, `iopix` (uid 1000), not as root; `/data` and the app belong to it. The stack mounts the photo folder read-only at `/library/photos`, keeps everything the viewer writes in the named volume `iopix-data` (mounted at `/data`), ships a `mariadb` service (`iopix-db`, its data in its own volume) for the viewer's own database with the `DB_*` lines pointing at it (point them at a server you already run instead, and drop the service, if you prefer), and is written for digiKam on MariaDB (`DIGIKAM_DB_*` in the `environment` block); for SQLite drop those lines and uncomment the mount of the digiKam folder at `/library/digikamDB`. Without digiKam, set `DIGIKAM_DB_TYPE: none`, drop the other `DIGIKAM_DB_*` lines and the `:ro` on the photos (so edits can be saved in sidecars); the library then lives in the `iopix-data` volume. `ADMIN_USER` / `ADMIN_PASSWORD` create the admin on the first start. The image (Debian slim, Python 3.12) contains ffmpeg, exiftool, libheif, the MariaDB client and, with the default build argument `AI=1`, the content-search, text-recognition and object-detection packages; `CAPTIONS=1` adds PyTorch (CPU build) and transformers for photo descriptions, which are slow without a GPU. The container's health check polls `/api/status`, which stays open when sign-in is required.
-
-- **Models and data** are not in the image. Download them from Settings › AI, or with `docker compose exec -e HF_HUB_OFFLINE=0 iopix python -m iopix.ai.models download <key>` (the keys are those of Settings › AI: `clip`, `siglip2`, `jinaclip`, `blip`, `blip_large`, `florence2`, `yolox`, `yolox_m`, `yolox_l`, `yolox_x`, `yunet`, `scrfd`, `retinaface`, `sface`, `arcface`, `aesthetic`, `eyes`, `mivolo`, `geonames`, `ocr`). They land in `/data/models` and `/data/geonames` on the volume and survive rebuilds. `setup.sh` is for the `.venv` install, not the container.
-- **A volume from before the non-root image** (or a bind-mounted data folder) is still owned by root and the viewer cannot write it: give it to uid 1000 once, `docker run --rm -v iopix-data:/data alpine chown -R 1000:1000 /data` (or `chown -R 1000:1000` on the bind-mounted folder), then start the stack again. The same goes for the photo and digiKam folders when they are mounted writable: uid 1000 must be allowed to write them.
-- **config.env** is `/data/config.env` in the volume (the image's `/app/config.env` links to it), so what the set-up page writes there survives a new image. The compose file's `environment:` wins over it; the stack as shipped sets the `DB_*` lines there, so Settings › Library › iopix database says so instead of switching.
-- **Editing** needs the photos mount writable (drop `:ro`): sidecars are written next to the photos, and in-file writing rewrites the photos themselves.
-- **Writing digiKam's database** ("Apply to digiKam database", tag manager, faces, place tags, badges, new folders and uploads) needs the digiKam folder writable too when digiKam uses SQLite. With MySQL the folder is not mounted at all (`DIGIKAM_DB_HOST: host.docker.internal` for a server on the Docker host); the image's `mariadb-dump` takes the backup before each write, or `DIGIKAM_DB_DUMP` names a command that does.
-- A container cannot see the host's processes, so the Dockerfile sets `DIGIKAM_CHECK=none`: the viewer does not check whether digiKam is open before a database write. Changes made in the viewer and in digiKam at the same moment to the same photo can overwrite each other; on MariaDB the database itself stays consistent.
-
-The image holds no models. On its first start the container downloads the models named in `AUTO_MODELS` (default `siglip2,yolox,geonames`, about 1.6 GB) into the `/data` volume one after another; the library is browsable meanwhile and content search, objects and places switch on as each arrives. Later starts find them in the volume. `AUTO_MODELS=""` skips this; `blip` can be added when the image was built with `CAPTIONS=1`. The same variable works outside Docker (the Linux installer uses it).
-
-### Linux installer
-
-`installer/make-installer.sh` builds `dist/iopix-install.sh`, one self-extracting file (the app without models, about 200 KB). On the target machine, as root:
+It asks for the MariaDB server, the first admin and the suite's address, and for ioPix the folder with the photos and,
+when you use digiKam with them, the folder of its database; then it starts the service. Leave `--apps` out for the
+list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-sh iopix-install.sh --photos /srv/photos --digikam-sqlite /srv/digikamDB
-sh iopix-install.sh --photos /srv/photos --no-digikam      # you don't use digiKam
+iosuite install --add iopix          # --remove iopix stops running it; what it stored stays
+iosuite install --extras iopix-ai    # the packages of the AI features: content search, text in photos, objects and faces
 ```
 
-It unpacks the app under `/opt/iopix/app`, then runs the app's own `setup.sh` there with the answers it was given: the system packages the viewer shells out to (python3 with venv, ffmpeg, exiftool, libheif, the MariaDB client) with apt, dnf, zypper or pacman; the venv and the Python packages; the features and their model downloads (`--features search,places,objects,ocr,captions`, `--features none` for browsing only, `--captions` for all of them; asked when not given); the admin account (`--admin NAME:PASS`, asked when not given); the settings in `/opt/iopix/app/config.env` with the data in `/opt/iopix/data`. Then it installs and starts a systemd service as the `iopix` user on port 8600; the app folder and its venv belong to that user and a rule in `/etc/sudoers.d/iopix` lets it run exactly `systemctl restart iopix`, so the web app's "Update now" works. `--yes` takes every default; `--help` lists the rest (`--prefix`, `--data`, `--port`, `--host`, `--user`, `--digikam-db HOST:PORT/DB:USER:PASSWORD`, `--db local|HOST:PORT/DB:USER:PASSWORD` for the viewer's own database: `local` installs MariaDB on the machine and creates the database, `--no-service`, `--no-system-deps`). The passwords can stay off the command line: `IOPIX_ADMIN=NAME:PASS` and `IOPIX_DIGIKAM_DB=HOST:PORT/DB:USER:PASSWORD` in the environment do what `--admin` and `--digikam-db` do (the installer hands them to `setup.sh` the same way, never as arguments). Running it again upgrades the code and keeps the data folder and the env file; so does `./update.sh` in `/opt/iopix/app`. The installer was tested on Ubuntu 24.04 and Fedora 41 before the move to the iopix name and layout; the current version has not been run on them since and is only checked for syntax in CI. The GitHub workflow builds the installer on every push and attaches it to tagged releases.
+In Docker, the stack file ([docker-compose.yml](../docker-compose.yml)) mounts the photos folder at `/library/photos`,
+and the image tagged `ai` has the AI packages (amd64 only). On Proxmox VE the container's script asks for the photos
+folder and binds it into the container. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
+
+ioPix can run in a copy of the program of its own (a second service on the same machine, a container of its own,
+another server), so that a scan of a large library never slows the other apps; it stays one suite, reached at the same
+addresses: [Several copies and several servers](../docs/docs/start/several-apps.md).
+
+| | |
+| --- | --- |
+| Address | `/pix/` at the suite's address (`https://home.example.com/pix/`), and a name of its own if you give it one |
+| Devices | scripts with an app password at `/pix/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports); the iPhone, iPad, Mac and Apple TV apps show ioPix's own pages, so they take the pages' address |
+| MCP | `/pix/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iopix`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+| On the server | exiftool (metadata editing), ffmpeg (video thumbnails), `jpegtran` from libjpeg-turbo (lossless rotate and crop), libheif and the MariaDB client (the backups of digiKam's database); the installer, the Proxmox script and the container image have them |
+
+With nothing set, ioPix starts on a library of its own: no digiKam, the photos in a folder beside its data. The
+settings `PHOTOS_ROOT`, `DIGIKAM_DB_TYPE` and `DIGIKAM_DB_DIR` (below) name the real ones; the installer stores what
+you answer.
+
+- **Models** are not part of the program. Turn a feature on under Settings › AI and its model is downloaded into
+  ioPix's data folder (`iopix/models` in the machine's `DATA_DIR`; on the `/data` volume in a container, so a new image
+  does not fetch them again), or name them in the setting `AUTO_MODELS` (`siglip2,yolox,geonames`, about 1.6 GB) and
+  they are fetched one after another at the next start, the library browsable meanwhile. From a shell:
+  `.venv/bin/python -m iopix.ai.models download <key>` (the keys are those of Settings › AI: `clip`, `siglip2`,
+  `jinaclip`, `blip`, `blip_large`, `florence2`, `yolox`, `yolox_m`, `yolox_l`, `yolox_x`, `yunet`, `scrfd`,
+  `retinaface`, `sface`, `arcface`, `aesthetic`, `eyes`, `mivolo`, `geonames`, `ocr`).
+- **Editing** needs the photos folder writable by the account the suite runs as (uid 1000 in a container): sidecars
+  are written next to the photos, and in-file writing rewrites the photos themselves.
+- **Writing digiKam's database** ("Apply to digiKam database", tag manager, faces, place tags, badges, new folders
+  and uploads) needs the digiKam folder writable too when digiKam uses SQLite. With MySQL or MariaDB there is no
+  folder; `mariadb-dump` takes the backup before each write, or `DIGIKAM_DB_DUMP` names a command that does.
+- **In a container**, or with digiKam on another machine, ioPix cannot see whether digiKam is open: the stack file
+  sets `DIGIKAM_CHECK=none`, and no check is made before a database write. Changes made in ioPix and in digiKam at
+  the same moment to the same photo can overwrite each other; on MariaDB the database itself stays consistent.
+
+Accounts are the suite's: `iosuite admin NAME --app iopix` makes someone an admin of ioPix only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-The settings are in `config.env` in the app folder (`setup.sh` writes the ones it asks about; every app of the suite uses the same file name and names), or in the environment, which wins; `config.env.example` lists them all. `app/config.py` is the source of truth for the first table (the last rows live in `app/data/appdb.py` and the shared updater in `iosuite_shared.updates`), `app/digikam/dkdb.py` for the second.
+ioPix has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioPix, or from a shell;
+a change applies when the app starts again:
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `DIGIKAM_DB_DIR` | `~/Pictures/digikamDB` | folder containing `digikam4.db` (SQLite) |
-| `PHOTOS_ROOT` | `~/Pictures/photos` | photo folder, used when the library has one album root; otherwise digiKam's own per-root paths |
-| | | Settings › Album roots maps each album root digiKam recorded (e.g. `/Users/alex/Pictures/photos`) to where it is mounted here (e.g. `/photos` in a container), per root; a saved mapping overrides `PHOTOS_ROOT` |
-| `DATA_DIR` | `./data` | everything the app writes; must not be inside the two folders above |
-| `AUTO_MODELS` | empty | models to download when missing at start, e.g. `siglip2,yolox,geonames` (keys as in Settings › AI); set by `setup.sh` and the Docker image |
-| `GOOGLE_MAPS_API_KEY` | unset | Google Maps API key (the Settings page can store one instead); used only when the map provider is set to Google |
-| `ADMIN_USER` / `ADMIN_PASSWORD` | unset | create the admin account at start when no user exists yet (containers, installers) |
-| `IOSUITE_DB_HOST` / `IOSUITE_DB_PORT` / `IOSUITE_DB_NAME` / `IOSUITE_DB_USER` / `IOSUITE_DB_PASSWORD` | `DB_HOST` / `DB_PORT` / `iosuite` / `iosuite` / none | the Shared ioSuite database (MariaDB): accounts, sessions, roles, suite-wide settings and the list of apps, see Users and permissions |
-| `COOKIE_DOMAIN` | unset | the domain the session cookie is shared on (e.g. `example.com` for `photo.example.com` and `notes.example.com`); a LAN address or name outside it gets a cookie of its own |
-| `PUBLIC_URL` | unset | the address people reach the viewer at (e.g. `https://photo.example.com`), listed in the suite's list of apps for the start page and the other apps; unset, the best address it has been reached at is listed |
-| `HOST` / `PORT` | `0.0.0.0` / `8600` | where the server listens (every app of the suite has its own port) |
-| `TLS_CERT_FILE` / `TLS_KEY_FILE` | unset | HTTPS served directly instead of behind a reverse proxy |
-| `LOG_FILE` | `DATA_DIR/iopix.log` | the server's rotating log (empty: none) |
-| `EDITING` | `1` | `0` removes metadata editing |
-| `DB_WRITE` | `1` | `0` disables "Apply to digiKam database" |
-| `DIGIKAM_CHECK` | `pgrep` | how to tell whether digiKam is running before a database write: `pgrep` looks for the process on this machine; `none` (Docker, containers, digiKam on another machine) does not check and does not ask |
-| `SEMANTIC` | `1` | `0` turns content search off even when installed |
-| `ANALYSIS` | `1` | `0` turns the background analysis jobs off |
-| `CAPTIONS` | `1` | `0` turns the photo-description job off |
-| `BG_THREADS` | half the cores | cores one background job may use (capped at cores − 1; also in Settings) |
-| `PREWARM_WORKERS` / `ANALYSIS_WORKERS` | `BG_THREADS` | thread counts for the thumbnail pre-warm and the analysis job, if you want them different |
-| `JOBS_MEMORY_MB` | 60% of the memory limit | the most memory the analysis process may hold before it is stopped (`0`: no ceiling) |
-| `MEMORY_RESERVE_MB` | 8% of the memory limit, at least 256 | free memory kept for everything else: below it no analysis starts and a running one is stopped (`0`: off) |
-| `JOBS_PROCESS` | `1` | `0` runs the analysis inside the web app instead of a process of its own (no memory watch) |
-| `PREWARM` | `1` | build all grid thumbnails in the background after startup |
-| `SCANNER_LOOP` | `1` | `0` keeps the file scanner's background loop off (the test suite sets it; Settings › Library can still start a scan) |
-| `REINDEX_POLL` | `20` | seconds between checks for digiKam database changes |
-| `INDEX_PATCH` | `1` | a change to a few photos rewrites only their rows of the search index; `0` rebuilds the whole index at every change |
-| `THUMB_HEIGHT` / `THUMB_MAX_WIDTH` / `THUMB_QUALITY` | `360` / `1080` / `76` | grid thumbnail size and JPEG quality |
-| `PREVIEW_SIZE` / `PREVIEW_QUALITY` | `2560` / `86` | viewer previews: long edge and JPEG quality |
-| `PREVIEW_CACHE_MAX_MB` | `8000` | preview cache cap, pruned at startup and every six hours |
-| `VARIANT_CACHE_MAX_MB` | `2000` | cap of the cropped and small thumbnails and the video chapter frames, pruned the same way |
-| `EXIFTOOL` | unset | path to exiftool; otherwise the PATH, then digiKam's bundled copy |
-| `HF_HUB_OFFLINE` | unset | the app loads installed models from disk without contacting the model hub (and downloads only through Settings › AI); set `1` to forbid the hub altogether |
-| `MCP` | unset | `1` switches the MCP endpoint at `/mcp` on regardless of the setting (it is off by default; Settings › Server › MCP server) |
-| `MCP_USER` | unset | the account `python -m iopix.mcp` (stdio) acts as (over HTTP, every `/mcp` request signs in with an app password) |
-| `DB_TYPE` / `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | unset | the viewer's own MySQL/MariaDB database (`DB_TYPE=mysql`, port 3306 by default); Settings › iopix database writes them; without them the viewer shows its database set-up page |
-| `IOPIX_REPO` / `IOPIX_BRANCH` | `avandeputte/iosuite` / `main` | where update checks and `update.sh` fetch from |
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `DIGIKAM_DB_TYPE` | `sqlite` | `sqlite` or `mysql` (MariaDB too), or `none` when you don't use digiKam (see Working without digiKam) |
-| `DIGIKAM_DB_HOST` / `DIGIKAM_DB_PORT` | `127.0.0.1` / `3306` | server |
-| `DIGIKAM_DB_NAME` / `DIGIKAM_DB_USER` / `DIGIKAM_DB_PASSWORD` | `digikam` / `digikam` / empty | database and account (the same ones digiKam uses) |
-| `DIGIKAM_DB_BACKUP` | `auto` | a full copy of digiKam's database before destructive operations only (deleting photos, deleting a tag, a merge): the file for SQLite, `mysqldump`/`mariadb-dump` for MariaDB (without one, those operations are refused); `skip`: never, the server is backed up another way. Also in Settings › Library › digiKam database |
-| `DIGIKAM_MYSQL_DATES` | measured | how digiKam's MySQL/MariaDB database holds date-times: `local` or `utc`. Measured at start by comparing `Images.modificationDate` with the files' own times (digiKam's source writes UTC for MySQL, but libraries are found holding local time); set it only if the measurement cannot see the files |
-| `DIGIKAM_DB_DUMP` | unset | a command writing a full dump to stdout, used instead of `mysqldump` (e.g. `docker exec mariadb mariadb-dump --single-transaction --routines --triggers -udigikam -pPASS digikam`) |
-
-## Updates
-
-- **Standalone (checkout or the Linux installer):** `./update.sh` in the app folder (`/opt/iopix/app` after the installer). It fetches the latest code (git, or the GitHub tarball when there is no `.git`), keeps `config.env`, the data folder and the Python environment, installs the packages the new version asks for (the groups already installed, from the fetched `pyproject.toml`) and only then moves the code in, so a failed package install leaves the installed version running as it was; then it restarts the service (launchd or systemd). `./update.sh --check` only reports; `--force` reinstalls even when nothing is newer; `IOPIX_REF=<sha>` installs (or, with `--check`, compares against) that commit. When the installed commit is already the one asked for, the script says so and does not restart. After the Linux installer the app folder belongs to the service user and a sudoers rule lets that user run `systemctl restart iopix`, so the update from the web app works there too.
-- **Proxmox:** `update` inside the container (the framework's command) runs the same script.
-- **Docker:** `docker compose pull && docker compose up -d`.
-- **From the web app:** the suite has one version, the same for every app, and the apps are updated together: Settings › Global settings › Updates (suite admins, in any app) shows the installed version and the newest one on GitHub, with one Update button that runs each app's `update.sh` (not in Docker, which says to pull instead); each app restarts itself when its update finishes. Settings › Server shows the version and commit iopix runs.
-- **Daily check:** once a day the viewer asks GitHub whether a newer version exists (on by default; the Updates page switches it off for the suite, `UPDATE_CHECK=0` locks it off for this app); only the public commit list is fetched, nothing about the install is sent.
-- **From an MCP client (e.g. Claude):** ioStart's `suite_version` and `update_suite` tools, for suite admins.
-- **Server log:** Settings › Server shows the end of the viewer's own log (`data/iopix.log`), filtered by level or text, with page requests hidden unless asked, and downloads the whole file. Edits applied to digiKam's database, refusals and failures are logged there.
-
-## Reverse proxy and HTTPS
-
-The viewer speaks plain HTTP on port 8600 and has no TLS of its own. Run it behind a reverse proxy that terminates HTTPS, such as [Caddy](https://caddyserver.com), [Nginx Proxy Manager](https://nginxproxymanager.com) or HAProxy, and reach it only through that. Besides encryption, HTTPS makes the browser treat the viewer as a secure context, which is what "Add to Home Screen" / "Install app" and the service worker need from any machine other than localhost. Caddy, with automatic certificates:
-
-    photos.example.com {
-        reverse_proxy localhost:8600
-    }
-
-Two things to keep in mind on any proxy:
-
-- `/mcp` streams responses (server-sent events): the proxy must not buffer that path. Caddy passes streams through as is; with nginx / Nginx Proxy Manager add `proxy_buffering off;` and a long `proxy_read_timeout` for `location /mcp`.
-- The MCP endpoint is **off on a fresh install** (an updated install keeps what it had): Settings › Server › MCP server (or `MCP=1` in the environment) turns it on; while off, `/mcp` answers 404.
-- Every `/mcp` request signs in with an app password (`Authorization: Bearer <app password>`), the read-only tools included; without one `/mcp` answers 401. An admin's app password also runs the updater: keep it secret.
-
-With the proxy in place the addresses in this README change from `http://<host>:8600/...` to `https://photos.example.com/...`; set `PUBLIC_URL=https://photos.example.com` so links in MCP results use it too.
-
-### Sign-in at the proxy (Cloudflare Access, Authelia, Authentik, oauth2-proxy…)
-
-When the proxy already makes people sign in, the viewer can take that sign-in instead of asking again. The proxy passes who signed in in a request header, and the viewer treats that person as signed in when an account exists for them. It matches the account's email address first, then its name. Set it up once for the whole suite under Settings › Security › Sign-in at the proxy (kept in the Shared ioSuite database, never in `config.env`):
+```sh
+iosuite settings iopix        # what may be set, with the value stored now
+iosuite set iopix PUBLIC_URL https://photos.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `AUTH_PROXY` | `cloudflare`, `haproxy`, `nginx`, `caddy`, `traefik` or `header` (any other proxy); `off` by default |
-| `AUTH_PROXY_HEADER` | the header(s) with the user, comma-separated. Default for `cloudflare`: `Cf-Access-Authenticated-User-Email`; for the others: `Remote-User`, `X-Forwarded-User`, `X-Auth-Request-User`, `X-Auth-Request-Email`, `X-Forwarded-Email` |
-| `AUTH_PROXY_TRUSTED` | addresses or networks the proxy connects from, e.g. `172.18.0.0/16` for a Docker network; default `127.0.0.1,::1` (a proxy on the same machine) |
-| `AUTH_PROXY_CREATE` | `viewer`, `member` or `editor`: create an account with that role for someone the proxy lets in who has none; `deny`: they get a "No access" page and cannot sign in here; empty (default): they get the sign-in screen |
-| `CF_ACCESS_TEAM`, `CF_ACCESS_AUD` | Cloudflare Access team domain (`myteam.cloudflareaccess.com`) and the application's AUD tag |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://photos.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iopix/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iopix`) |
+| `PHOTOS_ROOT` | photos folder. Where the photos are, when the library has a single album root. Empty: a folder named photos in the data folder |
+| `DIGIKAM_DB_TYPE` | digiKam database (`none`). none: no digiKam at all, ioPix keeps the library itself. sqlite: digikam4.db in the folder below. mysql: the server below |
+| `DIGIKAM_DB_DIR` | folder with digikam4.db |
+| `DIGIKAM_DB_HOST` | digiKam MySQL host (`127.0.0.1`) |
+| `DIGIKAM_DB_PORT` | digiKam MySQL port (`3306`) |
+| `DIGIKAM_DB_NAME` | digiKam MySQL database (`digikam`) |
+| `DIGIKAM_DB_USER` | digiKam MySQL user (`digikam`). Its password is set in ioPix under Settings › Library › digiKam database |
+| `DIGIKAM_DB_BACKUP` | back up digiKam's database before destructive operations (`auto`) |
+| `DIGIKAM_DB_DUMP` | command that dumps digiKam's MySQL database. Used instead of mysqldump, e.g. through docker exec |
+| `DIGIKAM_CHECK` | how to tell that digiKam is closed (`pgrep`). none: digiKam runs on another machine and cannot be seen |
+| `DIGIKAM_MYSQL_DATES` | dates in a MySQL digiKam library. Empty: detected |
+| `SIDECAR_COMPAT` | name new sidecars photo.xmp (`1` or `0`; off by default) |
+| `EDITING` | allow metadata edits (`1` or `0`; on by default) |
+| `DB_WRITE` | allow “Apply to digiKam database” (`1` or `0`; on by default) |
+| `PREWARM` | build all grid thumbnails in the background (`1` or `0`; on by default) |
+| `SEMANTIC` | search by content (`1` or `0`; on by default) |
+| `ANALYSIS` | analyse photos in the background (`1` or `0`; on by default) |
+| `CAPTIONS` | describe every photo in a sentence (`1` or `0`; on by default) |
+| `AUTO_MODELS` | models to download when missing. For example siglip2,yolox,geonames |
+| `BG_THREADS` | cores a background job may use. Empty: half the machine |
+| `PREWARM_WORKERS` | threads for thumbnails. Empty: the cores above |
+| `ANALYSIS_WORKERS` | threads for analysis. Empty: the cores above |
+| `JOBS_PROCESS` | run AI jobs in a process of their own (`1` or `0`; on by default) |
+| `JOBS_MEMORY_MB` | most memory the job process may hold (MB). Empty: 60% of the machine's. 0: no limit |
+| `MEMORY_RESERVE_MB` | free memory the server keeps (MB). Empty: 8% of the machine's |
+| `THUMB_HEIGHT` | thumbnail height (`360`) |
+| `THUMB_MAX_WIDTH` | thumbnail width at most (`1080`) |
+| `THUMB_QUALITY` | thumbnail quality (`76`) |
+| `PREVIEW_SIZE` | preview size (longest edge) (`2560`) |
+| `PREVIEW_QUALITY` | preview quality (`86`) |
+| `PREVIEW_CACHE_MAX_MB` | preview cache at most (MB) (`8000`) |
+| `VARIANT_CACHE_MAX_MB` | cut-down thumbnails cache at most (MB) (`2000`) |
+| `REINDEX_POLL` | seconds between checks of digiKam's database (`20`) |
+| `INDEX_PATCH` | update the search index in place after small changes (`1` or `0`; on by default) |
+| `SCANNER_LOOP` | file scanner runs by itself (`1` or `0`; on by default) |
+| `EXIFTOOL` | exiftool to use. Empty: the one on the PATH |
 
-The header is only believed from the proxy. A request that reaches the viewer any other way is ignored, whatever headers it carries. The one exception is Cloudflare Access with `CF_ACCESS_TEAM` and `CF_ACCESS_AUD` set: there the signed token Cloudflare adds to every request (`Cf-Access-Jwt-Assertion`) is checked against your team's keys, and the email is taken from that token. This is the recommended setup for a Cloudflare Tunnel. Without those two settings, `cloudflared` must connect from an address in `AUTH_PROXY_TRUSTED`.
-
-So the header can't be faked, the proxy must replace it on every request, and the viewer must not be reachable except through the proxy (bind it to `127.0.0.1` or firewall the port). Examples, with Authelia or a similar forward-auth service in front:
-
-- **Caddy**: `forward_auth authelia:9091 { uri /api/authz/forward-auth  copy_headers Remote-User Remote-Email }` before `reverse_proxy localhost:8600`
-- **Traefik**: a `forwardAuth` middleware with `authResponseHeaders: [Remote-User, Remote-Email]`
-- **nginx**: `auth_request` to the auth service, then `auth_request_set $user $upstream_http_remote_user; proxy_set_header Remote-User $user;`; with oauth2-proxy, `X-Auth-Request-Email` works as is
-- **HAProxy**: `http-request del-header Remote-User` first, then after the auth check (e.g. haproxy-auth-request) `http-request set-header Remote-User %[var(req.auth_response_header.remote_user)]`; with HAProxy's own basic auth, `http-request auth unless { http_auth(users) }` and `http-request set-header Remote-User %[http_auth_user]`
-- **Cloudflare Tunnel**: add an Access application with a policy for your hostname, then pick Cloudflare under Settings › Security › Sign-in at the proxy and fill in `CF_ACCESS_TEAM` and `CF_ACCESS_AUD` (Zero Trust › Access › Applications › your app › Overview › Application Audience tag)
-
-A sign-in at the proxy also starts a session in the viewer, so the same browser stays signed in when it is back on the home network, where requests skip the proxy. Through Cloudflare, Sign out also ends Cloudflare Access's session (its sign-out page, `/cdn-cgi/access/logout`); with the other proxies, sign out at the proxy. Keep Sign-in required (Settings › Global settings › Apps) on, as it is by default, so nobody gets in without the proxy's sign-in.
-
-The built-in sign-in keeps working alongside: anyone the proxy does not vouch for (on your own network, where the hostname points straight at the server, or someone whose email has no account) gets the viewer's usual sign-in screen. Requests that come through Cloudflare (they carry `Cf-Ray`) never get one-click sign-in: passwordless accounts are left out of the picker and refused, and a passwordless session started at home does not work from outside.
-
-These settings are kept in the Shared ioSuite database for the whole suite and set in the app (Settings › Security › Sign-in at the proxy, by a suite admin), never in `config.env`, so one Cloudflare Access application covering every app (`*.example.com`, one AUD tag) is set up once.
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ### Sidecar file names
 
@@ -202,13 +149,32 @@ digiKam writes a photo's sidecar as `photo.jpg.xmp` by default, or as `photo.xmp
 
 ### Google API keys
 
-The Google Maps key (Settings › Map provider) reaches every browser in the tile and Street View URLs, so restrict it by HTTP referrer to the viewer's address. The APIs called from the server (Geocoding, Places, Elevation, Cloud Vision) can use a second key restricted by API and IP address: enter it as the server key in the same setting, or `GOOGLE_SERVER_KEY` in the environment; without one, the first key is used for both.
+The Google Maps key (Settings › Map provider) reaches every browser in the tile and Street View URLs, so restrict it by HTTP referrer to the viewer's address. The APIs called from the server (Geocoding, Places, Elevation, Cloud Vision) can use a second key restricted by API and IP address: enter it as the server key in the same setting; without one, the first key is used for both.
+
+## Updates
+
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioPix runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+
+## Reverse proxy and HTTPS
+
+ioPix is reached through the suite's three ports: the pages (80), devices (8443) and MCP (8444). A reverse proxy gives each
+a name and HTTPS, for the whole suite at once, and can make people sign in first (Cloudflare Access, Authelia, oauth2-proxy):
+[Reverse proxy and HTTPS](../docs/docs/run/reverse-proxy.md) and [Cloudflare Tunnel and Access](../docs/docs/run/cloudflare.md) in the
+guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
+Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
+
+HTTPS also makes the browser treat ioPix as a secure context, which "Add to Home Screen" / "Install app" and the service worker need from any machine other than localhost. The iPhone, iPad, Mac and Apple TV apps show ioPix's own pages, so they take the pages' address and sign in there; scripts with an app password use the address for devices.
 
 ## Users and permissions
 
-Accounts are the **ioThing suite's shared accounts** in the **Shared ioSuite database** (the `iosuite-shared` library, in [shared/](https://github.com/avandeputte/iosuite/tree/main/shared); a MariaDB database shared with ioNote, ioContact and the other apps, holding accounts, sessions, roles, the suite-wide settings and the list of apps): one name, password and session for every app, so someone signed in at `photo.example.com` is signed in at `notes.example.com` too when the apps share a domain (`COOKIE_DOMAIN`). What is iopix's own is kept per app: the role an account holds here, its display settings and the person it is linked to. A *suite admin* is admin in every app; an app admin manages this app's settings and the accounts' roles here. Point iopix at that database with `IOSUITE_DB_HOST`, `IOSUITE_DB_NAME`, `IOSUITE_DB_USER` and `IOSUITE_DB_PASSWORD` in `config.env` (the tables are created at start; `iosuite-shared migrate` folds an older install's `user_accounts` table into it).
+Accounts are the **ioThing suite's shared accounts** in the **Shared ioSuite database** (the suite's shared library, [iosuite_shared/](../iosuite_shared/); a MariaDB database shared with ioNote, ioContact and the other apps, holding accounts, sessions, roles, the suite-wide settings and the list of apps): one name, password and session for every app, so someone signed in at `photo.example.com` is signed in at `notes.example.com` too when the apps share a domain (`COOKIE_DOMAIN`). What is iopix's own is kept per app: the role an account holds here, its display settings and the person it is linked to. A *suite admin* is admin in every app; an app admin manages this app's settings and the accounts' roles here. The machine's file (`config.env` in the program folder) says how to reach that database; its tables are created at start.
 
-Out of the box the viewer is open to anyone who can reach it. `setup.sh` asks for the admin account; Settings offers **Create the admin account** later (or set `ADMIN_USER` and `ADMIN_PASSWORD` for a container, or run `.venv/bin/python -m iopix.users create <name> <password> admin`). Once a user exists:
+Out of the box the viewer is open to anyone who can reach it. The installer asks for the admin account; Settings offers **Create the admin account** later (or `ADMIN_USER` and `ADMIN_PASSWORD` in a container's environment, or `iosuite admin NAME` from a shell). Once a user exists:
 
 | Who | Can |
 | --- | --- |
@@ -221,11 +187,11 @@ Out of the box the viewer is open to anyone who can reach it. `setup.sh` asks fo
 
 **Albums are shared or private.** A shared album is seen by everyone who can browse, and only editors and admins create, rename, fill, share or delete it. A private album is seen and changed only by the account that made it, (admins do not see other people's private albums); any member, editor or admin can make one. An editor or admin can share their private album, or make a shared album private, which makes it theirs. Albums from before v1.27 are shared. With no accounts yet, every album is shared.
 
-**Settings › Security** (suite admins) is the suite's admin panel, the same as on the start page and in every io app (iosuite-shared's `/api/suite-admin/ui.js`): people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy.
+**Settings › Security** (suite admins) is the suite's admin panel, the same as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`): people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy.
 
 **Sign-in required** (Settings › Global settings › Apps, on by default) turns the open browsing off: visitors get the sign-in screen and nothing else; no thumbnail, preview or API answer is served without an account. An MCP client always signs in with an app password (Settings › Account › App passwords), whether or not sign-in is required: `Authorization: Bearer <app password>` (in Claude Desktop's `mcp-remote` config: `"args": ["mcp-remote", "https://…/mcp", "--header", "Authorization: Bearer <app password>"]`).
 
-**iopix database** (Settings › Library › iopix database, admin): since v1.113 the viewer keeps its own data (settings, accounts, favorites, its albums, the edit log, AI results, its copy of the library) on a MySQL/MariaDB server, in a database of its own (e.g. `iopix`, not digiKam's; the same server as digiKam's is fine). The connection is `DB_TYPE=mysql`, `DB_HOST`, `DB_PORT` (3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD` in `config.env` (the set-up page and *Switch* write them). When the service's or container's environment sets them (a docker-compose `environment:` entry), that wins over `config.env`, so the panel says so and switching is done there. Without one, iopix starts in a "database needed" state: the web app shows only a set-up page (this same panel) asking for the details, with "Test connection" and "Use this database", and restarts on the new database; API calls answer 503 with `needsDatabase: true` until then. If the configured server is unreachable at start, the page shows the error and a Retry button only: nobody can sign in without the database, so the connection cannot be tested or changed from the page then (edit the `DB_*` lines in `config.env` instead). Moving to another database from Settings copies every row across and restarts the viewer. Create the database with `CREATE DATABASE iopix CHARACTER SET utf8mb4; CREATE USER 'iopix'@'app-host' IDENTIFIED BY '...'; GRANT ALL ON iopix.* TO 'iopix'@'app-host';` (the installers do this for you).
+**ioPix's own database**: ioPix keeps its own data (settings, favorites, its albums, the edit log, AI results, its copy of the library) in a database of its own (`iopix`, not digiKam's; the setting `DB_NAME` names another) on the suite's MariaDB server, under the suite's one login. The installer creates it when given a MariaDB administrator; by hand: `CREATE DATABASE iopix CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON iopix.* TO 'iosuite'@'app-host';`. While that database does not answer, the web app shows only a page that says so, with Retry, and API calls answer 503 with `needsDatabase: true`.
 
 Each account can be linked to a person from People by a suite admin (Settings › Security › People › Person in photos, in any io app: the panel reads ioPix's People through the suite's app link; an admin can also link their own account from the account dialog; the link is kept in the Shared ioSuite database). Only admins link accounts, because a linked person's face is shown on the sign-in screen. That person's face badge becomes the account's avatar in the account picker and the menu. Each account can also carry an optional email address (Settings › Security › People). A reverse proxy that authenticates users (Authelia, Authentik, Cloudflare Access…) is mapped onto these accounts by the email it passes (see Sign-in at the proxy).
 
@@ -233,10 +199,10 @@ Sign in from the person icon at the top right: the dialog shows a tile per accou
 
 ## MCP server
 
-The viewer is also an [MCP](https://modelcontextprotocol.io) server, on the same port, at `/mcp` (streamable HTTP), the same in every app of the suite, so an assistant such as Claude can search and inspect the library through the running app; nothing is installed or downloaded. It is **off by default**: switch it under Settings › Server › MCP server (or with `MCP=1`); while off, `/mcp` answers 404. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or `Authorization: Bearer <app password>`, and acts as that account. The library tools are read-only and answer any account (they show what that account sees in the web app): `library_overview`, `search_photos` (every filter the web app has, plus `looks_like` text and `similar_to` a photo), `count_by`, `get_photo`, `list_people`, `list_tags`, `list_albums`, `list_places`, `list_app_albums`, `find_duplicates` and `view_photo` (the picture itself); results carry links into the viewer (`PUBLIC_URL`). The tools for operating it take an admin, because they reveal paths, log lines and settings or change the library: `diagnostics` (version, platform, database, external tools, disk, job queue, models, settings without secrets), `server_log` (the viewer's rotating `data/iopix.log`, filterable), `job_queue`, `photo_file` (one photo's files, sidecar, cache and backups), and the maintenance tools (reports, suggestions, edits and jobs the web app's pages offer). Treat an admin's app password as a secret, and revoke it when in doubt.
+The viewer is also an [MCP](https://modelcontextprotocol.io) server, on the suite's port for MCP (8444), at `/pix/mcp` (streamable HTTP), the same in every app of the suite, so an assistant such as Claude can search and inspect the library through the running app; nothing is installed or downloaded. It is **off by default**: switch it under Settings › Server › MCP server; while off, `/mcp` answers 404. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or `Authorization: Bearer <app password>`, and acts as that account. The library tools are read-only and answer any account (they show what that account sees in the web app): `library_overview`, `search_photos` (every filter the web app has, plus `looks_like` text and `similar_to` a photo), `count_by`, `get_photo`, `list_people`, `list_tags`, `list_albums`, `list_places`, `list_app_albums`, `find_duplicates` and `view_photo` (the picture itself); results carry links into the viewer (`PUBLIC_URL`). The tools for operating it take an admin, because they reveal paths, log lines and settings or change the library: `diagnostics` (version, platform, database, external tools, disk, job queue, models, settings without secrets), `server_log` (ioPix's lines of the copy's log, filterable), `job_queue`, `photo_file` (one photo's files, sidecar, cache and backups), and the maintenance tools (reports, suggestions, edits and jobs the web app's pages offer). Treat an admin's app password as a secret, and revoke it when in doubt.
 
-    claude mcp add --transport http iopix http://localhost:8600/mcp --header "Authorization: Bearer <app password>"
-    claude mcp add --transport http iopix https://photos.example.com/mcp --header "Authorization: Bearer <app password>"    # behind the reverse proxy
+    claude mcp add --transport http iopix http://<server>:8444/pix/mcp --header "Authorization: Bearer <app password>"
+    claude mcp add --transport http iopix https://mcp.example.com/pix/mcp --header "Authorization: Bearer <app password>"    # behind the reverse proxy
 
 **Claude Desktop on another computer** (same network): Claude Desktop's "custom connectors" are reached from Anthropic's servers, so a LAN address cannot be added there. Use the `mcp-remote` bridge in its local configuration instead, which needs Node.js on that computer. Edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`), replacing the address with the viewer's host name or IP, then restart Claude Desktop:
 
@@ -244,19 +210,19 @@ The viewer is also an [MCP](https://modelcontextprotocol.io) server, on the same
       "mcpServers": {
         "iopix": {
           "command": "npx",
-          "args": ["-y", "mcp-remote", "https://photos.example.com/mcp",
+          "args": ["-y", "mcp-remote", "https://mcp.example.com/pix/mcp",
                    "--header", "Authorization: Bearer <app password>"]
         }
       }
     }
 
-That is the form behind the reverse proxy; without one, use `http://<host>:8600/mcp` and add `"--allow-http"` to the arguments, since the viewer itself speaks plain HTTP. The tools then appear in Claude Desktop's tool menu. Every request signs in, so behind the HTTPS proxy the endpoint can be reached from outside the home network.
+That is the form behind the reverse proxy; without one, use `http://<server>:8444/pix/mcp` and add `"--allow-http"` to the arguments, since the suite itself speaks plain HTTP. The tools then appear in Claude Desktop's tool menu. Every request signs in, so behind the HTTPS proxy the endpoint can be reached from outside the home network.
 
-Other clients that take an MCP URL use `http://<host>:8600/mcp` directly (set `PUBLIC_URL` if links in results should use a different address). Clients that only spawn stdio servers on the machine running the viewer can use `.venv/bin/python -m iopix.mcp --user NAME` (or `MCP_USER`) from the checkout; it is the same code, acting as that account.
+Other clients that take an MCP URL use `http://<server>:8444/pix/mcp` directly (set `PUBLIC_URL` if links in results should use a different address). Clients that only spawn stdio servers on the machine running the viewer can use `.venv/bin/python -m iopix.mcp --user NAME` (or the setting `MCP_USER`) in the program folder; it is the same code, acting as that account.
 
 ## Optional features
 
-All chosen in `setup.sh` (or later from Settings › AI); each is a package plus a model downloaded into `data/models`:
+All chosen under Settings › AI; each is a package (`iosuite install --extras iopix-ai` installs them; the container image tagged `ai` has them) plus a model downloaded into ioPix's data folder:
 
 | Feature | What it adds | Download |
 | --- | --- | --- |
@@ -330,7 +296,7 @@ Derived from these:
 - **Date suggestions** (Explore, for editors): a year for each photo marked "Date unknown" (below), from how old its named people look. MiVOLO v2 estimates the age of every named face in those photos and of up to 60 faces of the same people in photos with a known date, spread over the years; each person's dated faces calibrate the estimates for that person (a line from estimated age to year, or with only a few photos their birth year as the model sees it). A birth year entered on the page stands in for someone with few dated photos. Photos dated to the month or year (a used suggestion, say) count in the calibration too, at a third of an exact date's weight, so used suggestions refine the next ones without confirming themselves; an entered birth year is a hard floor. Several people in one photo narrow the range. Each suggestion shows the people and ages it came from; "Use 1987" saves a year-only date, with undo in the edit log, and nothing is written before that.
 - **Likely rejects** (Filters › Quality): photos blurred all over (the least sharp twentieth, with no sharp face), with closed eyes on most of the faces checked, clearly worse frames of a burst, or nearly black or blown out, each with its reason. Only a suggestion: no label is set on any photo.
 - **Events & trips**: trips are runs of days photographed more than 75 km from the town where most of your photos are taken; events are other days with 20 or more photos, named after the title most of them share, else their main tag, else the town.
-- **Search model**: `setup.sh` proposes SigLIP 2 (CLIP indexes about 4x faster); the Docker image and the installers download SigLIP 2 first and use it; with neither chosen the viewer uses CLIP. Switch between installed models under Settings › AI; the library is re-indexed in the background and search switches when complete. You can switch back at any time.
+- **Search model**: SigLIP 2 is the suggested one (CLIP indexes about 4x faster): where `AUTO_MODELS` names it, it is downloaded first and used; with neither chosen the viewer uses CLIP. Switch between installed models under Settings › AI; the library is re-indexed in the background and search switches when complete. You can switch back at any time.
 
 ## Editing
 
@@ -392,7 +358,7 @@ Tools › Metadata consistency compares rating, title, caption and tags across d
 
 ### The viewer's database
 
-Everything the viewer keeps of its own lives in one MySQL/MariaDB database (see *iopix database* under Users and permissions, and `DB_*` below), in tables named for what they hold, each `pix_<name>` (the suite's naming convention, so every ioSuite app can share one database; v1.122 renamed the tables of older databases once, at start, every row kept). Databases from older versions are brought to the current shape the first time a newer version opens them (v1.43 restructured the AI tables; a `.sql` dump goes to `db-backups/` first); no rows change.
+Everything the viewer keeps of its own lives in one MySQL/MariaDB database (see *ioPix's own database* under Users and permissions), in tables named for what they hold, each `pix_<name>` (the suite's naming convention, so every ioSuite app can share one database; v1.122 renamed the tables of older databases once, at start, every row kept). Databases from older versions are brought to the current shape the first time a newer version opens them (v1.43 restructured the AI tables; a `.sql` dump goes to `db-backups/` first); no rows change.
 
 | Group | Tables |
 |---|---|
@@ -420,8 +386,6 @@ Everything the app writes lives in `data/` (`DATA_DIR`), which must not be insid
 | `sidecar-backups/` | each sidecar as it was before the viewer's first change to it, mirroring the album folders; `tag-ops/<operation>/` for tag-manager rewrites (last 8 operations kept) | your call |
 | `file-backups/` | the full original of each image file before its metadata was first rewritten (one per photo, never replaced) | your call |
 | `db-backups/` | `digikam4-<time>.db` copies (or `digikam-mysql-<time>.sql` dumps) before destructive database operations; the `digikam4-download-*.db` and `viewer-backup-*.zip` files made for the downloads below; `.sql` dumps of the viewer's own database before a schema migration. The last 10 of each kind are kept | your call |
-| `iopix.log` | the server's own log lines, rotated (what Settings › Server and the MCP `server_log` tool show) | yes |
-| `server.log` | the service's output (launchd on macOS; systemd and Docker log elsewhere) | yes |
 
 Every sidecar or file write goes through one function that refuses to proceed unless the backup exists and at least 2 GB of disk stays free. "Undo" in the info panel restores sidecar and file byte for byte. Sidecar and file backups are never deleted automatically; budget disk space for them. To roll back a database write, quit digiKam and copy a backup over `digikam4.db` (or restore the dump).
 
@@ -437,19 +401,20 @@ The viewer keeps the library itself in its own database, so it can run with or w
 
 - **No digiKam at all** (`DIGIKAM_DB_TYPE=none`, what every installer sets up when you answer that you don't use digiKam, or Settings › digiKam database › None): on the first start iopix creates an empty library on the photo folder (`PHOTOS_ROOT`), laid out the way digiKam lays out a new database, and the file scanner (on by default in this mode, and run right after each start) adds every photo and video it finds, with what the files already carry: dates, camera, GPS position, captions, keywords and face regions written by other programs. From then on everything works on that library: tags, people and faces (face detection too), ratings, captions, dates, places, folders, uploads, Import, the trash, the edit log. Edits are saved in the library and in XMP sidecars beside the photos (the same sidecars digiKam reads), so nothing is waiting to go anywhere and Sync with digiKam is not shown. The app backup holds the whole library. If you start using digiKam later, let digiKam scan the folder first (it reads the sidecars), then choose its database in Settings: what was made in iopix counts as changes made with sync off, so iopix keeps its own library until you pick Replace with digiKam's (a library started here has no digiKam record to merge against, so Merge is refused rather than guessing).
 - **The library tables** (`photos`, `photo_information`, `photo_metadata`, `photo_positions`, `video_metadata`, `folders`, `album_roots`, `tags`, `tag_properties`, `photo_tags`, `face_regions`, `comments`, `copyright`, `photo_properties`, `library_settings`) have exactly the columns of digiKam's own tables. While Sync with digiKam is on they follow digiKam's database: after a change, made here or in digiKam, the rows on both sides are compared and only those that differ are written (since v1.28.3; before, every change rewrote all of them). The search index is built straight from digiKam then, and from these tables when digiKam is unreachable or sync is off. The merge base (`data/library-base.sqlite`) is saved once, just before the first change made without digiKam. When digiKam's database is unreachable the viewer keeps running on them; admins see a card saying so and when the copy was taken. They are part of the app backup.
-- **Sync with digiKam off** (Settings): the viewer never opens digiKam's database and everything works on its own library: edits, tags (create, rename, move, delete, badge pictures), folders and uploads, faces (naming, detection, confirming, ignoring), place tags. Every module that changes the library writes through the same layer as before; with sync off that layer speaks digiKam's table names to the viewer's tables (`app/digikam/library.py`). Edits to ratings, titles, captions, dates, positions and tags also go to the sidecars, and wait there for digiKam.
+- **Sync with digiKam off** (Settings): the viewer never opens digiKam's database and everything works on its own library: edits, tags (create, rename, move, delete, badge pictures), folders and uploads, faces (naming, detection, confirming, ignoring), place tags. Every module that changes the library writes through the same layer as before; with sync off that layer speaks digiKam's table names to the viewer's tables (`iopix/digikam/library.py`). Edits to ratings, titles, captions, dates, positions and tags also go to the sidecars, and wait there for digiKam.
 - **Turning sync on again** never overwrites what was changed meanwhile. If tags, folders, faces, uploads or deletions happened with sync off, the viewer keeps using its own library and says so. Settings › Sync with digiKam then offers **Merge into digiKam** (a three-way merge against the record of what digiKam held when the library was copied, `data/library-base.sqlite`: new tags, folders and uploads get ids in digiKam and every reference follows; renames, moves, tag assignments, faces, ratings, dates, positions, captions and copyright are applied; deleted photos are removed; where digiKam changed the same row meanwhile the viewer's value wins and the row is counted as a conflict; digiKam's database is backed up first and the library is then copied from digiKam again), **Replace with digiKam's** (copy the library from digiKam again and drop the changes; sidecar edits are kept) or turning sync off again.
 - **While sync is on and digiKam is reachable**, edits queued in the sidecars are written into digiKam's database automatically when digiKam is closed (a minute after the last edit, at most every five minutes); Tools › "Apply to digiKam database" does the same on request.
 - **Photo ids.** digiKam's image id is the viewer's working key everywhere. The `pix_photo_identity` table remembers which file (digiKam's uniqueHash and size) each id stood for, with a viewer id that never changes. If digiKam ever renumbers a photo, say after a fresh import, favorites, albums, edits, analysis results, face vectors, near-duplicate pairs and content-search embeddings follow the file to its new id automatically.
 
 ## digiKam on MySQL / MariaDB
 
-digiKam can keep its database in MySQL or MariaDB. Every read and write goes through one layer (`app/digikam/dkdb.py`), configured with the `DIGIKAM_DB_*` variables below (or Settings › Library › digiKam database); PyMySQL is part of the base install (`pyproject.toml`). Differences the layer handles: dates are UTC on MySQL and local time on SQLite; changes are detected by polling digiKam's scan timestamp and row counts instead of a file's mtime; digiKam's MySQL root tag (`_Digikam_root_tag_`) is treated as "no parent"; backups are `mysqldump`/`mariadb-dump` instead of a file copy. "Is digiKam running" cannot be seen across machines, so use `DIGIKAM_CHECK=none`.
+digiKam can keep its database in MySQL or MariaDB. Every read and write goes through one layer (`iopix/digikam/dkdb.py`), configured with the `DIGIKAM_DB_*` settings above (or Settings › Library › digiKam database); PyMySQL is part of the base install (`pyproject.toml`). Differences the layer handles: dates are UTC on MySQL and local time on SQLite; changes are detected by polling digiKam's scan timestamp and row counts instead of a file's mtime; digiKam's MySQL root tag (`_Digikam_root_tag_`) is treated as "no parent"; backups are `mysqldump`/`mariadb-dump` instead of a file copy. "Is digiKam running" cannot be seen across machines, so use `DIGIKAM_CHECK=none`.
 
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest tests
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iopix/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 The suite needs a MariaDB server for the viewer's own database: give one as `IOSUITE_TEST_DB=host:port:user:password`, or leave it unset and the suite starts one with Docker.
@@ -458,30 +423,26 @@ About 300 tests in about 8 minutes (the browser tests are most of that). At star
 
 ## Layout
 
+The package `iopix/` of the repository:
+
 ```
-app/            the server: main.py is the application (lifespan, the suite's middleware, status, mounts), access.py who may
+*.py            the server: main.py is the application (lifespan, the suite's middleware, status, mounts), access.py who may
                 call a route, config.py the settings (the suite's standard names and ioPix's own); users, auth, thumbs, jobs and the MCP server beside them
-app/routes/     the HTTP endpoints by area: browse, images, albums, editing, admin, review, organize, faces
-app/digikam/    talking to digiKam: its database (dkdb), guarded writes (dbsync), the viewer's copy of its library
+routes/         the HTTP endpoints by area: browse, images, albums, editing, admin, review, organize, faces
+digikam/        talking to digiKam: its database (dkdb), guarded writes (dbsync), the viewer's copy of its library
                 (library) and the merge back (merge)
-app/data/       the viewer's own storage: its database (appdb), the search index (index), the query language, settings
-app/photos/     what photos go through: edits, metadata, organizing, folders, import, the file scanner, lossless
+data/           the viewer's own storage: its database (appdb), the search index (index), the query language, settings
+photos/         what photos go through: edits, metadata, organizing, folders, import, the file scanner, lossless
                 edits, versions, export, deletion, the edit log, the pixel guard, tags, consistency
-app/faces/      face detection, recognition vectors, digiKam-compatible face regions, the quality checks
-app/ai/         background analysis and models: quality, objects, text, descriptions, content search, near
+faces/          face detection, recognition vectors, digiKam-compatible face regions, the quality checks
+ai/             background analysis and models: quality, objects, text, descriptions, content search, near
                 duplicates, events
-app/geo/        places, address search, GPX tracks, map providers
+geo/            places, address search, GPX tracks, map providers
 static/         the web app: index.html, app.js (the entry) and js/ (one ES module per area: core, state, search, grid,
                 actions, editing, download, pages, admin, map, filters, lightbox, main), app.css, icons, PWA manifest, service worker
 tests/          pytest suite (API on a scratch library, browser tests with Playwright)
-setup.sh        the installer: asks, installs, downloads, starts the service      run.sh: foreground start
-update.sh       updates an installed copy in place (git or tarball), keeps settings and data
-pyproject.toml  dependencies (base + optional groups)
-Dockerfile, docker-compose.yml, .github/workflows/docker.yml   the container image; the workflow also runs the syntax checks and builds the installer
-installer/      the self-extracting Linux installer (make-installer.sh builds dist/iopix-install.sh)
-proxmox/        Proxmox VE LXC scripts in the community-scripts layout
 ```
 
 ## License
 
-GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](LICENSE).
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

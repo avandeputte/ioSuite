@@ -1,10 +1,10 @@
 # ioStart
 
-*The start page of the ioThing suite: one place with every io app ([ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix),
-[ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioRecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe), [ioThings](https://github.com/avandeputte/iosuite/tree/main/iothings), [ioMoney](https://github.com/avandeputte/iosuite/tree/main/iomoney),
-[ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote)).*
+*The start page of the ioThing suite: one place with every io app ([ioPix](../iopix/),
+[ioHealth](../iohealth/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioMoney](../iomoney/),
+[ioContact](../iocontact/), [ioNote](../ionote/)).*
 
-A self-hosted home page for the family: a tile per app, signed in with the suite's shared accounts ([`iosuite-shared`](https://github.com/avandeputte/iosuite/tree/main/shared)), so
+A self-hosted home page for the family: a tile per app, signed in with the suite's shared accounts ([`iosuite_shared`](../iosuite_shared/)), so
 one sign-in here is a sign-in everywhere the page links to. FastAPI and a single-page vanilla JS app, built the same
 way as the other io apps, with its few settings in MariaDB / MySQL. For now the tiles are links; each one keeps room for
 what the app will show on the start page later (today's events, the newest photos, last night's sleep…).
@@ -12,7 +12,7 @@ what the app will show on the start page later (today's events, the newest photo
 ## What it does
 
 - **A tile per app**, with the app's own icon and colours, that opens it. Each app registers itself, with its address,
-  in the suite's list of apps in the Shared ioSuite database (`suite_apps`, iosuite-shared 0.3 and later), and the page
+  in the suite's list of apps in the Shared ioSuite database (`ios_apps`), and the page
   reads it there and only there: nothing to type, nothing to override. ioStart registers itself the same way. An app
   that has not registered (not installed, or not started yet) has no tile; one the page has no widgets for gets a plain
   tile. Each person can hide tiles in Customize. What the tiles and cards show is asked of each app by this server
@@ -66,7 +66,7 @@ what the app will show on the start page later (today's events, the newest photo
   yours (a TRMNL server of your own inside the network, or TRMNL's cloud through Cloudflare Access with a service
   token); or, when TRMNL's cloud cannot reach the start page, the start page sends each screen to the plugin's webhook
   every 15 minutes when it changed (the webhook addresses and the app password it reads with are kept with the suite's
-  keys and tokens). The markup is in app/trmnl_markup/, on TRMNL's own design framework. Health shows the day's
+  keys and tokens). The markup is in iostart/trmnl_markup/, on TRMNL's own design framework. Health shows the day's
   rings (Move, Exercise, Stand, in black alone) and the week's steps as bars, Money what falls due on each of the
   week's days, Weather the hours' temperatures as a curve: pictures the markup writes itself, as SVG. On a TRMNL X
   (the framework's `lg:` classes) the text is larger and the halves and quadrants list more, so the larger screen
@@ -92,12 +92,12 @@ what the app will show on the start page later (today's events, the newest photo
   redraw every time; the device's detailed log; a reset (it forgets its Wi-Fi and key and sets up again). A battery
   at 15% tells its owner once (Account › Notifications › TRMNL screens). Firmware updates are not offered from here.
   The pictures are drawn in Python
-  (app/trmnldraw.py, no browser), from the same markup, laid out as TRMNL's framework does and held against its own
+  (iostart/trmnldraw.py, no browser), from the same markup, laid out as TRMNL's framework does and held against its own
   renders in the tests (tests/trmnl_ref); an unchanged picture keeps its name, so the device does not fetch it again.
   The device signs its requests (`/api/setup`, `/api/display`, `/api/current_screen`, `/api/log`,
   `/api/trmnl/image/…`, open without a
   sign-in) with a key of its own, kept with the suite's keys and tokens; a reset device gets a new key only while its
-  owner has Pair again open. Fonts: TRMNL's own and Inter (app/trmnl_fonts, SIL Open Font License).
+  owner has Pair again open. Fonts: TRMNL's own and Inter (iostart/trmnl_fonts, SIL Open Font License).
 - **A dot by each app's name**: green when the app answers its `/api/status`, red when it does not. Bookmarks the
   server cannot reach get a red dot too. The server asks each app once a minute and pings each bookmark every five (HEAD, redirects not followed; never its own address or a link-local one).
 - **Two layouts** (Customize the page › Layout, per person or per device). *A card for each app*: each app with something to show
@@ -196,7 +196,7 @@ what the app will show on the start page later (today's events, the newest photo
     browser's own bookmarks the same as the tree, both ways, with nothing to configure but the address. The bookmarks
     bar is the top-level folder "Bookmarks bar", Firefox's bookmarks menu the folder "Bookmarks menu", Other bookmarks
     everything else at the top, so every browser shows the same. It sends what changed in the browser in one request
-    (`/dav/ext`, `app/bookmarkext.py`) and makes the browser the tree that comes back, so a delete here or in another
+    (`/dav/ext`, `iostart/bookmarkext.py`) and makes the browser the tree that comes back, so a delete here or in another
     browser goes everywhere. One-click sign-in (the same flow as below: an app password of its own, for sync only).
     Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe) (Chrome, Edge, Vivaldi, Brave, Opera); Firefox and builds of your own
     from Settings › Bookmarks or a release. `.github/workflows/extension.yml` packages each version as a release and,
@@ -215,7 +215,7 @@ what the app will show on the start page later (today's events, the newest photo
     two bookmarks); bookmarklets and other non-web addresses sync but never show on the start page.
 - **The suite's accounts**: the same sign-in as every io app (the account tiles, one click for an account without a password),
   Settings › Account (display name, email, password) and Settings › Display (the theme, kept with the account), both
-  iosuite-shared's panels, the same in every io app; every setting saves as soon as you change it. Accounts and roles
+  iosuite_shared's panels, the same in every io app; every setting saves as soon as you change it. Accounts and roles
   are managed under Settings › Security (below). Sign-in at a reverse proxy (Cloudflare Access…) works as in the other apps.
 - **Suite administration** (Settings › Security and Settings › Global settings, suite admins only): everything in the Shared ioSuite database for the
   whole suite. **People**: add, rename and delete accounts, email, sign-in list, suite admin, set or remove a password,
@@ -226,147 +226,98 @@ what the app will show on the start page later (today's events, the newest photo
   Cloudflare Access service token), replace or clear, never shown back. The apps' own **service accounts**
   (`iocalendar-app`…, under People), with which apps read from each other without any setup. **Apps**: each app's default role (none makes it
   invitation-only) and sign-in requirement; forget an uninstalled app. **Sign-in at the proxy** for the whole suite. The
-  panel is iosuite-shared's (`/api/suite-admin/ui.js` on `/api/suite-admin`), so every io app shows the same one.
-- **Updates**: the suite has one version, the same for every app. When a newer one is out, suite admins see one note on the start page with **Update now**; Settings › Global settings › Updates shows the installed version against GitHub with one **Update** button (each app runs its own `update.sh`) and every app's own line under Details. The version, the server log and Restart are under Settings › Server, as in every ioThing app.
+  panel is iosuite_shared's (`/api/suite-admin/ui.js` on `/api/suite-admin`), so every io app shows the same one.
+- **Updates**: the suite has one version, the same for every app. When a newer one is out, suite admins see one note on the start page with **Update now**; Settings › Global settings › Updates shows the installed version against GitHub with one **Update** button and every app's own line under Details. The version and Restart are under Settings › Server, the log under Settings › Global settings › Logs, as in every app of the suite.
 - **One MCP server for the whole suite** (`/mcp`, off until switched on at Settings › Server): connect an AI assistant here once, with your user name and an ioStart app password (Settings › Account), and it gets every app's tools, named after the app (`iocalendar_…`, `iotask_…`, `iorecipe_…`), so one request can span apps ("put Friday's dinner ingredients on the shopping list"). Each call is passed on to that app's own MCP server as you, so each app still decides what you may see and change there; an app whose own MCP server is off (its Settings › Server), or where you have no role, offers nothing. `suite_apps` lists the apps with their status and their own instructions. An ioStart app password (one without a limit) also signs in at any app's `/mcp` directly. ioStart's own tools: `suite_version` and `update_suite` update every app at once (suite admins).
 - Light and dark, a phone layout, installable as a web app (manifest and icons).
 
 ## Run
 
-ioStart needs Python 3.10+ and a MariaDB or MySQL database. Give it its own database
-and user, for example:
-
-```sql
-CREATE DATABASE iostart CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'iostart'@'app-host' IDENTIFIED BY 'a-long-random-password';
-GRANT ALL ON iostart.* TO 'iostart'@'app-host';
-```
-
-`app-host` is the machine the app runs on (`localhost` when MariaDB is on the same machine); a user for any host (`'%'`)
-with a password someone could guess is what to avoid. The installers make the user this way when given a MariaDB administrator.
-
-The accounts, and the settings the whole suite shares (such as the list of apps and where each one is), live in the
-**Shared ioSuite database**, the one every io app uses (`iosuite`, user `iosuite`, by default); a new install of the
-suite creates it the same way. The tables are created on the first start and updated by later versions by themselves.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/iostart.sh` and `proxmox/install/iostart-install.sh` follow the community-scripts (ProxmoxVE) framework
-layout, as the other io apps do. On the Proxmox host, as root:
+ioStart is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioStart in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox/ct/iostart.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iostart
 ```
 
-It asks for the ioStart database (host, port, database, user, password), the Shared ioSuite database, the web port
-(8630), the public address behind your reverse proxy (optional), the domain the sign-in is shared on (optional) and the
-admin account, and which other apps of the suite go in the same container (ioCalendar, ioTask, ioRecipe, ioThings, ioMoney, ioDocs, ioContact, ioNote, ioHealth:
-they reuse those answers, each app with its own database on the same server, the same accounts and admin, each on its
-usual port); then the framework's own questions (resources, network). It creates a small Debian 13 container and runs the app's own `setup.sh` inside with
-those answers. The passwords reach `setup.sh` through its environment (a root-only file pushed in and removed again),
-never on a command line; the output is kept in `/opt/iostart/setup.log`. The container's `update` command pulls the
-latest code and keeps the settings. For unattended runs set `IOSTART_DB` and `IOSTART_SUITE_DB`
-(`host:port/db:user:password`), `IOSTART_ADMIN` (`name:password`), `IOSTART_PORT`, `IOSTART_PUBLIC_URL` and
-`IOSTART_COOKIE_DOMAIN`, and `IOSTART_ALSO=iocalendar,iocontact` (or `none`).
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iostart       # --remove iostart stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iostart`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-The whole suite in one stack, MariaDB included: [`docker-compose.yml`](../docker-compose.yml) at the root of the repository
-starts a MariaDB with a database per app, ioStart, ioCalendar, ioTask, ioRecipe, ioThings, ioMoney, ioContact, ioNote, ioHealth and ioPix (without
-digiKam), with one Shared ioSuite database and one admin. Edit the passwords, the photos path and the time zone at
-the top, then `docker compose up -d` there (or paste it as a stack in Dockge / Portainer).
+| | |
+| --- | --- |
+| Address | the suite's address itself (`https://home.example.com/`) |
+| Devices | bookmark sync at `/dav/…` (the browser extension, the iPhone app), widgets, e-ink screens and the wall display at `/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| MCP | `/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iostart`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 
-### Any Linux or Mac
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iostart
-./setup.sh          # asks for the databases, port and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iostart.cli check   # connect to the databases and say what is there
 ```
 
-`setup.sh` offers 127.0.0.1, database `iostart`, user `iostart`, password `iostart` as the defaults; its flags (`--db`,
-`--suite-db`, `--admin`, `--port`, `--public-url`, `--cookie-domain`, `--service`, `--yes`) are the same in every app of
-the suite. Its last question, "Also install …?" (flag `--also iopix,ionote`, `--also all`), puts other apps of the
-suite in this same machine, beside ioStart (`/opt/iocalendar/app` next to `/opt/iostart/app`), without asking the
-shared questions again: the same database server (each app gets its own database: `calendar`, `tasks`, `contacts`, `notes`,
-`health`, `iopix`; the user needs rights on those names too), the same Shared ioSuite database, sign-in domain and
-admin. Each app keeps its usual port and updates itself as always. Accounts are the suite's: `.venv/bin/iosuite-shared --config . admin NAME --app iostart` (password from
-`ADMIN_PASSWORD`, or asked for) and `.venv/bin/iosuite-shared --config . password NAME`.
-
-The databases and users need not exist beforehand: give a MariaDB / MySQL administrator (the question after the
-databases; flag `--db-admin USER:PASSWORD`, or `IOSTART_DB_ADMIN`, also in the Proxmox installer) and `setup.sh` creates
-the app's database and user, the Shared ioSuite database and user and, with other apps installed alongside, their
-databases too, with the passwords you answered (`iosuite-shared provision`). Nothing is dropped, and the administrator's
-password is used once and not written anywhere.
+Accounts are the suite's: `iosuite admin NAME --app iostart` makes someone an admin of ioStart only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment, which wins:
+ioStart has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioStart, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iostart        # what may be set, with the value stored now
+iosuite set iostart HA_FEED 0    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | the MariaDB / MySQL database (`iostart`) |
-| `IOSUITE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD` | the Shared ioSuite database (`iosuite`, on `DB_HOST` unless set): accounts, passwords, sessions, app passwords and roles, the suite-wide settings and the list of apps, shared with every io app |
-| `COOKIE_DOMAIN` | the domain the session cookie is shared on (`example.com`): signed in at `home.example.com`, signed in at `photos.example.com` too |
-| `HOST`, `PORT` | where the server listens (`0.0.0.0`, 8630; every app of the suite has its own port) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | serve HTTPS directly instead of behind a reverse proxy |
-| `PUBLIC_URL` | the address people use (behind a proxy); also what ioStart registers in the suite's list of apps |
-| `ACCUWEATHER_API_KEY`, `ACCUWEATHER_LOCATION` | the weather: an AccuWeather key and a location key (or Settings › Home page, which finds the location from a city name) |
-| `HA_URL` | Home Assistant's address (`http://homeassistant.local:8123`), or Settings › Home Assistant; its long-lived access token is kept in Settings › Suite › Keys and tokens |
-| `HA_FEED` | `0` turns off the websocket to Home Assistant (the page then polls every few seconds) |
-| `NEWS_LOOP` | `0`: the server does not read the feeds people follow by itself (the Feeds page's refresh still does) |
-| `SITE_ICONS` | `0`: the server does not fetch the bookmarked sites' icons (links show their badge, or the icon you gave them) |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the first admin, made on the first start when there are no accounts |
-| `UPDATE_CHECK` | `0` turns the daily version check off for good |
-| `IOSTART_REPO`, `IOSTART_BRANCH` | what the version check and `update.sh` follow (`avandeputte/iosuite`, `main`) |
-| `DATA_DIR` | where the app writes on its own: the log and the update result (`data/` in the app folder) |
-| `LOG_FILE` | the server log shown at Settings › Server (`DATA_DIR/iostart.log`; `LOG_FILE=` with nothing after it: no file) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients, when it is not the suite's |
+| `DATA_DIR` | where the app writes on its own (`iostart/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iostart`) |
+| `HA_FEED` | follow Home Assistant live (`1` or `0`; on by default). Off: no standing connection to Home Assistant; the page asks every few seconds instead |
+| `SITE_ICONS` | fetch the bookmarked sites' icons (`1` or `0`; on by default) |
+| `TIMERS_LOOP` | send “timer done” notifications (`1` or `0`; on by default) |
+| `NEWS_LOOP` | fetch followed feeds in the background (`1` or `0`; on by default) |
+| `TRMNL_PUSH` | push TRMNL screens (`1` or `0`; on by default) |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 
-The suite has one version, the same for every app, and the apps are updated together: **Settings › Global settings ›
-Updates** (suite admins, in any app) shows the installed version and the newest one on GitHub, with one **Update**
-button; each app's own line is under Details. Once a day every app asks GitHub whether a newer version exists (only
-the public commit list is read; nothing about the server is sent; the Updates page switches it off for the suite,
-`UPDATE_CHECK=0` locks it off for this app). **Settings › Server** shows the version ioStart runs, the tail of the
-server log (`data/iostart.log`; `LOG_FILE` moves it, empty switches it off) and **Restart**; the panel
-(`/api/server/ui.js`) is iosuite-shared's, the same in every app. Updating runs the app's own `update.sh`: the new
-version's Python packages first, then the code (a failed step leaves the running version as it was), the database is
-brought up to date, and the service restarts. In Docker, pull the image instead. From a shell: `./update.sh`
-(`--check` only looks, `IOSTART_REF=<sha>` installs a given commit).
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-ioNotes, ioTasks and ioContacts became ioNote, ioTask and ioContact. After updating them, move an existing install
-(service, `/opt` folder, log and config.env names) once per machine with
-[`tools/rename-install.sh`](tools/rename-install.sh):
-
-```bash
-curl -fsSLO https://raw.githubusercontent.com/avandeputte/iosuite/main/tools/rename-install.sh
-sudo bash rename-install.sh --dry-run    # then without --dry-run
-```
+**Settings › Server** shows the version ioStart runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 ## Reverse proxy and HTTPS
 
-Run it behind a reverse proxy that terminates HTTPS (Caddy, Nginx Proxy Manager, HAProxy, Cloudflare Tunnel), on a
-host under the same `COOKIE_DOMAIN` as the apps, so the sign-in carries over.
+ioStart is reached through the suite's three ports: the pages (80), devices (8443) and MCP (8444). A reverse proxy gives each
+a name and HTTPS, for the whole suite at once, and can make people sign in first (Cloudflare Access, Authelia, oauth2-proxy):
+[Reverse proxy and HTTPS](../docs/docs/run/reverse-proxy.md) and [Cloudflare Tunnel and Access](../docs/docs/run/cloudflare.md) in the
+guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
+Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-The start page can also be the one address of the whole suite: with **Settings › Global settings › Apps › Serve the
-suite on one address** on, it passes `/calendar/…`, `/notes/…` and the other apps' folders on to each app
-(`app/frontdoor.py`), so one name, one certificate and one port reach every app, and the proxy needs one upstream.
-Off by default; the suite's installer sets it up with `--reach one` (see the documentation, Run › Reverse proxy and
-HTTPS).
+The browser extension, the iPhone app, the widgets, the e-ink screens and the wall display use the address for devices, which stays outside a sign-in at the proxy.
 
 ## Tests
 
 ```sh
-pip install -e '.[test]'
-python -m pytest tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iostart/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 Covered: status and sign-in, the tiles and where they point (this host, the forwarded host behind a proxy, Settings,
@@ -378,46 +329,44 @@ what a viewer may not change. CI runs them against MariaDB.
 
 ## Layout
 
+The package `iostart/` of the repository:
+
 ```
-app/main.py        the application: start-up (tables, first admin, the update check), the suite's middleware, status and routes
-app/mcp.py         the suite's one MCP server (/mcp): every app's tools passed on as the person asking, suite_apps, suite_version and update_suite
-app/access.py      who may call a route: the markers every /api route carries (public, signed_in, editor, admin)
-app/api.py         the REST API: the apps and their settings (sign-in, accounts, status, the server, updates and the log: iosuite_shared's routers)
-app/frontdoor.py   the suite on one address: passes /calendar/…, /notes/… on to the app that owns the folder, while the suite's switch is on
-app/apps.py        the suite's apps as they registered (iosuite_shared.suite) and the order of their tiles
-app/status.py      is each app up (its /api/status) and does it have an update; is each bookmark reachable
-app/layout.py      each account's own layout: hidden tiles and cards, the tiles' order, the photo strip
-app/widgets.py     what the tiles and cards show, what the search box finds and adds: ioPix, ioCalendar, ioTask, ioHealth, ioMoney, ioDocs, ioNote and ioContact asked over their APIs with the viewer's sign-in
-app/bookmarkcheck.py  Tidy up: the bookmarks whose address no longer answers, is gone or moved, and the same address kept twice
-app/weather.py     AccuWeather: the settings, the place search, the cached conditions and forecast
-app/homeassistant.py  Home Assistant: the settings, the chosen entities and their state, switching them, the search, the alerts
-app/ha_feed.py     Home Assistant's websocket: state changes folded into the copy, streamed to the pages
-app/bookmarks.py   the bookmark groups and links
-app/news.py        the reader: feeds fetched once for everybody, each person's own subscriptions, read and starred; the loop
-app/newsapi.py     its routes (/api/news)
-app/feedread.py    RSS, Atom and JSON Feed as one shape, a site's feed found from its page, an article's HTML made safe, OPML
-app/timers.py      kitchen timers: the family's, from the search box; the "timer done" notification loop
-app/rates.py       the exchange rates for the search box's currency conversions (ECB, through Frankfurter)
-app/auth.py        the shared accounts and the updater (iosuite-shared), as ioStart uses them
-app/db.py          MariaDB access and the schema (the meta settings table, the bookmarks)
-app/config.py      the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
-app/cli.py         python -m app.cli: migrate, check
-app/__main__.py    python -m app: the server (HOST, PORT)
+main.py            the application: start-up (tables, first admin, the update check), the suite's middleware, status and routes
+mcp.py             the suite's one MCP server (/mcp): every app's tools passed on as the person asking, suite_apps, suite_version and update_suite
+access.py          who may call a route: the markers every /api route carries (public, signed_in, editor, admin)
+api.py             the REST API: the apps and their settings (sign-in, accounts, status, the server, updates and the log: iosuite_shared's routers)
+apps.py            the suite's apps as they registered (iosuite_shared.suite) and the order of their tiles
+status.py          is each app up (its /api/status) and does it have an update; is each bookmark reachable
+layout.py          each account's own layout: hidden tiles and cards, the tiles' order, the photo strip
+widgets.py         what the tiles and cards show, what the search box finds and adds: ioPix, ioCalendar, ioTask, ioHealth, ioMoney, ioDocs, ioNote and ioContact asked over their APIs with the viewer's sign-in
+bookmarkcheck.py      Tidy up: the bookmarks whose address no longer answers, is gone or moved, and the same address kept twice
+weather.py         AccuWeather: the settings, the place search, the cached conditions and forecast
+homeassistant.py      Home Assistant: the settings, the chosen entities and their state, switching them, the search, the alerts
+ha_feed.py         Home Assistant's websocket: state changes folded into the copy, streamed to the pages
+bookmarks.py       the bookmark groups and links
+news.py            the reader: feeds fetched once for everybody, each person's own subscriptions, read and starred; the loop
+newsapi.py         its routes (/api/news)
+feedread.py        RSS, Atom and JSON Feed as one shape, a site's feed found from its page, an article's HTML made safe, OPML
+timers.py          kitchen timers: the family's, from the search box; the "timer done" notification loop
+rates.py           the exchange rates for the search box's currency conversions (ECB, through Frankfurter)
+auth.py            the shared accounts and the updater (iosuite_shared), as ioStart uses them
+db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
+config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
+cli.py             python -m iostart.cli: migrate, check
+__main__.py        python -m iostart: the server (HOST, PORT)
 static/            the web app: index.html, app.js (one module, no build step), app.css, the icons (each app's tile shows the icon it registered, served by that app)
 tests/             pytest, against a MariaDB of its own
-setup.sh run.sh update.sh   install, start, update (Linux, Mac)
-Dockerfile docker-compose.yml   the container
-proxmox/           the Proxmox VE scripts (community-scripts layout)
 ```
 
 ### Growing the page
 
-A tile is drawn from `/api/apps` (`app/apps.py`, `showHome` in `static/app.js`) and keeps a `.more` block under its
-name, filled from `GET /api/widgets/<app>?tz=<IANA zone>` (`app/widgets.py`, `drawWidgets` in `static/app.js`). To give
-another app a glimpse: a function in `app/widgets.py` that asks the app with `fetch()` (the viewer's credentials go
+A tile is drawn from `/api/apps` (`iostart/apps.py`, `showHome` in `static/app.js`) and keeps a `.more` block under its
+name, filled from `GET /api/widgets/<app>?tz=<IANA zone>` (`iostart/widgets.py`, `drawWidgets` in `static/app.js`). To give
+another app a glimpse: a function in `iostart/widgets.py` that asks the app with `fetch()` (the viewer's credentials go
 along) and returns what the tile needs, and a drawing function in `WIDGETS` in `static/app.js`. Images go through the
 start page (its Content-Security-Policy allows only its own origin), as `/api/widgets/iopix/thumb/<id>` does.
 
 ## License
 
-GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](LICENSE).
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

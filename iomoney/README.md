@@ -1,11 +1,11 @@
 # ioMoney
 
-*The household's finances, in the ioThing suite (with [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar), [ioTask](https://github.com/avandeputte/iosuite/tree/main/iotask), [ioRecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe), [ioThings](https://github.com/avandeputte/iosuite/tree/main/iothings), [ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth) and the [ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart) start page).*
+*The household's finances, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted overview of the household's money: the accounts, balances and transactions copied in from Monarch Money,
 the portfolio with its quotes from Yahoo Finance, and what the house and the cars are worth after their loans. FastAPI
 and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library
-(`iosuite-shared`, in [iosuite-shared](https://github.com/avandeputte/iosuite/tree/main/shared)).
+(`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 
 ## What it does
 
@@ -253,80 +253,70 @@ network, then Sync now.
 
 ## Run
 
-ioMoney needs Python 3.10+ and a MariaDB or MySQL database. Give it its own database and user, for example:
-
-```sql
-CREATE DATABASE iomoney CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'iomoney'@'app-host' IDENTIFIED BY 'a-long-random-password';
-GRANT ALL ON iomoney.* TO 'iomoney'@'app-host';
-```
-
-`app-host` is the machine the app runs on (`localhost` when MariaDB is on the same machine). The accounts and the
-suite-wide settings live in the Shared ioSuite database (`iosuite`, user `iosuite`; the one every app of the suite
-uses). The tables are created on the first start and updated by later versions by themselves.
-
-### Proxmox VE (LXC)
-
-On the Proxmox host, as root:
+ioMoney is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioMoney in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iomoney/proxmox/ct/iomoney.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iomoney
 ```
 
-It asks for the money database, the Shared ioSuite database, the web port (8710), the time zone, the public address
-(optional), the domain the sign-in is shared on (optional) and the admin account, and which other apps of the suite go
-in the same container; then the framework's own questions. For unattended runs set `IOMONEY_DB` and `IOMONEY_SUITE_DB`
-(`host:port/db:user:password`), `IOMONEY_ADMIN` (`name:password`), `IOMONEY_PORT`, `IOMONEY_TIMEZONE`,
-`IOMONEY_PUBLIC_URL` and `IOMONEY_COOKIE_DOMAIN`.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iomoney       # --remove iomoney stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iomoney`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/money/` at the suite's address (`https://home.example.com/money/`), and a name of its own if you give it one |
+| MCP | `/money/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `iomoney`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iomoney
-./setup.sh          # asks for the databases, port, time zone and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iomoney.cli check           # connect to the databases and say what is there
+.venv/bin/python -m iomoney.cli sync [--full]   # copy Monarch Money in now (--full: the past two years of transactions again)
+.venv/bin/python -m iomoney.cli quotes          # ask Yahoo Finance for every quote now
 ```
 
-Its last step is the list of the suite's apps on this machine, to add or remove others beside ioMoney (the
-[one-line installer](../README.md#install) does the same from anywhere). `setup.sh` takes the same flags as every app
-of the suite (`--db`, `--suite-db`, `--db-admin`, `--admin`, `--port`, `--public-url`, `--cookie-domain`, `--service`,
-`--also`, `--yes`). From a shell: `python -m app.cli sync` (`--full`: two years of transactions again), `quotes` and
-`check`.
+Accounts are the suite's: `iosuite admin NAME --app iomoney` makes someone an admin of ioMoney only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment,
-which wins:
+ioMoney has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioMoney, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iomoney        # what may be set, with the value stored now
+iosuite set iomoney PUBLIC_URL https://money.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | the MariaDB / MySQL database (`iomoney`) |
-| `IOSUITE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD` | the Shared ioSuite database (`iosuite`, on `DB_HOST` unless set) |
-| `COOKIE_DOMAIN` | the domain the session cookie is shared on (`example.com`) |
-| `HOST`, `PORT` | where the server listens (all addresses, 8710) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | serve HTTPS directly instead of behind a reverse proxy |
-| `TZ` | the time zone the server log is written in |
-| `PUBLIC_URL` | the address people use (behind a proxy), for the links the MCP tools give |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the first admin, made on the first start when there are no accounts |
-| `SYNC` | `0`: no Monarch sync and no quotes in the background (Sync now and Quotes still work) |
-| `MCP` | `1` keeps the MCP server on, whatever the setting says |
-| `MCP_USER` | the account `python -m app.mcp` (stdio) acts as |
-| `UPDATE_CHECK` | `0` turns the daily version check off for good |
-| `DATA_DIR`, `LOG_FILE` | where the app writes on its own (`data/`), and the server log (`DATA_DIR/iomoney.log`) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://money.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iomoney/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iomoney`) |
+| `SYNC` | background work (`1` or `0`; on by default). Monarch, quotes and notifications on their own. Off: only when asked |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 Updates, releases, the reverse proxy and Cloudflare Access work as in every app of the suite (see
 [ioRecipe's README](../iorecipe/README.md#updates)).
 
 ## API
+
+The paths below are ioMoney's own: at the suite's address they are inside its folder (`https://home.example.com/money/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/money/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 | For | Where |
 | --- | --- |
@@ -368,9 +358,9 @@ Amounts are signed as Monarch signs them: money out is negative. Settings › Ac
 REST API (HTTP Basic, or `Authorization: Bearer <app password>`) and for MCP.
 
 ```sh
-curl -u alex:APP-PASSWORD "https://money.example.com/api/networth?days=90"
-curl -u alex:APP-PASSWORD "https://money.example.com/api/transactions?q=grocer&month=2026-11"
-curl -u alex:APP-PASSWORD -X PATCH -H 'Content-Type: application/json' -d '{"category": "Party", "notes": "birthday"}' https://money.example.com/api/transactions/812
+curl -u alex:APP-PASSWORD "https://sync.example.com/money/api/networth?days=90"
+curl -u alex:APP-PASSWORD "https://sync.example.com/money/api/transactions?q=grocer&month=2026-11"
+curl -u alex:APP-PASSWORD -X PATCH -H 'Content-Type: application/json' -d '{"category": "Party", "notes": "birthday"}' https://sync.example.com/money/api/transactions/812
 ```
 
 ## MCP server
@@ -383,14 +373,14 @@ Off until an admin turns it on in **Settings › Server**. The tools: `overview`
 `bills`, `recurring_transactions`, `sync_monarch`; and for admins `diagnostics`, `monarch_new_accounts`, `resolve_new_account`.
 
 ```sh
-claude mcp add --transport http iomoney https://money.example.com/mcp --header "Authorization: Bearer APP-PASSWORD"
+claude mcp add --transport http iomoney https://mcp.example.com/money/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
 ## Tests
 
 ```sh
-pip install -e '.[test]'
-python -m pytest tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iomoney/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 Covered: roles (none, viewer, member, editor), private and household accounts, the net worth and its history,
@@ -413,37 +403,38 @@ file turned around, an OFX file, and what comes back (found, missing, of another
 
 ## Layout
 
+The package `iomoney/` of the repository:
+
 ```
-app/main.py        the application: start-up, the background chores (Monarch sync, quotes, estimates), routes
-app/api.py         the REST API
-app/model.py       accounts, balances, transactions and holdings in MariaDB: who sees and changes what, the sums
-app/monarch.py     Monarch Money: the sign-in (from the suite's keys and tokens) and the sync, accounts it reports as new
-app/recurring.py   recurring transactions and subscriptions: found in the transactions, the household's list, the bills' dates
-app/categories.py  the categories: added, renamed, merged, regrouped, deleted, and what a sync brings later under the old name
-app/transfers.py   transfers between the household's own accounts: found, linked, unlinked, and their rules
-app/forecast.py    the cash forecast of an account: what is known to come, day by day
-app/payoff.py      a loan's payoff from its rate and its payment
-app/splits.py      a transaction split over categories
-app/review.py      needs a look: the transactions nobody looked at yet
-app/payees.py      the payees: counted, renamed, merged, their usual category
-app/tags.py        the household's own tags on transactions, beside Monarch's
-app/duplicates.py  likely duplicates: the same transaction kept twice
-app/statements.py  an account reconciled against the bank's statement
-app/statementfile.py  the bank's file (PDF, CSV, OFX, QFX) held against the account: what to tick, what differs
-app/statementpdf.py   a statement's PDF read: its days, its two balances, its lines
-app/balancecheck.py  whether an account's balance agrees with its transactions
-app/rulecheck.py   what each rule does, the ones that do nothing, the rules missing
-app/history.py     what was changed by hand on a transaction, and the way back
-app/searches.py    a person's saved searches of the transactions
-app/importer.py    a bank's file (CSV, OFX, QFX) into an account kept by hand
-app/receipts.py    the receipts kept with a transaction, and what follows a transaction to its new id
-app/quotes.py      quotes and exchange rates from Yahoo Finance
-app/persondata.py  what a person keeps here, for the suite's delete-a-person
-app/mcp/           the MCP server: money and admin tools
+main.py            the application: start-up, the background chores (Monarch sync, quotes, estimates), routes
+api.py             the REST API
+model.py           accounts, balances, transactions and holdings in MariaDB: who sees and changes what, the sums
+monarch.py         Monarch Money: the sign-in (from the suite's keys and tokens) and the sync, accounts it reports as new
+recurring.py       recurring transactions and subscriptions: found in the transactions, the household's list, the bills' dates
+categories.py      the categories: added, renamed, merged, regrouped, deleted, and what a sync brings later under the old name
+transfers.py       transfers between the household's own accounts: found, linked, unlinked, and their rules
+forecast.py        the cash forecast of an account: what is known to come, day by day
+payoff.py          a loan's payoff from its rate and its payment
+splits.py          a transaction split over categories
+review.py          needs a look: the transactions nobody looked at yet
+payees.py          the payees: counted, renamed, merged, their usual category
+tags.py            the household's own tags on transactions, beside Monarch's
+duplicates.py      likely duplicates: the same transaction kept twice
+statements.py      an account reconciled against the bank's statement
+statementfile.py      the bank's file (PDF, CSV, OFX, QFX) held against the account: what to tick, what differs
+statementpdf.py       a statement's PDF read: its days, its two balances, its lines
+balancecheck.py      whether an account's balance agrees with its transactions
+rulecheck.py       what each rule does, the ones that do nothing, the rules missing
+history.py         what was changed by hand on a transaction, and the way back
+searches.py        a person's saved searches of the transactions
+importer.py        a bank's file (CSV, OFX, QFX) into an account kept by hand
+receipts.py        the receipts kept with a transaction, and what follows a transaction to its new id
+quotes.py          quotes and exchange rates from Yahoo Finance
+persondata.py      what a person keeps here, for the suite's delete-a-person
+mcp/               the MCP server: money and admin tools
 static/            the web app (index.html, app.js, app.css, icons)
-proxmox/           the community-scripts LXC installer      setup.sh, run.sh, update.sh, Dockerfile
 ```
 
 ## License
 
-GPL-3.0-or-later (the GNU General Public License, version 3 or later).
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

@@ -3,10 +3,10 @@
 Copies your Apple Health data, all of it or just the types you pick, into your own MariaDB database, and gives you a
 fitness web app on top of it: dashboards, charts of any metric (stacked or overlaid), workouts with their GPS routes on
 a map, sleep, training load and personal records. Nothing goes through a cloud service: an iPhone app uploads straight
-to a small server that you run in Docker, over HTTPS behind your reverse proxy (or plain HTTP on your own network).
-The same container serves the web app. Accounts are the ioThing suite's shared ones (the same as
-[ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote) and
-[ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact)): every person in the household signs in with their own name
+to your own server, over HTTPS behind your reverse proxy (or plain HTTP on your own network).
+The same app serves the web app. Accounts are the ioThing suite's shared ones (the same as
+[ioPix](../iopix/), [ioNote](../ionote/) and
+[ioContact](../iocontact/)): every person in the household signs in with their own name
 and sees only their own health data.
 
 The iPhone app that uploads the data is in its own repository,
@@ -16,13 +16,14 @@ ioPix keep theirs in [ionote-apps](https://github.com/avandeputte/iosuite-apps/t
 ```
 ┌──────────────┐   HTTPS (REST, gzip NDJSON)   ┌───────────────┐        ┌──────────┐
 │   ioHealth   │ ────────────────────────────▶ │ reverse proxy │ ─────▶ │  server  │ ──▶ MariaDB (health + iosuite)
-│  (iPhone)    │                               │ (TLS)         │  HTTP  │ (Docker) │
+│  (iPhone)    │                               │ (TLS)         │  HTTP  │ (ioSuite)│
 └──────────────┘                               └───────────────┘        └──────────┘
 ```
 
 ## What it does
-The fitness web app is built into the server. Open the server's address in a browser (`https://health.example.com`
-or `http://192.168.1.10:8650`) and sign in: the sign-in screen is the suite's, with a tile per account (an account
+
+The fitness web app is built into the server. Open the server's address in a browser (`https://home.example.com/health/`
+or `http://192.168.1.10/health/`) and sign in: the sign-in screen is the suite's, with a tile per account (an account
 without a password signs in with one click, on the home network only). It shows only the signed-in person's data, and
 shows new data as soon as a sync finishes.
 
@@ -44,7 +45,7 @@ under More.
 | **Glucose** | blood glucose from a CGM or meter: average, GMI (estimated A1c), time in/below/above range, variability (CV), low episodes; readings with your target band and optional overlays (heart rate, steps, carbohydrates, insulin, workouts…); the daily pattern (ambulatory glucose profile) and time in range per day; **glucose around workouts and meals**: the average change from an hour before to three hours after, per activity or per meal size (from logged carbohydrates), and each event's numbers. A workout's own page shows its glucose curve too. mg/dL or mmol/L and the target range are set in Settings |
 | **Correlations** | pick two metrics and a period: a scatter plot of the days (click a dot for that day), the correlation, how much one explains the other and the best-fit line, same day or "the day before" (sleep, workouts or carbs, then the next day's glucose). Includes glucose time in range and variability per day and workout minutes. A table ranks what else goes with the second metric |
 | **Records** | fastest running efforts from the GPS routes, best days, health bests, ring streaks, and bests per activity |
-| **Settings** | in tabs, as in ioContact and ioCalendar (`#/settings/<tab>`; each tab loads only what it shows). *Account*: your name, email and password (iosuite-shared's panel, the same in every io app). *Display*: theme (light, dark or system, kept with your account), units (automatic from your region, kilometres or miles), and which pages and metrics to show (turn off Sleep, Glucose or any metric you don't use and it disappears from the menu, the dashboard, Metrics and Records). *Health*: glucose unit and target range, maximum heart rate (default 220 − age from your date of birth). *Goals and alerts*: **goals** (any metric, at least or at most: 10,000 steps a day, weight at most 75 kg, 7.5 h of sleep…) and the thresholds for dashboard alerts. For admins: *Server*: iosuite-shared's panel, the same in every io app: the installed version, the database and time zone, the server log, Restart. For suite admins: *Security* (people and their role in every app, app passwords, sign-in at the proxy) and *Global settings* (the apps, keys and tokens), the suite's admin panel, the same as on the start page and in every io app (iosuite-shared's `/api/suite-admin/ui.js`) |
+| **Settings** | in tabs, as in ioContact and ioCalendar (`#/settings/<tab>`; each tab loads only what it shows). *Account*: your name, email and password (iosuite_shared's panel, the same in every io app). *Display*: theme (light, dark or system, kept with your account), units (automatic from your region, kilometres or miles), and which pages and metrics to show (turn off Sleep, Glucose or any metric you don't use and it disappears from the menu, the dashboard, Metrics and Records). *Health*: glucose unit and target range, maximum heart rate (default 220 − age from your date of birth). *Goals and alerts*: **goals** (any metric, at least or at most: 10,000 steps a day, weight at most 75 kg, 7.5 h of sleep…) and the thresholds for dashboard alerts. For admins: *Server*: iosuite_shared's panel, the same in every io app: the installed version, the database and time zone, the server log, Restart. For suite admins: *Security* (people and their role in every app, app passwords, sign-in at the proxy) and *Global settings* (the apps, keys and tokens), the suite's admin panel, the same as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`) |
 | **Notifications** | through the suite's web push (Settings › Account › Notifications, per person): *Health goals*, when a sync brings one of today's goals up to it; *Weekly health summary*, on Monday at your morning time, last week's steps a day, sleep a night and workouts next to the week before; *Outside your usual*, on the day your resting heart rate, heart rate variability or sleep leaves what is usual for you (the Heads-up list's own check, made on the server: at your morning time, and after each sync from then on, once) |
 
 **Export.** The ⤓ CSV buttons download what a chart or table shows (Metrics, Day, glucose readings and responses,
@@ -67,178 +68,80 @@ libraries, [uPlot](https://github.com/leeoniya/uPlot) and [Leaflet](https://leaf
 container.
 
 ## Run
-The server runs in any of three ways, as ioPix, ioNote and ioContact do; pick one:
 
-| | how | where the settings live |
-|---|---|---|
-| [Docker](#docker-with-compose) | the image `ghcr.io/avandeputte/iosuite/iohealth` with Compose or `docker run` | the compose file or `-e` flags |
-| [Proxmox VE (LXC)](#proxmox-ve-lxc) | one command on the Proxmox host creates a container and sets the server up inside it | `/opt/iohealth/app/config.env` in the container |
-| [Standalone](#any-linux-or-mac) | `setup.sh` on any Linux box or Mac: a Python virtual environment and a `systemd` service | `config.env` |
-
-Whichever way, it needs an existing MariaDB (or MySQL) server with two databases on it: one for the health data
-(created if the user may; tables are created and migrated at every start) and the **Shared ioSuite** database
-(`iosuite`), which holds the accounts and the suite-wide settings for every app in the suite (also created at start; if ioPix, ioNote or ioContact
-already runs, point ioHealth at the same one and the accounts are there already). It listens on port **8650**, for
-both the phone's uploads and the web app; put it behind your reverse proxy for [HTTPS](#reverse-proxy-and-https).
-
-### Proxmox VE (LXC)
-`proxmox/ct/iohealth.sh` and `proxmox/install/iohealth-install.sh` follow the community-scripts
-(ProxmoxVE) framework layout, the same way as the other apps. On the Proxmox host, as root,
+ioHealth is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioHealth in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iohealth/proxmox/ct/iohealth.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iohealth
 ```
 
-creates a small Debian 13 container (2 CPUs, 1 GB, 4 GB disk by default), puts the server in `/opt/iohealth/app` and
-runs its `setup.sh` there. It asks, as the other apps' scripts do, for the MariaDB host, port, database, user and
-password of the health data, the same for the Shared ioSuite database (`iosuite` by default; the one ioPix, ioNote
-and ioContact use), the public address, the cookie domain, the first account (only used when that database is still empty), the time zone and the
-port (8650), after the framework's own questions (resources, network). The passwords reach `setup.sh` through its environment (a root-only file pushed in and removed again),
-never on a command line; the setup's output is kept in `/opt/iohealth/setup.log`. The MariaDB users must be allowed to connect from the container's address. For unattended runs `IOHEALTH_DB` and
-`IOHEALTH_SUITE_DB` (`host:port/db:user:password`), `IOHEALTH_TZ`, `IOHEALTH_PORT`, `IOHEALTH_PUBLIC_URL`, `IOHEALTH_COOKIE_DOMAIN` and
-`IOHEALTH_ADMIN` (`name:password`) in the environment answer the questions in advance. `update` inside the container (or the suite's Update button in the web app) runs
-`update.sh`.
-
-### Docker: with Compose
-The image is `ghcr.io/avandeputte/iosuite/iohealth` (public, `linux/amd64` and `linux/arm64`). Tag: `latest`
-(current `main`).
-
-Save [`docker-compose.yml`](docker-compose.yml) (every option the server understands is in it), fill
-in the "CHANGE ME" values, and run `docker compose up -d`; it pulls the published image, and `docker compose up -d
---build` in a clone builds it from the checkout instead.
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d
-curl http://localhost:8650/v1/health        # {"ok":true,"schemaVersion":10}
+iosuite install --add iohealth       # --remove iohealth stops running it; what it stored stays
 ```
 
-Then open `http://localhost:8650/` and sign in (or, on an empty account database, create the first admin right
-there). Update later with `docker compose pull && docker compose up -d`.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Docker: with plain `docker run`
-```sh
-docker run -d --name iohealth --restart unless-stopped -p 8650:8650 \
-  -e DB_HOST=db.example.lan -e DB_USER=iohealth -e DB_PASSWORD=change-me -e DB_NAME=iohealth \
-  -e IOSUITE_DB_NAME=iosuite -e IOSUITE_DB_USER=iosuite -e IOSUITE_DB_PASSWORD=change-me \
-  ghcr.io/avandeputte/iosuite/iohealth:latest
-docker logs -f iohealth
-```
+| | |
+| --- | --- |
+| Address | `/health/` at the suite's address (`https://home.example.com/health/`), and a name of its own if you give it one |
+| Devices | the ioHealthSync iPhone app's uploads at `/health/v1/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| Database | `iohealth`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 
-(or `--env-file config.env` instead of the `-e` flags, with a copy of `config.env.example`.)
-
-### Any Linux or Mac
-```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iohealth
-./setup.sh          # asks for the databases, the port and the first account; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
-```
-
-Its last step is the list of the suite's apps on this machine: tick one to add it, untick one to remove it (its database and data stay), `r` and its number to ask its questions again; `./setup.sh --apps` shows only that list, and the [one-line installer](../README.md#install) does the same from anywhere. Adding (flag `--also iocalendar,ionote`, `--also all`; `--remove` and `--reconfigure` take lists too; `IOHEALTH_ALSO` in the environment), puts
-other apps of the suite in this same machine, beside ioHealth (`/opt/iocalendar/app` next to `/opt/iohealth/app`),
-each asking its own setup questions with the answers of the apps already here as the defaults (Enter keeps
-one; `--yes` takes them all): the same database server with a database of its own named after the app (`iostart`,
-`iocalendar`, `iothings`, ...; the user needs rights on those names too, or give a MariaDB administrator), the same Shared ioSuite
-database, sign-in domain and admin, a public address made like the others' (`iosuite-shared install`, from the shared library). Each app keeps its usual port
-and updates itself as always. The Proxmox installer offers the same as a checklist, for one container with several apps.
-
-The databases and users need not exist beforehand: give a MariaDB / MySQL administrator (the question after the
-databases; flag `--db-admin USER:PASSWORD`, or `IOHEALTH_DB_ADMIN`, also in the Proxmox installer) and `setup.sh` creates
-the app's database and user, the Shared ioSuite database and user and, with other apps installed alongside, their
-databases too, with the passwords you answered (`iosuite-shared provision`). Nothing is dropped, and the administrator's
-password is used once and not written anywhere.
-
-`setup.sh` takes flags instead of questions (`--db`, `--suite-db`, `--admin` or `--no-admin`, `--port`, `--public-url`,
-`--cookie-domain`, `--tz`, `--yes`, the same as every app of the suite; the passwords can come from `IOHEALTH_DB`,
-`IOHEALTH_SUITE_DB` and `IOHEALTH_ADMIN` in the environment), writes `config.env` (readable by the owner only), makes
-`.venv` (Python 3.11 or later), creates the first admin with `iosuite-shared admin`, installs the `iohealth` systemd
-service (`python -m app`) and waits until it answers. Without the service, `./run.sh` starts it in the foreground with
-the same `config.env`; a launchd job `net.iothing.iohealth.server` on a Mac can run that script, and an update from the web app restarts
-either.
+Accounts are the suite's: `iosuite admin NAME --app iohealth` makes someone an admin of ioHealth only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
-The settings are in `config.env` in the app folder ( the LXC and standalone installs write it, `setup.sh` asks
-for the important ones, and `config.env.example` lists them all) or in the environment, which wins (the compose file,
-`-e` flags). Every app of the suite uses the same file name and the same names; never commit real values.
 
-| variable | required | meaning |
-|---|---|---|
-| `DB_HOST` | yes | MariaDB host name or IP |
-| `DB_PORT` | no | default `3306` |
-| `DB_USER`, `DB_PASSWORD` | yes | a user that may create tables in `DB_NAME` (and the database itself, ideally) |
-| `DB_NAME` | no | default `iohealth` |
-| `IOSUITE_DB_HOST`, `IOSUITE_DB_PORT` | no | the server with the Shared ioSuite database; default: the same as `DB_HOST` / `DB_PORT` |
-| `IOSUITE_DB_NAME`, `IOSUITE_DB_USER`, `IOSUITE_DB_PASSWORD` | yes | the Shared ioSuite database (accounts and suite-wide settings; name and user `iosuite` by default) and a user that may create tables in it |
-| `PUBLIC_URL` | no | the address people and the other apps reach ioHealth at (`https://health.example.com`); empty: the best address it is reached at |
-| `COOKIE_DOMAIN` | no | the domain the session cookie is shared on (`example.com`): signed in at `photos.example.com` is signed in at `health.example.com` too; a LAN address gets its own cookie |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | no | the first account, created on a first start with an empty Shared ioSuite database (or create it from the sign-in screen instead) |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | no | set both (and mount the files) to serve HTTPS directly instead of behind a proxy |
-| `TZ` | no | fallback time zone (e.g. `Europe/Brussels`) for days and weeks; the browser sends its own, so this only matters for API calls without `tz` |
-| `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION` | no | map tiles for routes, default OpenStreetMap (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) |
-| `HOST`, `PORT` | no | where the server listens, default `0.0.0.0` and `8650` (every app of the suite has its own port) |
-| `UPDATE_CHECK` | no | `0`: never ask GitHub whether a newer version exists (the daily check, see [Updates](#updates)) |
-| `DATA_DIR` | no | what ioHealth writes on its own (the server log, the outcome of an update); default `data/` in the app folder |
-| `LOG_FILE` | no | the server log shown at Settings › Server (`data/iohealth.log`; empty: no file) |
+ioHealth has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioHealth, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iohealth        # what may be set, with the value stored now
+iosuite set iohealth PUBLIC_URL https://health.example.com    # no value: back to the default
+```
+
+| Setting | Meaning |
+| --- | --- |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://health.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iohealth/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iohealth`) |
+| `MAP_TILE_URL` | map tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`). The address workout maps are drawn from |
+| `MAP_TILE_ATTRIBUTION` | map tiles: credit line. Shown on the maps (HTML). Empty: OpenStreetMap's |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
-- **Docker:** `docker compose pull && docker compose up -d`.
-- **Proxmox LXC:** `update` inside the container (the community-scripts command), which runs `update.sh` below.
-- **Standalone:** `./update.sh` fetches the latest code (git, or the GitHub tarball when
-  there is no checkout), installs the packages the new version asks for and only then moves the code in, then
-  restarts the service. `--check` only reports; `IOHEALTH_REF=<sha>` installs that commit.
-- **From the web app:** the suite has one version, the same for every app, and the apps are updated together: Settings ›
-  Global settings › Updates (suite admins, in any app) shows the installed version and the newest one on GitHub, with
-  one Update button that runs each app's `update.sh` (in Docker it says to pull instead). A daily check (on by
-  default; the Updates page switches it off for the suite, `UPDATE_CHECK=0` locks it off for this app) finds a newer
-  version; only the public commit list is fetched, nothing about the install is sent. Settings › Server (admins), the
-  same page in every ioThing app (iosuite-shared's, at `/api/server` and `/api/log`), shows the version and commit
-  ioHealth runs, the tail of the server log (`data/iohealth.log` in the app folder; `LOG_FILE` moves it, empty
-  switches it off) and Restart.
+
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioHealth runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 ## Reverse proxy and HTTPS
-The server speaks plain HTTP; put it behind your reverse proxy for HTTPS. With Caddy, which gets a certificate by
-itself:
 
-```
-health.example.com {
-    reverse_proxy 192.168.1.10:8650
-}
-```
+ioHealth is reached through the suite's three ports: the pages (80), devices (8443) and MCP (8444). A reverse proxy gives each
+a name and HTTPS, for the whole suite at once, and can make people sign in first (Cloudflare Access, Authelia, oauth2-proxy):
+[Reverse proxy and HTTPS](../docs/docs/run/reverse-proxy.md) and [Cloudflare Tunnel and Access](../docs/docs/run/cloudflare.md) in the
+guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
+Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-With nginx:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name health.example.com;
-    # ssl_certificate / ssl_certificate_key …
-    client_max_body_size 100m;     # batches are gzip-compressed and normally well under 1 MB
-    proxy_read_timeout 300s;
-    location / {
-        proxy_pass http://192.168.1.10:8650;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;   # marks the session cookie Secure
-    }
-}
-```
-
-Traefik: route the host to port 8650 and raise the body limit if you use the buffering middleware. If the proxy runs
-in the same Docker network, use `iohealth:8650` as the upstream. The phone allows plain `http://` only to local
-network addresses; anything else must be `https://`.
-
-When the proxy already makes people sign in (Cloudflare Access, Authelia, oauth2-proxy…), ioHealth takes that sign-in,
-exactly as the other apps in the suite do: the proxy passes who signed in in a header, and ioHealth treats that person
-as signed in when an account exists for them (matched on the account's email address, then its name). Set it up once
-for the whole suite in Settings › Security › Sign-in at the proxy (it's kept in the shared account database, never in
-config.env): the proxy (`cloudflare`, `haproxy`, `nginx`, `caddy`, `traefik` or `header`), its header, the addresses it
-connects from, what happens to someone new (`viewer`, `member` or `editor` to create an account, `deny` for a "No access"
-page), and for Cloudflare Access the team and AUD tag (the signed token Cloudflare adds to every request is checked
-against your team's keys). The header is believed only from the proxy's own addresses. The iPhone's uploads carry the account's own
-user name and password instead, so for a server behind Cloudflare Access the upload paths (`/v1/`) need a bypass
-rule or a Cloudflare service token.
+The iPhone app allows plain `http://` only to addresses on the local network; anything else must be `https://`. Its uploads (`/health/v1/…`) go to the address for devices, which stays outside a sign-in at the proxy: the phone signs in there with the account's name and password, a script with an app password.
 
 ## Users and permissions
-**Accounts** are the ioThing suite's shared accounts ([iosuite-shared](https://github.com/avandeputte/iosuite/tree/main/shared): the
+
+**Accounts** are the ioThing suite's shared accounts ([iosuite_shared](../iosuite_shared/): the
 Shared ioSuite database in MariaDB, shared with ioPix, ioNote and ioContact), so one name, password and session serve every app, and
 someone signed in at `photos.example.com` is signed in at `health.example.com` too when the apps share a domain
 (`COOKIE_DOMAIN`). What is ioHealth's own is kept per app: the role an account holds here, its settings and
@@ -258,6 +161,9 @@ by the apps on the domain) valid for 30 days and renewed while in use; passwords
 cost a growing wait.
 
 ## API
+
+The paths below are ioHealth's own: at the suite's address they are inside its folder (`https://home.example.com/health/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/health/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+
 Every `/v1` call except `/v1/health` needs the account's `Authorization: Basic <user:password>` (what the iPhone app
 sends) or `Bearer <app password>`, of a member or more; what is sent becomes that account's. Errors
 are JSON `{"detail": "…"}` with 400, 401, 403, 404 or 413.
@@ -274,8 +180,9 @@ acknowledged (`"duplicate":true`) without being applied twice. Every write is an
 resending anything is safe.
 
 ## The iPhone app
+
 Build and install it from [iohealth-apps](https://github.com/avandeputte/iosuite-apps/tree/main/iohealth), whose README has the steps.
-On the phone, enter this server's URL (`https://health.example.com`, or `http://192.168.1.10:8650` at home) and your
+On the phone, enter the suite's address for devices with ioHealth's folder (`https://sync.example.com/health`, or `http://192.168.1.10:8443/health` at home) and your
 user name and password, then **Sync now**. Later syncs only send what's new or changed; with "Sync automatically" on
 the phone also syncs in the background when new Health data arrives. The server has to be reachable at that moment; a
 missed or cut-short round costs nothing, because the phone only moves on for batches the server has acknowledged.
@@ -285,6 +192,7 @@ Everyone in the household gets their own account, and the phones upload side by 
 row tagged with its owner.
 
 ## The database
+
 Every table is `hlt_<name>` (the suite's naming convention, so the apps can share one database), InnoDB/utf8mb4 with timestamps in UTC as `DATETIME(3)`, and every data row has a `user_id`: the
 account it belongs to (its id in the shared account database's `ios_users` table). `SELECT … WHERE user_id = 1` is one
 person; the examples below are for everyone at once.
@@ -316,7 +224,7 @@ arrival) and `hlt_sample_delay_by_day` (the same per type and per day of arrival
 
 Type names are the HealthKit identifier without its prefix, in snake_case (`HKQuantityTypeIdentifierHeartRateVariabilitySDNN`
 → `heart_rate_variability_sdnn`); the phone and the server share the rule (`HealthTypes.storageName`,
-`app/db.py`'s `storage_name`). Units are your Health app's preferred units (kg or lb, km or mi…) where Apple exposes them,
+`iohealth/db.py`'s `storage_name`). Units are your Health app's preferred units (kg or lb, km or mi…) where Apple exposes them,
 otherwise metric; the `unit` column always says which.
 
 ```sql
@@ -339,6 +247,7 @@ GROUP BY night, stage ORDER BY night DESC;
 ```
 
 ## Not included
+
 - **ECGs**: the iPhone app doesn't request or send them (the voltage traces are most of the data by volume).
 - **Vision prescriptions**: HealthKit only allows reading them one prescription at a time, with a separate prompt.
 - **Clinical (FHIR) health records** need the separate "Clinical Health Records" entitlement, which Apple grants
@@ -346,21 +255,26 @@ GROUP BY night, stage ORDER BY night DESC;
 - Data the Watch has purged (very old raw samples that the phone never received).
 
 ## Tests
-`python -m pytest tests` (after `pip install -e ".[test]"`) runs the tests against a real MariaDB
-(`IOSUITE_TEST_DB=host:port:user:password`, as in every app of the suite; default `127.0.0.1:3306:health:health`; it makes and drops
-databases of its own, `health_test`, `iosuite_test_iohealth` and `health_mig_test`, so the user needs `CREATE` and `DROP`). CI runs the same on every pull request (`.github/workflows/ci.yml`).
+
+```sh
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iohealth/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
+```
+
+The tests run against a real MariaDB
+(`IOSUITE_TEST_DB=host:port:user:password`, as in every app of the suite; it makes and drops
+databases of its own, `health_test`, `iosuite_test_iohealth` and `health_mig_test`, so the user needs `CREATE` and `DROP`). The checks on GitHub run the same.
 
 ## Layout
+
+The package `iohealth/` of the repository:
+
 | path | what |
 |---|---|
-| `app/` | the FastAPI service: the upload API (`/v1`), the web app's API (`/api`), the database and its migrations; accounts through the suite's [iosuite-shared](https://github.com/avandeputte/iosuite/tree/main/shared) |
+| `*.py` | the FastAPI service: the upload API (`/v1`), the web app's API (`/api`), the database and its migrations; accounts through the suite's [iosuite_shared](../iosuite_shared/) |
 | `static/` | the web app (one page, `app.js`, `app.css`, the chart and map libraries, icons) |
 | `tests/` | the tests, on a real MariaDB |
-| `proxmox/` | the Proxmox VE LXC scripts (`ct/` on the host, `install/` in the container) |
-| `Dockerfile`, `docker-compose.yml` | the image and how to run it |
-| `setup.sh`, `run.sh`, `update.sh` | standalone install, start and update |
-| `config.env.example` | every setting |
-| `.github/workflows/ci.yml` | the tests, then the image |
 
 ## License
-GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](LICENSE).
+
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

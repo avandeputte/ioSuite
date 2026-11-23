@@ -7,8 +7,27 @@ ones it is told to, and several copies against the same Shared ioSuite database 
 its own, the rest on another, say). It follows [avandeputte/iosuite](https://github.com/avandeputte/iosuite), where
 every app was a program and a service of its own.
 
-> **Work in progress.** The apps, the host and the settings are here; the installer, the update script, the Docker
-> image and the converter for an existing install are still to come. Until then this is run from a checkout (below).
+## Install
+
+On any Linux machine, one command installs the program, asks for the database server, the apps and the first admin,
+and starts the service; run it again at any time to add or remove apps:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash
+```
+
+| | |
+| --- | --- |
+| [Any Linux or Mac](docs/docs/start/linux-mac.md) | the command above, its questions and its options (`--apps`, `--add`, `--remove`, `--mariadb`, `--yes`) |
+| [Docker](docs/docs/start/docker.md) | [docker-compose.yml](docker-compose.yml): MariaDB and one container that runs every app (the image `ghcr.io/avandeputte/iosuite2`) |
+| [Proxmox VE](docs/docs/start/proxmox.md) | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox/ct/iosuite.sh)"` on the host: a container with the suite in it |
+| [One app or all of them](docs/docs/start/one-or-all.md) | every app works alone; the others add to it when they are there |
+| [Several copies and several servers](docs/docs/start/several-apps.md) | ioPix apart from the rest, on the same machine or another |
+
+The whole guide is in [docs/docs/](docs/docs/index.md): first run, accounts and roles, reverse proxy and HTTPS,
+Cloudflare, AI assistants (MCP), updates, configuration, and a page for each app.
+
+## The apps
 
 | Package | App | What it is | Folder |
 |---|---|---|---|
@@ -85,15 +104,30 @@ it was opened from, or every app on one timeline; with several copies, every cop
 ## From a checkout
 
 ```sh
+git clone https://github.com/avandeputte/iosuite2 && cd iosuite2
 python3 -m venv .venv && .venv/bin/pip install -e ".[all]"
-cp config.env.example config.env    # the database and the apps of this machine
-.venv/bin/iosuite provision --admin root    # the databases and the one login (asks for root's password)
-.venv/bin/iosuite init && .venv/bin/iosuite admin alex
+.venv/bin/iosuite install --no-service     # asks what the installer asks, writes config.env, makes the tables and the admin
 .venv/bin/iosuite serve
 ```
 
-The tests need a MariaDB of their own (Docker, or `IOSUITE_TEST_DB=host:port:user:password`):
-`python -m pytest iosuite_shared/tests iocalendar/tests`.
+The tests need a MariaDB of their own (a Docker container they start, or `IOSUITE_TEST_DB=host:port:user:password`):
+
+```sh
+.venv/bin/pip install -e ".[all,test]"
+.venv/bin/python -m pytest iosuite_shared/tests iocalendar/tests
+```
+
+## What else is here
+
+| | |
+| --- | --- |
+| [`install.sh`](install.sh), [`update.sh`](update.sh) | the installer and the update, for a machine that runs the suite as a service |
+| [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml) | the container image and a stack that uses it |
+| [`proxmox/`](proxmox/) | the Proxmox VE scripts (community-scripts layout) |
+| [`cloudflare/edge-auth/`](cloudflare/edge-auth/) | an optional Cloudflare Worker that checks app passwords before a request reaches the server |
+| [`devices/`](devices/) | firmware for the wall display |
+| [`tools/`](tools/) | checks that run against a live suite (`smoke.py`, `twocopies.py`) and the measurements (`measure.py`); nothing imports them |
+| [`docs/`](docs/) | the guide and the website |
 
 ## License
 

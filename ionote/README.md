@@ -5,7 +5,7 @@
 The server behind ioNote: a web app for reading, writing and organising notes from any browser, and the API the
 ioNote apps for Mac and iPhone/iPad use ([iosuite-apps](https://github.com/avandeputte/iosuite-apps/tree/main/ionote)). Everything is kept
 in one MariaDB/MySQL database, pictures included. It is built the same way as its sibling
-[iopix](https://github.com/avandeputte/iosuite/tree/main/iopix): FastAPI with a single-page vanilla JS app, the same accounts, roles
+[iopix](../iopix/): FastAPI with a single-page vanilla JS app, the same accounts, roles
 and sign-in (Cloudflare Access too), the same installer, updater, Docker image and MCP server.
 
 ## What it does
@@ -40,158 +40,102 @@ and sign-in (Cloudflare Access too), the same installer, updater, Docker image a
 - **Text in pictures**: read on the device where the picture was taken (Apple's Vision framework, on the Mac and
   iPhone), and sent along; for pictures added in the web app the server reads it itself with RapidOCR.
 - **Settings**: Account (with your app passwords) and Display for everyone signed in (the same panels as every io app), Server for admins; a change is saved the moment it is made.
-- **Settings › Security** (suite admins): the whole suite's people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy; the same panel as on the start page and in every io app (iosuite-shared's `/api/suite-admin/ui.js`).
+- **Settings › Security** (suite admins): the whole suite's people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - **Offline**: the apps keep a full copy and send their changes when the server can be reached; the API settles
   conflicts per note by the time of the edit (below).
 - **The clipboard Inbox stays on each device.** Only notes you save go to the server.
 
 ## Run
 
-```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/ionote
-./setup.sh
-```
-
-Its last step is the list of the suite's apps on this machine: tick one to add it, untick one to remove it (its database and data stay), `r` and its number to ask its questions again; `./setup.sh --apps` shows only that list, and the [one-line installer](../README.md#install) does the same from anywhere. Adding (flag `--also iocalendar,ionote`, `--also all`; `--remove` and `--reconfigure` take lists too; `IONOTE_ALSO` in the environment), puts
-other apps of the suite in this same machine, beside ioNote (`/opt/iocalendar/app` next to `/opt/ionote/app`),
-each asking its own setup questions with the answers of the apps already here as the defaults (Enter keeps
-one; `--yes` takes them all): the same database server with a database of its own named after the app (`iostart`,
-`iocalendar`, `iothings`, ...; the user needs rights on those names too, or give a MariaDB administrator), the same Shared ioSuite
-database, sign-in domain and admin, a public address made like the others' (`iosuite-shared install`, from the shared library). Each app keeps its usual port
-and updates itself as always. The Proxmox installer offers the same as a checklist, for one container with several apps.
-
-The databases and users need not exist beforehand: give a MariaDB / MySQL administrator (the question after the
-databases; flag `--db-admin USER:PASSWORD`, or `IONOTE_DB_ADMIN`, also in the Proxmox installer) and `setup.sh` creates
-the app's database and user, the Shared ioSuite database and user and, with other apps installed alongside, their
-databases too, with the passwords you answered (`iosuite-shared provision`). Nothing is dropped, and the administrator's
-password is used once and not written anywhere.
-
-`setup.sh` is the installer, the same as every app's of the suite (made from `shared/templates/setup.sh`): it asks
-for the notes' MariaDB/MySQL database (host, port, database, user, password; `ionote` by default), the **Shared ioSuite
-database** (below; database and user `iosuite` by default), the web port (8610), the public address, the domain the sign-in is shared on, an admin account and, optionally,
-a MariaDB administrator who creates the databases and users. Then it creates the Python environment, installs the
-packages, writes `config.env`, creates the tables and the admin and installs the service: systemd on Linux when run as
-root, a login item (launchd) on a Mac. Run it again at any time: what `config.env` holds is the default of every
-question. Flags skip the questions (`./setup.sh --help`), e.g.
+ioNote is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioNote in it, alone or with the others, on any Linux machine:
 
 ```sh
-IONOTE_DB=db.example.lan:3306/ionote:ionote:secret IONOTE_SUITE_DB=db.example.lan:3306/iosuite:iosuite:secret \
-  IONOTE_ADMIN=alex:secret ./setup.sh --yes
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps ionote
 ```
 
-(the passwords in the environment stay off the command line). Without the service, `./run.sh` starts it in the
-foreground.
-
-The database user needs to create tables in its database (`GRANT ALL ON ionote.* TO 'ionote'@'app-host'`). Pictures are
-stored in the database: MariaDB's `max_allowed_packet` (16 MB by default) must be larger than the largest picture
-(`MAX_IMAGE_MB`, 15 MB); `setup.sh` warns when it is not.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/ionote.sh` and `proxmox/install/ionote-install.sh` follow the community-scripts (ProxmoxVE) framework
-layout, the same as iopix's, so they can be submitted upstream as they are. Until then the ct script points the
-framework at this repository for the install script (`COMMUNITY_SCRIPTS_URL`), while the engine itself comes from
-community-scripts. On the Proxmox host, as root:
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/ionote/proxmox/ct/ionote.sh)"
+iosuite install --add ionote       # --remove ionote stops running it; what it stored stays
 ```
 
-After the framework's own questions (resources, network) it asks about the app, in the same order as the other
-apps' scripts: where the notes live in MariaDB/MySQL (host, port, database, user, password; database and user `ionote`
-by default), the Shared ioSuite database (database and user `iosuite` by default), the web port (8610), the public address, the sign-in domain, the admin account and
-the optional MariaDB administrator. It creates an unprivileged Debian 13 container (2 CPU, 2 GB, 8 GB disk by default) and runs the app's own
-`setup.sh` inside with those answers: packages, settings, tables, admin, and the `ionote` service.
-For unattended runs set `IONOTE_DB` (`host:port/db:user:pass`), `IONOTE_SUITE_DB`
-(`host:port/db:user:pass`), `IONOTE_PORT`,
-`IONOTE_ADMIN` (`name:password`, or empty for none yet), `IONOTE_PUBLIC_URL` and `IONOTE_COOKIE_DOMAIN` in the environment. The passwords reach `setup.sh`
-inside the container through its environment (a root-only file pushed in and removed again), not on a command line.
-The setup's output is kept in `/opt/ionote/setup.log`; on failure its last lines are shown and the command to rerun
-it is printed. The container's `update` command runs `update.sh`, which keeps the settings and data. The scripts are
-checked for syntax in CI and drive the tested `setup.sh`; they have not been run on a Proxmox host yet.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Docker
+| | |
+| --- | --- |
+| Address | `/notes/` at the suite's address (`https://home.example.com/notes/`), and a name of its own if you give it one |
+| Devices | the Mac and iPhone apps at `/notes/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| MCP | `/notes/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
+| Database | `ionote`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+| On the server | libheif, for pictures from an iPhone (`libheif1`); the installer, the Proxmox script and the container image have them |
 
-`docker-compose.yml` pulls the published image (`ghcr.io/avandeputte/iosuite/ionote:latest`, built by the GitHub workflow
-for amd64 and arm64) and works as a stack in Dockge or Portainer: set the database and the admin password and start
-it; `docker compose up -d --build` builds from the checkout instead. The container runs as its own user (uid 1000);
-the named volume `ionote-data` at `/data` only holds the session secret and the log, since everything else is in
-the database. The image includes RapidOCR. The health check polls
-`/api/status`, which stays open when sign-in is required.
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
+
+```sh
+.venv/bin/python -m ionote.cli check   # connect to the databases and say what is there
+```
+
+Accounts are the suite's: `iosuite admin NAME --app ionote` makes someone an admin of ioNote only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-The settings are in `config.env` in the app folder (`setup.sh` writes it; every app of the suite uses the same file
-name and the same names), or in the environment, which wins. `config.env.example` lists them all.
+ioNote has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioNote, or from a shell;
+a change applies when the app starts again:
 
-| Variable | Default | |
-| --- | --- | --- |
-| `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | `127.0.0.1` / `3306` / `ionote` / `ionote` / | the MariaDB/MySQL database (setup.sh writes them) |
-| `HOST` / `PORT` | `0.0.0.0` / `8610` | where the server listens (every app of the suite has its own port) |
-| `TLS_CERT_FILE` / `TLS_KEY_FILE` | | HTTPS served directly instead of behind a reverse proxy |
-| `DATA_DIR` | `./data` | what the app writes on its own: the log and the update result |
-| `LOG_FILE` | `DATA_DIR/ionote.log` | the server log (empty: none) |
-| `PUBLIC_URL` | | the address ioNote is reached at, for links in MCP answers and the suite's list of apps |
-| `COOKIE_DOMAIN` | | the domain the sign-in is shared on (e.g. `example.com`); a LAN address outside it gets a cookie of its own |
-| `ADMIN_USER` / `ADMIN_PASSWORD` | | the first admin, created on a first start with no accounts |
-| `IOSUITE_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASSWORD` | `DB_HOST` / `DB_PORT` / `iosuite` / `iosuite` / none | the Shared ioSuite database (MariaDB): accounts, sessions, suite-wide settings |
-| `TZ` | | the time zone |
-| `MAX_IMAGE_MB` | `15` | the largest picture a note may carry (and at most 40 megapixels) |
-| `KEEP_DELETED_DAYS` | `90` | how long the change log's entries and the names of deleted folders are kept; after that only an empty marker stays, so devices still learn of the deletion (a deleted note goes sooner: after its 30 days in the trash) |
-| `MCP` / `MCP_USER` | | `MCP=1` keeps the endpoint on whatever Settings says; the account `python -m app.mcp` (stdio) acts as |
-| `UPDATE_CHECK` | `1` | `0`: this app never asks GitHub for a newer version |
+```sh
+iosuite settings ionote        # what may be set, with the value stored now
+iosuite set ionote PUBLIC_URL https://notes.example.com    # no value: back to the default
+```
+
+| Setting | Meaning |
+| --- | --- |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://notes.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`ionote/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`ionote`) |
+| `MAX_IMAGE_MB` | largest image (MB) (`15`). MariaDB's max_allowed_packet (16 MB by default) must be larger |
+| `THUMB_SIZE` | thumbnail size (pixels) (`480`) |
+| `THUMB_QUALITY` | thumbnail quality (`80`). JPEG quality, 1 to 95 |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 
-- **Standalone:** `./update.sh` fetches the latest code (git, or the GitHub tarball), installs the packages the new
-  version asks for and only then moves the code in, then restarts the service. `--check` only reports.
-- **From the web:** the suite has one version, the same for every app, and the apps are updated together: Settings ›
-  Global settings › Updates (suite admins, in any app) shows the installed version and the newest one on GitHub, with
-  one Update button that runs each app's `update.sh`. A daily check (on by default; the Updates page switches it off
-  for the suite, `UPDATE_CHECK=0` locks it off for this app) finds a newer version. Settings › Server (iosuite-shared's
-  panel, the same in every app: `/api/server/ui.js`, `/api/server` and `/api/log`) shows the version ioNote runs, the
-  tail of the server log (`data/ionote.log`) and Restart.
-- **Proxmox:** `update` inside the container (the framework's command) runs the same script.
-- **Docker:** `docker compose pull && docker compose up -d`.
-- **From an MCP client:** ioStart's `suite_version` and `update_suite` (as a suite admin).
+The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+(suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
+`update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
+
+**Settings › Server** shows the version ioNote runs and has **Restart**. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
 
 ## Reverse proxy and HTTPS
 
-ioNote speaks plain HTTP on port 8610. Run it behind a reverse proxy that terminates HTTPS (Caddy, Nginx Proxy
-Manager, HAProxy, a Cloudflare Tunnel) and reach it only through that; `/mcp` streams responses, so the proxy must not
-buffer that path.
+ioNote is reached through the suite's three ports: the pages (80), devices (8443) and MCP (8444). A reverse proxy gives each
+a name and HTTPS, for the whole suite at once, and can make people sign in first (Cloudflare Access, Authelia, oauth2-proxy):
+[Reverse proxy and HTTPS](../docs/docs/run/reverse-proxy.md) and [Cloudflare Tunnel and Access](../docs/docs/run/cloudflare.md) in the
+guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
+Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-When the proxy already makes people sign in, ioNote takes that sign-in, exactly as ioPix does: the proxy passes who
-signed in in a header, and ioNote treats that person as signed in when an account exists for them (matched on the
-account's email address, then its name). Settings › Security › Sign-in at the proxy (saved there, the settings are kept in the
-Shared ioSuite database for the whole suite: one Cloudflare Access application covering every app, set up once; never
-in `config.env`). The fields, by the names the Shared ioSuite database keeps them under:
-
-| Setting | |
-| --- | --- |
-| `AUTH_PROXY` | `cloudflare`, `haproxy`, `nginx`, `caddy`, `traefik` or `header`; `off` by default |
-| `AUTH_PROXY_HEADER` | the header(s) with the user; default for `cloudflare`: `Cf-Access-Authenticated-User-Email`; for the others: `Remote-User`, `X-Forwarded-User`, `X-Auth-Request-User`, `X-Auth-Request-Email`, `X-Forwarded-Email` |
-| `AUTH_PROXY_TRUSTED` | addresses or networks the proxy connects from; default `127.0.0.1,::1` |
-| `AUTH_PROXY_CREATE` | `viewer`, `member` or `editor`: create an account for someone the proxy lets in who has none; `deny`: a "No access" page; empty: the sign-in screen |
-| `CF_ACCESS_TEAM` / `CF_ACCESS_AUD` | your Cloudflare Access team domain and the application's AUD tag: the signed token Cloudflare adds to every request (`Cf-Access-Jwt-Assertion`) is checked against your team's keys, and the email is taken from it. The recommended setup for a Cloudflare Tunnel |
-
-The header is believed only from the proxy: a request that reaches ioNote any other way is ignored, whatever headers
-it carries. From outside (through Cloudflare), one-click accounts without a password do not work. The Mac and iPhone
-apps sign in through the same page; for unattended use through Cloudflare they take a Cloudflare Access **service
-token** (client ID and secret, kept in the Keychain), as the iopix apps do.
+The Mac and iPhone apps use the address for devices, which stays outside a sign-in at the proxy.
 
 ## Users and permissions
 
 Accounts are the **ioThing suite's shared accounts**, kept in the **Shared ioSuite database** (a MariaDB database
-shared with iopix and ioContact, used through the ioSuite shared library, [`iosuite-shared`](https://github.com/avandeputte/iosuite/tree/main/shared); besides the accounts it holds sessions,
+shared with iopix and ioContact, used through the ioSuite shared library, [`iosuite_shared`](../iosuite_shared/); besides the accounts it holds sessions,
 roles, the suite's list of apps and the suite-wide settings), so one name, password and session serve every app, and
 someone signed in at `photo.example.com` is signed in at `notes.example.com` too when the apps share a domain
 (`COOKIE_DOMAIN`). What is ioNote's own is kept per app: the role an account holds here and its settings. A
-*suite admin* is admin in every app. Point ioNote at that database with `IOSUITE_DB_HOST`, `IOSUITE_DB_PORT`,
-`IOSUITE_DB_NAME`, `IOSUITE_DB_USER` and `IOSUITE_DB_PASSWORD` in `config.env` (database and user `iosuite` and the notes' server by
-default; the tables are created at start; `iosuite-shared migrate --ionote`
-folds a 1.0 install's `user_accounts` table into it). Out of the box ioNote is open to anyone who can reach it;
-`setup.sh` (or `ADMIN_USER` / `ADMIN_PASSWORD`, or the person icon in the web app) creates the admin. Once an
+*suite admin* is admin in every app. The machine's file (`config.env` in the program folder) says how to
+reach that database; its tables are created at start. The installer (or `ADMIN_USER` / `ADMIN_PASSWORD` in a container's
+environment, or the person icon in the web app) creates the admin. Once an
 account exists:
 
 **Notes are private to each account.** Every note, folder, tag colour and change-log line belongs to the account
@@ -225,12 +169,13 @@ Sessions are random tokens in an HttpOnly cookie (`iothing_session`, shared by t
 not, web or which app): `GET /api/auth/sessions` for your own, `GET /api/suite-admin/users/<id>/sessions` for suite admins. Passwords
 are Argon2id-hashed; wrong passwords cost a growing wait. Write requests from another site are refused.
 
-ioNote writes its row in the **suite's list of apps** (iosuite-shared's `suite_apps` table: name, version, colour,
-icon, address) on its first request, so ioSuite's start page and the other apps find it without anyone typing an
-address. The address is `PUBLIC_URL` when set, otherwise the best one ioNote is reached at (a host under
-`COOKIE_DOMAIN` over HTTPS beats a LAN name, which beats an IP address).
+ioNote writes its row in the **suite's list of apps** (name, version, colour, icon, address, the copy of the program it
+runs in) as it starts, so the start page and the other apps find it without anyone typing an address: its folder at
+the suite's address, or its own `PUBLIC_URL` when it has one.
 
 ## API
+
+The paths below are ioNote's own: at the suite's address they are inside its folder (`https://home.example.com/notes/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/notes/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 Every route is under `/api`; `GET /api/docs` lists them. JSON in and out; times are seconds since 1970 (UTC); ids are
 UUID strings the device chooses (`UUID().uuidString`).
@@ -278,12 +223,12 @@ Every assistant signs in with an **app password** (Settings › Account › App 
 what that account may change (`notes_overview` names the account and says whether it may change family notes). Off, `/mcp` does not answer at all.
 
 ```sh
-claude mcp add --transport http ionote https://notes.example.com/mcp --header "Authorization: Bearer ionote-xxxxxxxx-…"
+claude mcp add --transport http ionote https://mcp.example.com/notes/mcp --header "Authorization: Bearer ionote-xxxxxxxx-…"
 ```
 
 Apps that take a JSON configuration and only start local processes (Claude Desktop, for example) can reach it through
-`mcp-remote`: `{"mcpServers": {"ionote": {"command": "npx", "args": ["-y", "mcp-remote", "https://notes.example.com/mcp", "--header", "Authorization: Bearer ionote-…"]}}}`.
-`python -m app.mcp --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
+`mcp-remote`: `{"mcpServers": {"ionote": {"command": "npx", "args": ["-y", "mcp-remote", "https://mcp.example.com/notes/mcp", "--header", "Authorization: Bearer ionote-…"]}}}`.
+`python -m ionote.mcp --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
 
 ## Export, import and backups
 
@@ -294,32 +239,37 @@ and export › Import): records keep their ids, and a newer copy on the server w
 
 ## Tests
 
-`pip install -e '.[test]' && pytest tests`. The notes (`ionote_test`) and the Shared ioSuite database
+```sh
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest ionote/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
+```
+
+The notes (`ionote_test`) and the Shared ioSuite database
 (`ionote_test_auth`) go to a test MariaDB of their own: a Docker container the suite starts (`iosuite-test-mariadb`),
 or `IOSUITE_TEST_DB=host:port:user:password`; never a live database.
 CI runs both.
 
 ## Layout
 
+The package `ionote/` of the repository:
+
 ```
-app/
-  main.py          the FastAPI app: the suite's middleware (who is asking, require sign-in, cross-site writes), whose notes, status, /mcp, static files
-  access.py        who may call a route: the markers every /api route carries
-  config.py        the settings: the suite's standard names (iosuite_shared.config) and ioNote's own
-  db.py            the database (MariaDB/MySQL, through iosuite_shared.db), its tables, the rev counter
-  notes.py         notes, folders, tag colours, templates, search, related notes, the trash, sync and conflicts
-  images.py        pictures as BLOBs with a thumbnail
-  attachments.py   files attached to notes (PDFs and the like), with the text read from them
-  ocr.py           RapidOCR for pictures added in the web app
-  backup.py        export and import
-  auth.py          accounts, sessions and roles, the updater (iosuite-shared; proxy sign-in: iosuite_shared.proxyauth through auth.proxy)
-  routes/          the HTTP API
-  mcp/             the MCP server: read, write and operator tools
-proxmox/           Proxmox VE LXC scripts in the community-scripts layout
+main.py          the FastAPI app: the suite's middleware (who is asking, require sign-in, cross-site writes), whose notes, status, /mcp, static files
+access.py        who may call a route: the markers every /api route carries
+config.py        the settings: the suite's standard names (iosuite_shared.config) and ioNote's own
+db.py            the database (MariaDB/MySQL, through iosuite_shared.db), its tables, the rev counter
+notes.py         notes, folders, tag colours, templates, search, related notes, the trash, sync and conflicts
+images.py        pictures as BLOBs with a thumbnail
+attachments.py   files attached to notes (PDFs and the like), with the text read from them
+ocr.py           RapidOCR for pictures added in the web app
+backup.py        export and import
+auth.py          accounts, sessions and roles, the updater (iosuite_shared; proxy sign-in: iosuite_shared.proxyauth through auth.proxy)
+routes/          the HTTP API
+mcp/             the MCP server: read, write and operator tools
 static/            the web app (index.html, app.css, js/*.js modules, service worker, icons)
 tests/             pytest, on a test MariaDB
 ```
 
 ## License
 
-GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](LICENSE).
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).

@@ -1,12 +1,12 @@
 # ioDNS
 
-*The DNS console of the ioThing suite ([ioStart](https://github.com/avandeputte/iosuite/tree/main/iostart), [ioCalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar),
-[ioContact](https://github.com/avandeputte/iosuite/tree/main/iocontact), [ioNote](https://github.com/avandeputte/iosuite/tree/main/ionote), [ioPix](https://github.com/avandeputte/iosuite/tree/main/iopix), [ioHealth](https://github.com/avandeputte/iosuite/tree/main/iohealth)).*
+*The DNS console of the ioThing suite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
+[ioContact](../iocontact/), [ioNote](../ionote/), [ioPix](../iopix/), [ioHealth](../iohealth/)).*
 
 One master list of the house's DNS names, kept in sync on every DNS server: two AdGuard Homes, a Pi-hole, the UniFi
 gateway, Cloudflare. Add a name once, see where the servers disagree, pick who is right, push. FastAPI and a
 single-page vanilla JS app, built the same way as the other io apps, signed in with the suite's shared accounts
-([`iosuite-shared`](https://github.com/avandeputte/iosuite/tree/main/shared)), with its data in MariaDB / MySQL.
+([`iosuite_shared`](../iosuite_shared/)), with its data in MariaDB / MySQL.
 
 ## What it does
 
@@ -31,7 +31,7 @@ single-page vanilla JS app, built the same way as the other io apps, signed in w
 - **Dynamic DNS**: a record's value can be "Public address": ioDNS finds the house's public IPv4 / IPv6 every few
   minutes (an address-echo service, the UniFi gateway's WAN address, or a page of your own) and, when it changes,
   updates those records and pushes them straight away (Cloudflare…).
-- **Cloudflare Tunnel**: a name in the External view can be a tunnel's public hostname (`TUNNEL home|http://192.168.1.151:8620`:
+- **Cloudflare Tunnel**: a name in the External view can be a tunnel's public hostname (`TUNNEL home|http://192.168.1.151:80`:
   the tunnel and the service behind it) instead of an address. ioDNS keeps both halves as the dashboard does: the
   tunnel's ingress rule and the proxied CNAME to `<tunnel id>.cfargotunnel.com`. Existing hostnames are compared and
   imported like any other record; a rule with a path, the origin settings and the catch-all are left as they are.
@@ -45,7 +45,7 @@ single-page vanilla JS app, built the same way as the other io apps, signed in w
   access here, and it takes no roles or default role); only they see it in the start page's gear menu (under Admin tools)
   and the app switchers, apart from the other apps. The servers' passwords and API keys are kept with the suite's
   keys and tokens in the Shared ioSuite database (Settings › Global settings), never shown back.
-- **Updates, the server log and Restart** under Settings › Server, as in every ioThing app; light and dark, a phone layout,
+- **Updates, the log and Restart** under Settings › Global settings and Settings › Server, as in every app of the suite; light and dark, a phone layout,
   installable as a web app.
 
 ## DNS servers
@@ -63,77 +63,77 @@ Every server also has **Names to leave out** (`nas.example.com, *.guest.lan`): n
 A UniFi gateway refuses a record for a name it answers itself (a client of a network with a domain name); ioDNS adds such a
 name there by itself.
 
-Adding another kind is one module in `app/providers/`: a `Provider` subclass that lists, adds and deletes records
-(`app/providers/__init__.py` says how). A certificate of its own (a UniFi gateway's) is not checked unless asked.
+Adding another kind is one module in `iodns/providers/`: a `Provider` subclass that lists, adds and deletes records
+(`iodns/providers/__init__.py` says how). A certificate of its own (a UniFi gateway's) is not checked unless asked.
 
 ## Run
 
-ioDNS needs Python 3.10+ and a MariaDB or MySQL database. Give it its own database and user, for example:
-
-```sql
-CREATE DATABASE iodns CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'iodns'@'app-host' IDENTIFIED BY 'a-long-random-password';
-GRANT ALL ON iodns.* TO 'iodns'@'app-host';
-```
-
-`app-host` is the machine the app runs on (`localhost` when MariaDB is on the same machine); a user for any host (`'%'`)
-with a password someone could guess is what to avoid. The installers make the user this way when given a MariaDB administrator.
-
-The accounts and the suite-wide settings live in the Shared ioSuite database (`iosuite`, user `iosuite`; the one every
-app of the suite uses). The tables are created on the first start and updated by later versions by themselves.
-
-### Proxmox VE (LXC)
-
-`proxmox/ct/iodns.sh` and `proxmox/install/iodns-install.sh` follow the community-scripts (ProxmoxVE) framework layout,
-as the other io apps do. On the Proxmox host, as root:
+ioDNS is one of the apps of [ioSuite](../README.md), one program that runs the apps it is told to. Install the suite
+with ioDNS in it, alone or with the others, on any Linux machine:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/iodns/proxmox/ct/iodns.sh)"
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iodns
 ```
 
-It asks for the ioDNS database, the Shared ioSuite database, the web port (8660), the time zone, the public address
-behind your reverse proxy (optional), the domain the sign-in is shared on (optional), the admin account and which other
-apps of the suite go in the same container, then runs the app's own `setup.sh` inside. For unattended runs set
-`IODNS_DB` and `IODNS_SUITE_DB` (`host:port/db:user:password`), `IODNS_ADMIN` (`name:password`), `IODNS_PORT`,
-`IODNS_PUBLIC_URL` and `IODNS_COOKIE_DOMAIN`.
-
-### Docker
+It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out
+for the list of every app, to tick. On a server that already runs the suite:
 
 ```sh
-docker compose up -d     # edit the CHANGE ME spots in docker-compose.yml first
+iosuite install --add iodns       # --remove iodns stops running it; what it stored stays
 ```
 
-The image (`ghcr.io/avandeputte/iosuite/iodns`) holds no data: everything is in the database.
+In Docker, name it in `APPS` in the stack file ([docker-compose.yml](../docker-compose.yml); empty there: every app); on
+Proxmox VE, tick it in the list the container's script shows. The guide has each way in full:
+[any Linux or Mac](../docs/docs/start/linux-mac.md), [Docker](../docs/docs/start/docker.md), [Proxmox VE](../docs/docs/start/proxmox.md)
+and [one app or all of them](../docs/docs/start/one-or-all.md).
 
-### Any Linux or Mac
+| | |
+| --- | --- |
+| Address | `/dns/` at the suite's address (`https://home.example.com/dns/`), and a name of its own if you give it one |
+| Database | `iodns`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
+
+From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-git clone https://github.com/avandeputte/iosuite && cd iosuite/iodns
-./setup.sh          # asks for the databases, port and admin; installs a systemd service when run as root
-./run.sh            # or start it in the foreground
-./update.sh         # later: the latest code, same settings
+.venv/bin/python -m iodns.cli check                     # connect to the databases and say what is there
+.venv/bin/python -m iodns.cli compare VIEW              # compare the servers of a view (internal, external…) with the master list
+.venv/bin/python -m iodns.cli push VIEW [--prune]       # make every server of the view hold the master list (--prune: also remove what only they hold)
+.venv/bin/python -m iodns.cli import SERVER-ID [MODE]   # the master list from one server (MODE: merge, overwrite or replace; default merge)
+.venv/bin/python -m iodns.cli ddns [--push]             # find the public address now and update the records that follow it
+.venv/bin/python -m iodns.cli export                    # the master list as JSON, on standard output
 ```
 
-`setup.sh` takes the same flags as in every app of the suite (`--db`, `--suite-db`, `--admin`, `--port`,
-`--public-url`, `--cookie-domain`, `--db-admin`, `--also`, `--service`, `--yes`); `--also` installs other apps of the
-suite beside it. From a shell: `python -m app.cli compare internal`, `push internal [--prune]`,
-`import SERVER-ID [merge|overwrite|replace]`, `ddns [--push]`, `export`.
+Accounts are the suite's: `iosuite admin NAME --app iodns` makes someone an admin of ioDNS only (`iosuite admin NAME`: of
+the whole suite), `iosuite password NAME` sets a password; see [Accounts and roles](../docs/docs/run/accounts.md).
 
 ## Configuration
 
-`config.env` in the app folder (written by `setup.sh`; `config.env.example` lists every setting), or the environment,
-which wins. The names are the suite's (`DB_*`, `IOSUITE_DB_*`, `PUBLIC_URL`, `COOKIE_DOMAIN`, `HOST`, `PORT`,
-`TLS_*`, `TZ`, `ADMIN_USER` / `ADMIN_PASSWORD`, `UPDATE_CHECK`, `DATA_DIR`, `LOG_FILE`), plus:
+ioDNS has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
+ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioDNS, or from a shell;
+a change applies when the app starts again:
+
+```sh
+iosuite settings iodns        # what may be set, with the value stored now
+iosuite set iodns PUBLIC_URL https://dns.example.com    # no value: back to the default
+```
 
 | Setting | Meaning |
 | --- | --- |
-| `CHECK_MINUTES` | how often every view is compared in the background (30; 0: only when someone looks) |
-| `BACKGROUND` | `0` turns the background work off (the comparisons and dynamic DNS) |
-| `IODNS_REPO`, `IODNS_BRANCH` | what the version check and `update.sh` follow (`avandeputte/iosuite`, `main`) |
+| `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://dns.example.com`), beside its folder at the suite's address |
+| `DATA_DIR` | where the app writes on its own (`iodns/` in the machine's `DATA_DIR`) |
+| `DB_NAME` | the name of its database (`iodns`) |
+| `CHECK_MINUTES` | minutes between checks (`30`). How often the servers are compared with the master list on their own; 0: only when someone looks |
+| `BACKGROUND` | compare the servers and keep dynamic DNS current in the background (`1` or `0`; on by default). Off: nothing is compared and no address is updated until someone asks from the pages |
+
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
+machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
 
 The DNS servers, their passwords and keys, the views and dynamic DNS are set in the app itself.
 
 ## API
+
+The paths below are ioDNS's own: at the suite's address they are inside its folder (`https://home.example.com/dns/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/dns/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
 
 Everything the web app does is a JSON API under `/api/` (documented at `/api/docs`), open to any client signed in with
 the user name and an app password (HTTP Basic or a bearer token): `GET /api/entries`, `POST /api/entries`,
@@ -143,8 +143,8 @@ the user name and an app password (HTTP Basic or a bearer token): `GET /api/entr
 ## Tests
 
 ```sh
-pip install -e ".[test]"
-IOSUITE_TEST_DB=127.0.0.1:3306:root:root python -m pytest -q tests
+pip install -e '.[all,test]'          # in the program folder, once
+python -m pytest iodns/tests     # on a test MariaDB of its own: a Docker container it starts, or IOSUITE_TEST_DB=host:port:user:password
 ```
 
 The comparison and every provider (against a stand-in of its API) are tested without a database; the API tests need a
@@ -152,4 +152,4 @@ MariaDB (a Docker container, or the server `IOSUITE_TEST_DB` names) and use in-m
 
 ## License
 
-GPL-3.0-or-later.
+GPL-3.0-or-later (the GNU General Public License, version 3 or later), see [LICENSE](../LICENSE).
