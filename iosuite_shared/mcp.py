@@ -160,6 +160,34 @@ class Switch:
         return {"mcpEnabled": self.enabled(), "mcpAbout": self.about}
 
 
+_HERE: dict = {}    # app -> its MCP server in this process, as mount() served it
+
+
+def here(app: str):
+    """That app's own MCP server when this very copy runs it and it is up; None otherwise. The suite's MCP server (the
+    start page) then calls the app in the process instead of over the network — one MCP server for a copy — and an app
+    on another server is still called over HTTP, as it must be."""
+    from iosuite_shared import inside
+    s = _HERE.get(app)
+    return s if s is not None and inside.runs(app) else None
+
+
+@asynccontextmanager
+async def as_person(app: str, user: dict):
+    """A call handed to another app of this copy: it acts as the same person, with the role that person holds in that
+    app (not the one they hold where the call came in), and what it logs is its own. The sign-in itself was already
+    checked where the call came in: whatever signs in at the start page's MCP server signs in at every app's
+    (apppasswords.HUB), which is what the request over HTTP relied on too."""
+    from iosuite_shared import host
+    u = await anyio.to_thread.run_sync(lambda: dict(user, role=users.role_of(user, app)))
+    mine, theirs = current_user.set(u), host.CURRENT.set(app)
+    try:
+        yield u
+    finally:
+        current_user.reset(mine)
+        host.CURRENT.reset(theirs)
+
+
 def mount(app, server: MCPServer, path: str = PATH) -> None:
     """Serve the MCP server over streamable HTTP at `path` on the app's own port, ahead of every other route. The MCP
     library's own DNS rebinding protection is off: it takes a fixed list of hosts, and the apps are reached by LAN
@@ -168,6 +196,7 @@ def mount(app, server: MCPServer, path: str = PATH) -> None:
     asgi = server.streamable_http_app(streamable_http_path=path, stateless_http=True,
                                       transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False))
     app.router.routes[:0] = list(asgi.routes)
+    _HERE[server.name] = server   # and in this process, for the suite's MCP server (here())
 
 
 @asynccontextmanager

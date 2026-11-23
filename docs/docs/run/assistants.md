@@ -24,6 +24,10 @@ dinner ingredients on the shopping list"). Each call is carried out as you, so e
 see and change there; an app whose own MCP switch is off, or where you have no role, offers nothing. `suite_apps`
 lists the apps it reaches, and suite admins also get `suite_version` and `update_suite`.
 
+An app that runs on the same server, in the same copy of the program, is asked inside that program: there is one MCP
+server and no request of its own to make, which is quicker and one thing fewer to go wrong. An app on another server
+is reached over the network, as it must be. Nothing is configured for either, and an assistant sees no difference.
+
 ## Turn it on
 
 MCP is **off on a fresh install**. A suite admin turns it on per app under **Settings › Apps**; while off, `/mcp` doesn't
@@ -41,7 +45,7 @@ claude mcp add --transport http iosuite https://mcp.example.com/mcp \
 
 That address is whatever reaches port 8444: a name of its own at your reverse proxy (told to the suite as `MCP_URL`
 under Settings › Apps › All settings), or `http://<server>:8444/mcp` on a home network without HTTPS. Settings ›
-Server shows the address to use.
+Apps lists every app's three addresses, MCP among them.
 
 For **Claude Desktop** on a computer in your network, use the `mcp-remote` bridge in `claude_desktop_config.json`
 (it needs Node.js):

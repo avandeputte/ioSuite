@@ -8,8 +8,12 @@ the suite; the switches are at Settings › Apps. The other apps' tools are list
 with the same sign-in: every app takes an ioStart app password at its /mcp (iosuite_shared.apppasswords.HUB), so each
 app still decides what this person may see and change there, exactly as when the assistant talks to it directly. An
 app whose MCP server is switched off (the suite's Settings › Apps), or where the person has no role, offers nothing.
-The start page reaches each app as iosuite_shared.links does: localhost on the same machine, then its internal
-address, then its public one, with the suite's Cloudflare Access service token when there is one.
+An app that runs in this very copy of the program is asked in the process (iosuite_shared.mcp.here): its own MCP
+server is called directly, as the same person with the role they hold in that app, so a suite that runs as one copy
+has one MCP server and no request of its own to make. An app on another server is reached over HTTP as before: the
+start page finds it as iosuite_shared.links does (localhost on the same machine, then its internal address, then its
+public one, with the suite's Cloudflare Access service token when there is one). Which one it is makes no difference
+to what an assistant sees.
 """
 import contextvars
 import hashlib
@@ -127,7 +131,19 @@ async def _view(a: dict, fresh: bool = False) -> dict:
     if hit and not fresh and now - hit[0] < CACHE_S:
         return hit[1]
     view = {"app": a["app"], "name": a["name"] or a["app"], "status": "ok", "detail": "", "instructions": "", "tools": []}
-    if not signed_in_with.get():
+    srv = shared_mcp.here(a["app"])     # the app runs in this very copy: ask it in the process
+    if srv is not None:
+        if not await anyio.to_thread.run_sync(shared_mcp.enabled_for, a["app"]):
+            view.update(status="off", detail="Its MCP server is switched off (Settings › Apps).")
+        else:
+            try:
+                async with shared_mcp.as_person(a["app"], current_user.get()):
+                    tools, view["instructions"] = await srv.list_tools(), srv.instructions or ""
+                view["tools"] = _named(a["app"], view["name"], tools)
+            except Exception as e:  # noqa: BLE001  it is starting, or this person may not use it after all
+                log.info("MCP: %s offers no tools inside this copy: %r", a["app"], e)
+                view.update(status="unreachable", detail=str(e)[:200] or type(e).__name__)
+    elif not signed_in_with.get():
         view.update(status="sign_in", detail="Connect to ioStart's MCP server with an ioStart app password (Settings › Account) "
                                              "so calls can be passed on to the other apps.")
     else:
@@ -136,16 +152,21 @@ async def _view(a: dict, fresh: bool = False) -> dict:
                 async with _client(a["app"], LIST_TIMEOUT_S) as c:
                     listed = await c.list_tools()
                     view["instructions"] = c.instructions or ""
-            prefix = f"[{view['name']}] "
-            view["tools"] = [t.model_copy(update={"name": a["app"] + SEP + t.name,
-                                                  "title": prefix + (t.title or t.name),
-                                                  "description": prefix + (t.description or "")}) for t in listed.tools]
+            view["tools"] = _named(a["app"], view["name"], listed.tools)
         except Exception as e:  # noqa: BLE001  the app is off, away, or this person may not use it
             view.update(await _why(a["app"], e))
     if len(_views) > 500:
         _views.clear()
     _views[key] = (now, view)
     return view
+
+
+def _named(app: str, name: str, tools: list) -> list:
+    """One app's tools as this server offers them: iocalendar_add_event, with the app's name in front of what it says,
+    so an assistant seeing a hundred tools knows whose each one is."""
+    prefix = f"[{name}] "
+    return [t.model_copy(update={"name": app + SEP + t.name, "title": prefix + (t.title or t.name),
+                                 "description": prefix + (t.description or "")}) for t in tools]
 
 
 async def _headers(app: str) -> dict:
@@ -244,6 +265,18 @@ async def _why(app: str, e: BaseException) -> dict:
 
 
 async def _call(app: str, tool: str, arguments: dict) -> CallToolResult:
+    srv = shared_mcp.here(app)      # the app runs in this very copy: the call is handed to it in the process
+    if srv is not None:
+        if not await anyio.to_thread.run_sync(shared_mcp.enabled_for, app):
+            return _failed(app, "its MCP server is switched off (Settings › Apps).")
+        try:
+            async with shared_mcp.as_person(app, current_user.get()):
+                return await srv.call_tool(tool, arguments)
+        except ToolError as e:      # the app said no, as it would have answered over HTTP
+            return _failed(app, str(e))
+        except Exception as e:  # noqa: BLE001
+            log.info("MCP: %s_%s failed inside this copy: %r", app, tool, e)
+            return _failed(app, str(e)[:200] or type(e).__name__)
     if not signed_in_with.get():
         raise ToolError("Connect to ioStart's MCP server with an ioStart app password (Settings › Account) to use the other apps' tools")
     try:
@@ -256,6 +289,10 @@ async def _call(app: str, tool: str, arguments: dict) -> CallToolResult:
         why = await _why(app, e)
         log.info("MCP: %s_%s could not be passed on: %s", app, tool, why)
         return CallToolResult(content=[TextContent(type="text", text=f"{app}: {why['detail']}")], is_error=True)
+
+
+def _failed(app: str, why: str) -> CallToolResult:
+    return CallToolResult(content=[TextContent(type="text", text=f"{app}: {why}")], is_error=True)
 
 
 def forget() -> None:

@@ -124,6 +124,13 @@ so a change made on one server reaches a page served by another, and a copy with
 nothing. A line says only which app's what changed, and when: never what changed, so it is safe for any signed-in
 page, and a line addressed to one person reaches only that person's own pages.
 
+## One MCP server
+
+An assistant connects once, at the start page's `/mcp`, and gets every app's tools (`iocalendar_add_event`,
+`iotask_add_task`…), each call carried out as the person who signed in, with the role they hold in that app. An app
+in the same copy of the program is asked inside the program, with no request of its own to make; an app on another
+server is reached over the network. The switches are per app, under **Settings › Apps**.
+
 ## One log
 
 A copy writes one log (`<DATA_DIR>/iosuite.log`, 20 MB at most with four older ones kept), every line marked with the

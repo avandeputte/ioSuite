@@ -149,3 +149,56 @@ def test_hub_password_rules(client, suite_mcp, task_port):
     assert r.status_code == 200 and r.json()["name"] == "alex", r.text
     assert httpx.get(base + "/api/whoami", headers={"Authorization": f"Bearer {dav}"}).status_code == 401
     assert httpx.request("PROPFIND", base + "/dav/", headers={"Authorization": f"Bearer {full}"}).status_code == 401
+
+
+def test_an_app_of_this_copy_is_asked_in_the_process(client, suite_mcp):
+    """One MCP server for a copy: an app this copy runs is called in the process, as the same person with their role
+    in that app. Its address here points at a port nothing listens on, so an answer proves nothing went over HTTP."""
+    import asyncio
+    import threading
+
+    from iosuite_shared import inside
+    from iosuite_shared.host import Entry, Host
+
+    from iostart import mcp
+    suite.register("iotask", "ioTask", url=None, internal_url="http://127.0.0.1:1")
+    shared_mcp.set_for("iotask", True)      # a real app's switch is the setting, not a flag of its own
+    app = _fake_app()                       # mounting its MCP server is what makes it callable in the process
+    loop, ready = asyncio.new_event_loop(), threading.Event()
+
+    def run():
+        asyncio.set_event_loop(loop)
+        inside.attach(loop, Host([Entry(name="iotask", asgi=app, state="up")], ports={80: "web", 8444: "mcp"}))
+        ready.set()
+        loop.run_forever()
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    ready.wait(5)
+    try:
+        mcp.forget()
+        assert shared_mcp.here("iotask") is not None and shared_mcp.here("iopix") is None
+        assert {"iotask_whoami", "iotask_add_task"} <= names(suite_mcp, client)
+        assert call(client, suite_mcp, "iotask_whoami") == {"name": "alex", "role": "admin"}
+        assert call(client, suite_mcp, "iotask_add_task", title="Inside") == {"added": "Inside"}
+        assert STATE["added"] == [("alex", "Inside")]
+        apps = {a["app"]: a for a in call(client, suite_mcp, "suite_apps")["apps"]}
+        assert apps["iotask"]["status"] == "ok" and apps["iotask"]["tools"] == 2
+        # a viewer there is still only a viewer, and the app's switch still decides
+        vi = users.create("ava", "secret123", "member", "iostart")
+        users.set_role(vi["id"], "iotask", "viewer")
+        mine = {"Authorization": f"Bearer {apppasswords.create(vi['id'], 'iostart', 'claude')}"}
+        mcp.forget()
+        assert call(client, mine, "iotask_whoami") == {"name": "ava", "role": "viewer"}
+        assert "error" in call(client, mine, "iotask_add_task", title="no") and len(STATE["added"]) == 1
+        shared_mcp.set_for("iotask", False)
+        mcp.forget()
+        assert not any(n.startswith("iotask_") for n in names(suite_mcp, client))
+        assert "error" in call(client, suite_mcp, "iotask_whoami")
+    finally:
+        shared_mcp.set_for("iotask", None)
+        inside.detach()
+        loop.call_soon_threadsafe(loop.stop)
+        t.join(5)
+        loop.close()
+        mcp.forget()
