@@ -16,6 +16,7 @@ import re
 import time
 
 from iosuite_shared import db, users
+from iosuite_shared.errors import Invalid
 
 KEY = "family"
 SUITE = ""                # ios_user_data.app for what belongs to the whole suite
@@ -186,3 +187,89 @@ def contact(reader: str, cid: int) -> dict | None:
         return {"id": int(cid), "fn": c.get("fn") or ""} if isinstance(c, dict) else None
     except Exception:  # noqa: BLE001
         return None
+
+
+class Tags:
+    """Family members as tags on an app's items (ioCalendar's events, ioTask's tasks): the family as this app sees it
+    (the suite's list, less the accounts with no role in the app), and a member tag kept in the item itself as an
+    iCalendar CATEGORIES value with the member's display name, so the apps that sync show it, and a category typed
+    there with a member's name (or account name, in any case) tags the item here too. An item's other categories stay
+    as they are. `users` is the app's own accounts module (all_users, ROLES); each app keeps one Tags, with its own
+    short-lived copy of the list (`ttl` seconds)."""
+
+    def __init__(self, users, ttl: float = 30):
+        self._users, self.ttl = users, ttl
+        self._cache: dict = {"at": 0.0, "list": None}
+
+    def in_family(self, uid: int) -> bool:
+        return in_family(uid)
+
+    def family(self) -> list[dict]:
+        """[{id, name, displayName, initials, color, hasFace}] of the suite's family members who may use this app, by display name."""
+        now = time.monotonic()
+        if self._cache["list"] is None or now - self._cache["at"] > self.ttl:
+            if self.ttl <= 0:
+                forget()
+            here = {u["id"] for u in self._users.all_users() if u.get("role") in self._users.ROLES}
+            self._cache.update(at=now, list=[public(m) for m in members() if m["id"] in here])
+        return self._cache["list"]
+
+    def forget(self) -> None:
+        self._cache.update(at=0.0, list=None)
+        forget()
+
+    @staticmethod
+    def _keys(m: dict) -> set[str]:
+        return {m["displayName"].strip().lower(), m["name"].strip().lower()}
+
+    def of(self, categories: list[str] | None, fam: list[dict] | None = None) -> list[dict]:
+        """The members an item is tagged with, from its categories (in the order of the family list)."""
+        if not categories:
+            return []
+        have = {str(c).strip().lower() for c in categories}
+        return [m for m in (fam if fam is not None else self.family()) if self._keys(m) & have]
+
+    def ids_of(self, categories: list[str] | None, fam: list[dict] | None = None) -> list[int]:
+        return [m["id"] for m in self.of(categories, fam)]
+
+    def find(self, ref, fam: list[dict] | None = None) -> dict:
+        """A member by id, account name or display name. ValueError when there is no such member."""
+        fam = fam if fam is not None else self.family()
+        s = str(ref.get("id") if isinstance(ref, dict) else ref).strip()
+        for m in fam:
+            if s.isdigit() and m["id"] == int(s):
+                return m
+        for m in fam:
+            if s.lower() in self._keys(m):
+                return m
+        raise Invalid(f"No family member '{ref}'. The family: " + ", ".join(m["displayName"] for m in fam))
+
+    def resolve(self, refs, fam: list[dict] | None = None) -> list[dict]:
+        """Member refs (ids or names, or one comma-separated string) as members, each once."""
+        if refs is None:
+            return []
+        if isinstance(refs, (str, int)):
+            refs = [x for x in str(refs).split(",") if x.strip()]
+        out = []
+        for r in refs:
+            m = self.find(r, fam)
+            if m not in out:
+                out.append(m)
+        return out
+
+    def fold(self, data: dict, current_categories: list[str] | None = None) -> dict:
+        """JSON fields with `members` (ids or names) turned into categories: the member tags replace the old member tags,
+        and the categories that are not a member's name stay (those given in data, else the item's current ones)."""
+        if "members" not in data:
+            return data
+        fam = self.family()
+        want = self.resolve(data.get("members") or [], fam)
+        base = data["categories"] if "categories" in data else (current_categories or [])
+        member_keys = set().union(*(self._keys(m) for m in fam)) if fam else set()
+        cats = [c for c in (base or []) if str(c).strip().lower() not in member_keys]
+        out = {k: v for k, v in data.items() if k != "members"}
+        out["categories"] = cats + [m["displayName"] for m in want]
+        return out
+
+    def public(self, ms: list[dict]) -> list[dict]:
+        return [public(m) for m in ms]

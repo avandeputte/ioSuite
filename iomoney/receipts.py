@@ -8,12 +8,12 @@ transaction a new id (a card's hold that posted), the sync carries them over to 
 import mimetypes
 import re
 
-from iosuite_shared import related, stamp
+from iosuite_shared import related, stamp, stored
 from iosuite_shared.errors import Invalid
 
 from iomoney import config, db, model
 
-PART_BYTES = 4 * 1024 * 1024
+PART_BYTES = stored.PART_BYTES
 MAX_RECEIPTS = 20   # of one transaction
 KIND = "transaction"  # what a transaction is called among the suite's linked items (iosuite_shared.related)
 CARRY_DAYS = 10     # how far from the old one's day the transaction that took its place may be
@@ -84,8 +84,8 @@ def add(u: dict, t: dict, raw: bytes, name: str | None) -> dict:
             raise Invalid(f"A transaction holds at most {MAX_RECEIPTS} receipts")
         rid = db.ex("INSERT INTO mny_receipts (transaction_id, name, mime, size, created_by) VALUES (%s, %s, %s, %s, %s)",
                     (t["id"], _name(name, mime), mime, len(raw), u.get("id")))
-        for i in range(0, len(raw), PART_BYTES):
-            db.ex("INSERT INTO mny_receipt_parts (receipt_id, n, data) VALUES (%s, %s, %s)", (rid, i // PART_BYTES, raw[i:i + PART_BYTES]))
+        for n, part in stored.parts(raw):
+            db.ex("INSERT INTO mny_receipt_parts (receipt_id, n, data) VALUES (%s, %s, %s)", (rid, n, part))
     return _public(db.one("SELECT id, name, mime, size, created_at FROM mny_receipts WHERE id = %s", (rid,)))
 
 
@@ -103,8 +103,7 @@ def _row(u: dict, rid) -> tuple[dict, dict]:
 def content(u: dict, rid) -> tuple[bytes, str, str]:
     """(bytes, type, name) of a receipt."""
     r, _t = _row(u, rid)
-    parts = db.q("SELECT data FROM mny_receipt_parts WHERE receipt_id = %s ORDER BY n", (r["id"],))
-    return b"".join(bytes(p["data"]) for p in parts), r["mime"], r["name"]
+    return stored.join(db.q("SELECT data FROM mny_receipt_parts WHERE receipt_id = %s ORDER BY n", (r["id"],))), r["mime"], r["name"]
 
 
 def remove(u: dict, rid) -> None:

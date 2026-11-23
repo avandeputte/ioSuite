@@ -15,7 +15,6 @@ the same person (iosuite_shared.apppasswords.HUB), so it sees what that person s
 import concurrent.futures
 import datetime as dt
 import io
-import os
 import re
 import secrets
 import threading
@@ -24,7 +23,7 @@ from collections import OrderedDict
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from iosuite_shared import apppasswords
+from iosuite_shared import apppasswords, zones
 
 from iostart import apps, config, homeassistant as ha, layout, weather, widgets
 
@@ -133,35 +132,14 @@ def forget() -> None:
 # ------------------------------------------------------------------ the time zone
 
 def server_zone() -> str:
-    """The server's own time zone name (TZ, /etc/timezone, /etc/localtime's link), UTC when none is found."""
-    z = os.environ.get("TZ", "").lstrip(":")
-    if z and _zone_ok(z):
-        return z
-    try:
-        z = Path("/etc/timezone").read_text().strip()
-        if _zone_ok(z):
-            return z
-    except OSError:
-        pass
-    try:
-        p = os.path.realpath("/etc/localtime")
-        if "zoneinfo/" in p:
-            z = p.split("zoneinfo/", 1)[1]
-            if _zone_ok(z):
-                return z
-    except OSError:
-        pass
-    return "UTC"
+    """The server's own time zone name (TZ, /etc/localtime's link, /etc/timezone), UTC when none is found: the
+    suite's (iosuite_shared.zones)."""
+    return next((z for z in zones._named() if _zone_ok(z)), "UTC")
 
 
 def _zone_ok(z: str) -> bool:
-    if not z or not re.fullmatch(r"[A-Za-z0-9_+\-/]{1,64}", z):
-        return False
-    try:
-        ZoneInfo(z)
-        return True
-    except Exception:  # noqa: BLE001
-        return False
+    """A zone's name, and one that is safe to hand a device (it goes into a file name and a setting there)."""
+    return bool(z) and bool(re.fullmatch(r"[A-Za-z0-9_+\-/]{1,64}", z)) and zones.valid(z)
 
 
 def posix_tz(name: str) -> str:

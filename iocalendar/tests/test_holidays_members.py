@@ -73,7 +73,7 @@ def test_country_from_time_zone():
 
 
 def test_family_member_tags(client, family_id):
-    members.TTL = 0
+    members.tags.ttl = 0
     assert testing.add_account(client, {"name": "emma", "password": "emmapass99", "role": "viewer", "displayName": "Emma"}).status_code == 200
     fam = client.get("/api/members").json()["items"]
     emma = next(m for m in fam if m["name"] == "emma")
@@ -116,7 +116,7 @@ def test_family_member_tags(client, family_id):
 
 
 def test_mcp_members(client, family_id):
-    members.TTL = 0
+    members.tags.ttl = 0
     shared_mcp.set_for("iocalendar", True)
     testing.add_account(client, {"name": "emma", "password": "emmapass99", "role": "viewer", "displayName": "Emma"})
     auth, _ = app_password(client)
@@ -144,7 +144,7 @@ def test_mcp_members(client, family_id):
 def test_leave_accounts_out_of_the_family(client, family_id):
     """The family is the suite's (Settings › Security › Family, iosuite_shared.family): taking someone out there takes
     them out of ioCalendar's tags and filters too."""
-    members.TTL = 0
+    members.tags.ttl = 0
     testing.add_account(client, {"name": "admin2", "password": "adminpass99", "role": "admin"})
     testing.add_account(client, {"name": "emma", "password": "emmapass99", "role": "viewer", "displayName": "Emma"})
     fam = client.get("/api/members").json()["items"]

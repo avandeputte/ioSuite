@@ -16,6 +16,12 @@ The jobs that load large models do their work in a process of their own (jobproc
 that needs more memory than the server has takes that process down and not the web
 app. A job whose process was lost is tried once more; lost again, it is held (it
 stops being run, and says why) until someone asks for it again or the server restarts.
+
+While the app runs, the queue is worked through by one of the copy's jobs (`attach()`: "analysis" on Settings ›
+Servers › Jobs, which shows when it last ran, what it ran and how long that took), so the copy has no thread of
+ioPix's own for it. It is not one of the copy's heavy jobs: a pass can last hours, and the file scanner and a backup
+must not wait that long for it. Before the app has started and after it has stopped (a script, the tests), a thread
+does the same pass.
 """
 import logging
 import threading
@@ -32,7 +38,9 @@ _wake = threading.Event()
 _queue = {}          # key -> callable, at most one per key
 _current = None      # key of the job running now
 _started = None      # when it started
-_thread = None
+_thread = None       # the thread working through the queue, where no job of the copy does
+_active = False      # a pass over the queue is running (the copy's job, or the thread): never two
+_job = None          # the copy's job that makes the passes while the app runs (attach)
 _last_submit = 0.0  # jobs submitted close together (a start, a library change) are picked in ORDER, not arrival order
 GRACE = 3.0
 MAX_SETTLE = 30.0  # a queue that never goes quiet (rebuild after rebuild) still gets its jobs run
@@ -163,18 +171,51 @@ def batch_threads() -> int:
 
 
 def submit(key: str, fn):
-    """Queue a job; `fn` runs on the single worker thread. Keys run in ORDER."""
-    global _thread
+    """Queue a job; `fn` runs when its turn comes, one job at a time. Keys run in ORDER."""
+    global _last_submit
     if key not in ORDER:
         raise ValueError(key)
-    global _last_submit
     with _lock:
         _queue[key] = fn
         _last_submit = time.time()
-        if _thread is None or not _thread.is_alive():
-            _thread = threading.Thread(target=_worker, name="jobs", daemon=True)
-            _thread.start()
+        active = _active
     _wake.set()
+    if not active:  # a pass that is running finds it; else one starts
+        _kick()
+
+
+def _kick():
+    """Start a pass: by the copy's job while the app runs, else on a thread of the queue's own."""
+    global _thread
+    job = _job
+    if job is not None and job.soon():
+        return
+    with _lock:
+        if _thread is None or not _thread.is_alive():
+            _thread = threading.Thread(target=run_queue, name="jobs", daemon=True)
+            _thread.start()
+
+
+def attach():
+    """The app has started: the queue becomes one of the copy's jobs, run when something is queued (and by Run now
+    on Settings › Servers › Jobs). Returns the job, to cancel through detach() as the app stops."""
+    global _job
+    from iosuite_shared import chores
+    _job = chores.start(run_queue, every_s=0, name="analysis", app=config.APP,
+                        title="Work through the photo analysis that is queued: thumbnails, faces, search, captions")
+    with _lock:
+        waiting = bool(_queue) and not _active
+    if waiting:
+        _job.soon()
+    return _job
+
+
+def detach():
+    """The app is stopping: the copy's job goes; what is queued later is run by the queue's own thread."""
+    global _job
+    job, _job = _job, None
+    if job is not None:
+        job.cancel()
 
 
 def status() -> dict:
@@ -249,48 +290,62 @@ def is_queued(key: str) -> bool:
         return key in _queue
 
 
-def _worker():
-    global _current, _started
-    while True:
-        # wait until the queue has been quiet for GRACE seconds, so a burst of submissions
-        # (startup, a library change) settles before the first job is picked by ORDER
-        waited_since = time.time()
+def run_queue() -> str:
+    """One pass: every queued job, in ORDER, one after the other, until none is left. Returns the jobs it ran
+    ("thumbs, embeddings"), which is what the copy's Jobs screen says of the pass. A pass asked for while one runs
+    does nothing: the one running finds what was queued."""
+    global _active, _current, _started, _lost
+    with _lock:
+        if _active:
+            return ""
+        _active = True
+    ran = []
+    try:
         while True:
+            # wait until the queue has been quiet for GRACE seconds, so a burst of submissions
+            # (startup, a library change) settles before the first job is picked by ORDER
+            waited_since = time.time()
+            while True:
+                with _lock:
+                    settle = GRACE - (time.time() - _last_submit)
+                    if not _queue or settle <= 0 or time.time() - waited_since > MAX_SETTLE:
+                        break
+                _wake.wait(timeout=settle)
+                _wake.clear()
             with _lock:
-                settle = GRACE - (time.time() - _last_submit)
-                if not _queue or settle <= 0 or time.time() - waited_since > MAX_SETTLE:
-                    break
-            _wake.wait(timeout=settle)
-            _wake.clear()
-        with _lock:
-            key = next((k for k in ORDER if k in _queue), None)
-            fn = _queue.pop(key) if key else None
-            _current, _started = key, (time.time() if key else None)
-        if fn is None:
-            _wake.wait(timeout=30)
-            _wake.clear()
-            continue
-        global _lost
-        _lost = None
-        try:
-            fn()
-        except WorkerLost as e:
-            _lost = _lost or e
-        except Exception:
-            traceback.print_exc()
-        if _lost is not None and not isinstance(_lost, Held):
-            _after_loss(key, fn, _lost)
-        elif _lost is None:
+                key = next((k for k in ORDER if k in _queue), None)
+                fn = _queue.pop(key) if key else None
+                _current, _started = key, (time.time() if key else None)
+            if fn is None:
+                if ran:  # the queue has run dry: the models are dropped, the job process goes
+                    for hook in list(idle_hooks):
+                        try:
+                            hook()
+                        except Exception:
+                            traceback.print_exc()
+                    import gc
+                    gc.collect()
+                with _lock:
+                    if not _queue:  # nothing came in meanwhile: the pass is over (a later submit starts the next)
+                        _active = False
+                        return ", ".join(dict.fromkeys(ran))[:300]
+                continue
+            _lost = None
+            try:
+                fn()
+            except WorkerLost as e:
+                _lost = _lost or e
+            except Exception:
+                traceback.print_exc()
+            ran.append(key)
+            if _lost is not None and not isinstance(_lost, Held):
+                _after_loss(key, fn, _lost)
+            elif _lost is None:
+                with _lock:
+                    _strikes.pop(key, None)
             with _lock:
-                _strikes.pop(key, None)
+                _current = _started = None
+    except BaseException:
         with _lock:
-            _current = _started = None
-            idle = not _queue
-        if idle:
-            for hook in list(idle_hooks):
-                try:
-                    hook()
-                except Exception:
-                    traceback.print_exc()
-            import gc
-            gc.collect()
+            _active, _current, _started = False, None, None
+        raise

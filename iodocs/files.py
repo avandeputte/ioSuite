@@ -1,7 +1,7 @@
 """A document's scans and files: the front and back of a license, the photo page of a passport, a policy's PDF.
 
 The bytes are kept in the database (doc_file_parts, in parts of PART_BYTES), so the suite's database backup (ioBackup)
-holds them too and nothing lives beside the app. A picture (and a PDF's first page) also gets a small JPEG for the
+holds them too and nothing lives beside the app (how: iosuite_shared.stored, the same in every app that keeps files). A picture (and a PDF's first page) also gets a small JPEG for the
 cards (thumb); the first file with one is the document's cover. Each file can be read (iodocs/ocr.py): its text goes
 into the search, and the facts made of it fill in the document (iodocs/model.py apply_found). A file is served as it
 came, with its own type, except for the kinds a page could run (HTML, SVG, XML...), which are sent as a download.
@@ -10,22 +10,19 @@ name it was uploaded under is never kept, and a file is not renamed.
 """
 import datetime as dt
 import hashlib
-import io
 import json
 import logging
-import mimetypes
-import re
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 
-from iosuite_shared import helper, stamp
+from iosuite_shared import helper, stamp, stored
 from iosuite_shared.errors import Invalid
 
 from iodocs import config, db, ocr
 from iodocs.model import NotFound, need_write, rewords
 
 log = logging.getLogger("iodocs.files")
-PART_BYTES = 4 * 1024 * 1024
+PART_BYTES = stored.PART_BYTES
 MAX_FILES = 100           # of one document
 THUMB_SIDE = 640
 READ_TIMEOUT = 600  # seconds one file may take to read (each run of tesseract may take ocr.TIMEOUT; a scan gets several)
@@ -37,54 +34,18 @@ INLINE = {"application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp
 PREFIX = "iodocs-"
 
 
-def _ext(hint: str | None, mime: str) -> str:
-    """The extension the file keeps, so it still opens: the one it came with when it fits its type, else its type's."""
-    m = re.search(r"\.([A-Za-z0-9]{1,8})$", str(hint or "").strip())
-    came = "." + m.group(1).lower() if m else ""
-    if came and mimetypes.guess_type("x" + came)[0] == mime:
-        return came
-    known = mimetypes.guess_extension(mime) if mime != "application/octet-stream" else None
-    return known or came
-
-
 def assigned(fid: int, ext: str) -> str:
     """The name a file gets here, made of its number: the name it was uploaded under is never kept."""
-    return f"{PREFIX}{int(fid):06d}{ext}"
-
-
-def _mime(hint: str, given: str | None, raw: bytes) -> str:
-    if raw[:4] == b"%PDF":
-        return "application/pdf"
-    g = (given or "").split(";")[0].strip().lower()
-    if g and g != "application/octet-stream" and re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+", g):
-        return g
-    return mimetypes.guess_type(hint)[0] or "application/octet-stream"
-
-
-def _small(im: Image.Image) -> bytes:
-    if im.mode in ("RGBA", "LA", "P"):
-        im = im.convert("RGBA")
-        back = Image.new("RGB", im.size, (255, 255, 255))
-        back.paste(im, mask=im.split()[-1])
-        im = back
-    else:
-        im = im.convert("RGB")
-    im.thumbnail((THUMB_SIDE, THUMB_SIDE), Image.LANCZOS)
-    out = io.BytesIO()
-    im.save(out, "JPEG", quality=80, optimize=True)
-    return out.getvalue()
+    return stored.assigned(PREFIX, fid, ext)
 
 
 def thumb(raw: bytes, mime: str) -> bytes | None:
     """A small JPEG of a picture (turned upright) or of a PDF's first page; None otherwise."""
+    if mime != "application/pdf":
+        return stored.picture(raw, THUMB_SIDE, MAX_PIXELS)
     try:
-        if mime == "application/pdf":
-            pages = ocr.pdf_pages(raw, pages=1, dpi=72)
-            return _small(pages[0]) if pages else None
-        im = Image.open(io.BytesIO(raw))
-        if im.width * im.height > MAX_PIXELS:
-            return None
-        return _small(ImageOps.exif_transpose(im))
+        pages = ocr.pdf_pages(raw, pages=1, dpi=72)
+        return stored.small_jpeg(pages[0], THUMB_SIDE) if pages else None
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         return None
 
@@ -119,8 +80,8 @@ def add(u: dict, d: dict, raw: bytes, hint: str | None, mime: str | None) -> dic
         raise Invalid("The file is empty")
     if len(raw) > config.MAX_FILE_BYTES:
         raise Invalid(f"Files up to {config.MAX_FILE_BYTES // (1024 * 1024)} MB")
-    mime = _mime(hint or "", mime, raw)
-    ext = _ext(hint, mime)
+    mime = stored.mime_of(hint or "", mime, raw)
+    ext = stored.extension(hint, mime)
     # made in the helper (iosuite_shared.helper): a scan that crashes Pillow or pdftoppm is kept without a small picture
     small = helper.call_or(None, thumb, raw, mime, timeout=120) if mime.startswith("image/") or mime == "application/pdf" else None
     with db.tx():
@@ -131,8 +92,8 @@ def add(u: dict, d: dict, raw: bytes, hint: str | None, mime: str | None) -> dic
                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
                     (d["id"], "", mime, len(raw), hashlib.sha256(raw).hexdigest(), small, n["last"] + 1, u.get("id")))
         db.ex("UPDATE doc_files SET name = %s WHERE id = %s", (assigned(fid, ext), fid))
-        for i in range(0, len(raw), PART_BYTES):
-            db.ex("INSERT INTO doc_file_parts (file_id, n, data) VALUES (%s, %s, %s)", (fid, i // PART_BYTES, raw[i:i + PART_BYTES]))
+        for n, part in stored.parts(raw):
+            db.ex("INSERT INTO doc_file_parts (file_id, n, data) VALUES (%s, %s, %s)", (fid, n, part))
         _cover(d["id"])
     return one(d["id"], fid)
 
@@ -152,8 +113,7 @@ def content(doc_id: int, fid, small: bool = False) -> tuple[bytes, str, str]:
             raise NotFound("This file has no small picture")
         return bytes(r["thumb"]), "image/jpeg", r["name"]
     f = one(doc_id, fid)
-    parts = db.q("SELECT data FROM doc_file_parts WHERE file_id = %s ORDER BY n", (f["id"],))
-    return b"".join(bytes(p["data"]) for p in parts), f["mime"], f["name"]
+    return stored.join(db.q("SELECT data FROM doc_file_parts WHERE file_id = %s ORDER BY n", (f["id"],))), f["mime"], f["name"]
 
 
 def text_of(doc_id: int, fid) -> str:

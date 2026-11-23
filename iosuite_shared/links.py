@@ -353,6 +353,75 @@ def as_viewer(request, app: str, path: str, params: dict = None, body: dict = No
     raise Unreachable(app, why, bases[0])
 
 
+class Unavailable(Exception):
+    """Another app could not be asked, or would not answer: (status, why), for the asking app's own answer."""
+
+    def __init__(self, status: int, why: str):
+        super().__init__(why)
+        self.status = status
+
+
+class App:
+    """Another app of the suite as one app asks it for one purpose, on the viewer's behalf (ioCalendar its tasks from
+    ioTask, ioRecipe its shopping list, ioThings the upkeep it keeps as tasks):
+
+        tasks = links.App("iotask", asker="ioCalendar")
+        tasks.enabled()                                  # is it part of the suite at all
+        tasks.url()                                      # where the browser opens it ('' when it is not)
+        tasks.ask(request, "/api/tasks", {"status": "open"})        # its JSON answer, or Unavailable
+        tasks.ask(request, "/api/tasks/5/complete", body={"done": True})
+
+    Nothing is set up for it: the app is found in the suite's list, and it answers with what the viewer sees there
+    (as_viewer). One that did not answer is left alone for BREAK_S seconds, so the asking page draws at once.
+    `no_role`: what to say when it does not let the viewer in; `own_word`: pass on what it said itself about a
+    request it would not take (its 400, 403, 404, 409 or 412 with a detail)."""
+
+    def __init__(self, provider: str, asker: str, timeout: float = 5, no_role: str = None, own_word: bool = True):
+        from iosuite_shared import catalog
+        self.provider, self.asker, self.timeout, self.own_word = provider, asker, timeout, own_word
+        self.name = (catalog.APPS.get(provider) or {}).get("name") or provider
+        self.no_role = no_role or f"{self.name} does not let this account in: open it once and sign in there"
+
+    def enabled(self) -> bool:
+        try:
+            return available(self.provider)
+        except Exception:  # noqa: BLE001 - no database yet
+            return False
+
+    def url(self) -> str:
+        try:
+            return url(self.provider) or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def forget(self) -> None:
+        """It may be asked again, from its first address on (the tests)."""
+        ask_again(self.provider)
+
+    def ask(self, request, path: str, params: dict = None, body: dict = None, method: str = None):
+        """GET path as the viewer (with body: POST that JSON; method for another one): its JSON answer."""
+        if not self.enabled():
+            raise Unavailable(404, f"{self.name} is not part of the suite")
+        if resting(self.provider):
+            raise Unavailable(502, f"{self.name} did not answer a moment ago")
+        try:
+            return as_viewer(request, self.provider, path, params, body, method=method, timeout=self.timeout, user_agent=self.asker)
+        except urllib.error.HTTPError as e:  # it answered
+            reading = body is None and method is None
+            if e.code in (401, 403) and (reading or not self.own_word):
+                raise Unavailable(403, self.no_role) from None
+            if self.own_word:
+                try:
+                    detail = _json.loads(e.read()).get("detail")
+                except (ValueError, AttributeError):
+                    detail = None
+                if e.code in (400, 403, 404, 409, 412) and isinstance(detail, str):
+                    raise Unavailable(e.code, detail) from None  # its own word on what it would not take
+            raise Unavailable(502, f"{self.name} answered {e.code}") from None
+        except Unreachable as e:
+            raise Unavailable(502, f"{self.name} is not reachable ({type(e.why).__name__ if e.why else 'no address'})") from None
+
+
 def forget(reader: str, provider: str = None) -> None:
     """Revoke the reader's app passwords (at one provider, or everywhere) and drop the stored copies."""
     svc = db.one("SELECT id FROM ios_users WHERE service = %s", (reader,))

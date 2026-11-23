@@ -7,7 +7,6 @@ to someone with a role there, with the bills of the accounts that person sees. A
 calendar: ioMoney's money is shown only to those it is shown to there. Nothing is kept here.
 """
 import datetime as dt
-import urllib.error
 
 from fastapi import Request
 from iosuite_shared import links
@@ -16,32 +15,9 @@ PROVIDER = "iomoney"
 TIMEOUT = 5  # seconds, per request
 
 
-class Unavailable(Exception):
-    """ioMoney could not be asked, or would not answer: (status, why)."""
-
-    def __init__(self, status: int, why: str):
-        super().__init__(why)
-        self.status = status
-
-
-def enabled() -> bool:
-    try:
-        return links.available(PROVIDER)
-    except Exception:  # noqa: BLE001 - no database yet
-        return False
-
-
-def url() -> str:
-    """Where the browser opens ioMoney ('' when it is not part of the suite)."""
-    try:
-        return links.url(PROVIDER) or ""
-    except Exception:  # noqa: BLE001
-        return ""
-
-
-def forget() -> None:
-    """ioMoney may be asked again, from its first address on (the tests)."""
-    links.ask_again(PROVIDER)
+_app = links.App(PROVIDER, asker="ioCalendar", timeout=TIMEOUT, no_role="No role in ioMoney", own_word=False)  # ioMoney, asked as the viewer
+Unavailable = links.Unavailable  # ioMoney could not be asked, or would not answer: (status, why)
+enabled, url, forget = _app.enabled, _app.url, _app.forget
 
 
 def _provider(p) -> dict | None:
@@ -59,19 +35,8 @@ def between(request: Request, start: dt.date, end: dt.date) -> list[dict]:
     [{id, day, merchant, amount, currency, approximate, frequency, category, account, paid, transactionId: the ioMoney
     transaction that paid it (its links show on the bill's card), or None, subscription, provider: {accountNumber,
     phone, website, note} kept in ioMoney for the one billing it, or None}], by day."""
-    if not enabled():
-        raise Unavailable(404, "ioMoney is not part of the suite")
-    if links.resting(PROVIDER):
-        raise Unavailable(502, "ioMoney did not answer a moment ago")
     q = {"start": start.isoformat(), "end": (end - dt.timedelta(days=1)).isoformat()}
-    try:
-        got = links.as_viewer(request, PROVIDER, "/api/bills", q, timeout=TIMEOUT, user_agent="ioCalendar")
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            raise Unavailable(403, "No role in ioMoney")
-        raise Unavailable(502, f"ioMoney answered {e.code}")
-    except links.Unreachable as e:
-        raise Unavailable(502, f"ioMoney is not reachable ({type(e.why).__name__ if e.why else 'no address'})")
+    got = _app.ask(request, "/api/bills", q)
     out = []
     for b in got.get("items", []):
         day = str(b.get("day") or "")[:10]

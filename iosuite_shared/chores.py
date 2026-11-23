@@ -20,5 +20,6 @@ def start(fn, every_s: float = 86400, name: str = None, first_s: float = 5, app:
     Settings › Servers › Jobs, and the next one still happens. A run that is still going when the next falls due is
     not started twice. `app` is the app the job belongs to, for the screen. `quiet=True` is for a look every few
     seconds or every minute: its row is written once a minute, not at every look. Call it in the app's lifespan and
-    cancel what it returns at shutdown; `.soon()` on what it returns has it run now."""
+    cancel what it returns at shutdown; `.soon()` on what it returns has it run now. `every_s=0` is a job that runs
+    only when asked: by `.soon()`, or by Run now on the screen."""
     return jobs.register(fn, every_s=every_s, name=name, first_s=first_s, app=app, heavy=heavy, title=title, quiet=quiet)

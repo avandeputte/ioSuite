@@ -1,27 +1,24 @@
 """What comes with a thing: its photos, the manual, the receipt, the warranty card, anything else.
 
 The bytes are kept in the database (thg_file_parts, in parts of PART_BYTES), so the suite's database backup (ioBackup)
-holds them too and nothing lives beside the app. A picture also gets a small JPEG for the cards (thumb); the first
+holds them too and nothing lives beside the app (how: iosuite_shared.stored, the same in every app that keeps files). A picture also gets a small JPEG for the cards (thumb); the first
 photo of a thing is the one the cards show (thg_items.photo). A file is served as it came, with its own type, except
 for the kinds a page could run (HTML, SVG, XML...), which are sent as a download.
 A file gets a name of its own here, made of its number with the extension of its type (iothings-000123.jpg); the
 name it was uploaded under is never kept, and a file is not renamed.
 """
 import hashlib
-import io
-import mimetypes
-import re
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image
 
-from iosuite_shared import helper, stamp
+from iosuite_shared import helper, stamp, stored
 from iosuite_shared.errors import Invalid
 
 from iothings import config, db
 from iothings.model import NotFound, need_write, may_add, Forbidden
 
 KINDS = ("photo", "manual", "receipt", "warranty", "other")
-PART_BYTES = 4 * 1024 * 1024
+PART_BYTES = stored.PART_BYTES
 MAX_FILES = 200           # of one thing
 THUMB_SIDE = 520
 MAX_PIXELS = 80_000_000
@@ -34,50 +31,14 @@ INLINE = {"application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp
 PREFIX = "iothings-"
 
 
-def _ext(hint: str | None, mime: str) -> str:
-    """The extension the file keeps, so it still opens: the one it came with when it fits its type, else its type's."""
-    m = re.search(r"\.([A-Za-z0-9]{1,8})$", str(hint or "").strip())
-    came = "." + m.group(1).lower() if m else ""
-    if came and mimetypes.guess_type("x" + came)[0] == mime:
-        return came
-    known = mimetypes.guess_extension(mime) if mime != "application/octet-stream" else None
-    return known or came
-
-
 def assigned(fid: int, ext: str) -> str:
     """The name a file gets here, made of its number: the name it was uploaded under is never kept."""
-    return f"{PREFIX}{int(fid):06d}{ext}"
-
-
-def _mime(hint: str, given: str | None, raw: bytes) -> str:
-    if raw[:4] == b"%PDF":
-        return "application/pdf"
-    g = (given or "").split(";")[0].strip().lower()
-    if g and g != "application/octet-stream" and re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+", g):
-        return g
-    return mimetypes.guess_type(hint)[0] or "application/octet-stream"
+    return stored.assigned(PREFIX, fid, ext)
 
 
 def thumb(raw: bytes) -> bytes | None:
     """A small JPEG of a picture (turned upright); None when the bytes are not a picture this server reads."""
-    try:
-        im = Image.open(io.BytesIO(raw))
-        if im.width * im.height > MAX_PIXELS:
-            return None
-        im = ImageOps.exif_transpose(im)
-        if im.mode in ("RGBA", "LA", "P"):
-            im = im.convert("RGBA")
-            back = Image.new("RGB", im.size, (255, 255, 255))
-            back.paste(im, mask=im.split()[-1])
-            im = back
-        else:
-            im = im.convert("RGB")
-        im.thumbnail((THUMB_SIDE, THUMB_SIDE), Image.LANCZOS)
-        out = io.BytesIO()
-        im.save(out, "JPEG", quality=80, optimize=True)
-        return out.getvalue()
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
-        return None
+    return stored.picture(raw, THUMB_SIDE, MAX_PIXELS)
 
 
 def _public(r: dict) -> dict:
@@ -112,8 +73,8 @@ def add(u: dict, it: dict, raw: bytes, hint: str | None, mime: str | None, kind:
         raise Invalid("The file is empty")
     if len(raw) > config.MAX_FILE_BYTES:
         raise Invalid(f"Files up to {config.MAX_FILE_BYTES // (1024 * 1024)} MB")
-    mime = _mime(hint or "", mime, raw)
-    ext = _ext(hint, mime)
+    mime = stored.mime_of(hint or "", mime, raw)
+    ext = stored.extension(hint, mime)
     # made in the helper (iosuite_shared.helper): a picture that crashes Pillow costs only its small picture
     small = helper.call_or(None, thumb, raw, timeout=120) if mime.startswith("image/") or kind == "photo" else None
     if kind not in KINDS:
@@ -128,8 +89,8 @@ def add(u: dict, it: dict, raw: bytes, hint: str | None, mime: str | None, kind:
                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (it["id"], kind, "", mime, len(raw), hashlib.sha256(raw).hexdigest(), small, n["last"] + 1, u.get("id")))
         db.ex("UPDATE thg_files SET name = %s WHERE id = %s", (assigned(fid, ext), fid))
-        for i in range(0, len(raw), PART_BYTES):
-            db.ex("INSERT INTO thg_file_parts (file_id, n, data) VALUES (%s, %s, %s)", (fid, i // PART_BYTES, raw[i:i + PART_BYTES]))
+        for n, part in stored.parts(raw):
+            db.ex("INSERT INTO thg_file_parts (file_id, n, data) VALUES (%s, %s, %s)", (fid, n, part))
         _cover(it["id"])
     return one(it["id"], fid)
 
@@ -150,8 +111,7 @@ def content(item_id: int, fid, small: bool = False) -> tuple[bytes, str, str]:
             raise NotFound("This file has no small picture")
         return bytes(r["thumb"]), "image/jpeg", r["name"]
     f = one(item_id, fid)
-    parts = db.q("SELECT data FROM thg_file_parts WHERE file_id = %s ORDER BY n", (f["id"],))
-    return b"".join(bytes(p["data"]) for p in parts), f["mime"], f["name"]
+    return stored.join(db.q("SELECT data FROM thg_file_parts WHERE file_id = %s ORDER BY n", (f["id"],))), f["mime"], f["name"]
 
 
 def inline(mime: str) -> bool:
