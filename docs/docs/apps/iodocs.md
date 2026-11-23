@@ -68,4 +68,4 @@ iosuite install --add iodocs
 | --- | --- |
 | Address | `/docs/` at the suite's address (`https://home.example.com/docs/`), and a name of its own if you give it one |
 | MCP | `/docs/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iodocs](https://github.com/avandeputte/iosuite2/tree/main/iodocs) |
+| Source | [iosuite/iodocs](https://github.com/avandeputte/iosuite/tree/main/iodocs) |

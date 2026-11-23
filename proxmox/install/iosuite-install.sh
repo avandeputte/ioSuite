@@ -2,7 +2,7 @@
 
 # Copyright (c) 2026 Alex Van de Putte
 # License: GPL-3.0-or-later
-# Source: https://github.com/avandeputte/iosuite2
+# Source: https://github.com/avandeputte/iosuite
 # ioSuite: runs inside the LXC, driven by proxmox/ct/iosuite.sh (community-scripts framework).
 # This only installs what the suite's installer needs to start; the ct script then runs install.sh inside the
 # container, which fetches the program, makes its environment, asks for the apps and the database, and starts the service.

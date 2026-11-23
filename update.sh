@@ -7,7 +7,7 @@
 #   ./update.sh --force    reinstall and restart even when the installed commit is already the latest
 #   IOSUITE_REF=<sha|branch> ./update.sh   install that commit instead of the tip of the branch
 #     (right after a push GitHub may still report the previous commit; naming the sha avoids that)
-#   IOSUITE_REPO, IOSUITE_BRANCH   what is followed (avandeputte/iosuite2, main; the machine's file may say so too)
+#   IOSUITE_REPO, IOSUITE_BRANCH   what is followed (avandeputte/iosuite, main; the machine's file may say so too)
 #   IOSUITE_RESULT=<file>  write the outcome ("ok: ..." or "error: ...") there before the restart, so the web app
 #     can show it afterwards (its own child process dies in the restart)
 #   IOSUITE_RUNNING=<version>  the version the running program is (the web app says it): when the code here is newer
@@ -27,7 +27,7 @@ KEEP=" config.env data copies .venv COMMIT FILES EXTRAS SERVICES .update-stage .
 
 # the machine's file may name the repository and the branch (development); the environment wins
 conf() { [ -f "$APP/config.env" ] && sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$APP/config.env" | tail -1 | sed "s/^[\"']//; s/[\"']\$//"; }
-REPO="${IOSUITE_REPO:-$(conf IOSUITE_REPO)}"; REPO="${REPO:-avandeputte/iosuite2}"
+REPO="${IOSUITE_REPO:-$(conf IOSUITE_REPO)}"; REPO="${REPO:-avandeputte/iosuite}"
 BRANCH="${IOSUITE_BRANCH:-$(conf IOSUITE_BRANCH)}"; BRANCH="${BRANCH:-main}"
 REF="${IOSUITE_REF:-$BRANCH}"
 RESULT="${IOSUITE_RESULT:-}"

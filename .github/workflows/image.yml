@@ -1,4 +1,4 @@
-# The suite's one container image, ghcr.io/avandeputte/iosuite2: every app is in it, and a container runs the ones it
+# The suite's one container image, ghcr.io/avandeputte/iosuite: every app is in it, and a container runs the ones it
 # is told to (APPS). A pull request builds it to see that it builds; main's image is built and pushed once the version
 # is set (version.yml starts this workflow, because a commit made by a workflow starts none by itself), tagged latest
 # and v<version>. The image with ioPix's AI packages is the same one built with EXTRAS=all,iopix-ai: tags ai and
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ghcr.io/avandeputte/iosuite2
+  IMAGE: ghcr.io/avandeputte/iosuite
 
 jobs:
   image:

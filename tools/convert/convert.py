@@ -2,7 +2,7 @@
 """Move an install of the first ioSuite (avandeputte/iosuite: every app a program of its own, with its own folder,
 config.env and service) to this one program.
 
-    curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --fetch
+    curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --fetch
     /opt/iosuite/.venv/bin/python /opt/iosuite/tools/convert/convert.py              # what it would do: changes nothing
     /opt/iosuite/.venv/bin/python /opt/iosuite/tools/convert/convert.py --apply      # do it
 

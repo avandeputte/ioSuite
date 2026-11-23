@@ -27,7 +27,7 @@ The two zone permissions are for the custom domain: Wrangler adds the `iosuite` 
 
 ## 2. The repository secrets
 
-In GitHub: **avandeputte/ioSuite2 › Settings › Secrets and variables › Actions › New repository secret**:
+In GitHub: **avandeputte/ioSuite › Settings › Secrets and variables › Actions › New repository secret**:
 
 | Secret | Value |
 | --- | --- |
@@ -37,8 +37,8 @@ In GitHub: **avandeputte/ioSuite2 › Settings › Secrets and variables › Act
 Or with the GitHub CLI:
 
 ```bash
-gh secret set CLOUDFLARE_API_TOKEN --repo avandeputte/ioSuite2
-gh secret set CLOUDFLARE_ACCOUNT_ID --repo avandeputte/ioSuite2
+gh secret set CLOUDFLARE_API_TOKEN --repo avandeputte/ioSuite
+gh secret set CLOUDFLARE_ACCOUNT_ID --repo avandeputte/ioSuite
 ```
 
 Until both are set, the workflow still builds and checks every push but skips the deploy step.

@@ -39,7 +39,7 @@ build time; edit the TOML, not the HTML. Phone screenshots are 585 × 1266.
 
 Screenshots live in `landing/img/` (the guide gets a copy at build time), 1600 × 1000 JPEGs, under 400 KB each. They
 are the real apps holding made-up data (the Parker family); the ioPix ones are from
-[iopix/docs/screenshots](https://github.com/avandeputte/iosuite2/tree/main/iopix/docs/screenshots), whose photo credits the
+[iopix/docs/screenshots](https://github.com/avandeputte/iosuite/tree/main/iopix/docs/screenshots), whose photo credits the
 landing page links to. The photos in the ioRecipe and ioThings screenshots are credited in [CREDITS.md](CREDITS.md).
 
 ## Building

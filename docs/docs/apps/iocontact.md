@@ -49,4 +49,4 @@ iosuite install --add iocontact
 | Address | `/contacts/` at the suite's address (`https://home.example.com/contacts/`), and a name of its own if you give it one |
 | Devices | CardDAV at `/contacts/dav/`, the birthdays feed at `/contacts/cal/…`; LDAP on its own port (3890), at the [address for devices](../reference/configuration.md#the-three-ports) |
 | MCP | `/contacts/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iocontact](https://github.com/avandeputte/iosuite2/tree/main/iocontact) |
+| Source | [iosuite/iocontact](https://github.com/avandeputte/iosuite/tree/main/iocontact) |

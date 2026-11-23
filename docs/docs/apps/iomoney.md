@@ -145,4 +145,4 @@ iosuite install --add iomoney
 | --- | --- |
 | Address | `/money/` at the suite's address (`https://home.example.com/money/`), and a name of its own if you give it one |
 | MCP | `/money/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iomoney](https://github.com/avandeputte/iosuite2/tree/main/iomoney) |
+| Source | [iosuite/iomoney](https://github.com/avandeputte/iosuite/tree/main/iomoney) |

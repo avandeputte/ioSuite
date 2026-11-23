@@ -22,7 +22,7 @@ x-change-me: &change-me
   ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-please}         # CHANGE ME (8 characters or more)
 
 x-suite: &suite
-  image: ghcr.io/avandeputte/iosuite2:latest
+  image: ghcr.io/avandeputte/iosuite:latest
   restart: unless-stopped
   depends_on:
     db:

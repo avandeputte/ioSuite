@@ -5,7 +5,7 @@ description: Install ioSuite on any Linux machine with one command, and add or r
 # Any Linux or Mac
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash
 ```
 
 As root this puts the program in `/opt/iosuite` and runs it as a systemd service; as another user, in `~/iosuite`
@@ -41,7 +41,7 @@ iosuite install --list                  # what this machine runs
 ## Without questions
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh \
   | ADMIN_PASSWORD=… bash -s -- --yes --mariadb --admin alex
 ```
 
@@ -74,7 +74,7 @@ On a Mac, or with `--no-service`, nothing is started for you:
 ## From a checkout
 
 ```sh
-git clone https://github.com/avandeputte/iosuite2 && cd iosuite2
+git clone https://github.com/avandeputte/iosuite && cd iosuite
 python3 -m venv .venv && .venv/bin/pip install -e ".[all]"
 .venv/bin/iosuite install --no-service
 .venv/bin/iosuite serve

@@ -125,7 +125,7 @@ def _read():
     # the first admin on an empty database (containers, installers)
     ADMIN_USER = env("ADMIN_USER")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
-    REPO = env("IOSUITE_REPO", "avandeputte/iosuite2")
+    REPO = env("IOSUITE_REPO", "avandeputte/iosuite")
     BRANCH = env("IOSUITE_BRANCH", "main")
 
 

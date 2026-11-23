@@ -95,5 +95,5 @@ iosuite edge --account-id … --namespace-id … --token-file token.txt
 ```
 
 The Worker, its `wrangler.toml`, the rollout (monitor first, then enforce) and a WAF rate-limit rule are in
-[cloudflare/edge-auth](https://github.com/avandeputte/iosuite2/blob/main/cloudflare/edge-auth/README.md). Once it
+[cloudflare/edge-auth](https://github.com/avandeputte/iosuite/blob/main/cloudflare/edge-auth/README.md). Once it
 enforces, sync clients must use an app password, not the account password.

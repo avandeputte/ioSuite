@@ -35,7 +35,7 @@
     {key:"iobackup", name:"ioBackup", folder:"backup", sub:"backup", what:"backups", tool:true}
   ];
   // <<< suite: apps
-  var IMAGE = "ghcr.io/avandeputte/iosuite2";
+  var IMAGE = "ghcr.io/avandeputte/iosuite";
   var SITE = "https://iosuite.iothing.net/compose/";
   var MARK = "# answers: ";  // the line the page reads a file back from
   var DOORS = {web: "80", sync: "8443", mcp: "8444"};  // what a container listens on, and the ports people use

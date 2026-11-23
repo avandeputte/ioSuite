@@ -254,7 +254,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the image
-        run: docker build -q -t ghcr.io/avandeputte/iosuite2:latest --build-arg COMMIT=${{ github.sha }} .
+        run: docker build -q -t ghcr.io/avandeputte/iosuite:latest --build-arg COMMIT=${{ github.sha }} .
       - name: The stack starts (docker-compose.yml)
         run: |
           mkdir -p stack/data photos && sudo chown 1000:1000 stack/data photos
@@ -281,7 +281,7 @@ jobs:
               healthcheck:
                 interval: 5s
             iopix:
-              image: ghcr.io/avandeputte/iosuite2:latest
+              image: ghcr.io/avandeputte/iosuite:latest
               restart: unless-stopped
               depends_on:
                 iosuite:

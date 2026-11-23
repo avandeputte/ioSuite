@@ -74,4 +74,4 @@ iosuite install --add iothings
 | --- | --- |
 | Address | `/things/` at the suite's address (`https://home.example.com/things/`), and a name of its own if you give it one |
 | MCP | `/things/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iothings](https://github.com/avandeputte/iosuite2/tree/main/iothings) |
+| Source | [iosuite/iothings](https://github.com/avandeputte/iosuite/tree/main/iothings) |

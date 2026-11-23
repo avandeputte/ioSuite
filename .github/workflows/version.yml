@@ -44,5 +44,5 @@ jobs:
           TITLE: ${{ steps.v.outputs.title }}
           SHA: ${{ steps.v.outputs.sha }}
         run: |
-          printf '\n\nImage: `ghcr.io/avandeputte/iosuite2:v%s` (also `latest`; with ioPix'"'"'s AI packages `v%s-ai` and `ai`).\n' "$V" "$V" >> notes.md
+          printf '\n\nImage: `ghcr.io/avandeputte/iosuite:v%s` (also `latest`; with ioPix'"'"'s AI packages `v%s-ai` and `ai`).\n' "$V" "$V" >> notes.md
           gh release create "v$V" --target "$SHA" --title "ioSuite $V: $TITLE" --notes-file notes.md

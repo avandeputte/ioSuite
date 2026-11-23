@@ -18,7 +18,7 @@ sign-in, the settings, the start page's tiles, the menus and the log screen are 
 ## One copy (the default)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash
 ```
 
 One service (`iosuite`), one process, every app you ticked, on ports 80, 8443 and 8444.

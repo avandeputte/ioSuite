@@ -12,7 +12,7 @@ On the machine that runs the old apps, as root:
 
 ```sh
 # 1. the program, beside the old install: sets nothing up, stops nothing
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --fetch
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --fetch
 # 2. what the move would do: changes nothing
 /opt/iosuite/.venv/bin/python /opt/iosuite/tools/convert/convert.py
 # 3. the move

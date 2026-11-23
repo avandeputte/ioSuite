@@ -67,4 +67,4 @@ iosuite install --add iotask
 | Address | `/tasks/` at the suite's address (`https://home.example.com/tasks/`), and a name of its own if you give it one |
 | Devices | CalDAV (Apple Reminders) at `/tasks/dav/`, at the [address for devices](../reference/configuration.md#the-three-ports) |
 | MCP | `/tasks/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iotask](https://github.com/avandeputte/iosuite2/tree/main/iotask) |
+| Source | [iosuite/iotask](https://github.com/avandeputte/iosuite/tree/main/iotask) |

@@ -9,18 +9,18 @@
 #
 # Until the scripts are merged upstream, the framework is pointed at this repository for the install script
 # (COMMUNITY_SCRIPTS_URL below; the core engine still comes from community-scripts). Run on the Proxmox host as root:
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox/ct/iosuite.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox/ct/iosuite.sh)"
 #
 # Without questions: IOSUITE_INSTALL="--yes --mariadb --admin alex --apps iostart,iocalendar" holds the installer's
 # options (see the top of install.sh), IOSUITE_PHOTOS=/mnt/photos and IOSUITE_DIGIKAM=/mnt/digikamDB the two folders
 # ("" for none), and the passwords come from ADMIN_PASSWORD, IOSUITE_DB_PASSWORD and DB_ADMIN_PASSWORD in the
 # environment: they go into the container in a file only root reads, removed once read, never as arguments.
-export COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox}"
+export COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox}"
 _cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
 source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
 # Copyright (c) 2026 Alex Van de Putte
 # License: GPL-3.0-or-later
-# Source: https://github.com/avandeputte/iosuite2
+# Source: https://github.com/avandeputte/iosuite
 
 APP="iosuite"
 var_tags="${var_tags:-family;self-hosted}"
@@ -37,7 +37,7 @@ variables
 color
 catch_errors
 
-REPO="${IOSUITE_REPO:-avandeputte/iosuite2}"
+REPO="${IOSUITE_REPO:-avandeputte/iosuite}"
 BRANCH="${IOSUITE_BRANCH:-main}"
 
 # ---- what only this host knows (whiptail; IOSUITE_PHOTOS and IOSUITE_DIGIKAM in the environment skip the questions)

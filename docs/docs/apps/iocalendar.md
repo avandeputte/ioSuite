@@ -57,4 +57,4 @@ iosuite install --add iocalendar
 | Address | `/calendar/` at the suite's address (`https://home.example.com/calendar/`), and a name of its own if you give it one |
 | Devices | CalDAV at `/calendar/dav/`, subscription links at `/calendar/ics/…`, at the [address for devices](../reference/configuration.md#the-three-ports) |
 | MCP | `/calendar/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iocalendar](https://github.com/avandeputte/iosuite2/tree/main/iocalendar) |
+| Source | [iosuite/iocalendar](https://github.com/avandeputte/iosuite/tree/main/iocalendar) |

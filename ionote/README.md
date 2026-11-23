@@ -51,7 +51,7 @@ ioNote is one of the apps of [ioSuite](../README.md), one program that runs the 
 with ioNote in it, alone or with the others, on any Linux machine:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps ionote
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --apps ionote
 ```
 
 It asks for the MariaDB server, the first admin and the suite's address, then starts the service; leave `--apps` out

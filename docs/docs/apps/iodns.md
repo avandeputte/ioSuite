@@ -65,6 +65,6 @@ iosuite install --add iodns
 | | |
 | --- | --- |
 | Address | `/dns/` at the suite's address (`https://home.example.com/dns/`), and a name of its own if you give it one |
-| Source | [iosuite2/iodns](https://github.com/avandeputte/iosuite2/tree/main/iodns) |
+| Source | [iosuite/iodns](https://github.com/avandeputte/iosuite/tree/main/iodns) |
 
-The [README](https://github.com/avandeputte/iosuite2/tree/main/iodns) has the details of each kind of server.
+The [README](https://github.com/avandeputte/iosuite/tree/main/iodns) has the details of each kind of server.

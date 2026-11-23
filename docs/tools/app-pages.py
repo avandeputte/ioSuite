@@ -11,8 +11,8 @@ import tomllib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-RAW = "https://raw.githubusercontent.com/avandeputte/iosuite2/main/"
-REPO = "https://github.com/avandeputte/iosuite2"
+RAW = "https://raw.githubusercontent.com/avandeputte/iosuite/main/"
+REPO = "https://github.com/avandeputte/iosuite"
 SITE = "https://iosuite.iothing.net"
 GITHUB_SVG = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '
               '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 '
@@ -52,10 +52,10 @@ def install(key, a):
         ("docker", "Docker", term("docker compose — mariadb and one container for the suite", [
             f"curl -fsSLO {RAW}docker-compose.yml", f"# set the passwords, the admin and the time zone (the CHANGE ME lines), and APPS: {key}, then",
             "docker compose up -d"]),
-         "One image, <code>ghcr.io/avandeputte/iosuite2</code>, for amd64 and arm64: a container runs the apps its <code>APPS</code> line "
+         "One image, <code>ghcr.io/avandeputte/iosuite</code>, for amd64 and arm64: a container runs the apps its <code>APPS</code> line "
          'names and holds no data of its own. The <a href="/compose/">Docker Compose builder</a> writes the same file with nothing left to edit.'),
         ("checkout", "From a checkout", term("any linux or mac — from the repository", [
-            f"git clone {REPO} && cd iosuite2", 'python3 -m venv .venv && .venv/bin/pip install -e ".[all]"',
+            f"git clone {REPO} && cd iosuite", 'python3 -m venv .venv && .venv/bin/pip install -e ".[all]"',
             f".venv/bin/iosuite install --no-service --apps {key}", ".venv/bin/iosuite serve"]),
          "For development, or a look around: the same installer without a service. <code>iosuite serve</code> runs the app until you stop it."),
     ]

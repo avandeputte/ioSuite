@@ -52,6 +52,6 @@ iosuite install --add iopix
 | Address | `/pix/` at the suite's address (`https://home.example.com/pix/`), and a name of its own if you give it one |
 | Devices | scripts with an app password at `/pix/api/…`, at the [address for devices](../reference/configuration.md#the-three-ports); the iPhone, iPad, Mac and Apple TV apps show ioPix's own pages, so they take the pages' address |
 | MCP | `/pix/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iopix](https://github.com/avandeputte/iosuite2/tree/main/iopix) |
+| Source | [iosuite/iopix](https://github.com/avandeputte/iosuite/tree/main/iopix) |
 
 The installer asks for the photos folder and, when you use digiKam, the folder of its database; the Proxmox script bind-mounts both into the container. ioPix can run in a [copy of its own](../start/several-apps.md), so that a scan of a large library never slows the other apps. See [iopix.net › Install](https://iopix.net/docs/) for digiKam on SQLite or MariaDB, the AI models and the album roots.

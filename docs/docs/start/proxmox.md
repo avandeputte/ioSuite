@@ -7,7 +7,7 @@ description: Install ioSuite in a Proxmox VE container with one command.
 On the Proxmox VE host, as root:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox/ct/iosuite.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox/ct/iosuite.sh)"
 ```
 
 The script follows the layout of the Proxmox VE community scripts. It asks the framework's usual questions (the
@@ -44,7 +44,7 @@ passwords in the environment; the framework's own answers have their usual `var_
 ```sh
 IOSUITE_PHOTOS=/mnt/photos IOSUITE_DIGIKAM="" ADMIN_PASSWORD=… \
 IOSUITE_INSTALL="--yes --mariadb --admin alex" \
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox/ct/iosuite.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox/ct/iosuite.sh)"
 ```
 
 The passwords go into the container in a file only root reads, removed once read, never as arguments.

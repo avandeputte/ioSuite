@@ -300,4 +300,4 @@ def test_the_scripts_are_sound():
         assert path.exists() and os.access(path, os.X_OK), name
         if shutil.which(shell):
             assert subprocess.run([shell, "-n", str(path)], capture_output=True).returncode == 0, name
-    assert "avandeputte/iosuite2" in (catalog.ROOT / "install.sh").read_text() and "iosuite_shared.install missing-system" in (catalog.ROOT / "update.sh").read_text()
+    assert "avandeputte/iosuite" in (catalog.ROOT / "install.sh").read_text() and "iosuite_shared.install missing-system" in (catalog.ROOT / "update.sh").read_text()

@@ -13,14 +13,14 @@ On any Linux machine, one command installs the program, asks for the database se
 and starts the service; run it again at any time to add or remove apps:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash
 ```
 
 | | |
 | --- | --- |
 | [Any Linux or Mac](docs/docs/start/linux-mac.md) | the command above, its questions and its options (`--apps`, `--add`, `--remove`, `--mariadb`, `--yes`) |
-| [Docker](docs/docs/start/docker.md) | [docker-compose.yml](docker-compose.yml): MariaDB and one container that runs every app (the image `ghcr.io/avandeputte/iosuite2`) |
-| [Proxmox VE](docs/docs/start/proxmox.md) | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/proxmox/ct/iosuite.sh)"` on the host: a container with the suite in it |
+| [Docker](docs/docs/start/docker.md) | [docker-compose.yml](docker-compose.yml): MariaDB and one container that runs every app (the image `ghcr.io/avandeputte/iosuite`) |
+| [Proxmox VE](docs/docs/start/proxmox.md) | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/proxmox/ct/iosuite.sh)"` on the host: a container with the suite in it |
 | [One app or all of them](docs/docs/start/one-or-all.md) | every app works alone; the others add to it when they are there |
 | [Several copies and several servers](docs/docs/start/several-apps.md) | ioPix apart from the rest, on the same machine or another |
 
@@ -109,7 +109,7 @@ it was opened from, or every app on one timeline; with several copies, every cop
 ## From a checkout
 
 ```sh
-git clone https://github.com/avandeputte/iosuite2 && cd iosuite2
+git clone https://github.com/avandeputte/iosuite && cd iosuite
 python3 -m venv .venv && .venv/bin/pip install -e ".[all]"
 .venv/bin/iosuite install --no-service     # asks what the installer asks, writes config.env, makes the tables and the admin
 .venv/bin/iosuite serve

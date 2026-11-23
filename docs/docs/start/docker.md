@@ -8,8 +8,8 @@ The suite is **one image**, public for amd64 and arm64:
 
 | Image | What is in it |
 | --- | --- |
-| `ghcr.io/avandeputte/iosuite2:latest` | every app |
-| `ghcr.io/avandeputte/iosuite2:ai` | the same with ioPix's AI packages (content search, objects, text in photos); amd64 |
+| `ghcr.io/avandeputte/iosuite:latest` | every app |
+| `ghcr.io/avandeputte/iosuite:ai` | the same with ioPix's AI packages (content search, objects, text in photos); amd64 |
 
 A container runs the apps its `APPS` variable names (empty: all of them). Every version of the suite is tagged as
 well (`v4.0.0`, `v4.0.0-ai`), if you'd rather pin one than follow `latest`.
@@ -49,11 +49,11 @@ write there.
 
 ## By hand
 
-[`docker-compose.yml`](https://github.com/avandeputte/iosuite2/blob/main/docker-compose.yml) in the repository is the
+[`docker-compose.yml`](https://github.com/avandeputte/iosuite/blob/main/docker-compose.yml) in the repository is the
 same stack with every app: a MariaDB and one container for the suite.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/avandeputte/iosuite2/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/avandeputte/iosuite/main/docker-compose.yml
 # set the passwords, the admin, the photos folder and the time zone (the CHANGE ME lines), then
 docker compose up -d
 ```

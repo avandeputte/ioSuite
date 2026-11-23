@@ -69,7 +69,7 @@ iosuite install --add iobackup
 | | |
 | --- | --- |
 | Address | `/backup/` at the suite's address (`https://home.example.com/backup/`), and a name of its own if you give it one |
-| Source | [iosuite2/iobackup](https://github.com/avandeputte/iosuite2/tree/main/iobackup) |
+| Source | [iosuite/iobackup](https://github.com/avandeputte/iosuite/tree/main/iobackup) |
 
-The [README](https://github.com/avandeputte/iosuite2/tree/main/iobackup) covers Galera, Google Drive and the database
+The [README](https://github.com/avandeputte/iosuite/tree/main/iobackup) covers Galera, Google Drive and the database
 privileges a backup user needs.

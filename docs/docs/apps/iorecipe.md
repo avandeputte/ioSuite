@@ -61,4 +61,4 @@ iosuite install --add iorecipe
 | --- | --- |
 | Address | `/recipes/` at the suite's address (`https://home.example.com/recipes/`), and a name of its own if you give it one |
 | MCP | `/recipes/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite2/iorecipe](https://github.com/avandeputte/iosuite2/tree/main/iorecipe) |
+| Source | [iosuite/iorecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe) |

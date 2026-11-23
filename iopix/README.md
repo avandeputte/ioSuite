@@ -33,7 +33,7 @@ ioPix is one of the apps of [ioSuite](../README.md), one program that runs the a
 with ioPix in it, alone or with the others, on any Linux machine:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iopix
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --apps iopix
 ```
 
 It asks for the MariaDB server, the first admin and the suite's address, and for ioPix the folder with the photos and,

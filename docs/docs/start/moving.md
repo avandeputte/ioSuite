@@ -43,7 +43,7 @@ On the machine that runs the old apps, as root.
 **1. Fetch the program** beside the old install. This sets nothing up and stops nothing:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --fetch
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --fetch
 ```
 
 **2. See what the move would do.** This changes nothing:

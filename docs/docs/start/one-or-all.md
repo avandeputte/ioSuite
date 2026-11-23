@@ -10,7 +10,7 @@ file says which of them this machine runs. No app needs another: pick one, or al
 ## Just one app
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --apps iopix
+curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --apps iopix
 ```
 
 A photo app alone is a perfectly good install. It needs somewhere to run (a Proxmox VE container, a Docker host, or any

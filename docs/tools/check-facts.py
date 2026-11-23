@@ -6,8 +6,8 @@
 The pages here are written by hand, so this is what keeps them true. The program is the folder above docs/ in this
 repository. It reads docs/, landing/ and the READMEs (the repository's and each app's) and fails on:
 
-  - a link to a file in this repository (raw.githubusercontent.com/.../iosuite2/main/x,
-    github.com/.../iosuite2/blob|tree/main/x) that is not there;
+  - a link to a file in this repository (raw.githubusercontent.com/.../iosuite/main/x,
+    github.com/.../iosuite/blob|tree/main/x) that is not there;
   - a link into the first repository's files, or an image of it (ghcr.io/.../iosuite/<app>): the suite is one
     program in one repository, with one image;
   - a port of the time each app was a program of its own (8600 to 8720) next to an app's name;
@@ -27,7 +27,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent.parent
 SRC = HERE.parent
 OWNER = "avandeputte"
-REPO = "iosuite2"
+REPO = "iosuite"
 FIRST = "iosuite"  # the first repository: an app was a program of its own there
 # the apps, from their manifests (<app>/app.json), in their order
 APPS = sorted((json.loads(p.read_text()) for p in SRC.glob("io*/app.json")), key=lambda m: m.get("order", 0))

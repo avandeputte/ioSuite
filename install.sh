@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ioSuite on this server: install it, and run this again at any time to change the apps it runs.
 #
-#   curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite2/main/install.sh | bash -s -- --add iotask,ionote
+#   curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh | bash -s -- --add iotask,ionote
 #
 # The first time, on a server without ioSuite: fetches the program into its folder (/opt/iosuite as root, else
 # ~/iosuite; --into DIR for another), makes its Python environment, then asks what a new machine is asked: the
@@ -29,7 +29,7 @@
 # An install without questions, on a blank Debian or Ubuntu server:
 #   ... | ADMIN_PASSWORD=… bash -s -- --yes --mariadb --admin alex
 set -euo pipefail
-REPO="${IOSUITE_REPO:-avandeputte/iosuite2}"
+REPO="${IOSUITE_REPO:-avandeputte/iosuite}"
 BRANCH="${IOSUITE_BRANCH:-main}"
 say() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
