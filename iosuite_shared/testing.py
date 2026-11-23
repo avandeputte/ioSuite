@@ -129,7 +129,7 @@ def app_env(app: str, name: str, log_file: str = None, **stored_settings) -> dic
 
 
 def store(app: str, **values) -> None:
-    """Stored settings of an app ('' : the whole suite's), as Settings › Suite › Apps or `iosuite set` would write them.
+    """Stored settings of an app ('' : the whole suite's), as Settings › Global settings › Settings or `iosuite set` would write them.
     An app reads its own once, when its config module is imported: later changes reach only what reads them live."""
     from iosuite_shared import db
     db.init()

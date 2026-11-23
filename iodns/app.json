@@ -18,6 +18,13 @@
       "type": "number",
       "default": "30",
       "hint": "How often the servers are compared with the master list on their own; 0: only when someone looks."
+    },
+    {
+      "name": "BACKGROUND",
+      "label": "Compare the servers and keep dynamic DNS current in the background",
+      "type": "switch",
+      "default": "1",
+      "hint": "Off: nothing is compared and no address is updated until someone asks from the pages."
     }
   ]
 }

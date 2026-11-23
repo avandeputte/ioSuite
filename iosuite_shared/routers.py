@@ -718,7 +718,7 @@ def server_router(self, updater, info=None, apply=None) -> APIRouter:
         GET  /api/server                 the app's name, the installed version and commit, the app's switches
         POST /api/server {action}        action: restart; anything else in the body goes to apply(body)
                                          (updating is the suite's: /api/suite-admin/updates)
-    The log is the copy's, read by suite admins (Settings › Suite › Logs: /api/suite-admin/logs).
+    The log is the copy's, read by suite admins (Settings › Global settings › Logs: /api/suite-admin/logs).
     `info()` returns extra fields for GET /api/server that the panel shows: mcpEnabled (the MCP box) and
     mcpAbout (what /mcp offers). `apply(body)` saves the app's own
     switches sent in the POST body (mcpEnabled) and raises ValueError when one cannot be set."""

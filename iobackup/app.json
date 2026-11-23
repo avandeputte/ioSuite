@@ -41,6 +41,13 @@
       "label": "Cache folder",
       "type": "text",
       "hint": "Where a backup read from Google Drive is kept while it is restored. Empty: in the data folder."
+    },
+    {
+      "name": "BACKGROUND",
+      "label": "Run the queue and the schedule",
+      "type": "switch",
+      "default": "1",
+      "hint": "Off: nothing runs and no schedule fires; backups are only taken from a shell."
     }
   ]
 }

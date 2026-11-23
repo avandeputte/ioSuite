@@ -1,17 +1,9 @@
-"""The Shared ioSuite database: the MariaDB database the ioThing apps share (accounts, sessions, roles, the suite's
-list of apps and suite-wide settings), used through the iosuite-shared library.
-
-ionote names it with IOSUITE_DB_HOST, _PORT, _NAME, _USER and _PASSWORD (config.env), which the library reads
-itself; the default database and user are `iosuite`.
+"""The Shared ioSuite database: the MariaDB database the suite's apps share (accounts, sessions, roles, the suite's
+list of apps, every stored setting), named in the machine's file (IOSUITE_DB_*) and read by iosuite_shared itself.
 """
-import os
-
 from iosuite_shared import config
-
-KEYS = ("HOST", "PORT", "NAME", "USER", "PASSWORD")
 
 
 def public() -> dict:
     """Where the Shared ioSuite database is (no password), for the startup log line."""
-    return {"host": config.DB_HOST, "port": config.DB_PORT, "database": config.DB_NAME, "user": config.DB_USER,
-            "fromEnv": [config.PREFIX + k for k in KEYS if os.environ.get(config.PREFIX + k)]}
+    return {"host": config.DB_HOST, "port": config.DB_PORT, "database": config.DB_NAME, "user": config.DB_USER}

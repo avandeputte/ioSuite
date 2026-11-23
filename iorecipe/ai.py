@@ -135,7 +135,7 @@ def _ask(text: str, url: str) -> dict | None:
     """The model's answer as the schema's object, from a process of its own; None when it gave none."""
     try:
         p = subprocess.run([sys.executable, "-m", "iorecipe.ai", str(model_file())], input=json.dumps({"text": text, "url": url}).encode(),
-                           capture_output=True, timeout=config.AI_TIMEOUT, cwd=str(config.APP_DIR))
+                           capture_output=True, timeout=config.AI_TIMEOUT, cwd=str(config.APP_DIR.parent))  # the program folder: -m iorecipe.ai is found from there
     except subprocess.TimeoutExpired as e:
         raise Invalid("Reading that page with AI took too long on this server") from e
     except OSError as e:

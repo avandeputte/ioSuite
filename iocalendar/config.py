@@ -1,5 +1,5 @@
-"""Settings: ioCalendar's own are kept in the Shared ioSuite database and read once, as it starts (Settings › Suite ›
-Apps changes them; app.json lists them). The settings every app of the suite shares come from
+"""Settings: ioCalendar's own are kept in the Shared ioSuite database and read once, as it starts (Settings › Global settings ›
+Settings changes them; app.json lists them). The settings every app of the suite shares come from
 iosuite_shared.config.standard; the machine's file says only where that database is and where the server listens."""
 from pathlib import Path
 

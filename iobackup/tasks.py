@@ -3,7 +3,7 @@ their schedule. Every run and its log are kept in bkp_runs.
 
 Everything runs in one worker thread, in order: two dumps of the same server at once would only compete for its
 disks, and a restore must never overlap a backup of the database it is writing. The worker and the scheduler run in
-the one process of the app (BACKGROUND=0 turns them off, e.g. for a second copy).
+the copy that runs the app (the stored setting BACKGROUND=0 turns them off).
 """
 from __future__ import annotations
 

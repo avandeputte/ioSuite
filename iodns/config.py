@@ -1,4 +1,4 @@
-"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Suite › Apps
+"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Global settings › Settings
 changes them; app.json lists the app's own). Everything stored
 lives in MariaDB. The settings every app of the suite shares come from iosuite_shared.config.standard."""
 from pathlib import Path

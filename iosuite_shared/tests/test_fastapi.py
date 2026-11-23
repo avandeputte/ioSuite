@@ -113,7 +113,7 @@ def test_users_admin_api_and_read_only():
     assert c.post("/api/auth/password", json={"current": "secret123", "password": ""}).status_code == 400  # never removes the password
     assert c.post("/api/auth/password", json={"current": "secret123", "password": "newpass123"}).status_code == 200
     assert c.get("/api/private").status_code == 200  # this session went on
-    assert c.get("/api/users").status_code == 404  # the old accounts route is gone: Settings › Suite is where accounts live
+    assert c.get("/api/users").status_code == 404  # the old accounts route is gone: Settings › Security is where accounts live
     assert c.delete(f"/api/suite-admin/users/{uid}").status_code == 200
     assert users.get(uid) is None
 

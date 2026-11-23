@@ -26,7 +26,7 @@ async def api_settings_set(request: Request):
     body = await json_body(request)
 
     def save():
-        for k, v in body.items():  # sign-in required is a suite admin's, on Settings › Suite › Apps
+        for k, v in body.items():  # sign-in required is a suite admin’s, on Settings › Global settings › Apps
             if k in TEXTS:
                 db.set_setting(k, str(v or "").strip()[:40])
     await run_in_threadpool(save)

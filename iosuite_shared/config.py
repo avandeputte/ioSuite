@@ -19,7 +19,7 @@ cannot be read from the database, and is the same on every machine but for the l
 
 **Everything else** is a row of ios_settings in the Shared ioSuite database: for one app, or for the whole suite (app
 ''), which every app falls back to. An app reads its own once, as it starts (`settings(app)`), so a change takes
-effect at the next start; people change them under Settings › Suite › Apps, and `iosuite set` writes one straight to
+effect at the next start; people change them under Settings › Global settings › Settings, and `iosuite set` writes one straight to
 the database when the page cannot be reached. `declared(app)` lists the ones a person may set, for that screen and
 that command.
 """
@@ -268,7 +268,7 @@ def own_db(app: str, stored: Settings = None, default_name: str = None) -> dict:
     return {"host": DB_HOST, "port": DB_PORT, "database": s.get("DB_NAME", default_name or app), "user": DB_USER, "password": DB_PASSWORD}
 
 
-# ---- what a person may set: Settings › Suite › Apps, and `iosuite set`
+# ---- what a person may set: Settings › Global settings › Settings, and `iosuite set`
 # {name, label, hint, type: text | number | switch | choice, default?, choices?}; an app's own are in its app.json ("settings")
 COMMON = [
     {"name": "PUBLIC_URL", "label": "Its own address", "type": "text",

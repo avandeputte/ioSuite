@@ -188,7 +188,7 @@ def test_person_in_photos(monkeypatch):
 
 
 def test_the_panel_checks_what_it_is_given_for_an_account():
-    """What the old per-app accounts route checked, now on Settings › Suite › People: a taken name, a short password,
+    """What the old per-app accounts route checked, now on Settings › Security › People: a taken name, a short password,
     no password for more than a member, an email trimmed, valid and unique, and the sign-in list."""
     app = make_app()
     users.create("alex", "secret123", suite_admin=True)
