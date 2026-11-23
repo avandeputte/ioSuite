@@ -21,7 +21,6 @@ cp -R landing/. site/
 # the wall display's flasher (/wall/): the firmware from the release wall-latest (.github/workflows/tab5-wall.yml),
 # served from here because a browser writes over USB only what its own site serves. One for each board, and for
 # each chip revision that needs its own; one not published (yet): no button for it.
-# There is no such release until tab5-wall.yml is switched on (.github/held/): the page then has no buttons.
 WALL=https://github.com/avandeputte/iosuite/releases/download/wall-latest
 v="$(curl -fsSL "$WALL/version.txt" || true)"
 for fw in iowall iowall-waveshare7b iowall-waveshare7b-rev3; do

@@ -21,12 +21,14 @@ permissions:  # a build (a pull request's too) only reads; the release job alone
   contents: read
 
 env:
-  # main: 1.<run>; a pull request: pr<n>.<run>, which a device on it trades for main's at its next update
-  WALL_VERSION: ${{ github.event_name == 'pull_request' && format('pr{0}.{1}', github.event.number, github.run_number) || format('1.{0}', github.run_number) }}
+  # main: 2.<run> (1.<run> was what the first repository built); a pull request: pr<n>.<run>, which a device on it
+  # trades for main's at its next update
+  WALL_VERSION: ${{ github.event_name == 'pull_request' && format('pr{0}.{1}', github.event.number, github.run_number) || format('2.{0}', github.run_number) }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45   # a run that hangs is stopped here, not after GitHub's six hours
     strategy:
       fail-fast: false
       matrix:
@@ -72,6 +74,7 @@ jobs:
       actions: write    # building the website again, with the new firmware
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
