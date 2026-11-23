@@ -21,7 +21,7 @@ def test_every_api_route_declares_who_may_call_it():
 def test_standard_paths():
     assert config.APP_DIR == ROOT and config.STATIC_DIR == ROOT / "static"
     assert config.INDEX_DB == config.DATA_DIR / "index.db"
-    assert config.LOG_FILE == (config.DATA_DIR / "iopix.log").resolve()  # the tests keep a log in their scratch data folder
+    assert config.LOG_FILE == (config.DATA_DIR / "iosuite.log").resolve()  # the tests keep the copy's log in their scratch data folder
 
 
 def test_served_in_a_folder_of_an_address(client):

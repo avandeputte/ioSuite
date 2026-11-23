@@ -14,12 +14,14 @@ def test_status_and_no_update_of_its_own(client, monkeypatch):
         assert client.post("/api/server", json={"action": action}).status_code == 400
 
 
-def test_server_log_endpoint_filters(client):
+def test_the_log_is_the_copy_s_read_by_suite_admins(client):
+    """The server log is the copy's one log (Settings › Global settings › Logs), every line marked with its app."""
     import logging
     logging.getLogger("iopix.sync").warning("probe-warning for the log test")
-    r = client.get("/api/log", params={"level": "warning", "contains": "probe-warning"})
+    assert client.get("/api/log").status_code == 404  # no log of the app's own any more
+    r = client.get("/api/suite-admin/logs", params={"app": "iopix", "level": "warning", "contains": "probe-warning"})
     assert r.status_code == 200
     j = r.json()
-    if j["lines"]:  # the file handler is installed by the app's start; present in the test client
-        assert all("probe-warning" in l for l in j["lines"])
-    assert client.get("/api/log", params={"requests": 0}).status_code == 200
+    assert j["app"] == "iopix" and j["copies"][0]["reachable"]
+    assert j["lines"] and all("probe-warning" in x["text"] and x["app"] == "iopix" and x["level"] == "WARNING" for x in j["lines"])
+    assert client.get("/api/suite-admin/logs", params={"app": "iocalendar", "contains": "probe-warning"}).json()["lines"] == []

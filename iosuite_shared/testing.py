@@ -105,11 +105,12 @@ def auth_env(name: str) -> dict:
     return out
 
 
-def app_env(app: str, name: str, **stored_settings) -> dict:
+def app_env(app: str, name: str, log_file: str = None, **stored_settings) -> dict:
     """What an app's conftest does first, before it imports the app: a fresh Shared ioSuite database (<name>_auth) and
     a fresh database for the app (<name>) on the test server, the machine's settings pointing at them (in os.environ,
-    with a data folder of the session's own, no log file and no file read), and the app's stored settings: its database's name
-    and whatever else is given (TZ="America/New_York"). The daily update check is off. Returns the server."""
+    with a data folder of the session's own, no file read, and no log file unless `log_file` names one), and the app's
+    stored settings: its database's name and whatever else is given (TZ="America/New_York"). The daily update check is
+    off. Returns the server."""
     import tempfile
     from iosuite_shared import config, db, updates
     s = server()
@@ -119,7 +120,7 @@ def app_env(app: str, name: str, **stored_settings) -> dict:
     os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix=f"iosuite-test-{app}-"))
     for k in ("APPS", "HOST", "PORT", "SYNC_PORT", "MCP_PORT", "INTERNAL_URL", "TLS_CERT_FILE", "TLS_KEY_FILE", "ADMIN_USER", "ADMIN_PASSWORD"):
         os.environ.pop(k, None)
-    os.environ["LOG_FILE"] = "off"  # the copy's log is the machine's: none in the tests
+    os.environ["LOG_FILE"] = str(log_file) if log_file else "off"  # the copy's log is the machine's: none in the tests but where one is asked for
     config.load_file()
     db.configure()
     updates.AUTO = False

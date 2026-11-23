@@ -48,10 +48,11 @@ SETTINGS = {
     "DATA_DIR": str(_data), "DIGIKAM_DB_DIR": str(_lib / "db"), "PHOTOS_ROOT": str(LIB["root"]),
     "PREWARM": "0", "SEMANTIC": "0", "ANALYSIS": "0", "CAPTIONS": "0", "REINDEX_POLL": "3600",
     "DIGIKAM_CHECK": "none", "BG_THREADS": "2", "JOBS_PROCESS": "0",  # the jobs run in this process, where the tests can reach into them (test_jobproc.py turns the job process on)
-    "SCANNER_LOOP": "0", "LOG_FILE": str(_data / "iopix.log"),  # a server log of its own, in the scratch data folder (/api/log answers)
+    "SCANNER_LOOP": "0",
 }
 os.environ["HF_HUB_OFFLINE"] = "1"
-mariadb.testing.app_env("iopix", mariadb.API_DB, **SETTINGS)
+# a log of the session's own, in the scratch data folder (the log viewer and the server_log tool answer from it)
+mariadb.testing.app_env("iopix", mariadb.API_DB, log_file=str(_data / "iosuite.log"), **SETTINGS)
 
 from iopix import config  # noqa: E402
 

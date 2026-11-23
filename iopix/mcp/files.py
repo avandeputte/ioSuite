@@ -85,7 +85,7 @@ def server_log(lines: int = 200, contains: str = "", level: Literal["any", "warn
     with that text; `level` keeps only WARNING+ or ERROR+ lines (tracebacks count as errors)."""
     need_admin()
     if config.LOG_FILE is None:
-        raise ToolError("this server keeps no log file (LOG_FILE=off in its config.env)")
+        raise ToolError("this server keeps no log file (LOG_FILE=off in the machine's file)")
     try:
         return tail(config.APP, min(int(lines), LOG_LINES_MAX), contains, level)
     except OSError as e:

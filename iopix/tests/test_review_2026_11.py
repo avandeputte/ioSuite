@@ -33,75 +33,31 @@ def _call(path, method="GET", body=None, **who):
     return resp.status_code, json.loads(resp.body)
 
 
-def test_set_up_endpoints_are_locked_while_a_configured_database_is_down(monkeypatch):
-    """A database is configured but was unreachable at start: nobody can sign in, so nothing may test another server
-    with the stored password or point the viewer elsewhere; only Retry, and the error, are served."""
+def test_only_retry_is_served_while_the_database_is_down(monkeypatch):
+    """The viewer's database is the suite's login on the suite's server (the machine's file), and it did not answer at
+    start: nobody can sign in, so only the error and Retry are served. Nothing here names a server or takes one: the
+    endpoints that tested and switched databases are gone."""
     monkeypatch.setattr(appdb, "configured", lambda: True)
     monkeypatch.setattr(appdb, "ready", lambda: False)
     monkeypatch.setattr(appdb, "error", "connection refused")
-    code, d = _call("/api/database")
-    assert code == 200 and d["locked"] and d["configured"] and d["error"] == "connection refused" and "host" not in d and "user" not in d
-    for p in ("/api/database/test", "/api/database/switch"):
-        code, d = _call(p, "POST", {"host": "evil.example", "password": ""})
-        assert code == 403 and "not answering" in d["detail"], p
+    for who in ({}, {"peer": "8.8.8.8"}, {"peer": "192.168.1.20"}):
+        code, d = _call("/api/database", **who)
+        assert code == 200 and d == {"configured": True, "locked": True, "error": "connection refused", "type": "mysql"}
+        for p in ("/api/database/test", "/api/database/switch"):
+            assert _call(p, "POST", {"host": "evil.example", "password": ""}, **who)[0] == 404, p
     monkeypatch.setattr(appdb, "retry", lambda: False)
     code, d = _call("/api/database/retry", "POST")
     assert code == 400 and "Still unavailable" in d["detail"]
+    code, d = _call("/api/database/retry", "POST", headers={"Origin": "https://evil.example", "Sec-Fetch-Site": "cross-site"})
+    assert code == 403
     code, d = _call("/api/status")
     assert code == 200 and d["needsDatabase"] and d["databaseConfigured"]
-
-
-def test_set_up_endpoints_are_open_only_without_any_configuration(monkeypatch):
-    monkeypatch.setattr(appdb, "configured", lambda: False)
-    monkeypatch.setattr(appdb, "ready", lambda: False)
-    monkeypatch.setattr(appdb, "error", "no database configured")
-    monkeypatch.setattr(appdb, "public_settings", lambda: {"configured": False, "host": "", "password_set": False})
-    code, d = _call("/api/database")
-    assert code == 200 and not d["configured"] and "locked" not in d
-    assert _call("/api/database", peer="192.168.1.20")[0] == 200, "the network the viewer is on"
-
-
-def test_set_up_endpoints_answer_the_local_network_only(monkeypatch):
-    """No database is configured yet: whoever reaches the set-up endpoints chooses the server the viewer connects to,
-    so they are for the network the viewer is on. From a public address, through Cloudflare, or forwarded by a proxy
-    that is not listed as trusted: 403, and nothing is tested or switched."""
-    from iopix import main
-    from iopix.routes import settings
-    monkeypatch.setattr(appdb, "configured", lambda: False)
-    monkeypatch.setattr(appdb, "ready", lambda: False)
-    monkeypatch.setattr(appdb, "error", "no database configured")
-    monkeypatch.setattr(appdb, "public_settings", lambda: {"configured": False, "host": "", "password_set": False})
-
-    async def never(*a, **kw):
-        raise AssertionError("an outside request reached the set-up code")
-    for name in ("api_database_test", "api_database_switch", "api_database_retry"):
-        monkeypatch.setattr(settings, name, never)
-    outside = ({"peer": "8.8.8.8"}, {"headers": {"Cf-Ray": "abc-EWR"}}, {"peer": "192.168.1.5", "headers": {"X-Forwarded-For": "8.8.8.8"}},
-               {"peer": "127.0.0.1", "headers": {"X-Forwarded-For": "8.8.8.8"}})
-    for who in outside:
-        for path, method in (("/api/database", "GET"), ("/api/database/test", "POST"), ("/api/database/switch", "POST"), ("/api/database/retry", "POST")):
-            code, d = _call(path, method, {"host": "evil.example"}, **who)
-            assert code == 403 and "network the server is on" in d["detail"], (who, path)
-        assert _call("/api/status", **who)[0] == 200, "the shell still learns what is missing"
-    # the Shared ioSuite database is away too: the same answers, with only this machine believed as a proxy
-    def away(_request):
-        raise OSError("no shared database")
-    monkeypatch.setattr(main.auth, "outside", away)
-    assert _call("/api/database", peer="192.168.1.20")[0] == 200
-    assert _call("/api/database", peer="8.8.8.8")[0] == 403
-    assert _call("/api/database", peer="127.0.0.1", headers={"X-Forwarded-For": "9.9.9.9"})[0] == 403
+    code, d = _call("/api/photos")
+    assert code == 503 and d["needsDatabase"]
 
 
 def test_the_stored_password_goes_to_the_stored_server_only(monkeypatch):
-    stored = {"type": "mysql", "host": "db.local", "port": 3306, "database": "iopix", "user": "iopix", "password": "s3cret"}
-    monkeypatch.setattr(appdb, "settings", lambda: dict(stored))
-    assert appdb._with_stored({"password": ""})["password"] == "s3cret", "the same server: an empty field keeps the stored password"
-    assert appdb._with_stored({"port": "3306"})["password"] == "s3cret", "the same port as text is the same server"
-    assert appdb._with_stored({"host": "other.example", "password": ""})["password"] == "", "another host never gets the stored password"
-    assert appdb._with_stored({"user": "root"})["password"] == ""
-    assert appdb._with_stored({"host": "other.example", "password": "given"})["password"] == "given"
-    assert appdb._with_stored({"database": "other", "password": "s3cret"})["password"] == "s3cret", "typed again for another database: used"
-    # digiKam's connection test keeps the same rule
+    """digiKam's connection test: an empty password field means the stored one only for the stored server."""
     seen = {}
 
     def fake_connect(**kw):

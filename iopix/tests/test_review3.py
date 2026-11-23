@@ -22,6 +22,7 @@ def test_the_video_and_share_routes_declare_their_access():
 def test_the_names_from_before_the_rename_are_gone():
     paths = [r.path for mod in (settings, tools) for r in mod.router.routes if isinstance(r, APIRoute)]
     assert not [p for p in paths if "viewerdb" in p or "maintenance" in p]
-    assert {"/api/database", "/api/database/test", "/api/database/switch", "/api/database/retry", "/api/tools"} <= set(paths)
+    assert {"/api/database", "/api/database/retry", "/api/tools"} <= set(paths)
+    assert not [p for p in paths if p in ("/api/database/test", "/api/database/switch")]  # the database is the suite's: the machine's file
     from iopix.mcp import files
     assert not hasattr(files, "update_viewer") and not hasattr(files, "update_server")  # updating is the suite's

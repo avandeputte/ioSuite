@@ -6,8 +6,9 @@ import importlib.util
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-FILES = sorted((ROOT / "app").rglob("*.py")) + sorted((ROOT / "tests").glob("*.py"))
+PKG = Path(__file__).resolve().parent.parent   # the iopix package
+ROOT = PKG.parent                              # the program folder: module names are counted from here
+FILES = sorted(p for p in PKG.rglob("*.py") if "tests" not in p.relative_to(PKG).parts) + sorted((PKG / "tests").glob("*.py"))
 
 
 def _module_name(path: Path) -> str:
@@ -34,7 +35,7 @@ def test_every_import_resolves():
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 target = _resolve(node, mod, path.name == "__init__.py")
-                if not target.startswith("app"):
+                if not target.startswith("iopix"):
                     continue
                 try:
                     m = importlib.import_module(target)
@@ -47,10 +48,10 @@ def test_every_import_resolves():
                     problems.append(f"{path.relative_to(ROOT)}:{node.lineno}: {target} has no {a.name}")
             elif isinstance(node, ast.Import):
                 for a in node.names:
-                    if a.name.startswith("app") and importlib.util.find_spec(a.name) is None:
+                    if a.name.startswith("iopix") and importlib.util.find_spec(a.name) is None:
                         problems.append(f"{path.relative_to(ROOT)}:{node.lineno}: no module {a.name}")
         # module paths written as strings: __import__("iopix.x"), "-m", "iopix.x"
-        for m in re.finditer(r"""["'](app(?:\\.[a-z_]+)+)["']""", path.read_text()):
+        for m in re.finditer(r"""["'](iopix(?:\\.[a-z_]+)+)["']""", path.read_text()):
             name = m.group(1)
             if name.endswith((".js", ".css")) or ":" in name:
                 continue
@@ -61,18 +62,18 @@ def test_every_import_resolves():
 
 def test_module_paths_in_scripts_and_docs_exist():
     """`python -m iopix.x` in the installers, the updater, the Dockerfile and the README must name real modules."""
-    files = [ROOT / n for n in ("setup.sh", "update.sh", "run.sh", "README.md", "Dockerfile", "docker-compose.yml")] + \
-        list((ROOT / "installer").glob("*.sh")) + list((ROOT / "proxmox").rglob("*.sh")) + list((ROOT / "app").rglob("*.py"))
+    files = [ROOT / n for n in ("install.sh", "update.sh", "README.md", "Dockerfile", "docker-compose.yml")] + [PKG / "README.md"] + \
+        [p for p in PKG.rglob("*.py") if "tests" not in p.relative_to(PKG).parts]
     missing = []
     for f in files:
         if not f.exists():
             continue
         text = f.read_text()
-        for m in re.finditer(r"-m (app(?:\.[a-z_]+)+)", text):
+        for m in re.finditer(r"-m (iopix(?:\.[a-z_]+)+)", text):
             if importlib.util.find_spec(m.group(1)) is None:
                 missing.append(f"{f.relative_to(ROOT)}: {m.group(1)}")
         if f.suffix == ".sh":  # python -c "from iopix.x import y" inside the shell scripts (setup.sh creates the admin and tests the database this way)
-            for m in re.finditer(r"from (app(?:\.[a-z_]+)*) import ([a-zA-Z_, ]+)", text):
+            for m in re.finditer(r"from (iopix(?:\.[a-z_]+)*) import ([a-zA-Z_, ]+)", text):
                 mod = m.group(1)
                 if importlib.util.find_spec(mod) is None:
                     missing.append(f"{f.relative_to(ROOT)}: {mod}"); continue

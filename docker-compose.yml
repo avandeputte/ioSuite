@@ -1,0 +1,94 @@
+# ioSuite in one Docker stack: MariaDB and one container that runs every app.
+#
+#   docker compose up -d        # or paste this file as a stack in Dockge / Portainer
+#
+# Edit the CHANGE ME spots below (or put the same names in a .env file next to this file): the passwords, the admin,
+# the photos folder. The suite then answers on port 80: the start page at /, every app in its folder (/calendar/,
+# /notes/, …). Phones, native apps and devices use port 8443, MCP clients port 8444. For HTTPS put a reverse proxy in
+# front and say where the suite is under Settings › Global settings › Settings (or with --set below).
+#
+# On its first start the container makes the databases (one per app, on the same server) and the suite's one login,
+# the tables and the first admin (iosuite stack: see iosuite_shared/stack.py); later starts change nothing that is
+# there. Everything else is a setting kept in the Shared ioSuite database, not in this file.
+#
+# Fewer apps: APPS below (iostart,iocalendar,iotask). ioPix on its own, so its scans never slow the others: the second
+# service at the end of this file. The image is public on GitHub's registry: no login is needed to pull it.
+
+x-change-me: &change-me
+  IOSUITE_DB_PASSWORD: ${SUITE_DB_PASSWORD:-change-me}        # CHANGE ME: the suite's login to its databases
+  DB_ADMIN_PASSWORD: &root-password ${DB_ROOT_PASSWORD:-change-me-too}   # CHANGE ME: MariaDB's root, used once to make the databases
+  ADMIN_USER: ${ADMIN_USER:-admin}                            # the first admin, made on the first start (remove both lines to make it in the browser)
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-please}         # CHANGE ME (8 characters or more)
+
+x-suite: &suite
+  image: ghcr.io/avandeputte/iosuite2:latest
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: mariadb:11
+    container_name: iosuite-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: *root-password
+    volumes:
+      - ${DATA:-/opt/iosuite}/db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+
+  iosuite:
+    <<: *suite
+    container_name: iosuite
+    ports:
+      - "80:80"                          # the pages
+      - "8443:8443"                      # phones, native apps and devices: CalDAV, CardDAV, bookmark sync, ioHealth, widgets
+      - "8444:8444"                      # MCP clients
+      - "389:3890"                       # ioContact's LDAP directory for mail apps (read-only); drop it when not needed
+    volumes:
+      - ${DATA:-/opt/iosuite}/data:/data                 # what the apps write on their own, and the log (the container runs as uid 1000)
+      - ${PHOTOS:-/path/to/photos}:/library/photos       # CHANGE ME: the folder with the photos (read/write: sidecar files beside them)
+    environment:
+      <<: *change-me
+      IOSUITE_DB_HOST: db
+      INTERNAL_URL: http://iosuite       # where another container of the suite calls this one
+      APPS: ""                           # empty: every app; or a list: iostart,iocalendar,iotask
+      TZ: ${TZ:-America/New_York}        # CHANGE ME: the family's time zone
+    command:
+      - iosuite
+      - stack
+      - --db-admin=root
+      - --set=iopix.PHOTOS_ROOT=/library/photos
+      - --set=iopix.DIGIKAM_DB_TYPE=none            # without digiKam: ioPix keeps the library itself and scans the folder
+      - --set=iopix.DIGIKAM_CHECK=none
+      # - --set=suite.PUBLIC_URL=https://home.example.com     # behind a reverse proxy: where the suite is
+      # - --set=suite.COOKIE_DOMAIN=example.com               # one sign-in for every name under it
+      # - --proxies=172.16.0.0/12                             # the addresses the reverse proxy connects from
+      # - --demo                                              # fill a new suite with a made-up family of four
+      - --
+      - iosuite
+      - serve
+
+  # ioPix apart, in a container of its own (the same image): take the comment marks off, put APPS above to the other
+  # apps (every app but iopix) and move the photos volume here. It is reached through the first container, at the
+  # same addresses as before: nothing of it needs publishing.
+  # iopix:
+  #   <<: *suite
+  #   container_name: iosuite-pix
+  #   volumes:
+  #     - ${DATA:-/opt/iosuite}/data:/data
+  #     - ${PHOTOS:-/path/to/photos}:/library/photos
+  #   environment:
+  #     <<: *change-me
+  #     IOSUITE_DB_HOST: db
+  #     INTERNAL_URL: http://iopix
+  #     APPS: iopix
+  #     LOG_FILE: /data/iosuite-pix.log
+  #     TZ: ${TZ:-America/New_York}
+  #   command: [iosuite, stack, --db-admin=root, --, iosuite, serve]

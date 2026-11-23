@@ -7,14 +7,11 @@ import zipfile
 import pytest
 from PIL import Image
 
-from iosuite_shared import demo
-
 
 @pytest.fixture
 def photos():
-    with demo.package():
-        from iosuite_demo import iopix
-        yield iopix
+    from iosuite_demo import iopix
+    yield iopix
 
 
 def test_the_drawn_photos_are_written(tmp_path, photos):

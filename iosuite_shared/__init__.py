@@ -20,6 +20,15 @@ such as a LAN address, gets a cookie for that host only).
 # Bump it with every change that reaches users; an install is offered an update when this line is higher on GitHub.
 __version__ = "4.0.0"
 
+# Every app's package is in the program folder, beside this one. An app that joined the suite after this environment
+# was made is found there too, whatever the installed package's own list of them says.
+import sys as _sys
+from pathlib import Path as _Path
+
+_BASE = str(_Path(__file__).resolve().parent.parent)
+if _BASE not in _sys.path:
+    _sys.path.append(_BASE)
+
 from iosuite_shared.errors import Invalid
 
 __all__ = ["Invalid"]
