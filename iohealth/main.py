@@ -33,8 +33,8 @@ async def lifespan(_app):
     suite_demo.at_start(APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package); before the hourly backfill
     webapi.start_backfill()
     updater.start_daily()
-    week = chores.start(notify.weekly, every_s=60, first_s=20, name="weekly summary")  # Monday morning: last week next to the one before
-    morning = chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual")  # at each person's morning time
+    week = chores.start(notify.weekly, every_s=60, first_s=20, name="weekly summary", app=config.APP)  # Monday morning: last week next to the one before
+    morning = chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual", app=config.APP)  # at each person's morning time
     log.info("ioHealth started, writing to %s:%s/%s (%s)", db.params()["host"], db.params()["port"], db.params()["database"],
              "accounts exist" if shared.any_users() else "no accounts yet: create the first one from the sign-in screen, inside your network")
     yield

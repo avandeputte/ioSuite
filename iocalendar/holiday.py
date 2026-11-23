@@ -304,14 +304,14 @@ def sync() -> dict:
         return {"ok": not errors, "count": count, "changed": changed, "calendars": len(items), **({"error": error} if error else {})}
 
 
-def start_sync() -> None:
-    """Every day (the first a little after start), so the years roll along."""
-    def loop():
-        time.sleep(5)
-        while True:
-            try:
-                sync()
-            except Exception as e:  # noqa: BLE001
-                log.warning("holiday sync failed: %s", e)
-            time.sleep(SYNC_EVERY)
-    threading.Thread(target=loop, name="holidays", daemon=True).start()
+def start_sync():
+    """Every day (the first a little after start), so the years roll along: one of the copy's jobs, so it is on
+    Settings › Servers › Jobs with the others."""
+    from iosuite_shared import chores
+    return chores.start(_round, every_s=SYNC_EVERY, first_s=5, app=config.APP, name="holidays",
+                        title="The holiday calendars, a year at a time")
+
+
+def _round() -> str:
+    got = sync()
+    return f"{got.get('calendars', 0)} calendars, {got.get('count', 0)} days, {got.get('changed', 0)} changed"

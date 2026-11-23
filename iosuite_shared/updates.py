@@ -188,34 +188,42 @@ class Updater:
         try:
             from iosuite_shared import push
             push.notify_admins("updates", f"ioSuite {version} is out", f"This server has {self.version}. Update every app in one go "
-                               "under Settings › Servers › Updates.", url=push.link("iostart", "#/settings/global/updates"),
+                               "under Settings › Servers › Updates.", url=push.link("iostart", "#/settings/servers/updates"),
                                once=f"update:{version}")
         except Exception:  # noqa: BLE001 - a notification that cannot go out never stops the check
             pass
 
-    def start_daily(self, first_after: float = 60, watch: bool = True) -> threading.Thread:
+    def start_daily(self, first_after: float = 60, watch: bool = True):
         """Ask GitHub once a day (the first time a minute after start) whether the branch has moved on, while the
         setting is on. Only the public commit is fetched; nothing about this install is sent. With `watch`, also
-        watch for a check or an update a suite admin asks for (watch())."""
+        watch for a check or an update a suite admin asks for (watch()).
+
+        The daily round is one of the copy's jobs (iosuite_shared.jobs), so it is on Settings › Servers › Jobs with
+        every other; the watch is not, being a few seconds' look at a row rather than a job that runs."""
+        from iosuite_shared import chores
         if watch:
             self.watch()
-        def loop():
-            time.sleep(first_after)
-            while True:
-                try:
-                    if self.auto_check_enabled():
-                        self.check()
-                except Exception:  # noqa: BLE001
-                    pass
-                try:
-                    from iosuite_shared import push
-                    push.purge()  # the notifications' sent-once keys of long ago
-                except Exception:  # noqa: BLE001
-                    pass
-                time.sleep(DAILY)
-        t = threading.Thread(target=loop, name="update-check", daemon=True)
-        t.start()
-        return t
+        return chores.start(self._daily_round, every_s=DAILY, first_s=first_after, app=self.app,
+                            name="update check", title="Ask GitHub whether there is a newer version")
+
+    def _daily_round(self) -> str:
+        """The daily round: the version check (while the setting allows it), then the notifications' housekeeping."""
+        said = ""
+        try:
+            if self.auto_check_enabled():
+                out = self.check()
+                said = {"current": "this is the newest version", "update": f"a newer version is out: {out.get('remoteVersion') or out.get('remote') or ''}"
+                        }.get(out.get("status"), out.get("error") or "")
+            else:
+                said = "the daily check is off"
+        except Exception as x:  # noqa: BLE001 - GitHub being away is not a failed job
+            said = f"GitHub could not be asked: {x}"
+        try:
+            from iosuite_shared import push
+            push.purge()  # the notifications' sent-once keys of long ago
+        except Exception:  # noqa: BLE001
+            pass
+        return said
 
     # ---- asked from the start page (iosuite_shared.suiteupdates)
     def watch(self, every: float = None) -> threading.Thread:

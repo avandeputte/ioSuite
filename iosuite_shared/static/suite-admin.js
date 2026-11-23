@@ -214,15 +214,15 @@ function sinceText(ts) {
 const appLabel = (o, key) => (o.apps.find((a) => a.app === key) || {}).name || key;
 
 // ------------------------------------------------------------------ the panel
-export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'The apps'], ['settings', 'All settings'], ['updates', 'Updates'], ['certificate', 'Certificate'], ['logs', 'Logs'], ['keys', 'Keys and tokens']];
+export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'The apps'], ['settings', 'All settings'], ['updates', 'Updates'], ['certificate', 'Certificate'], ['jobs', 'Jobs'], ['logs', 'Logs'], ['keys', 'Keys and tokens']];
 /** The Settings tabs the panel fills, in every app (suite admins): #/settings/<tab>/<sub>. They are named after what
     they hold, so nobody has to work out what "global" means. */
 export const TABS = {
   people: { label: 'People', subs: ['people', 'family', 'roles', 'passwords', 'signin'],
     intro: 'Who can sign in to the io apps, who is in the family, and with which role. Changes apply to every app.' },
   apps: { label: 'Apps', subs: ['apps', 'settings'], intro: 'The apps of the suite: where each answers, who may use it, whether an AI assistant may, and every setting they read as they start.' },
-  servers: { label: 'Servers', subs: ['updates', 'certificate', 'logs'],
-    intro: 'The servers the suite runs on: their version and updates, the certificate they answer HTTPS with, and their log.' },
+  servers: { label: 'Servers', subs: ['updates', 'certificate', 'jobs', 'logs'],
+    intro: 'The servers the suite runs on: their version and updates, the certificate they answer HTTPS with, the background jobs they run, and their log.' },
   keys: { label: 'Keys', subs: ['keys'], intro: 'The keys and tokens the apps use to reach other services. They are stored once, for the whole suite, and never shown again.' },
 };
 
@@ -248,7 +248,7 @@ export async function mount(el, opts = {}) {
       h('div', { class: 'sa-segs' }, subs.map(([k, l]) => h('button', { class: sub === k ? 'on' : '', onclick: () => go(k) }, l))),
       body);
     const ctx = { o, redraw: draw, go, photoPeople };
-    await ({ people, family, roles, passwords, keys, apps, updates, signin, settings, certificate, logs })[sub](body, ctx);
+    await ({ people, family, roles, passwords, keys, apps, updates, signin, settings, certificate, jobs, logs })[sub](body, ctx);
   };
   const go = (k) => { sub = k; if (opts.onSub) opts.onSub(k); draw(); };
   await draw();
@@ -1008,6 +1008,57 @@ async function updates(el) {
   el.append(box('update', 'Updates',
     h('p', { class: 'sa-muted' }, 'The suite has one version. Every server of the suite updates as one: each copy of the program installs the new version with update.sh and starts again; settings and data stay.'),
     head, h('label', { class: 'sa-check' }, auto, h('span', null, 'Check for a new version daily')), list));
+}
+
+/** Settings › Servers › Jobs: every app's background work in one list, wherever it runs. Each line is one job: the
+    app it belongs to, how often it runs, the server that runs it, when it last ran, how long it took and what it
+    said; Run now asks for its next turn to be now, which the server that owns it picks up within seconds. */
+const EVERY = (s) => (!s ? 'when asked' : s < 90 ? `every ${Math.round(s)} s` : s < 5400 ? `every ${Math.round(s / 60)} min` : s < 86400 * 1.5 ? `every ${Math.round(s / 3600)} h` : `every ${Math.round(s / 86400)} d`);
+const TOOK = (ms) => (ms === null || ms === undefined ? '' : ms < 1000 ? `${ms} ms` : ms < 90000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 60000)} min`);
+async function jobs(el, ctx) {
+  let d, timer = null;
+  const list = h('div'), note = h('div');
+  const load = async (draw = true) => {
+    try { d = await api('jobs'); } catch (e) { list.replaceChildren(h('p', { class: 'sa-err' }, e.message)); return; }
+    if (draw) show();
+  };
+  const run = async (j) => {
+    try { d = await api('jobs', { method: 'POST', json: { app: j.app, name: j.name } }); toast(`${j.title} runs now`); show(); again(4000); } catch (e) { fail(e); }
+  };
+  const again = (ms) => { if (timer) clearTimeout(timer); timer = setTimeout(async () => { timer = null; if (!el.isConnected) return; await load(); if (d && (d.running || d.items.some((j) => j.pending))) again(4000); }, ms); };
+  const state = (j) => {
+    if (j.state === 'running') return h('span', null, 'running…');
+    if (j.pending) return h('span', { class: 'sa-muted' }, 'asked to run');
+    if (!j.finishedAt) return h('span', { class: 'sa-muted' }, 'not yet');
+    return h('span', { class: j.state === 'failed' ? 'sa-err' : '' }, j.state === 'failed' ? 'failed' : sinceText(j.finishedAt),
+      j.message ? h('div', { class: `sa-small ${j.state === 'failed' ? '' : 'sa-muted'}` }, j.message) : null);
+  };
+  const show = () => {
+    const several = d.copies.length > 1;
+    note.replaceChildren(...[
+      d.failed ? h('p', { class: 'sa-err' }, `${d.failed} job${d.failed === 1 ? '' : 's'} failed at its last run. Each is tried again at its next turn.`) : null,
+      d.items.length ? null : h('p', { class: 'sa-muted' }, 'No jobs yet: an app registers its own as it starts.')].filter(Boolean));
+    list.replaceChildren(h('table', { class: 'sa-t' },
+      h('tr', null, h('th', null, 'Job'), h('th', null, 'How often'), several ? h('th', null, 'Server') : null,
+        h('th', null, 'Last run'), h('th', null, 'Took'), h('th')),
+      d.items.map((j) => h('tr', null,
+        h('td', null, h('b', null, j.title), h('div', { class: 'sa-muted sa-small' }, j.app ? appLabel(ctx.o, j.app) : 'the server itself',
+          j.heavy ? ' · heavy: waits for the server’s other heavy jobs' : null,
+          j.failures ? ` · ${j.failures} of ${j.runs} runs failed` : null)),
+        h('td', { class: 'sa-small' }, EVERY(j.every)),
+        several ? h('td', { class: 'sa-small' }, j.copy || '–', j.serving ? null : h('div', { class: 'sa-muted sa-small' }, 'not running')) : null,
+        h('td', { class: 'sa-small' }, state(j)),
+        h('td', { class: 'sa-small sa-muted' }, TOOK(j.tookMs)),
+        h('td', { style: { textAlign: 'right' } },
+          h('button', { class: 'sa-btn', disabled: j.state === 'running' || j.pending ? true : null, onclick: () => run(j) }, 'Run now'))))));
+  };
+  await load(false);
+  if (!d) return;
+  show();
+  el.append(box('jobs', 'Jobs',
+    h('p', { class: 'sa-muted' }, 'The background work of every app: the reminders, the syncs and the housekeeping. One runner per server does them all in turn, so two heavy jobs never run at the same moment, and every run is written down here.'),
+    note, list));
+  if (d.running || d.items.some((j) => j.pending)) again(4000);
 }
 
 /** Start one server of the suite again: every app of that copy, since they are one program. */

@@ -705,6 +705,27 @@ def admin_router(self) -> APIRouter:
             authlog.info("suite admin: %s asked of %s by %s", body.get("action"), ", ".join(asked) or "no app", (who or {}).get("name"))
         return {"asked": asked, **await run_in_threadpool(updates_now)}
 
+    @r.get("/jobs", dependencies=[access.suite_admin])
+    async def api_jobs():
+        """Every app's background jobs (iosuite_shared.jobs): what each one is, the copy that runs it, when it last
+        ran, how long it took, what it said and what failed."""
+        from iosuite_shared import jobs
+        return await run_in_threadpool(call, jobs.summary)
+
+    @r.post("/jobs", dependencies=[access.suite_admin])
+    async def api_jobs_run(request: Request):
+        """Body {app, name}: run that job now. The copy that owns it picks the request up within a few seconds,
+        wherever that copy is."""
+        from iosuite_shared import jobs
+        body = await json_body(request)
+        app, name = str(body.get("app") or ""), str(body.get("name") or "")
+        who = me(request)
+        asked = await run_in_threadpool(call, jobs.run_now, app, name, (who or {}).get("name") or "")
+        if not asked:
+            raise HTTPException(400, "No such job: it may have been renamed, or its app may not be running.")
+        authlog.info("suite admin: job %s of %s asked to run by %s", name, app, (who or {}).get("name"))
+        return await run_in_threadpool(call, jobs.summary)
+
     @r.get("/certificate", dependencies=[access.suite_admin])
     def api_certificate(request: Request):
         """The suite's own certificate (iosuite_shared.certs): what is set, the names it is asked for, the one stored,

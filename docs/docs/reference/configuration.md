@@ -118,6 +118,18 @@ iosuite cert                                  # the suite's own certificate: wha
 iosuite serve                                 # run the apps until stopped (what the service does)
 ```
 
+## The jobs
+
+The apps' background work — reminders, syncs and housekeeping — is run by **one job runner per server**, not by a
+timer of its own per job. Suite admins see every job under **Settings › Servers › Jobs**: what it is, the app it
+belongs to, how often it runs, the server that runs it, when it last ran, how long that took and what it said, with
+**Run now** for its next turn. A job whose last run failed is marked and tried again at its next turn.
+
+Two things follow from one runner: a job is never started again while its last run is still going, and jobs marked
+heavy (a scan, an index, a backup) wait for each other, so a server never has two of them at the same moment. When
+the suite runs on several servers, each job belongs to the server that runs its app, and **Run now** reaches it
+there: the screen is the same whether the apps share a server or not.
+
 ## The log
 
 A copy keeps one log for all its apps (`data/iosuite.log`), each line marked with the app it came from. Suite admins

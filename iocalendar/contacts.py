@@ -18,7 +18,7 @@ import urllib.parse
 
 from iosuite_shared import links
 
-from iocalendar import db, ical, model
+from iocalendar import config, db, ical, model
 
 log = logging.getLogger("iocalendar.contacts")
 APP, PROVIDER = "iocalendar", "iocontact"
@@ -143,15 +143,16 @@ def sync_birthdays() -> dict:
         return {"ok": True, "count": len(seen), "changed": changed}
 
 
-def start_sync() -> None:
-    """Every few hours (the first a little after start), while ioContact is set up."""
-    def loop():
-        time.sleep(20)
-        while True:
-            try:
-                if enabled() or birthday_calendar():
-                    sync_birthdays()
-            except Exception as e:  # noqa: BLE001
-                log.warning("birthday sync failed: %s", e)
-            time.sleep(SYNC_EVERY)
-    threading.Thread(target=loop, name="birthdays", daemon=True).start()
+def start_sync():
+    """Every few hours (the first a little after start), while ioContact is set up: one of the copy's jobs, so it is
+    on Settings › Servers › Jobs with the others."""
+    from iosuite_shared import chores
+    return chores.start(_round, every_s=SYNC_EVERY, first_s=20, app=config.APP, name="birthdays",
+                        title="The birthday calendar from ioContact")
+
+
+def _round() -> str:
+    if not (enabled() or birthday_calendar()):
+        return "ioContact is not set up for this"
+    got = sync_birthdays()
+    return f"{got.get('count', 0)} birthdays, {got.get('changed', 0)} changed"

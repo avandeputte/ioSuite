@@ -226,7 +226,7 @@ function settingsTabs(page, view) {
   for (const [k, els] of groups) groups.set(k, boxed(els));
   const tabs = STABS[view].filter(([k]) => groups.has(k));
   if (tabs.length < 2) return;
-  let pick = S.route.params.get('tab');  // #/settings/security links straight to a tab; else the last one opened
+  let pick = S.route.params.get('tab');  // #/settings/people links straight to a tab; else the last one opened
   if (!groups.has(pick)) pick = store.local.get(PREF[`${view}Tab`], null);
   if (!groups.has(pick)) pick = tabs[0][0];
   const bar = h('div', { class: 'stabs', role: 'tablist' });

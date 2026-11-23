@@ -38,8 +38,8 @@ async def lifespan(app: FastAPI):
         except OSError as e:
             log.warning("LDAP directory not started on port %s: %s", config.LDAP_PORT, e)
     updater.start_daily()  # the daily "is there a newer version" check, while the setting allows it
-    purge = chores.start(quality.housekeeping, name="purge of old deletion markers and merges")  # once a day: KEEP_DELETED_DAYS, 30 days of undo
-    notes = chores.start(notify.run, every_s=60, first_s=20, name="notifications")  # the morning's birthdays
+    purge = chores.start(quality.housekeeping, name="purge of old deletion markers and merges", app=config.APP)  # once a day: KEEP_DELETED_DAYS, 30 days of undo
+    notes = chores.start(notify.run, every_s=60, first_s=20, name="notifications", app=config.APP)  # the morning's birthdays
     log.info("ioContact %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield

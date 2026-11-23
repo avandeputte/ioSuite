@@ -100,6 +100,14 @@ iosuite set iopix PHOTOS_ROOT /srv/photos
 iosuite apps                       # which apps this machine runs, and where each answers
 ```
 
+## One job runner
+
+A copy runs the background work of all its apps — reminders, syncs, housekeeping — from one runner, so a job is never
+started twice over itself and two heavy jobs (a scan, an index, a backup) never run at the same moment. Suite admins
+see every job under **Settings › Servers › Jobs**: what it is, which server runs it, when it last ran, how long that
+took, what it said, and **Run now**. With several servers, each job belongs to the one that runs its app and Run now
+reaches it there.
+
 ## One log
 
 A copy writes one log (`<DATA_DIR>/iosuite.log`, 20 MB at most with four older ones kept), every line marked with the
