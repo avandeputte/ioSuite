@@ -1,4 +1,4 @@
-/* The Feeds page (#/news) and the start page's Headlines card: the reader (iostart/news.py).
+/* The Feeds page (#/news) and the start page's Headlines card: the reader (iostart/news/__init__.py).
 
    Three panes on a wide screen (your feeds, the articles, the one being read), one at a time on a phone. The page
    keeps its place in the address (#/news/f/12, #/news/d/Tech, #/news/starred, #/news/a/<article>) without redrawing
@@ -163,7 +163,7 @@ export async function showNews(page, r) {
     const it = st.items.find((x) => x.id === a.id) || a, i = st.items.findIndex((x) => x.id === a.id);
     const step = (d) => { const n = st.items[i + d]; if (n) openItem(n); };
     const body = h('div', { class: 'nwbody' });
-    body.innerHTML = a.html || '';  // cleaned by the server (iostart/feedread.py): only an article's tags, links and pictures to http(s)
+    body.innerHTML = a.html || '';  // cleaned by the server (iostart/news/read.py): only an article's tags, links and pictures to http(s)
     for (const img of body.querySelectorAll('img')) img.addEventListener('error', () => img.remove());
     const lead = a.image && !body.querySelector('img') ? h('img', { class: 'nwlead', src: a.image, alt: '', referrerpolicy: 'no-referrer', onerror: (e) => e.target.remove() }) : null;
     art.replaceChildren(

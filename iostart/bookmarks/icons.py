@@ -3,7 +3,7 @@
 The server asks the bookmarked page for its <link rel="icon"> (and the apple-touch-icon), takes the best of them, and
 falls back to /favicon.ico. What it finds is kept in the database per site (scheme, host and port: the links of one
 site share an icon) and served by the start page itself, so a viewer's browser never asks the bookmarked sites
-anything. A link's own icon (one uploaded for it, or its icon field) always wins; see iostart/bookmarks.py.
+anything. A link's own icon (one uploaded for it, or its icon field) always wins; see iostart/bookmarks/__init__.py.
 
 The fetching happens off the request, a few sites at a time: a listing names the sites it has no answer for, and the
 page asks again a moment later. An icon is looked for again after REFRESH; a site that had none, after RETRY (the one

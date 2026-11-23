@@ -2,7 +2,8 @@
 the iPhone app their app password, and files in and out."""
 import base64
 
-from iostart import bookmarkfiles, bookmarks
+from iostart import bookmarks
+from iostart.bookmarks import files as bookmarkfiles
 
 
 def _basic(name, pw):

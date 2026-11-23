@@ -7,7 +7,7 @@ shared bookmark is only ever in a shared folder or at the top). Who is asking is
 with `as_user()`; every read below is that person's tree and every change is checked against what they may do. Someone
 who is not an admin may still take a shared folder or link off their own start page (prt_bookmark_starts).
 
-Browsers and the iPhone app sync with it (iostart/bookmarkext.py: the ioStart Bookmarks extension's two-way sync), and
+Browsers and the iPhone app sync with it (iostart/bookmarks/ext.py: the ioStart Bookmarks extension's two-way sync), and
 the start page shows the part picked for it: a folder marked for the start page is a group there with its links, and a single link can be shown or hidden on
 its own (`start`: None follows the folder). Editors and admins change the tree in the Bookmarks page.
 
@@ -29,7 +29,8 @@ from defusedxml import DefusedXmlException
 from defusedxml.ElementTree import fromstring as parse_xml  # an uploaded file: no entity expansion or external entities
 from urllib.parse import urlsplit
 
-from iostart import db, siteicons
+from iostart import db
+from iostart.bookmarks import icons as siteicons
 
 
 class BadBookmark(ValueError):
@@ -242,7 +243,7 @@ class Tree:
 
 def _link(r: dict, shown: bool | None = None, sites: dict | None = None) -> dict:
     """A link as the page gets it. Its icon: the SVG uploaded for it (iconUrl), else its icon field, else the site's
-    own (siteIcon, iostart/siteicons.py; `sites` is siteicons.known() when many links are read)."""
+    own (siteIcon, iostart/bookmarks/icons.py; `sites` is siteicons.known() when many links are read)."""
     d = {"id": r["id"], "groupId": r["parent_id"] or 0, "name": r["name"], "abbr": r["abbr"] or _abbr(r["name"], None), "href": r["url"],
          "description": r["description"] or (_host(r["url"])), "customDescription": r["description"] or "",
          "icon": r["icon"] or "", "iconUrl": f"api/bookmarks/links/{r['id']}/icon.svg?v={r['etag']}" if r.get("etag") else "",
@@ -557,7 +558,7 @@ def delete_link(lid: int) -> None:
 
 
 def add_items(parent, items: list[dict], start=None) -> list[dict]:
-    """A parsed bookmarks file (iostart/bookmarkfiles.py: [{type, title, url?, tags?, children?}]) added under `parent`.
+    """A parsed bookmarks file (iostart/bookmarks/files.py: [{type, title, url?, tags?, children?}]) added under `parent`.
     Returns the same shape with the ids made. An address that cannot be kept is skipped."""
     out = []
     with writing():

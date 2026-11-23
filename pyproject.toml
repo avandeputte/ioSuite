@@ -73,4 +73,4 @@ include = ["iosuite_shared*", "iosuite_demo*", "io*"]
 exclude = ["*.tests", "*.tests.*"]
 
 [tool.setuptools.package-data]
-"*" = ["app.json", "static/**/*", "*.liquid", "trmnl_markup/**/*", "trmnl_fonts/*", "recipes/*"]
+"*" = ["app.json", "static/**/*", "*.liquid", "markup/**/*", "fonts/*", "recipes/*"]

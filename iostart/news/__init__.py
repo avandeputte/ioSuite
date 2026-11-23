@@ -23,7 +23,9 @@ import urllib.request
 from iosuite_shared import outbound
 from iosuite_shared.errors import Invalid
 
-from iostart import config, db, feedread, siteicons
+from iostart import config, db
+from iostart.news import read as feedread
+from iostart.bookmarks import icons as siteicons
 
 log = logging.getLogger("iostart.news")
 

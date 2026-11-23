@@ -1,4 +1,4 @@
-"""The TRMNL screens drawn without a browser (iostart/trmnldraw.py), held against what TRMNL's own framework draws.
+"""The TRMNL screens drawn without a browser (iostart/trmnl/draw.py), held against what TRMNL's own framework draws.
 
 tests/trmnl_ref has the suite's screens as Chromium rendered them with TRMNL's framework (its plugins.css and
 plugins.js, github.com/usetrmnl/trmnl-framework) from data.json: every screen in every size on a black-and-white
@@ -21,7 +21,8 @@ from PIL import Image, ImageChops, ImageFilter
 
 liquid = pytest.importorskip("liquid")
 
-from iostart import trmnl, trmnldraw  # noqa: E402
+from iostart import trmnl  # noqa: E402
+from iostart.trmnl import draw as trmnldraw
 
 REF = os.path.join(os.path.dirname(__file__), "trmnl_ref")
 DATA = json.load(open(os.path.join(REF, "data.json"), encoding="utf-8"))
@@ -255,7 +256,7 @@ def test_glyphs():
 
 def test_what_the_markup_uses_is_known():
     """Every class in the suite's markup is one the drawing knows (and was held against TRMNL's framework above): a
-    new one has to be added to iostart/trmnldraw.py and to the references, or it is drawn as a plain box."""
+    new one has to be added to iostart/trmnl/draw.py and to the references, or it is drawn as a plain box."""
     known = {"block", "column", "columns", "content", "description", "description--xlarge", "description--xxlarge", "flex", "flex--between", "flex--center",
              "flex--col", "flex--left", "flex--right", "flex--row", "flex--top", "gap", "gap--base", "gap--large", "gap--medium", "gap--none", "gap--small",
              "gap--xlarge", "gap--xsmall", "grid", "grid--cols-12", "group-header", "hidden", "image", "image--fill", "instance", "item", "label", "label--base",
@@ -273,7 +274,7 @@ def test_what_the_markup_uses_is_known():
         for part in m.values():
             for cls in re.findall(r'class="([^"]*)"', part):
                 cls = re.sub(r"\{\{ (\w+) \}\}", lambda k: said.get(k.group(1), k.group(0)), cls)
-                cls = re.sub(r"bg--\{\{ \w+\.ink \}\}", " ".join(f"bg--{t}" for t in trmnldraw.INKS), cls)  # iostart/trmnl.py's ink()
+                cls = re.sub(r"bg--\{\{ \w+\.ink \}\}", " ".join(f"bg--{t}" for t in trmnldraw.INKS), cls)  # iostart/trmnl/__init__.py's ink()
                 used |= {c for c in re.sub(r"\{[%{].*?[%}]\}", " ", cls).split() if not c.startswith("col--span-") and not re.fullmatch(r"(lg:)?[wh]--\d+|gap--\[\d+px\]", c)}
     plain = {c for c in used if ":" not in c}
     sized = {c[3:] for c in used if c.startswith("lg:")}

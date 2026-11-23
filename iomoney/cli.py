@@ -36,9 +36,9 @@ def main(argv: list[str]) -> int:
         print(("ok: " if r["ok"] else "failed: ") + r["message"])
         return 0 if r["ok"] else 1
     elif cmd == "quotes":
-        from iomoney import model, quotes
+        from iomoney import holdings, quotes
         r = quotes.refresh(force=True)
-        model.revalue_manual_investments()
+        holdings.revalue_manual_investments()
         print(f"ok: {r['asked']} asked, {r['failed']} failed")
     else:
         print(__doc__)

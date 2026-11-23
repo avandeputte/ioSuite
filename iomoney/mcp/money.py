@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
-from iomoney import (__version__, balancecheck, config, duplicates, forecast, model, monarch, payees as payee_list, payoff, quotes,
+from iomoney import (__version__, balancecheck, config, duplicates, forecast, holdings, model, monarch, payees as payee_list, payoff, quotes,
                  recurring, review, splits, tags as tag_store, transfers)
 from iomoney.mcp.base import ADDS, DELETES, READ_ONLY, WRITES, clamp, find_account, guard, link, need_admin, server, who
 
@@ -91,8 +91,8 @@ def spending(month: Optional[str] = None, start: Optional[str] = None, end: Opti
     u = who()
     _need_role(u)
     if not (start and end):
-        from iomoney.api import _month_bounds
-        start, end = guard(_month_bounds, month)
+        from iomoney.routes.common import month_bounds
+        start, end = guard(month_bounds, month)
     return guard(model.spending, u, start, end)
 
 
@@ -329,7 +329,7 @@ def portfolio(account: Optional[str] = None) -> dict:
     u = who()
     _need_role(u)
     aid = find_account(u, account)["id"] if account else None
-    return model.portfolio(u, aid)
+    return holdings.portfolio(u, aid)
 
 
 @server.tool(annotations=READ_ONLY)
@@ -355,11 +355,11 @@ def add_holding(account: str, symbol: Optional[str] = None, shares: float = 0, c
     b = {"symbol": symbol, "shares": shares, "costBasis": cost_basis, "name": name, "kind": kind or "stock"}
     if price is not None:
         b["price"] = price
-    h = guard(model.create_holding, u, a, b)
+    h = guard(holdings.create_holding, u, a, b)
     if h["symbol"]:
         quotes.refresh(symbols=[h["symbol"]])
-    model.revalue_manual_investments()
-    return next((p for p in model.portfolio(u, a["id"])["items"] if p["id"] == h["id"]), {"id": h["id"]})
+    holdings.revalue_manual_investments()
+    return next((p for p in holdings.portfolio(u, a["id"])["items"] if p["id"] == h["id"]), {"id": h["id"]})
 
 
 @server.tool(annotations=WRITES)
@@ -368,8 +368,8 @@ def update_holding(holding_id: int, shares: Optional[float] = None, cost_basis: 
     """Change a manual holding (its id, from portfolio): only what is given changes."""
     u = who()
     b = {k: v for k, v in {"shares": shares, "costBasis": cost_basis, "price": price, "name": name}.items() if v is not None}
-    h = guard(model.update_holding, u, guard(model.holding, u, holding_id), b)
-    model.revalue_manual_investments()
+    h = guard(holdings.update_holding, u, guard(holdings.holding, u, holding_id), b)
+    holdings.revalue_manual_investments()
     return {"id": h["id"], "shares": float(h["shares"])}
 
 
@@ -377,9 +377,9 @@ def update_holding(holding_id: int, shares: Optional[float] = None, cost_basis: 
 def delete_holding(holding_id: int) -> dict:
     """Remove a manual holding (its id, from portfolio). Ask first."""
     u = who()
-    h = guard(model.holding, u, holding_id)
-    guard(model.delete_holding, u, h)
-    model.revalue_manual_investments(h["account_id"])
+    h = guard(holdings.holding, u, holding_id)
+    guard(holdings.delete_holding, u, h)
+    holdings.revalue_manual_investments(h["account_id"])
     return {"deleted": h["symbol"] or h["name"]}
 
 

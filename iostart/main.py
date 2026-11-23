@@ -10,10 +10,14 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from iosuite_shared import application, mcp as shared_mcp, users
 
-from iostart import __version__, api, appsignin, bookmarkext, bookmarks, config, db, keys, mcp, news, newsapi, timers, trmnlpush
+from iostart import __version__, api, appsignin, bookmarks, config, db, keys, mcp, news, timers
+from iostart.bookmarks import api as bookmarksapi, ext as bookmarkext
+from iostart.homeassistant import api as haapi
+from iostart.news import api as newsapi
+from iostart.trmnl import api as trmnlapi, push as trmnlpush
 from iostart.auth import auth, updater
 
-# a TRMNL e-ink device set to this server (iostart/trmnlserver.py) has no account: it signs its requests with its own key
+# a TRMNL e-ink device set to this server (iostart/trmnl/server.py) has no account: it signs its requests with its own key
 TRMNL_DEVICE = {("GET", "/api/setup"), ("GET", "/api/display"), ("GET", "/api/current_screen"), ("POST", "/api/log")}
 
 
@@ -30,7 +34,7 @@ mcp_enabled = mcp_switch.enabled
 
 def _jobs() -> list:
     """The copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds
-    people follow (iostart/news.py), the screens pushed to TRMNL's cloud (iostart/trmnlpush.py)."""
+    people follow (iostart/news/__init__.py), the screens pushed to TRMNL's cloud (iostart/trmnl/push.py)."""
     return [j for j in (timers.job(), news.job(), trmnlpush.job()) if j]
 
 
@@ -54,7 +58,10 @@ app = application.create(
     open_paths=("/bookmarks", "/bookmarks.webmanifest"), open_prefixes=("/api/wall/pair",),
     middleware={"is_open": _device_asks},
     limit_for=_limit_for, related=False,
-    routers=(api.router,
+    routers=(api.router,           # the apps and the layout, the weather, the search, the tiles, the timers, the wall display
+             haapi.router,         # /api/ha: the Home Assistant card
+             bookmarksapi.router,  # /api/bookmarks, /api/groups, /api/links: the bookmarks
+             trmnlapi.router,      # /api/trmnl, and what a TRMNL device asks (/api/setup, /api/display...)
              newsapi.router,       # /api/news: the feed reader (the Feeds page) and the headlines card
              appsignin.router,     # /dav/nextcloud/index.php/login/v2: how the extension and the iPhone app sign in
              bookmarkext.router),  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)

@@ -1,9 +1,10 @@
-"""A bookmark's icon by default: the site's own, fetched by the server (iostart/siteicons.py). The sites are mocked."""
+"""A bookmark's icon by default: the site's own, fetched by the server (iostart/bookmarks/icons.py). The sites are mocked."""
 import base64
 
 import pytest
 
-from iostart import config, siteicons
+from iostart import config
+from iostart.bookmarks import icons as siteicons
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 40
 ICO = b"\x00\x00\x01\x00\x01\x00" + b"\x10" * 40

@@ -1,5 +1,5 @@
 """TRMNL push: the start page sends a person's TRMNL screens to TRMNL's webhooks itself, for a TRMNL cloud that cannot
-reach the suite (inside the network only, or behind Cloudflare Access). iostart/trmnl.py has the screens.
+reach the suite (inside the network only, or behind Cloudflare Access). iostart/trmnl/__init__.py has the screens.
 
 What a person set (Settings › TRMNL): for each screen, the Webhook URL of the TRMNL plugin they imported for it (TRMNL:
 the plugin's settings), their time zone and 12/24-hour clock. The webhook URLs and the app password the data is read
@@ -113,7 +113,7 @@ def configure(user, b: dict) -> dict:
 
 def ensure_password(user) -> None:
     """The app password this person's screens are read with (label "TRMNL"): made when they first push a screen or
-    take a device (iostart/trmnlserver.py), and made again when the one kept was revoked."""
+    take a device (iostart/trmnl/server.py), and made again when the one kept was revoked."""
     uid = user["id"]
     pw = credentials.get(APP, _cred(uid, "pw"))
     if pw and apppasswords.authenticate(None, pw, apppasswords.HUB):

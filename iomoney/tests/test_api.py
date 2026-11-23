@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from iomoney import db, model, quotes
+from iomoney import db, holdings, model, quotes
 from conftest import sign_in
 
 
@@ -124,7 +124,7 @@ def test_portfolio_with_quotes_and_currencies(client, yahoo):
     client.post(f"/api/accounts/{inv['id']}/holdings", json={"name": "Private fund", "shares": 2, "price": 50, "kind": "fund"})
     assert client.post(f"/api/accounts/{inv['id']}/holdings", json={"symbol": "bad symbol!", "shares": 1}).status_code == 400
     quotes.refresh(force=True)  # the exchange rate EUR -> USD too
-    model.revalue_manual_investments()
+    holdings.revalue_manual_investments()
     p = client.get("/api/portfolio").json()
     by = {x["symbol"] or x["name"]: x for x in p["items"]}
     assert by["AAPL"]["value"] == 2000 and by["AAPL"]["gain"] == 500 and by["AAPL"]["dayChange"] == 100 and by["AAPL"]["quoted"]
@@ -153,7 +153,7 @@ def test_house_values_estimate_and_equity(client):
     assert client.post(f"/api/accounts/{house['id']}/values", json={"value": 400000, "day": two_years_ago, "note": "appraisal"}).status_code == 200
     r = client.get(f"/api/accounts/{house['id']}").json()
     assert 424000 < r["estimate"] < 425000  # 3% a year, two years on
-    assert model.write_estimates() == 1
+    assert holdings.write_estimates() == 1
     vals = client.get(f"/api/accounts/{house['id']}/values").json()["items"]
     assert vals[0]["source"] == "estimate" and vals[-1]["note"] == "appraisal"
     nw = client.get("/api/networth").json()

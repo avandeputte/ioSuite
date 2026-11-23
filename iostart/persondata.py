@@ -11,7 +11,7 @@ def of(user_id: int, remove: bool) -> list:
     starts = db.one("SELECT count(*) AS n FROM prt_bookmark_starts WHERE user_id = %s", (user_id,))["n"]
     layout = db.one("SELECT count(*) AS n FROM prt_settings WHERE name LIKE %s", (f"user:{int(user_id)}:%",))["n"]
     shared = db.one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE owner = %s AND shared = 1", (user_id,))["n"]
-    from iostart import trmnlpush, trmnlserver
+    from iostart.trmnl import push as trmnlpush, server as trmnlserver
     pushed = len(trmnlpush.hooks(user_id))
     devices = len(trmnlserver.devices_of(user_id))
     from iostart import timers

@@ -2493,7 +2493,7 @@ async function setTrmnl(el) {
     }));
     if (!d.screens.length) list.replaceChildren(h('p', { class: 'muted' }, 'None of the apps these screens show is in your suite yet.'));
   }
-  // -- a TRMNL that asks the start page itself (iostart/trmnlserver.py): no TRMNL account, plugin or webhook
+  // -- a TRMNL that asks the start page itself (iostart/trmnl/server.py): no TRMNL account, plugin or webhook
   const LAYOUT = { full: 'One screen', '1Lx1R': 'Two, side by side', '1Tx1B': 'Two, one above the other', '1Lx2R': 'One left, two right',
     '2Lx1R': 'Two left, one right', '2Tx1B': 'Two above, one below', '1Tx2B': 'One above, two below', '2x2': 'Four' };
   const EVERY = (sec) => (sec >= 86400 ? 'day' : sec >= 3600 ? `${sec / 3600} hour${sec > 3600 ? 's' : ''}` : `${sec / 60} minutes`);
@@ -2957,7 +2957,7 @@ async function openAll(name, links) {
 }
 
 /* Tidy up (the broom on the Bookmarks page): the links that no longer work and the same address kept more than once,
-   in a box above the tree. The server asks every address in the background (iostart/bookmarkcheck.py); the box follows
+   in a box above the tree. The server asks every address in the background (iostart/bookmarks/check.py); the box follows
    it and lists what it found: nothing answering, a page that is gone, a page that moved for good (its new address
    one click away). Nothing is deleted or changed without a click here. */
 function bmTidy(el, changed) {

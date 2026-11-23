@@ -1,7 +1,7 @@
 """TRMNL screens: the suite at a glance on a TRMNL e-ink display (trmnl.com), as TRMNL "private plugins".
 
 A TRMNL plugin is markup (Liquid over TRMNL's design framework, in four sizes: full 800×480, half_horizontal 800×240,
-half_vertical 400×480, quadrant 400×240) and the data it fills in. The markup lives here (trmnl_markup/: one folder per
+half_vertical 400×480, quadrant 400×240) and the data it fills in. The markup lives here (markup/: one folder per
 screen and a shared.liquid for all) and goes to TRMNL as the zip its "Import new" takes (settings.yml, the four sizes,
 shared.liquid). The data is one flat JSON per screen, already worded ("6:00 PM", "in 12 days", "8,214"), so the markup
 only lays it out:
@@ -20,7 +20,7 @@ Two ways for the data to reach TRMNL, as the person's TRMNL is set up:
   password of the person's (Settings › Account), sent as "Authorization: Bearer". The plugin zip asks for the address
   and the app password in TRMNL's form, never with them in it.
 * push: for a TRMNL cloud that cannot reach the suite. The person pastes each screen's TRMNL webhook address in
-  Settings › TRMNL; the start page then sends the screen's data there itself (trmnlpush.py: every 15 minutes
+  Settings › TRMNL; the start page then sends the screen's data there itself (trmnl/push.py: every 15 minutes
   when it changed, once an hour at least; TRMNL takes 12 an hour per plugin, 5 KB each). The webhook addresses and
   the app password it reads with are kept with the suite's keys and tokens (iosuite_shared.credentials), so a suite
   admin sees them in Settings › Keys.
@@ -49,7 +49,7 @@ SCREENS = {
     "money": {"name": "Money", "apps": ["iomoney"], "every": 60, "about": "ioMoney: the bills of the week, accounts running low"},
     "weather": {"name": "Weather", "apps": [], "every": 60, "about": "The weather now, the next hours and the coming days"},
 }
-# The weather's glyphs, in the order trmnl_markup/weather/shared.liquid has them (the data names one by its place in
+# The weather's glyphs, in the order markup/weather/shared.liquid has them (the data names one by its place in
 # this list): the start page's own (static/app.js: WX), by AccuWeather's icon number as there (WX_MAP).
 WX = ("sun", "moon", "cloud", "partly", "partlyNight", "rain", "storm", "snow", "fog", "wind", "hot")
 WX_MAP = {1: "sun", 2: "sun", 3: "partly", 4: "partly", 5: "partly", 6: "cloud", 7: "cloud", 8: "cloud", 11: "fog", 12: "rain", 13: "rain", 14: "partly",
@@ -57,7 +57,7 @@ WX_MAP = {1: "sun", 2: "sun", 3: "partly", 4: "partly", 5: "partly", 6: "cloud",
           29: "snow", 30: "hot", 31: "snow", 32: "wind", 33: "moon", 34: "moon", 35: "partlyNight", 36: "partlyNight", 37: "fog", 38: "cloud", 39: "rain",
           40: "rain", 41: "storm", 42: "storm", 43: "snow", 44: "snow"}
 SIZES = ("full", "half_horizontal", "half_vertical", "quadrant")
-MARKUP_DIR = os.path.join(os.path.dirname(__file__), "trmnl_markup")
+MARKUP_DIR = os.path.join(os.path.dirname(__file__), "markup")
 LIMIT = 5000  # bytes: what TRMNL keeps of a webhook push (5 KB; 10 KB with TRMNL+); the polled data stays under it too
 
 

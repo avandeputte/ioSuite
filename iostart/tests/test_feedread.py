@@ -1,4 +1,4 @@
-from iostart import feedread as F
+from iostart.news import read as F
 
 RSS = b"""<?xml version="1.0"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
 <channel><title>The &amp; Blog</title><link>https://blog.example/</link><description>Words</description>

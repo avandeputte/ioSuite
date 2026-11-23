@@ -407,8 +407,12 @@ The package `iomoney/` of the repository:
 
 ```
 main.py            the application: what is ioMoney's own (the Monarch sync, quotes and estimates as a job, its routes), handed to iosuite_shared.application
-api.py             the REST API
-model.py           accounts, balances, transactions and holdings in MariaDB: who sees and changes what, the sums
+api.py             the REST API, put together from routes/
+routes/            its routes by subject: overview (the summary, the net worth), accounts, transactions (with transfers and
+                   receipts), rules, holdings, recurring, tidy (what needs a look, duplicates, payees, categories, tags,
+                   statements), settings (Monarch Money); common.py what they all use
+model.py           accounts, balances and transactions in MariaDB: who sees and changes what, the sums, the rules
+holdings.py        what an investment account holds, what each holding is worth with the day's quote, the portfolio
 monarch.py         Monarch Money: the sign-in (from the suite's keys and tokens) and the sync, accounts it reports as new
 recurring.py       recurring transactions and subscriptions: found in the transactions, the household's list, the bills' dates
 categories.py      the categories: added, renamed, merged, regrouped, deleted, and what a sync brings later under the old name
