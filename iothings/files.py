@@ -14,6 +14,7 @@ import re
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from iosuite_shared import helper
 from iosuite_shared.errors import Invalid
 
 from iothings import config, db
@@ -112,7 +113,8 @@ def add(u: dict, it: dict, raw: bytes, hint: str | None, mime: str | None, kind:
         raise Invalid(f"Files up to {config.MAX_FILE_BYTES // (1024 * 1024)} MB")
     mime = _mime(hint or "", mime, raw)
     ext = _ext(hint, mime)
-    small = thumb(raw) if mime.startswith("image/") or kind == "photo" else None
+    # made in the helper (iosuite_shared.helper): a picture that crashes Pillow costs only its small picture
+    small = helper.call_or(None, thumb, raw, timeout=120) if mime.startswith("image/") or kind == "photo" else None
     if kind not in KINDS:
         kind = "photo" if small else "manual" if mime == "application/pdf" else "other"
     if kind == "photo" and not small:

@@ -17,7 +17,8 @@ that runs in another copy is passed across to it, so every copy answers for the 
 
 What the apps of one copy share: the process (they restart together, and an update is the copy's), the listen
 address, the ports and the TLS files (the machine's file), the thread pool their blocking work runs on (sized by how
-many they are), and one log, each line marked with the app it came from (iosuite_shared.logs).
+many they are), one log, each line marked with the app it came from (iosuite_shared.logs), and the helper process
+that does their heavy work on uploaded files (iosuite_shared.helper), so a crash there does not stop the copy.
 """
 from __future__ import annotations
 
@@ -228,7 +229,8 @@ class Host:
         started = all(e.state != "starting" for e in self.entries)
         more = {}
         if (scope.get("client") or ("",))[0] in ("127.0.0.1", "::1"):
-            more = {"apps": self.status(), "door": self.door_of(scope)}
+            from iosuite_shared import helper
+            more = {"apps": self.status(), "door": self.door_of(scope), "helper": helper.status()}
         await doors.json_answer(send, 200 if started else 503, "ok" if started else "starting", **more)
 
     # ---- start-up and shutdown: each app's own, in a task of its own

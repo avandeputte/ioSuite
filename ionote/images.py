@@ -10,6 +10,8 @@ import time
 
 from PIL import Image, ImageOps
 
+from iosuite_shared import helper
+
 from ionote import config, db
 from ionote.notes import check_uuid, get_note, log_change, display_title, need_write
 
@@ -74,7 +76,7 @@ def prepare(data: bytes):
 def put(uid: str, data: bytes, user: str) -> dict:
     """Store the picture of a note (which must exist) and return the note."""
     uid = check_uuid(uid)
-    blob, mime, w, h, thumb = prepare(data)
+    blob, mime, w, h, thumb = helper.call(prepare, data, timeout=120)  # decoded in the helper: a picture that crashes Pillow or libheif costs only this upload
     sha = hashlib.sha256(blob).hexdigest()
     with db.tx() as con:
         n = get_note(uid, con)

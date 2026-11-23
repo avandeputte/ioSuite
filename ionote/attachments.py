@@ -14,6 +14,8 @@ import time
 
 from PIL import Image
 
+from iosuite_shared import helper
+
 from ionote import config, db, images
 from ionote.notes import NotFound, check_uuid, display_title, get_note, log_change, need_write, new_uuid, owner
 
@@ -59,6 +61,17 @@ def _kind(data: bytes, name: str, hint: str):
     return (guess or "application/octet-stream")[:128], None
 
 
+def _looked_at(data: bytes, name: str, hint: str, read_text: bool):
+    """(mime, width, height, thumbnail, text) of an uploaded file; width, height and thumbnail None when it is no
+    picture, text '' unless read_text. Runs in the helper (put)."""
+    mime, img = _kind(data, name, hint)
+    thumb = w = h = None
+    if img is not None:
+        w, h = img.size
+        thumb = images._thumb(img)
+    return mime, w, h, thumb, _text_of(data, mime, name) if read_text else ""
+
+
 def _pdf_text(data: bytes) -> str:
     try:
         from pypdf import PdfReader
@@ -95,12 +108,10 @@ def put(note_uid: str, data: bytes, name: str, user: str, mime_hint: str = "", a
     name = _clean_name(name)
     att_uid = check_uuid(att_uid) if att_uid else new_uuid()
     sha = hashlib.sha256(data).hexdigest()
-    mime, img = _kind(data, name, mime_hint)
-    thumb = w = h = None
-    if img is not None:
-        w, h = img.size
-        thumb = images._thumb(img)
-    found = (text or "").strip()[:MAX_TEXT] if text is not None else _text_of(data, mime, name)
+    # decoded (a picture) or parsed (a PDF) in the helper: a file that crashes or floods a library costs only this upload
+    mime, w, h, thumb, found = helper.call(_looked_at, data, name, mime_hint, text is None, timeout=120)
+    if text is not None:
+        found = text.strip()[:MAX_TEXT]
     with db.tx() as con:
         n = get_note(note_uid, con)
         if not n or n["deleted"]:
@@ -119,7 +130,7 @@ def put(note_uid: str, data: bytes, name: str, user: str, mime_hint: str = "", a
         log_change(con, user, "attach", "note", note_uid, f"{display_title(n)}: {name} ({len(data) // 1024} KB)")
         out = get_note(note_uid, con)
     out["attachmentQueued"] = None
-    if img is not None and text is None:
+    if thumb is not None and text is None:
         from ionote import ocr
         out["attachmentQueued"] = ocr.enqueue_attachment(att_uid)
     return out
