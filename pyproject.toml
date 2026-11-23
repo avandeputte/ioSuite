@@ -22,7 +22,7 @@ dependencies = [
   "mcp<3",                 # every app's MCP server at /mcp
   "argon2-cffi>=23,<26",   # account password hashes (Argon2id)
   "pyjwt[crypto]<3",       # Cloudflare Access tokens (proxy sign-in)
-  "cryptography",          # passkey signatures (already there with pyjwt[crypto])
+  "cryptography",          # passkey signatures, the suite's own certificate (already there with pyjwt[crypto])
   "fpdf2>=2.7,<3",         # the estate planning PDF (iosuite_shared.estate), ioThings' insurance PDF
   "pypdf>=4,<7",           # the PDFs put into it whole; ioNote, ioDocs, ioMoney read PDFs with it
   "pillow>=10,<13",        # scans and photos made smaller
