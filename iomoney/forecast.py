@@ -1,5 +1,5 @@
 """The cash forecast: where an account's balance goes over the coming weeks, from what is known to come back: the
-household's recurring transactions in that account (bills, subscriptions, paychecks: app/recurring.py) and the
+household's recurring transactions in that account (bills, subscriptions, paychecks: iomoney/recurring.py) and the
 transfers it makes at a steady pace (a card paid every month, money moved to savings), each on the days its pace
 gives from its last payment. With the balance the account should not go under (its details.floor; zero as left out),
 the forecast says whether and when it would.

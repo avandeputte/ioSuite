@@ -84,8 +84,12 @@ def page(key, a, apps, order):
     together = "".join(
         f'<div class="titem"><img src="/img/{t["app"]}.svg" alt="" width="34" height="34"><p><a href="/{apps[t["app"]]["name"]}/">'
         f'{e(apps[t["app"]]["name"])}</a>: {e(t["text"])}</p></div>' for t in a.get("together", []))
+
+    def here(k):
+        return ' aria-current="page"' if k == key else ""
+
     more = "".join(
-        f'<a href="/{apps[k]["name"]}/"{" aria-current=\"page\"" if k == key else ""}><img src="/img/{k}.svg" alt="" width="38" height="38">'
+        f'<a href="/{apps[k]["name"]}/"{here(k)}><img src="/img/{k}.svg" alt="" width="38" height="38">'
         f'<b>{e(apps[k]["name"])}</b><small>{SHORT[k]}</small></a>' for k in order)
     return f"""<!DOCTYPE html>
 <html lang="en">

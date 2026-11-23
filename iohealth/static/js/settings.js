@@ -3,10 +3,10 @@ import { api, apiCache, applyTheme, pageTitle, saveSettings, settings } from './
 import { card, seg } from './charts.js';
 import { accountUi, isAdmin, me, setAccount, suitePanel, toast } from './accounts.js';
 
-// ---------- settings: tabs, as in every ioThing app (#/settings/account … #/settings/apps) ----------
-// One Settings page for everything, in every ioThing app. Each tab loads only what it shows. The account's own tabs
+// ---------- settings: tabs, as in every ioSuite app (#/settings/account … #/settings/apps) ----------
+// One Settings page for everything, in every ioSuite app. Each tab loads only what it shows. The account's own tabs
 // come first, then the admins' (the server) and the suite admins' (Security:
-// People, Apps, Servers and Keys: everything the suite keeps in the Shared ioSuite database; iosuite-shared's panel).
+// People, Apps, Servers and Keys: everything the suite keeps in the Shared ioSuite database; iosuite_shared's panel).
 
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export const SETTINGS_TABS = () => [['account', 'Account'], ['display', 'Display'], ['health', 'Health'], ['goals', 'Goals and alerts'],

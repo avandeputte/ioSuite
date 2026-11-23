@@ -128,7 +128,7 @@ The Mac and iPhone apps use the address for devices, which stays outside a sign-
 
 ## Users and permissions
 
-Accounts are the **ioThing suite's shared accounts**, kept in the **Shared ioSuite database** (a MariaDB database
+Accounts are the **suite's shared accounts**, kept in the **Shared ioSuite database** (a MariaDB database
 shared with iopix and ioContact, used through the ioSuite shared library, [`iosuite_shared`](../iosuite_shared/); besides the accounts it holds sessions,
 roles, the suite's list of apps and the suite-wide settings), so one name, password and session serve every app, and
 someone signed in at `photo.example.com` is signed in at `notes.example.com` too when the apps share a domain

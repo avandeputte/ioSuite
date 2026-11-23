@@ -33,7 +33,7 @@ SETTINGS = {
     "scan_interval": ("15", int, "minutes between file scanner passes"),
     "bg_threads": ("", int, "cores the background jobs may use; empty: BG_THREADS from the environment, half the machine by default"),
     "search_model": ("clip", str, "the embedding model behind search (clip, siglip2, jinaclip); runtime reads it with default '' to see whether one was chosen"),
-    "face_detector": ("", str, "model key for face detection; empty: the registry's default (app/ai/models.py CHOICES)"),
+    "face_detector": ("", str, "model key for face detection; empty: the registry's default (iopix/ai/models.py CHOICES)"),
     "object_model": ("", str, "model key for object detection; empty: the registry's default"),
     "caption_model": ("", str, "model key for captions; empty: the registry's default"),
     "face_vectors": ("", str, "model key for face vectors; empty: the registry's default"),

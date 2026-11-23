@@ -7,7 +7,7 @@
    (the apps, their addresses, who may use them, their MCP switch, and every setting they read as they start),
    Servers (version and updates, the suite's certificate, restarting, and the log of every server on one timeline)
    and Keys (keys and tokens).
-   Served by iosuite-shared at <app>/api/suite-admin/ui.js (Auth.admin_router()); it talks to the API next to it, so an
+   Served by iosuite_shared at <app>/api/suite-admin/ui.js (Auth.admin_router()); it talks to the API next to it, so an
    app served under a sub-path works too. One ES module, no build step, its own styles (scoped under .iosa), using the
    app's colours when it has them (--fg, --fg2, --bg, --line, --accent, --brand, --danger; ioHealth's --text, --muted,
    --card, --link). h() and the fetch helper come from the account panels' module next to it (api/auth/ui.js).
@@ -105,6 +105,15 @@ const CSS = `
 .iosa .sa-field, .iosa-back .sa-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .iosa .sa-field > span, .iosa-back .sa-field > span { font-size: 12px; color: var(--sa-fg2); }
 .iosa label.sa-check, .iosa-back label.sa-check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+/* All settings: one line per setting, its label on the left and its field on the right (what it does, under the field) */
+.iosa .sa-set { display: grid; grid-template-columns: minmax(160px, 260px) minmax(0, 1fr); gap: 2px 16px; align-items: start; padding: 7px 0; border-top: 1px solid var(--sa-line); }
+.iosa .sa-set > label { min-height: 36px; display: flex; flex-direction: column; justify-content: center; font-weight: 500; overflow-wrap: anywhere; }
+.iosa .sa-set > label > span { font-weight: 400; font-size: 11px; color: var(--sa-fg2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.iosa .sa-set > div { min-width: 0; }
+.iosa .sa-set input.sa-in, .iosa .sa-set select.sa-in { height: 36px; max-width: 420px; display: block; }
+.iosa .sa-set input[type="checkbox"] { width: 18px; height: 18px; margin: 9px 0; accent-color: var(--sa-brand); display: block; }
+.iosa .sa-set .sa-small { margin-top: 3px; max-width: 640px; }
+@media (max-width: 600px) { .iosa .sa-set { grid-template-columns: minmax(0, 1fr); } .iosa .sa-set > label { min-height: 0; } .iosa .sa-set input.sa-in, .iosa .sa-set select.sa-in { max-width: none; } }
 .iosa label.sa-check input, .iosa-back label.sa-check input { margin-top: 3px; accent-color: var(--sa-brand); }
 .iosa .sa-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .iosa-back { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -735,24 +744,24 @@ async function settings(el, ctx) {
       } catch (e) { fail(e); return false; }
     };
     const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
+    const id = `sa-set-${where}-${st.name}`;
     let input;
     if (st.type === 'switch') {
       const on = st.value !== '' ? /^(1|true|yes|on)$/i.test(st.value) : /^(1|true|yes|on)$/i.test(st.suite || st.default || '');
-      input = h('label', { class: 'sa-check' }, h('input', { type: 'checkbox', checked: on, onchange: async (e) => { if (!await save(e.target.checked)) e.target.checked = !e.target.checked; } }), h('span', null, st.label));
-      return h('div', { style: { padding: '8px 0', borderTop: '1px solid var(--sa-line)' } }, input, st.hint ? h('div', { class: 'sa-muted sa-small' }, st.hint) : null);
-    }
-    if (st.type === 'choice') {
+      input = h('input', { id, type: 'checkbox', checked: on, onchange: async (e) => { if (!await save(e.target.checked)) e.target.checked = !e.target.checked; } });
+    } else if (st.type === 'choice') {
       const opts = (st.choices || []).map((c) => (Array.isArray(c) ? c : [c, c]));
-      input = h('select', { class: 'sa-in', onchange: (e) => save(e.target.value) },
+      input = h('select', { id, class: 'sa-in', onchange: (e) => save(e.target.value) },
         h('option', { value: '', selected: st.value === '' ? true : null }, fallback || 'default'),
         opts.map(([k, l]) => h('option', { value: k, selected: st.value === String(k) ? true : null }, l)));
     } else {
-      input = h('input', { class: 'sa-in', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
+      input = h('input', { id, class: 'sa-in', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
         onchange: async (e) => { if (!await save(e.target.value.trim())) e.target.value = st.value; } });
     }
-    return h('div', { style: { padding: '8px 0', borderTop: '1px solid var(--sa-line)' } },
-      h('label', { class: 'sa-field', style: { margin: 0 } }, h('span', null, st.label, h('span', { class: 'sa-muted sa-small' }, ` · ${st.name}`)), input),
-      st.hint ? h('div', { class: 'sa-muted sa-small' }, st.hint) : null);
+    // one line: the label (and the name `iosuite set` takes) on the left, the field on the right, what it does below it
+    return h('div', { class: 'sa-set' },
+      h('label', { for: id }, st.label, h('span', null, st.name)),
+      h('div', null, input, st.hint ? h('div', { class: 'sa-muted sa-small' }, st.hint) : null));
   };
   el.append(box('apps', 'Settings',
     h('p', { class: 'sa-muted' }, 'What the apps read as they start, kept in the Shared ioSuite database: no settings file per app. A field left empty takes the suite’s value or the default. Keys and passwords are under Keys and tokens.'),
@@ -1081,7 +1090,7 @@ async function forgetApp(ctx, a) {
 }
 
 /* Sign-in at a reverse proxy (Cloudflare Access on a tunnel, or Authelia & co. behind nginx...), once for every app:
-   iosuite-shared keeps it suite-wide and reads it from nowhere else (config.env and the environment are ignored). */
+   iosuite_shared keeps it suite-wide and reads it from nowhere else (config.env and the environment are ignored). */
 const PROXIES = [['off', 'Off'], ['cloudflare', 'Cloudflare Access'], ['haproxy', 'HAProxy'], ['nginx', 'nginx'], ['caddy', 'Caddy'], ['traefik', 'Traefik'], ['header', 'Another proxy']];
 const NO_ACCOUNT = [['', 'Gets the sign-in screen'], ['deny', 'Is denied access'], ['viewer', 'Gets a viewer account'], ['member', 'Gets a member account'], ['editor', 'Gets an editor account']];
 async function signin(el) {

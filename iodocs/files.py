@@ -2,8 +2,8 @@
 
 The bytes are kept in the database (doc_file_parts, in parts of PART_BYTES), so the suite's database backup (ioBackup)
 holds them too and nothing lives beside the app. A picture (and a PDF's first page) also gets a small JPEG for the
-cards (thumb); the first file with one is the document's cover. Each file can be read (app/ocr.py): its text goes
-into the search, and the facts made of it fill in the document (app/model.py apply_found). A file is served as it
+cards (thumb); the first file with one is the document's cover. Each file can be read (iodocs/ocr.py): its text goes
+into the search, and the facts made of it fill in the document (iodocs/model.py apply_found). A file is served as it
 came, with its own type, except for the kinds a page could run (HTML, SVG, XML...), which are sent as a download.
 A file gets a name of its own here, made of its number with the extension of its type (iodocs-000123.pdf); the
 name it was uploaded under is never kept, and a file is not renamed.

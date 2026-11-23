@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite-shared), as ioCalendar uses them.
+"""The shared the suite's accounts (iosuite_shared), as ioCalendar uses them.
 
 Accounts, passwords, sessions, app passwords and roles live in the Shared ioSuite database (IOSUITE_DB_* in
 config.env), with the suite-wide settings, shared with the other apps of the suite: one sign-in serves every app on the
@@ -16,7 +16,7 @@ APP = config.APP
 auth = Auth(APP, version=__version__, public_url=config.PUBLIC_URL or None)
 auth.deny_exempt = ("/mcp", "/dav", "/.well-known/")  # apps sign in with app passwords, whatever got them through a proxy
 # a CalDAV-only app password (the Apple profile's, or "Calendar apps only" in Settings › Account) opens these and
-# nothing else: 403 on the REST API, MCP and the web app (iosuite-shared enforces it)
+# nothing else: 403 on the REST API, MCP and the web app (iosuite_shared enforces it)
 auth.scope_paths = {"dav": ("/dav", "/.well-known/caldav")}
 
 

@@ -38,7 +38,7 @@ RAW_EXT = {".dng", ".cr2", ".cr3", ".nef", ".nrw", ".arw", ".raf", ".orf", ".rw2
 log = logging.getLogger(__name__)
 
 # What the image routes make on request comes in a fixed set of shapes and sizes, so that asking for one more aspect or
-# one more height never writes one more file: a request is served the nearest one (app/routes/images.py).
+# one more height never writes one more file: a request is served the nearest one (iopix/routes/images.py).
 FIT_ASPECTS = (1 / 3, 1 / 2, 9 / 16, 2 / 3, 5 / 7, 3 / 4, 1.0, 4 / 3, 7 / 5, 3 / 2, 16 / 9, 2.0, 3.0)  # w / h of /thumb?fit=
 SMALL_HEIGHTS = (60, 80, 120, 160, 240)  # /thumb?h=
 FRAME_HEIGHTS = (120, 240, 360, 720)  # /video/<id>/frame?h=

@@ -27,7 +27,7 @@ log = logging.getLogger("iopix.demo")
 FOLDER = "Calloway family (demo)"
 FAMILY = ["Morgan Calloway", "Riley Calloway", "Ava Calloway", "Theo Calloway"]
 SKIN = [(236, 200, 170), (198, 150, 112), (241, 214, 190), (172, 120, 90)]
-PHOTOS_URL = "https://github.com/avandeputte/iosuite/releases/download/demo-photos-1/iopix-demo-photos.zip"
+PHOTOS_URL = "https://github.com/avandeputte/iosuite-old/releases/download/demo-photos-1/iopix-demo-photos.zip"
 PHOTOS_SHA256 = "334879a4fc533d92f88b660c3f1ed3acc211fe34a4f052ce9ed8e045454f6fae"
 CAMERAS = [("Apple", "iPhone 15", "iPhone 15 back camera 6.1mm f/1.6"), ("FUJIFILM", "X-T5", "XF23mmF2 R WR")]
 

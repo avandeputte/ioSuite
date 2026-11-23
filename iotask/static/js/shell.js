@@ -21,7 +21,7 @@ export function drawUser() {
   };
   m.append(btn);
 }
-/* The suite (iosuite-shared's suite_apps): when other ioThing apps are registered, the app mark top left (in the sidebar; in
+/* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to Today. */
 export async function loadSuite() {
   try {
@@ -60,7 +60,7 @@ export function toggleSuite(btn) {
   if (!S.suite.length) return;
   // the apps, then the admin tools in a section of their own: the server sends those to their admins only
   const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
+  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
   const r = btn.getBoundingClientRect();
@@ -103,7 +103,7 @@ export function drawNav() {
     h('div', { class: 'navhead' },
       S.suite.length
         ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioThing apps', 'aria-label': 'ioThing apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
+          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
             h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
           h('a', { class: 'brand-name', href: '#/', title: 'Today' }, brandName()))
         : h('a', { class: 'brand', href: '#/', title: 'Today' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),

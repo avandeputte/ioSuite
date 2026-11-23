@@ -1,7 +1,7 @@
-"""ioHealth: the iPhone app's upload API and the fitness web app, on one port (8650), over the ioThing suite's
-shared accounts (iosuite-shared, as in every app of the suite).
+"""ioHealth: the iPhone app's upload API and the fitness web app, on one port (8650), over the suite's
+shared accounts (iosuite_shared, as in every app of the suite).
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (iohealth/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, or a bearer app
 password), whether sign-in is required at all (it always is here: health data is private), and refuses cross-site
 writes.
@@ -46,7 +46,7 @@ app = FastAPI(title="ioHealth", version=__version__, lifespan=lifespan, docs_url
               description="Apple Health data from the iPhone in your own MariaDB: the phone uploads to /v1/, the web app reads /api/. "
                           "Every figure is the signed-in account's own.")
 
-# who is asking, whether sign-in is required at all, the cross-site check on writes: iosuite-shared's middleware
+# who is asking, whether sign-in is required at all, the cross-site check on writes: iosuite_shared's middleware
 app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES))
 upload.on_sync.append(webapi.sync_finished)
 upload.on_user_sync.append(notify.after_sync_quietly)  # "goal reached" and "outside your usual" notifications

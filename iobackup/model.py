@@ -1,8 +1,8 @@
 """What ioBackup keeps: the servers it backs up and restores onto, the destinations backups go to, and the jobs. Rows
-in bkp_* (app/db.py); every password and Google key in the suite's keys and tokens (iosuite_shared.credentials), so
+in bkp_* (iobackup/db.py); every password and Google key in the suite's keys and tokens (iosuite_shared.credentials), so
 a suite admin sees them with the rest at Settings › Keys, and nothing here returns one.
 
-The engine (app/engine.py) and the destinations (app/destinations.py) take plain dicts: server(id) and
+The engine (iobackup/engine.py) and the destinations (iobackup/destinations.py) take plain dicts: server(id) and
 destination(id) put the row and its secrets together for them.
 """
 from __future__ import annotations
@@ -159,7 +159,7 @@ def destination_public(did: int) -> dict:
 
 
 def destination(did: int) -> dict:
-    """The settings app/destinations.py takes (with the Google keys)."""
+    """The settings iobackup/destinations.py takes (with the Google keys)."""
     r = _dest_row(did)
     d = {"id": r["id"], "name": r["name"], "type": r["kind"], **r["options"]}
     if r["kind"] == "gdrive":

@@ -166,12 +166,6 @@ def copy_before(path: str) -> str:
     return str(dst)
 
 
-def _run(cmd: list, what: str):
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-    if res.returncode != 0:
-        raise SyncError(f"{what} failed: {(res.stderr or res.stdout).strip()[:300]}")
-
-
 _JT_WARNINGS = ("Premature end of JPEG file", "Corrupt JPEG data")
 
 

@@ -1,4 +1,4 @@
-"""iosuite-shared: one user database for the ioThing apps.
+"""iosuite_shared: one user database for the ioSuite apps.
 
 Every app (ioPix, ioNote, ioContact) signs its users in against the same MariaDB database (the Shared ioSuite database, `iosuite` by default), so one
 account, one password and one session serve the whole suite: signed in at photo.example.com is signed in at

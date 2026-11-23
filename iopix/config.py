@@ -71,11 +71,11 @@ def cpu_count() -> int:
 BG_THREADS = env_int("BG_THREADS", max(1, cpu_count() // 2))
 PREWARM_WORKERS = env_int("PREWARM_WORKERS", 0) or None  # None: BG_THREADS
 
-# The AI analysis jobs run in a process of their own (app/jobproc.py), so a model that needs more memory than the
+# The AI analysis jobs run in a process of their own (iopix/jobproc.py), so a model that needs more memory than the
 # server has takes that process down, not the web app. JOBS_PROCESS=0 runs them inside the web app, as before 1.147.
 JOBS_PROCESS = env_flag("JOBS_PROCESS", True)
 # The most memory that job process may hold, and the free memory the server keeps (megabytes). Unset: a share of the
-# memory limit of the container or the machine (app/memwatch.py: 60% and 8%). 0 turns the one off.
+# memory limit of the container or the machine (iopix/memwatch.py: 60% and 8%). 0 turns the one off.
 JOBS_MEMORY_MB = env_int("JOBS_MEMORY_MB", -1)
 MEMORY_RESERVE_MB = env_int("MEMORY_RESERVE_MB", -1)
 

@@ -295,7 +295,7 @@ def test_inside_the_app_the_web_navigation_steps_aside(browser, server):
 
 
 def test_the_name_opens_the_other_suite_apps(page, server, browser):
-    """With other ioThing apps in suite_apps, the logo top left opens a menu of them (static/js/suite.js), each a link to
+    """With other ioSuite apps in suite_apps, the logo top left opens a menu of them (static/js/suite.js), each a link to
     its app, and the name beside it stays the link to Explore; alone, logo and name are one link to Explore. On a phone
     the logo button is in the top bar."""
     assert page.request.post(server + "/api/auth/setup", data={"name": "alex", "password": "correct horse"}).ok  # signs this context in

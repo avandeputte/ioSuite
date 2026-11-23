@@ -252,14 +252,6 @@ def base_of(door: str, request, app: str) -> str | None:
     return None
 
 
-def sync_base(request, app: str) -> str:
-    return base(SYNC, request, app)
-
-
-def mcp_base(request, app: str) -> str:
-    return base(MCP, request, app)
-
-
 def pick(request, urls) -> str:
     """Of an app's public addresses (its own, its folder at the suite's), the one this request came in by: the links
     of an answer stay in the style of the question. The first when the request came by neither (the LAN address)."""

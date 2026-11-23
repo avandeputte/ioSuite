@@ -216,7 +216,7 @@ def build(dst: Path, seed: int = 20261114) -> dict:
                          "%d,%.8f%s" % (int(abs(lon)), (abs(lon) % 1) * 60, "E" if lon >= 0 else "W"), lon, float(rnd.randrange(0, 1500))))
             with_gps.append(iid)
         named, regions = 0, []
-        for j, (x, y, fw, fh) in enumerate(faces):  # the rows digiKam's FaceTagsEditor writes (see app/faces/facemgr.py)
+        for j, (x, y, fw, fh) in enumerate(faces):  # the rows digiKam's FaceTagsEditor writes (see iopix/faces/facemgr.py)
             region = f'<rect x="{x}" y="{y}" width="{fw}" height="{fh}"/>'
             who = PEOPLE[(i + j) % len(PEOPLE)]
             if j == 0 or j < len(faces) - 1 or rnd.random() < .5:  # confirmed: every photo with faces has a named one

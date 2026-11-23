@@ -11,8 +11,8 @@ Three readers, the surest first:
   03/14/2029", "Policy number H-55120", "Policy period 01/01/2026 to 01/01/2027") and the kind of document.
 
 A PDF with text in it is read as it is; a scanned one is turned into pictures first (pdftoppm, from poppler-utils).
-Nothing here touches the database: read() takes the bytes and gives back {text, found, ...}; app/files.py keeps it and
-app/model.py applies it to the document.
+Nothing here touches the database: read() takes the bytes and gives back {text, found, ...}; iodocs/files.py keeps it and
+iodocs/model.py applies it to the document.
 """
 import datetime as dt
 import io
@@ -589,7 +589,7 @@ def _score(text: str) -> int:
 
 
 _COMMON = {"the", "of", "and", "to", "in", "for", "your", "you", "with", "is", "on", "date", "no", "de", "la", "le",
-           "et", "du", "des", "el", "y", "en", "der", "die", "und", "van", "het", "of", "or", "by", "at", "this"}
+           "et", "du", "des", "el", "y", "en", "der", "die", "und", "van", "het", "or", "by", "at", "this"}
 
 
 def upright_words(text: str) -> bool:

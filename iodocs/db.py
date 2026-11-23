@@ -11,14 +11,14 @@ SCHEMA_VERSION = 1  # recorded in doc_schema_version; the tables are made as SCH
 PREFIX = "doc"
 
 # Every table is doc_<name> (the suite's naming convention: the apps can share one database) and InnoDB/utf8mb4.
-# Who sees which document is app/model.py's (visible_sql): each one says who may see it.
+# Who sees which document is iodocs/model.py's (visible_sql): each one says who may see it.
 SCHEMA = [
     """CREATE TABLE IF NOT EXISTS doc_settings (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iodocs/auth.py)
     # a document: a passport, a driver's license, an insurance policy, a birth certificate... kind: one of
     # model.KINDS. number: the passport's or the policy's number; issuer: who gave it (a country's passport office, a
     # state's DMV, an insurer); country: a country code (US, BE) or name. Dates are days. remind_days: how many days
@@ -61,7 +61,7 @@ SCHEMA = [
         CONSTRAINT fk_doc_people_doc FOREIGN KEY (doc_id) REFERENCES doc_documents(id) ON DELETE CASCADE
     )""",
     # its scans and files: the front, the back, the pages of a policy. The bytes are in doc_file_parts, in parts of
-    # PART_BYTES; thumb: a small JPEG of a picture (or of a PDF's first page). text: what OCR read off it (app/ocr.py);
+    # PART_BYTES; thumb: a small JPEG of a picture (or of a PDF's first page). text: what OCR read off it (iodocs/ocr.py);
     # found: what was made of that, as JSON ({kind, number, expiresOn, ...}); read_at: when it was read (NULL: not yet).
     """CREATE TABLE IF NOT EXISTS doc_files (
         id INT AUTO_INCREMENT PRIMARY KEY,

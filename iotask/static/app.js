@@ -5,5 +5,5 @@
    English, subtasks under their task, postponing, the order by hand (drag); the task form (due date and time,
    repeat, alert, priority, the family members it is for, notes, link); the activity log with undo, templates, a
    print view; search, import, and settings (account, display, apps and devices, lists, and for admins family and
-   server, and for suite admins security and global settings), laid out as in the other ioThing apps. */
+   server, and for suite admins security and global settings), laid out as in the other ioSuite apps. */
 import './js/main.js';

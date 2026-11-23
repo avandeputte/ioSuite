@@ -1,6 +1,6 @@
 """TRMNL screens as pictures: the image a TRMNL device shows, drawn here from the same markup TRMNL's cloud renders
 (app/trmnl_markup, TRMNL's design framework), without a browser. For the TRMNL server inside the start page
-(app/trmnlserver.py): a device asks for a picture, not a page.
+(iostart/trmnlserver.py): a device asks for a picture, not a page.
 
 What TRMNL's framework does with CSS and its plugins.js, this does for the part of the framework the suite's screens
 use, to the pixel where it could be measured against Chromium (tests/test_trmnl_draw.py lists what is covered):
@@ -1286,14 +1286,6 @@ def inked(img: Image.Image) -> Image.Image:
     out = Image.frombytes("P", img.size, img.point(lut).tobytes())
     out.putpalette([c for rgb in PALETTE for c in rgb])
     return out
-
-
-def to_inks(img: Image.Image) -> Image.Image:
-    """Any picture (a browser's) as a panel of PALETTE prints it: each pixel to the nearest ink, as TRMNL's firmware
-    does (no dithering)."""
-    pal = Image.new("P", (1, 1))
-    pal.putpalette([c for rgb in PALETTE for c in rgb] + [0, 0, 0] * (256 - len(PALETTE)))
-    return img.convert("RGB").quantize(palette=pal, dither=Image.Dither.NONE)
 
 
 def quantize(img: Image.Image, bits: int) -> Image.Image:

@@ -6,6 +6,8 @@ cannot be read from the database, and is the same on every machine but for the l
 
     IOSUITE_DB_HOST, _PORT, _NAME, _USER, _PASSWORD   how to reach the Shared ioSuite database (needed before anything else)
     APPS                                              which apps this machine runs (iostart,iocalendar,…; empty: all installed)
+    DB_CONNECTIONS                                    the most connections this copy holds open to the database server, over
+                                                      all its apps (60; iosuite_shared.db: a request waits for one)
     HOST                                              where the server listens (iosuite_shared.serve); every address by default
     PORT, SYNC_PORT, MCP_PORT                         the three doors of a copy (iosuite_shared.doors): the pages (80), what
                                                       devices and native apps sync with (8443), MCP (8444); 0 or off: not opened
@@ -102,10 +104,17 @@ def _port(name: str, default: int) -> int:
     return n
 
 
+def child_connections() -> str:
+    """DB_CONNECTIONS for a process the copy starts beside itself (the helper, ioPix's job process): a quarter of the
+    copy's own, since it does one piece of work at a time and the database server's limit holds for all of them."""
+    return str(max(4, DB_CONNECTIONS // 4))
+
+
 def _read():
     """The machine's settings, from the environment as it is now."""
     global DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, HOST, TLS_CERT_FILE, TLS_KEY_FILE, DATA_DIR, APPS
     global ADMIN_USER, ADMIN_PASSWORD, REPO, BRANCH, PORT, SYNC_PORT, MCP_PORT, INTERNAL_URL, LOG_FILE, HTTPS_PORT, ACME_CA_FILE
+    global DB_CONNECTIONS
     # The Shared ioSuite database: accounts, sessions, roles, app passwords, every setting and the list of apps. No
     # default password: the installer writes one into the file, a container gets it from its environment.
     DB_HOST = env(PREFIX + "HOST", "127.0.0.1")
@@ -113,6 +122,12 @@ def _read():
     DB_NAME = env(PREFIX + "NAME", "iosuite")
     DB_USER = env(PREFIX + "USER", "iosuite")
     DB_PASSWORD = os.environ.get(PREFIX + "PASSWORD", "")
+    # how many connections the copy holds open at once, over every app's pool: a database server takes 151 by
+    # default, and several copies of the suite share it
+    try:
+        DB_CONNECTIONS = max(4, int(env("DB_CONNECTIONS", "60")))
+    except ValueError:
+        raise SystemExit(f"DB_CONNECTIONS={env('DB_CONNECTIONS')}: a number")
     HOST = env("HOST", "0.0.0.0")
     # the three doors of a copy (iosuite_shared.doors): 0 where one is not opened
     PORT, SYNC_PORT, MCP_PORT = _port("PORT", 80), _port("SYNC_PORT", 8443), _port("MCP_PORT", 8444)

@@ -17,7 +17,7 @@ export function renderUserMenu() {
   loadSuite();  // the other apps' menu is per account: drawn again when the account changes
   const el = $('#usermenu'); if (!el) return;
   const btn = h('button', { class: 'iconbtn tool', title: S.USER ? `${S.USER.name} (${S.USER.role})` : S.USERS_EXIST ? 'Sign in' : 'Create the admin account',
-    onclick: () => (!S.USER ? (S.USERS_EXIST ? loginDialog() : setupDialog()) : popMenu(btn, [  // the avatar menu, the same in every ioThing app
+    onclick: () => (!S.USER ? (S.USERS_EXIST ? loginDialog() : setupDialog()) : popMenu(btn, [  // the avatar menu, the same in every ioSuite app
       ['Settings', () => { location.hash = '#/settings'; }],
       ['Sign out', signOut],
     ])) }, S.USER ? avatarOf(S.USER) : icon('person'));
@@ -74,7 +74,7 @@ async function signOut() {
   S.USER = null; SETTINGS.user = null; renderUserMenu(); await pollStatus(); applyBadgePref(); applyTheme(); S.viewKey = null; onRoute(); accountChanged(); toast('Signed out.');
 }
 /** Settings › People (people, roles, app passwords, sign-in at the proxy) or Settings › Apps (the apps, keys
- *  and tokens), for suite admins and the whole suite. The same panel in every io app, served by iosuite-shared. */
+ *  and tokens), for suite admins and the whole suite. The same panel in every io app, served by iosuite_shared. */
 export function suiteSection(tab) {
   const box = h('div');
   import(new URL('api/suite-admin/ui.js', document.baseURI).href)

@@ -1,6 +1,6 @@
 """ioNote: the web app, the API the Mac and iPhone apps use, and the MCP endpoint, on one port (8610).
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (ionote/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite. What is ioNote's own: whose notes a request works on (notes are private to each account, but for the Family
@@ -104,8 +104,8 @@ def _before(request: Request):
     return None
 
 
-# who is asking, whether sign-in is required at all, the cross-site check on writes, and whose notes: iosuite-shared's
-# middleware. What each route needs beyond that is declared on the route (app/access.py).
+# who is asking, whether sign-in is required at all, the cross-site check on writes, and whose notes: iosuite_shared's
+# middleware. What each route needs beyond that is declared on the route (ionote/access.py).
 app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES, before=_before))
 
 
@@ -120,7 +120,7 @@ def _limit_for(path: str, ctype: str) -> int:
 
 
 # 400 for bad input, the headers, no-store on the API, the body cap (counted as the body arrives, so nothing large is
-# ever held in memory), and the same 404 for another account's note as for none at all: iosuite-shared
+# ever held in memory), and the same 404 for another account's note as for none at all: iosuite_shared
 auth.install(app, limit_for=_limit_for, not_found=(notes_mod.NotFound,))
 
 

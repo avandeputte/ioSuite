@@ -41,6 +41,7 @@ import time
 from multiprocessing import Pipe
 
 from iopix import config, jobs, memwatch
+from iosuite_shared import config as shared_config
 
 log = logging.getLogger("iopix.jobproc")
 IN_WORKER = os.environ.get("IOPIX_JOB_WORKER") == "1"  # this is the job process itself (jobworker.py)
@@ -90,7 +91,8 @@ def _spawn() -> dict:
     here, there = Pipe()
     try:
         proc = subprocess.Popen([sys.executable, "-m", "iopix.jobworker", str(there.fileno())], pass_fds=[there.fileno()],
-                                cwd=str(config.APP_DIR.parent), env={**os.environ, "IOPIX_JOB_WORKER": "1", "IOSUITE_LOG_CHILD": "1"}, start_new_session=True)
+                                cwd=str(config.APP_DIR.parent), env={**os.environ, "IOPIX_JOB_WORKER": "1", "IOSUITE_LOG_CHILD": "1", "DB_CONNECTIONS": shared_config.child_connections()},
+                                start_new_session=True)
     finally:
         there.close()
     log.info("job process started (pid %d)", proc.pid)

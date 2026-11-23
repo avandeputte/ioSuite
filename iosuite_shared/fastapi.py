@@ -34,6 +34,13 @@ MCP_PATH = "/mcp"  # where every app serves its MCP server (iosuite_shared.mcp.P
 __all__ = ["Auth", "Access", "ACCESS_ROLES", "BodyCap", "TooLarge", "content_type", "json_body", "public_user", "peer_of", "STATUS_PATH"]
 
 
+
+def busy(request: Request, e: Exception) -> JSONResponse:
+    """503 with Retry-After: the copy's database connections were all in use for longer than a request waits."""
+    logging.getLogger("iosuite_shared.db").warning("%s %s answered 503: %s", request.method, request.url.path, e.args[-1] if e.args else e)
+    return JSONResponse({"detail": "The server is busy; try again in a moment."}, status_code=503, headers={"Retry-After": "2"})
+
+
 class Auth:
     def __init__(self, app: str, read_only=None, read_only_message: str = None, app_label: str = None, basic_realm: str = None,
                  version: str = None, public_url: str = None, description: str = None, color: str = None,
@@ -292,6 +299,12 @@ class Auth:
         open_paths = tuple(open_paths) + (STATUS_PATH, LIVE_JS_PATH)
 
         async def guard(request: Request, call_next):
+            try:
+                return await guarded(request, call_next)
+            except db.Busy as e:  # every connection of the copy is out (iosuite_shared.db.Budget): the same request works in a moment
+                return busy(request, e)
+
+        async def guarded(request: Request, call_next):
             path = request.url.path
             if not await run_in_threadpool(db.available):  # the Shared ioSuite database is down: the shell and the open paths only, with a clear answer
                 request.state.user, request.state.via_proxy = None, False
@@ -475,6 +488,10 @@ class Auth:
             async def _not_found(request: Request, e: Exception):
                 return error(str(e) or "Not found", 404)
 
+        @app.exception_handler(db.Busy)
+        async def _busy(request: Request, e: Exception):
+            return busy(request, e)
+
         @app.exception_handler(Invalid)
         @app.exception_handler(json.JSONDecodeError)
         async def _bad_input(request: Request, e: Exception):
@@ -505,7 +522,7 @@ class Auth:
                 response.headers["Cache-Control"] = "no-store" if request.url.path.startswith(api_prefix) else "no-cache"
             if request.method not in ("GET", "HEAD", "OPTIONS") and 200 <= response.status_code < 300:
                 from iosuite_shared import live
-                live.of_request(self.app, request.url.path, api_prefix)  # the pages' one live-refresh stream
+                live.of_request(self.app, request.method, request.url.path, api_prefix)  # the pages' one live-refresh stream
             return response
 
         app.add_middleware(BodyCap, limit_for=limit_for, error=error)

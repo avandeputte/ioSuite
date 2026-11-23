@@ -25,7 +25,7 @@ Pick one.
 | --- | --- | --- |
 | **Proxmox VE** | a Proxmox VE host. One command creates an unprivileged Debian 13 container and installs the suite inside | [Proxmox VE](proxmox.md) |
 | **Docker** | Docker with Compose, amd64 or arm64. One image, public on `ghcr.io/avandeputte/iosuite` | [Docker](docker.md) |
-| **Any Linux** | Python 3.10 or later. One command fetches the program, makes its environment and a systemd service | [Any Linux or Mac](linux-mac.md) |
+| **Any Linux** | Python 3.11 or later. One command fetches the program, makes its environment and a systemd service | [Any Linux or Mac](linux-mac.md) |
 
 The suite is one program: a server runs one process for all the apps you chose. That process holds about 100 MB with
 two apps and about 250 MB with all thirteen, plus what ioPix needs while it works on photos. A container with 2 CPUs

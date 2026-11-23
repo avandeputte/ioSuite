@@ -1,6 +1,5 @@
 """Bookmark files: XBEL (the XML Bookmark Exchange Language) and the Netscape bookmarks HTML every browser exports
-and imports. Written as Floccus writes them (ids on the items, its highest-id comment), so the file a sync client
-fetches over WebDAV (app/bookmarkdav.py) is one it could have written itself; read leniently, whoever wrote them.
+and imports: what the Bookmarks page exports, and what it takes in, read leniently, whoever wrote the file.
 
 A parsed file is a list of items: {type: 'folder', id, title, children} and {type: 'bookmark', id, title, url, tags};
 id is an int, or None where the file gave none.
@@ -15,19 +14,12 @@ from defusedxml.ElementTree import fromstring as parse_xml
 
 XBEL_HEAD = '<?xml version="1.0" encoding="UTF-8"?>'
 HTML_HEAD = "<!DOCTYPE NETSCAPE-Bookmark-file-1>"
-_HIGHEST = re.compile(r"<!--- highestId :(\d+):")
 # what XML 1.0 cannot carry at all (a title pasted with a control character must not make the file unreadable)
 _BAD_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
 
 
 class BadFile(ValueError):
     pass
-
-
-def highest_id(text: str) -> int:
-    """The highest id Floccus says it has used, from its comment in the file; 0 without one."""
-    m = _HIGHEST.search(text or "")
-    return int(m.group(1)) if m else 0
 
 
 def _id(v) -> int | None:
@@ -44,11 +36,10 @@ def _x(s) -> str:
 
 # ------------------------------------------------------------------ XBEL
 
-def to_xbel(items: list[dict], highest: int) -> str:
+def to_xbel(items: list[dict]) -> str:
     out = [XBEL_HEAD,
            '<!DOCTYPE xbel PUBLIC "+//IDN python.org//DTD XML Bookmark Exchange Language 1.0//EN//XML" "http://pyxml.sourceforge.net/topics/dtds/xbel.dtd">',
-           '<xbel version="1.0">',
-           f"<!--- highestId :{int(highest)}: for Floccus bookmark sync browser extension -->"]
+           '<xbel version="1.0">']
 
     def level(items, indent):
         for it in items:
@@ -90,31 +81,24 @@ def parse_xbel(text: str) -> list[dict]:
 
 # ------------------------------------------------------------------ Netscape bookmarks HTML
 
-def to_html(items: list[dict], highest: int | None = None, title: str = "Bookmarks") -> str:
-    """`highest` given: as Floccus writes the file it syncs (its comment, an ID on every item). None: a plain export
-    for a browser's import."""
-    out = [HTML_HEAD, '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">', f"<TITLE>{_esc(title)}</TITLE>"]
-    if highest is not None:
-        out[-1] += f"<!--- highestId :{int(highest)}: for Floccus bookmark sync browser extension -->"
-    else:
-        out.append(f"<H1>{_esc(title)}</H1>")
-    ident = (lambda it: f' ID="{it["id"]}"') if highest is not None else (lambda it: "")
+def to_html(items: list[dict], title: str = "Bookmarks") -> str:
+    """The file a browser's import takes."""
+    out = [HTML_HEAD, '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">', f"<TITLE>{_esc(title)}</TITLE>",
+           f"<H1>{_esc(title)}</H1>"]
 
     def level(items, indent):
         out.append(f"{indent}<DL><p>")
         for it in items:
             if it["type"] == "folder":
-                out.append(f'{indent}  <DT><H3{ident(it)}>{_esc(it["title"] or "")}</H3>')
+                out.append(f'{indent}  <DT><H3>{_esc(it["title"] or "")}</H3>')
                 level(it.get("children") or [], indent + "  ")
             else:
                 tags = ",".join(it.get("tags") or [])
                 out.append(f'{indent}  <DT><A HREF="{_esc(it["url"] or "", quote=True)}"' + (f' TAGS="{_esc(tags, quote=True)}"' if tags else "")
-                           + f'{ident(it)}>{_esc(it["title"] or "")}</A>')
+                           + f'>{_esc(it["title"] or "")}</A>')
         out.append(f"{indent}</DL><p>")
 
     level(items, "")
-    if highest is not None:
-        out.append("</html>")
     return "\n".join(out) + "\n"
 
 

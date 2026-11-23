@@ -276,21 +276,3 @@ def test_the_lines_are_the_suite_s_servers_not_its_apps(tmp_path, monkeypatch):
     suiteupdates.publish("iotask", state="failed", message="update.sh timed out")
     by = {c["copy"]: c for c in suiteupdates.summary()["copies"]}
     assert by["home"]["state"] == "failed" and by["home"]["message"] == "update.sh timed out"
-
-
-def test_how_an_update_of_another_program_went_is_not_shown(tmp_path, monkeypatch):
-    """What is in the row may be about the install this one replaced (the first ioSuite, one program per app, its own
-    update.sh in its own folder). Its outcome says nothing about what runs here now, so the line is cleared."""
-    suite.register("iocalendar", name="ioCalendar", version="1.0.0")
-    suiteupdates.publish("iocalendar", installed="0.9.0", git_commit="aaaaaaa", state="failed",
-                         message="Command '['sh', '/opt/iocalendar/app/update.sh']' timed out after 1800 seconds")
-    u = updater(tmp_path, monkeypatch)
-    u.local_commit = lambda: "bbbbbbb"
-    u._said_hello()
-    a = {a["app"]: a for a in suiteupdates.overview()}["iocalendar"]
-    assert a["state"] is None and a["message"] is None and a["version"] == "1.0.0" and a["commit"] == "bbbbbbb"
-    # one about this very program is kept: a failed update leaves the commit as it was
-    suiteupdates.publish("iocalendar", state="failed", message="update.sh said no")
-    u._said_hello()
-    a = {a["app"]: a for a in suiteupdates.overview()}["iocalendar"]
-    assert a["state"] == "failed" and a["message"] == "update.sh said no"

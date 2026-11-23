@@ -19,7 +19,7 @@ _db = shared.own_db(APP, _s)
 DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD = _db["host"], _db["port"], _db["database"], _db["user"], _db["password"]
 
 MAX_FILE_BYTES = env_int("MAX_FILE_MB", 100) * 1024 * 1024  # one file (a scan, a photo, a policy's PDF) as uploaded
-TESSERACT = env("TESSERACT", "tesseract")  # the OCR program that reads the scans (app/ocr.py); "off": never read them
+TESSERACT = env("TESSERACT", "tesseract")  # the OCR program that reads the scans (iodocs/ocr.py); "off": never read them
 OCR_LANGS = env("OCR_LANGS", "eng")        # Tesseract's languages, eng+fra+deu say (each needs its tesseract-ocr-<lang> package)
 MAX_JSON_BYTES = 2 * 1024 * 1024      # any other request body
 

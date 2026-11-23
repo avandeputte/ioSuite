@@ -67,30 +67,30 @@ test("ioHealth: /v1/ uploads need a known app password, Basic or Bearer; /v1/hea
   assert.equal((await worker.fetch(new Request("https://health.example.com/dav/"), env("enforce"))).status, 207);
 });
 
-test("the start page's bookmark sync: /dav is guarded, the Nextcloud sign-in flow before a password exists is not", async () => {
+test("the start page's bookmark sync: /dav is guarded, the sign-in flow for apps before a password exists is not", async () => {
   const SPW = "iostart-9f8e7d6c-Zz_9aBcDeFgHiJkLmNoPqRsTu";
   kv.set("iostart:9f8e7d6c", JSON.stringify({ h: sha(SPW) }));
   const e = (mode) => ({ ...env(mode), APPS: '{"start.example.com": "iostart"}' });
   const sreq = (path, pw, method = "GET") => new Request(`https://start.example.com${path}`, {
     method, headers: pw ? { Authorization: "Basic " + btoa(`alex:${pw}`) } : {} });
-  const NC = "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2";
   forwarded = 0;
-  assert.equal((await worker.fetch(sreq(`${NC}/folder/-1/children?layers=-1`, SPW), e("enforce"))).status, 207);
-  assert.equal((await worker.fetch(sreq("/dav/bookmarks/bookmarks.xbel", SPW, "PROPFIND"), e("enforce"))).status, 207);
+  assert.equal((await worker.fetch(sreq("/dav/ext/tree", SPW), e("enforce"))).status, 207);
+  assert.equal((await worker.fetch(sreq("/dav/ext/sync", SPW, "POST"), e("enforce"))).status, 207);
   assert.equal(forwarded, 2);
   for (const pw of [SPW + "x", "hunter2", null]) {
-    const r = await worker.fetch(sreq(`${NC}/bookmark`, pw, "POST"), e("enforce"));
+    const r = await worker.fetch(sreq("/dav/ext/sync", pw, "POST"), e("enforce"));
     assert.equal(r.status, 401);
     assert.match(r.headers.get("WWW-Authenticate"), /realm="ioStart bookmarks"/);
   }
-  assert.equal((await worker.fetch(sreq("/dav/nextcloud/ocs/v2.php/cloud/capabilities", null), e("monitor"))).status, 401);
+  assert.equal((await worker.fetch(sreq("/dav/ext", null), e("monitor"))).status, 401);
   assert.equal(forwarded, 2);
-  // no password yet: the app asks what this is, starts the flow and polls; the browser opens the page and says yes
-  for (const [path, method] of [["/dav/nextcloud/status.php", "GET"], ["/dav/nextcloud/index.php/login/v2", "POST"],
+  // no password yet: the app starts the flow and polls; the browser opens the page and says yes
+  for (const [path, method] of [["/dav/nextcloud/index.php/login/v2", "POST"],
     ["/dav/nextcloud/index.php/login/v2/poll", "POST"], ["/dav/nextcloud/index.php/login/v2/flow/abc", "GET"], ["/dav/nextcloud/index.php/login/v2/grant", "POST"]]) {
     assert.equal((await worker.fetch(sreq(path, null, method), e("enforce"))).status, 207, path);
   }
-  assert.equal(forwarded, 7);
+  assert.equal(forwarded, 6);
   assert.equal((await worker.fetch(sreq("/dav/nextcloud/index.php/login/v20", null, "POST"), e("enforce"))).status, 401);
+  assert.equal((await worker.fetch(sreq("/dav/nextcloud/status.php", null), e("enforce"))).status, 401);
   assert.equal((await worker.fetch(sreq("/api/bookmarks", null), e("enforce"))).status, 207); // the web app: not ours
 });

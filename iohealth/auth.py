@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite-shared), as ioHealth uses them.
+"""The shared the suite's accounts (iosuite_shared), as ioHealth uses them.
 
 Accounts, passwords, sessions and roles live in the Shared ioSuite database (IOSUITE_DB_*), shared with ioPix,
 ioNote and ioContact: one sign-in serves every app on the domain (COOKIE_DOMAIN). What is ioHealth's own

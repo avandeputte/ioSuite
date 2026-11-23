@@ -3,7 +3,7 @@
 No key and no account: the price chart Yahoo Finance's own pages read (query1.finance.yahoo.com/v8/finance/chart/<symbol>)
 gives the last price, the previous close, the currency, the name and the closing prices of the past year. A symbol is
 as Yahoo writes it: AAPL, VWCE.DE (Xetra), BTC-USD; an exchange rate is EURUSD=X. Asked for every symbol at most every
-QUOTE_S seconds (refresh(), from the chores in app/main.py and Quotes on the Portfolio page), one symbol at a time, and only for
+QUOTE_S seconds (refresh(), from the chores in iomoney/main.py and Quotes on the Portfolio page), one symbol at a time, and only for
 what somebody holds. A symbol Yahoo does not know keeps its error (shown beside the holding); a holding without a
 quote uses the price kept with it (typed in, or Monarch Money's last closing price).
 """

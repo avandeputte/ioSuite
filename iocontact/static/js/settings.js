@@ -16,7 +16,7 @@ const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-/** Settings › Account: display name, email and password, then the app passwords: iosuite-shared's panels (the same in every io app). */
+/** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 export async function setAccount(el) {
   const ui = await accountUi();
   const pw = h('div');
@@ -31,7 +31,7 @@ export async function setDisplay(el) {
   el.append(ui.box('theme', 'Appearance', ui.themeRow((S.settings && S.settings.theme) || localStorage.getItem('iocontact.theme') || 'system', (t) => { S.settings = { ...S.settings, theme: t }; applyTheme(t); })));
 }
 
-/** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite-shared's suite profile),
+/** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite_shared's suite profile),
  * offered when the account may use two or more of them. Fields marked data-own belong to this app's own profile. */
 export const profileScope = (apps, own) => { const s = scopeSelect(apps, own, { class: 't' }); return s && fld('Set up', s); };
 
@@ -97,7 +97,7 @@ export async function setBooks(el) {
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app (here
     too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
-    iosuite-shared. */
+    iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export async function setSuite(el, r) {
   let ui;

@@ -11,7 +11,7 @@ that were picked, so a single table, a single user or a whole server can be
 brought back from the same file.
 
 Only the standard library and the mariadb / mariadb-dump client programs are
-used, so this module also runs on its own (see app/offline.py).
+used, so this module also runs on its own (see iobackup/offline.py).
 """
 
 import datetime as _dt
@@ -430,7 +430,7 @@ def run_backup(server, databases, include_users=True, workdir=None, label="backu
     ``databases`` is a list of names or the string "all" (every non-system
     database). With ``desync`` on a Galera node, the node is taken out of flow
     control for the duration so a long dump does not slow the cluster down. With ``files`` on, the files the suite's
-    apps keep in their databases are written out too, as plain files under files/ (app/blobfiles.py).
+    apps keep in their databases are written out too, as plain files under files/ (iobackup/blobfiles.py).
     """
     workdir = workdir or tempfile.gettempdir()
     os.makedirs(workdir, exist_ok=True)

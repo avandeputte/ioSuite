@@ -1,5 +1,5 @@
 """The REST API (JSON) the web app uses. OpenAPI docs at /api/docs. Who may call a route is declared on it
-(app/access.py); which documents an account sees and may change is the model's business (app/model.py).
+(iodocs/access.py); which documents an account sees and may change is the model's business (iodocs/model.py).
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`.

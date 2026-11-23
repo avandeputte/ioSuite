@@ -15,7 +15,7 @@ D = lambda n: (TODAY - dt.timedelta(days=n)).isoformat()  # noqa: E731
 
 
 class FakeMM:
-    """What app/monarch.py asks of monarchmoney.MonarchMoney, with Monarch's shapes."""
+    """What iomoney/monarch.py asks of monarchmoney.MonarchMoney, with Monarch's shapes."""
     logins = 0
     valid = {"tok-1"}
     transactions = []

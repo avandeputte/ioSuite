@@ -2,7 +2,7 @@
 
 A tool answers from the search index (`db()`), the same SQLite file the web app queries; the
 viewer's own data (favorites, albums, settings) is read through app.data.state. Who is asking comes from
-iosuite-shared (every request signed in with an app password or a session; `current_user`): the library tools
+iosuite_shared (every request signed in with an app password or a session; `current_user`): the library tools
 answer any account, the tools that reveal paths or change the library take an admin (`need_admin`), checked here
 rather than by the transport so the stdio server applies the same rule as the HTTP endpoint.
 """

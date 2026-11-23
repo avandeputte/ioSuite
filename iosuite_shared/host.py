@@ -206,8 +206,19 @@ class Host:
         if door != doors.WEB:  # no session here: an app password, a token or the secret in the address is what counts
             inner["headers"] = [(k, v) for k, v in scope.get("headers") or [] if k.lower() != b"cookie"]
         token = CURRENT.set(e.name)
+        begun = False
+
+        async def out(message: dict[str, Any]) -> None:
+            nonlocal begun
+            begun = begun or message["type"] == "http.response.start"
+            await send(message)
+
         try:
-            await e.asgi(inner, receive, doors.with_folder(send, scope, r.folder))
+            await e.asgi(inner, receive, doors.with_folder(out, scope, r.folder))
+        except Exception:  # noqa: BLE001 - written here, where the app is known: the web server's own line says "-"
+            log.exception("%s %s failed in %s", method, r.path, e.name)
+            if not begun:
+                await doors.json_answer(send, 500, "Internal Server Error", door=door)
         finally:
             CURRENT.reset(token)
 
@@ -230,7 +241,8 @@ class Host:
         more = {}
         if (scope.get("client") or ("",))[0] in ("127.0.0.1", "::1"):
             from iosuite_shared import helper
-            more = {"apps": self.status(), "door": self.door_of(scope), "helper": helper.status()}
+            from iosuite_shared import db
+            more = {"apps": self.status(), "door": self.door_of(scope), "helper": helper.status(), "database": db.budget.status()}
         await doors.json_answer(send, 200 if started else 503, "ok" if started else "starting", **more)
 
     # ---- start-up and shutdown: each app's own, in a task of its own
@@ -331,10 +343,12 @@ class Host:
 
 def _housekeeping() -> str:
     """What the suite's own tables no longer need: the live stream's lines a reconnecting page is past, and the rows
-    of jobs no copy has registered for a week (an app that was removed, a job that was renamed)."""
-    from iosuite_shared import jobs as jobs_mod, live
-    lines, old = live.forget_old(), jobs_mod.forget_old()
-    said = ([f"{lines} change lines"] if lines else []) + ([f"{old} job rows"] if old else [])
+    of jobs no copy has registered for a week (an app that was removed, a job that was renamed). And what this copy
+    no longer needs: the database connections its apps have kept unused since a busy moment (iosuite_shared.db)."""
+    from iosuite_shared import db, jobs as jobs_mod, live
+    lines, old, spare = live.forget_old(), jobs_mod.forget_old(), db.budget.trim()
+    said = ([f"{lines} change lines"] if lines else []) + ([f"{old} job rows"] if old else []) + (
+        [f"{spare} idle database connection{'' if spare == 1 else 's'} closed"] if spare else [])
     return ", ".join(said)
 
 
@@ -402,15 +416,14 @@ def _to_https(scope: Scope) -> str:
 
 def _restart() -> None:
     """End the copy shortly: the service manager starts it again (as after an update)."""
-    import os
-    threading.Timer(1.5, lambda: os._exit(0)).start()  # what asked for it (the panel's button) still gets its answer
+    from iosuite_shared import serve
+    serve.end(1.5)  # what asked for it (the panel's button) still gets its answer
 
 
 def _restart_when_readable() -> None:
     """Apps that started while the Shared ioSuite database was away run on the default settings (config.UNREAD). Once
     the database answers, the copy ends and the service manager starts it again, with the settings as they are stored."""
-    import os
-    from iosuite_shared import db
+    from iosuite_shared import db, serve
     while True:
         time.sleep(UNREAD_EVERY_S)
         try:
@@ -419,7 +432,8 @@ def _restart_when_readable() -> None:
         except Exception:  # noqa: BLE001  still away
             continue
         log.warning("the Shared ioSuite database answers again: starting again to read the settings of %s", ", ".join(sorted(config.UNREAD)))
-        os._exit(0)
+        serve.end(0)
+        return
 
 
 def wait_for_database(seconds: float = 60.0) -> bool:

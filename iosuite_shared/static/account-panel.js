@@ -71,7 +71,7 @@ export const api = client(API);
 
 export const safeUrl = (u) => /^(https?:\/\/|mailto:)/i.test(u || '');  // a link that is a link (never javascript:)
 
-/* The "Set up" choice of an Apple profile form: this app only, or every app that syncs (iosuite-shared's suite profile),
+/* The "Set up" choice of an Apple profile form: this app only, or every app that syncs (iosuite_shared's suite profile),
    offered when the account may use two or more of them (null otherwise). Picking one points the form at the profile
    it downloads and hides the fields marked data-own, which only this app's own profile has. */
 export function profileScope(apps, own, attrs = {}) {

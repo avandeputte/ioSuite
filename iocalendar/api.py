@@ -1,6 +1,6 @@
 """The REST API (JSON; iCalendar and jCal by content negotiation), the subscription links and the settings the web app
-uses. OpenAPI docs at /api/docs. Who may call a route is declared on it (app/access.py); what an account may change is
-a calendar's business (app/model.py), checked in the route.
+uses. OpenAPI docs at /api/docs. Who may call a route is declared on it (iocalendar/access.py); what an account may change is
+a calendar's business (iocalendar/model.py), checked in the route.
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`. Events are JSON by default; ask for text/calendar or application/calendar+json
@@ -695,7 +695,7 @@ def feed(token: str, name: str, request: Request, member: str | None = None):
 def _apple_profile(request: Request, label: str, password: str) -> tuple:
     """A configuration profile (.mobileconfig) that adds the CalDAV account to an iPhone, iPad or Mac in one go:
     (bytes, file name). password: "new" puts a new app password (named after label) in it; "ask" leaves it out. The
-    profile for all the apps that sync is iosuite-shared's (auth.profile_router in main.py)."""
+    profile for all the apps that sync is iosuite_shared's (auth.profile_router in main.py)."""
     u = request.state.user
     if u.get("passwordless"):
         raise HTTPException(403, "A one-click account cannot have app passwords")
@@ -764,7 +764,7 @@ async def complete_task(tid: int, request: Request):
 
 @router.get("/api/weather", dependencies=[access.signed_in])
 async def weather_days():
-    """The forecast for the next days at the start page's weather place (app/weather.py): {enabled, place, units,
+    """The forecast for the next days at the start page's weather place (iocalendar/weather.py): {enabled, place, units,
     days: [{date, min, max (°C), code (WMO), rain (%)}]}. enabled false while ioStart has no place; error when the
     forecast could not be fetched."""
     try:
@@ -791,7 +791,7 @@ async def event_weather(eid: int, request: Request, start: str):
 
 @router.get("/api/places", dependencies=[access.signed_in])
 async def place_suggestions(request: Request, q: str = "", session: str | None = None):
-    """Places that match what was typed in an event's place (app/places.py, Google Places with the suite's Google
+    """Places that match what was typed in an event's place (iocalendar/places.py, Google Places with the suite's Google
     key): {enabled, items: [{text, main, secondary}], error?}. enabled false when the suite has no Google key."""
     lang = (request.headers.get("accept-language") or "").split(",")[0].split(";")[0].strip() or None
     try:

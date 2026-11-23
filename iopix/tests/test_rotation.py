@@ -1,4 +1,4 @@
-"""Wrongly rotated photos (app/ai/rotation.py): the classifier learns four turns from embeddings, the four-turn vote
+"""Wrongly rotated photos (iopix/ai/rotation.py): the classifier learns four turns from embeddings, the four-turn vote
 confirms a finding, and dismissed findings stay out until the file changes."""
 import pytest
 

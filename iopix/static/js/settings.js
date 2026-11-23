@@ -1,4 +1,4 @@
-/** Settings: one page in tabs, as in every ioThing app (the suite's own tabs are users.js), and the
+/** Settings: one page in tabs, as in every ioSuite app (the suite's own tabs are users.js), and the
  *  Tools page. */
 import { PREF, UNITS, act, api, dfDayLocal, errorBox, fill, fmtBytes, fmtWhen, h, icon, loadingBox, main, nf, plural, post, regionUsesMiles, store } from './core.js';
 import { S, THEMES, applyBadgePref, applyTheme, avatarOf, hashFor, infoPrefsEditor, photosWith, pollSoon, toast, toastError } from './state.js';
@@ -262,7 +262,7 @@ function settingsContext(m, view) {
   const save = async (body, redraw) => { try { await post('api/settings', body); toast('Saved'); } catch (e) { toastError(e); } if (redraw) again(); };
   return { m, view, again, when, maint, row, btn, switchField, save };
 }
-/** Settings › Account: iosuite-shared's panels (the account, then its app passwords), the same in every io app, plus who you are in People. */
+/** Settings › Account: iosuite_shared's panels (the account, then its app passwords), the same in every io app, plus who you are in People. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 function panel(fill) {
   const el = h('div');

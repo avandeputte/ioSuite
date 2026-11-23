@@ -1,4 +1,4 @@
-"""The health database: the connection, the query helpers (iosuite-shared's pool and transactions) and the schema.
+"""The health database: the connection, the query helpers (iosuite_shared's pool and transactions) and the schema.
 
 Every timestamp is UTC: the session time zone is +00:00 and DATETIME values come back as naive datetimes in UTC.
 """

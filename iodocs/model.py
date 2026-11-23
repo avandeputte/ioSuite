@@ -2,7 +2,7 @@
 
 A document (doc_documents) is a passport, an ID card, a driver's license, an insurance policy, a birth certificate,
 a vehicle registration... It has a kind (KINDS), the people of the family it belongs to (doc_people), its number, who
-issued it, its dates, its own fields, its scans (app/files.py, read by app/ocr.py) and a reminder before it expires.
+issued it, its dates, its own fields, its scans (iodocs/files.py, read by iodocs/ocr.py) and a reminder before it expires.
 
 Who sees a document is the document's own business, because some papers are nobody else's:
 

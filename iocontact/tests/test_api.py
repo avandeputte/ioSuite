@@ -8,6 +8,12 @@ def mk(client, book, **kw):
     return r.json()
 
 
+def test_a_name_in_one_piece_is_split_like_fn(client, family_id):
+    """{"name": "Ada Lovelace"} (what an assistant or a script sends first) is a contact, not an error."""
+    c = mk(client, family_id, name="Ada Lovelace")
+    assert c["fn"] == "Ada Lovelace" and c["name"]["given"] == "Ada" and c["name"]["family"] == "Lovelace"
+
+
 def test_relations_keep_their_inverse(client, family_id):
     mom = mk(client, family_id, fn="Mary Doe", gender="F")
     kid = mk(client, family_id, fn="Tim Doe", gender="M", relations=[{"type": "parent", "relatedId": mom["id"]}])
@@ -190,7 +196,7 @@ def test_page_stamps_the_version(client):
 
 
 def test_registers_in_the_suite(client):
-    """The first request writes ioContact's row in the suite's list of apps (iosuite-shared ios_apps)."""
+    """The first request writes ioContact's row in the suite's list of apps (iosuite_shared ios_apps)."""
     from iosuite_shared import suite
     from iocontact import __version__
     client.get("/api/books")
@@ -405,7 +411,7 @@ def test_iopix_is_found_in_the_suite(client, monkeypatch):
 
 
 def test_suite_admin_panel(client):
-    """Settings › Security: iosuite-shared's panel and API answer a suite admin, not an app admin."""
+    """Settings › Security: iosuite_shared's panel and API answer a suite admin, not an app admin."""
     r = client.get("/api/suite-admin/ui.js")  # the first account (alex) is a suite admin
     assert r.status_code == 200 and "export async function mount" in r.text
     assert any(u["name"] == "alex" for u in client.get("/api/suite-admin").json()["users"])

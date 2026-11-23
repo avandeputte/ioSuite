@@ -1,4 +1,4 @@
-"""Accounts, roles, sessions and app passwords: the shared ioThing accounts (iosuite-shared), seen from ioCalendar.
+"""Accounts, roles, sessions and app passwords: the suite's accounts (iosuite_shared), seen from ioCalendar.
 
 Roles as in the rest of the suite: viewer (reads the shared calendars), member (also keeps their own), editor (changes the shared
 calendars too), admin (also settings and users); an account holds a role per app, a suite admin is admin everywhere.

@@ -1,4 +1,4 @@
-"""Accounts, roles, sessions and app passwords: the shared ioThing accounts (iosuite-shared), seen from ioContact.
+"""Accounts, roles, sessions and app passwords: the suite's accounts (iosuite_shared), seen from ioContact.
 
 Roles as in the rest of the suite: viewer (reads the shared books), member (also keeps their own private books),
 editor (changes the shared contacts too), admin (also settings and users); an account holds a role per app, a suite

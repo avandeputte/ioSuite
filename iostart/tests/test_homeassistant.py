@@ -242,7 +242,7 @@ def test_climate_and_cover_popups(client, monkeypatch):
 
 
 def test_live_feed_keeps_the_copy_and_streams_the_card(client, monkeypatch):
-    """The websocket feed (app/ha_feed.py) primes the copy and folds each state_changed into it; while it is live the
+    """The websocket feed (iostart/ha_feed.py) primes the copy and folds each state_changed into it; while it is live the
     REST copy is never refetched; /api/ha/events sends the card as server-sent events."""
     calls = []
     monkeypatch.setattr(ha, "_call", _fake_ha(calls))

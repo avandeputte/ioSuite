@@ -18,7 +18,7 @@ const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 export const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-/** Settings › Account: display name, email and password, then the app passwords: iosuite-shared's panels (the same in every io app). */
+/** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 export async function setAccount(el) {
   const ui = await accountUi();
   const pw = h('div');
@@ -60,7 +60,7 @@ export async function downloadProfile(e) {
   }
 }
 
-/** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite-shared's suite profile),
+/** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite_shared's suite profile),
  * offered when the account may use two or more of them. Fields marked data-own belong to this app's own profile. */
 export const profileScope = (apps, own) => { const s = scopeSelect(apps, own, { class: 't' }); return s && fld('Set up', s); };
 
@@ -146,7 +146,7 @@ export async function setLists(el, r) {
 }
 
 /** Settings › People, Apps, Servers and Keys (suite admins): everything the suite keeps in the Shared ioSuite
-    database. The same panel in every io app, served by iosuite-shared. */
+    database. The same panel in every io app, served by iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export async function setSuite(el, r) {
   let ui;

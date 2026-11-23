@@ -1,12 +1,11 @@
 """ioPix: a web front end for a digiKam library.
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (iopix/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite. The library (digiKam's database and the photo files) is only read here; the few endpoints that change it
 (sidecars, image files, digiKam's database on request) declare access.editor_write or access.admin_write on their route
 and go through the modules that own those writes."""
-import copy
 import logging
 import threading
 from contextlib import asynccontextmanager
@@ -16,7 +15,6 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi import HTTPException
 from iosuite_shared import demo as suite_demo, mcp as shared_mcp, pages
 from iosuite_shared.fastapi import public_user
-from iosuite_shared.proxyauth import peer_of
 from iosuite_shared.updates import setup_log
 
 from iopix.ai import analysis, models as dlmodels
@@ -123,21 +121,9 @@ def _before(request: Request):
 
 
 # who is asking (the shared session cookie, the proxy's identity, Basic, a bearer app password), whether sign-in is
-# required at all, and the cross-site check on writes: iosuite-shared's middleware. What each route needs beyond
-# that (an editor, an admin, an account) is declared on the route (app/access.py).
+# required at all, and the cross-site check on writes: iosuite_shared's middleware. What each route needs beyond
+# that (an editor, an admin, an account) is declared on the route (iopix/access.py).
 app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES, is_open=_open_to_visitors, before=_before))
-
-
-def _outside(request: Request) -> bool:
-    """Whether the request comes from outside the network (iosuite-shared's rule: through Cloudflare, from a public
-    address, or forwarded by a proxy that is not listed as trusted). When the Shared ioSuite database is away as
-    well, the list of trusted proxies cannot be read: only a proxy on this machine is believed then."""
-    try:
-        return auth.outside(request)
-    except Exception:  # noqa: BLE001
-        proxy = copy.copy(auth.proxy)
-        proxy.opt = lambda name: None
-        return proxy.external(request.headers, peer_of(request))
 
 
 async def _without_database(request: Request, call_next):

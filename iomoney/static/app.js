@@ -2,8 +2,8 @@
    account with its history, transactions, holdings or values; transactions to search and correct; spending by
    category and month; the portfolio with its quotes; the house and the cars with their loans; and settings (account,
    display, and for admins Money and Server, and for suite admins security and global settings), laid out as in the
-   other ioThing apps. */
-import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite-shared static/account-panel.js)
+   other ioSuite apps. */
+import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 // ------------------------------------------------------------------ helpers
 const $ = (s, el = document) => el.querySelector(s);
@@ -120,8 +120,6 @@ const store = { get: (k) => { try { return localStorage.getItem(`iomoney.${k}`);
 
 // ------------------------------------------------------------------ state
 const S = { status: {}, user: null, suite: [], settings: {}, sum: null, accounts: [], cats: [], searches: [], tags: null };
-const RANK = { none: 0, viewer: 1, member: 2, editor: 3, admin: 4 };
-const roleAtLeast = (r) => (RANK[S.user && S.user.role] || 0) >= RANK[r];
 const may = (k) => !!(S.sum && S.sum.may && S.sum.may[k]);
 const canAdd = () => may('own') || may('household');
 const CUR = () => (S.sum && S.sum.currency) || 'USD';
@@ -130,10 +128,6 @@ async function refreshSummary() {
   try { S.accounts = (await api('api/accounts?hidden=true')).items || []; } catch { S.accounts = []; }
   try { S.searches = may('read') ? (await api('api/searches')).items || [] : []; } catch { S.searches = []; }
   drawNav();
-}
-async function saveSettings(changes) {
-  Object.assign(S.settings, changes);
-  try { await api('api/auth/settings', { method: 'POST', json: changes }); } catch { /* kept for this visit */ }
 }
 
 // ------------------------------------------------------------------ numbers and dates
@@ -171,7 +165,6 @@ const kindLabel = (k) => ((S.sum && S.sum.kinds) || []).find((x) => x.kind === k
    cars, other things of value). The names and the kinds in each come from the server (api/summary). */
 const GROUP_LOOK = { cash: ['bank', '--c-green'], investment: ['trend', '--c-indigo'], credit: ['card', '--c-rose'], loan: ['loan', '--c-amber'], asset: ['home', '--c-orange'] };
 const groups = () => (S.sum && S.sum.groups) || [];
-const groupOf = (kind) => (groups().find((g) => g.kinds.includes(kind)) || { group: 'asset' }).group;
 const byGroup = (accts) => groups().map((g) => ({ ...g, list: accts.filter((a) => g.kinds.includes(a.kind)) })).filter((g) => g.list.length);
 const followsTx = (a) => a.track === 'transactions';
 const THINGS = ['property', 'vehicle', 'other_asset'];
@@ -279,7 +272,7 @@ function drawNav() {
     h('div', { class: 'navhead' },
       S.suite.length
         ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioThing apps', 'aria-label': 'ioThing apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
+          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
             h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
           h('a', { class: 'brand-name', href: '#/', title: 'Overview' }, brandName()))
         : h('a', { class: 'brand', href: '#/', title: 'Overview' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
@@ -354,9 +347,10 @@ function route() {
   return { view: 'overview' };
 }
 
-async function onRoute() {
+async function onRoute(keep) {
   const r = route();
   const main = $('#main');
+  const top = keep === true ? main.scrollTop : null;   // drawn again because something changed elsewhere: stay where the page was
   closeMenu();
   try {
     const page = h('div', { class: 'page wide' });
@@ -365,7 +359,8 @@ async function onRoute() {
       assets: showAssets, rules: showRules, transaction: showTransaction, transfers: showTransfers, recurring: showRecurring, categories: showCategories, account: showAccount, settings: showSettings,
       tidy: showTidy, review: showReview, payees: showPayees, duplicates: showDuplicates, balance: showBalance, changes: showChanges })[r.view](page, r);
     main.replaceChildren(page);
-    if (!r.keepScroll) main.scrollTop = 0;
+    if (top !== null) main.scrollTop = top;
+    else if (!r.keepScroll) main.scrollTop = 0;
   } catch (e) { main.replaceChildren(h('div', { class: 'page' }, h('div', { class: 'empty' }, icon('warning'), h('p', null, e.message || String(e)), h('p', null, h('a', { class: 'lnk', href: '#/' }, 'Overview'))))); }
   drawNav();
 }
@@ -2483,7 +2478,7 @@ function drawUser() {
   };
   put(m, btn);
 }
-/* The suite (iosuite-shared's suite_apps): when other ioThing apps are registered, the app mark top left (in the sidebar; in
+/* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to the overview. */
 async function loadSuite() {
   try {
@@ -2522,7 +2517,7 @@ function toggleSuite(btn) {
   if (!S.suite.length) return;
   // the apps, then the admin tools in a section of their own: the server sends those to their admins only
   const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
+  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   put(document.body, suitePop);
   const r = btn.getBoundingClientRect();
@@ -2558,7 +2553,7 @@ function openNav() { document.body.classList.add('side-open'); $('#navscrim').hi
 function closeNav() { document.body.classList.remove('side-open'); $('#navscrim').hidden = true; }
 
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-/** Settings › Account: display name, email and password, then the app passwords: iosuite-shared's panels (the same in every io app). */
+/** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 async function setAccount(el) {
   const ui = await accountUi();
   const pw = h('div');
@@ -2574,7 +2569,7 @@ async function setDisplay(el) {
 }
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
-    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
+    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function setSuite(el, r) {
   let ui;
@@ -2660,5 +2655,13 @@ async function start() {
   addEventListener('hashchange', () => { document.title = 'ioMoney'; closeDialogs(); onRoute(); });
   await onRoute();
   loadSuite();
+  // what changed elsewhere shows by itself: a sync with Monarch Money, another person, an assistant (the suite's one
+  // live stream, iosuite_shared/static/live.js); a page with work in progress on it (ticked rows, a form, tidying up)
+  // is left alone
+  const FRESH = ['overview', 'transactions', 'spending', 'portfolio', 'assets', 'account', 'recurring', 'transfers', 'transaction', 'balance', 'changes'];
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iomoney', async () => { await refreshSummary(); await onRoute(true); },
+      { when: () => FRESH.includes(route().view) && !$('#main').querySelector('input[type="checkbox"]:checked') }))
+    .catch(() => { /* no stream on this server */ });
 }
 start().catch(fail);

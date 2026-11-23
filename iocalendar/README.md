@@ -1,6 +1,6 @@
 # ioCalendar
 
-*The family calendar, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioTask](../iotask/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*The family calendar, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioTask](../iotask/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted calendar: a web app for the whole family, and the standard protocols every calendar app already speaks, so the same events show up on phones, in Apple Calendar, Google Calendar, Outlook, Thunderbird and anywhere else. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library (`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 

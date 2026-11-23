@@ -117,7 +117,6 @@ def test_nobody_signs_in_at_the_sync_door():
 
 def test_the_screen_to_say_yes_on_is_a_page_below_a_sync_path():
     assert doors.home("iostart", "/dav/ext/tree") == ("sync",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2/bookmark") == ("sync",)
     assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/flow/abc") == ("web",)
     assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/grant", "POST") == ("web",)
     assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2") == ("sync",)  # the client's own first call

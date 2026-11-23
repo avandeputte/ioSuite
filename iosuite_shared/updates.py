@@ -258,10 +258,6 @@ class Updater:
             # the run before this start was marked failed as the restart ended it, but update.sh had written "ok"
             # (the result file is removed when a run starts, so it is that run's)
             fields.update(state="ok", message=last["text"])
-        elif r.get("state") in ("ok", "failed") and (r.get("git_commit") or "") != fields["git_commit"] and not last:
-            # the row says how an update of another program went (the one this install replaced: its own update.sh,
-            # its own folders). Nothing of that is about what runs here now, so the line is cleared rather than shown.
-            fields.update(state="", message="")
         if r.get("latest") and r.get("status") != "error":
             # the newest version GitHub had when last asked: what this start installed may be it
             fields["status"] = "update" if _version_tuple(r["latest"]) > _version_tuple(self.version) else "current"
@@ -374,9 +370,10 @@ class Updater:
 
     @staticmethod
     def restart(delay: float = 0.5) -> None:
-        """End the process shortly; systemd (Restart=always), launchd (KeepAlive) or Docker (restart: unless-stopped)
-        starts the program again, with every app of this copy."""
-        threading.Timer(delay, lambda: os._exit(0)).start()
+        """End the process shortly, in an orderly way (serve.end); systemd (Restart=always), launchd (KeepAlive) or
+        Docker (restart: unless-stopped) starts the program again, with every app of this copy."""
+        from iosuite_shared import serve
+        serve.end(delay)
 
 
 # ---- the log: the copy's one (iosuite_shared.logs); these are the names the apps call

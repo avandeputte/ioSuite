@@ -1,4 +1,4 @@
-"""The reader (app/news.py): following a feed from a site's address, what is read and starred, each person's own,
+"""The reader (iostart/news.py): following a feed from a site's address, what is read and starred, each person's own,
 mark all as read, the headlines card, OPML, and what a look at a feed does. The sites are stood in for."""
 import time
 

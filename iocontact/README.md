@@ -1,6 +1,6 @@
 # ioContact
 
-*Contacts for the family, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioCalendar](../iocalendar/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*Contacts for the family, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioCalendar](../iocalendar/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted contact manager: a web app for the whole family, and the standard protocols every mail, contacts and calendar app already speaks, so the same contacts show up on phones, in Apple Contacts, Outlook, Thunderbird and anywhere else. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library (`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 

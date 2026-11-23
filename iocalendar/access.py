@@ -1,8 +1,8 @@
 """Who may call a route, declared on the route itself: `dependencies=[access.signed_in]` (or admin, public). The
-markers come from iosuite-shared (app/auth.py). Every /api route carries one, and a test fails when one is missing.
+markers come from iosuite_shared (iocalendar/auth.py). Every /api route carries one, and a test fails when one is missing.
 
 - public: the sign-in endpoints, the status, the subscription links (their own secret) and CalDAV (it challenges itself)
-- signed_in: an account: everything else (what it may change is a calendar's business: app/model.py)
+- signed_in: an account: everything else (what it may change is a calendar's business: iocalendar/model.py)
 - member: the names ioContact holds, for the people on an event (/api/people): not for viewers
 - admin: users, the server, ioContact and the holidays
 """

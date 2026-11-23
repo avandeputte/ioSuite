@@ -1,4 +1,4 @@
-"""What the tiles show (app/widgets.py), with the apps' answers mocked: no app is asked over the network."""
+"""What the tiles show (iostart/widgets.py), with the apps' answers mocked: no app is asked over the network."""
 import datetime as dt
 from zoneinfo import ZoneInfo
 

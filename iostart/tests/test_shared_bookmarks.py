@@ -173,21 +173,3 @@ def test_extension_sees_shared_read_only(client):
     pw2 = client.post("/api/auth/app-passwords", json={"label": "Extension", "scope": "dav"}).json()["password"]
     t2 = anon.get(EXT + "/tree", headers=_basic("alex", pw2)).json()["tree"]
     assert [c["title"] for c in t2[0]["children"]] == ["Wiki"] and t2[0]["readOnly"] is False
-
-
-def test_webdav_file_is_each_ones_own(client):
-    f = client.post("/api/bookmarks/groups", json={"name": "Private"}).json()
-    client.post(f"/api/bookmarks/groups/{f['id']}/links", json={"name": "Secret", "href": "https://secret.example"})
-    s = client.post("/api/bookmarks/groups", json={"name": "Everyone"}).json()
-    client.patch(f"/api/bookmarks/groups/{s['id']}", json={"shared": True})
-    bob = _as("bob", "member", client)
-    pw = bob.post("/api/auth/app-passwords", json={"label": "Floccus", "scope": "dav"}).json()["password"]
-    from fastapi.testclient import TestClient
-    from iostart.main import app
-    anon = TestClient(app)
-    body = anon.get("/dav/bookmarks/bookmarks.html", headers=_basic("bob", pw)).text
-    assert "Everyone" in body and "Secret" not in body and "Private" not in body
-    # a file without the shared folder leaves it be
-    up = body.replace("Everyone", "Renamed")
-    assert anon.put("/dav/bookmarks/bookmarks.html", headers=_basic("bob", pw), content=up.encode()).status_code in (200, 201, 204)
-    assert _names(client.get("/api/bookmarks/tree").json()["items"]) == ["Private/", "Everyone/"]

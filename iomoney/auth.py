@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite-shared), as ioMoney uses them.
+"""The shared the suite's accounts (iosuite_shared), as ioMoney uses them.
 
 Accounts, passwords, sessions, app passwords and roles live in the Shared ioSuite database (IOSUITE_DB_* in
 config.env), with the suite-wide settings and keys, shared with the other apps of the suite: one sign-in serves every

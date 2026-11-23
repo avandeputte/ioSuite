@@ -2,7 +2,7 @@
 follows them:
 
     tailscale:<server id>:<device>   the tailnet address of that device (Tailscale's API)
-    publicip / publicip6             the house's public IPv4 / IPv6 address (dynamic DNS, app/ddns.py)
+    publicip / publicip6             the house's public IPv4 / IPv6 address (dynamic DNS, iodns/ddns.py)
 """
 from __future__ import annotations
 

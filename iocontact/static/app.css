@@ -260,7 +260,6 @@ label.check { display: inline-flex; align-items: flex-start; gap: 6px; cursor: p
 .srow .sk { width: 110px; flex: none; color: var(--fg2); font-size: var(--fs-s); }
 .srow .sv { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
 .srow .sb { display: flex; gap: 6px; }
-.sphoto { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
 .card.sugg { grid-column: 1 / -1; }
 .dialog.wide { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
 .mergedlg .mrow { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }

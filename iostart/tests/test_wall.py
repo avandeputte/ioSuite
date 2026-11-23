@@ -1,4 +1,4 @@
-"""The wall display on a device (app/wall.py): its pairing, its feed, its photos and its taps. The apps are stood in for
+"""The wall display on a device (iostart/wall.py): its pairing, its feed, its photos and its taps. The apps are stood in for
 by their own providers over a table (conftest.via_providers); no network."""
 import datetime as dt
 import io

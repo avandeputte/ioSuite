@@ -1,5 +1,5 @@
 import { drawNav, showSignIn } from './shell.js';
-import { client, h } from '../../api/auth/ui.js';  // the suite's shared helpers (iosuite-shared static/account-panel.js)
+import { client, h } from '../../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 export { h };
 export const api = client(document.baseURI, { signIn: () => showSignIn() });
 

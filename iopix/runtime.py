@@ -3,8 +3,8 @@ pages poll, the refresh loop that rebuilds the index when digiKam (or the viewer
 changed it, the background jobs that restart when the library changes (thumbnail prewarm,
 analysis, embeddings, tag covers), and the automatic apply of waiting edits.
 
-Nothing here is HTTP: the response helpers live in app/http.py and the write gates in
-app/guards.py. The route modules import from those two; the background modules (filecheck,
+Nothing here is HTTP: the response helpers live in iopix/http.py and the write gates in
+iopix/guards.py. The route modules import from those two; the background modules (filecheck,
 models) import this one for the index connection and the job restarts."""
 import logging
 import os
@@ -22,6 +22,7 @@ from iopix.faces import ages, facevecs
 from iopix.data import index, state as appstate, appdb
 from iopix.ai.semantic import enabled as semantic_enabled, semantic
 from iopix.data.query import build_where
+from iosuite_shared import live
 
 CACHES: list = []  # lru caches cleared when the index changes (the browsing routes register theirs)
 
@@ -193,6 +194,8 @@ def refresh(initial=False):
             # time their own results are folded into the index
             source = index.last_source["version"]
             if source != state.get("source"):
+                if state.get("source") is not None:  # not the first look after a start: photos came, went or changed
+                    live.changed("iopix", "photos")  # the start page's strip and the other apps' pages ask again
                 state["source"] = source
                 start_prewarm()
                 threading.Thread(target=compute_tag_covers, args=(source,), daemon=True).start()

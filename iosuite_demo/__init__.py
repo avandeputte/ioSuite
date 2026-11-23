@@ -79,18 +79,6 @@ def day(offset: int) -> dt.date:
     return today() + dt.timedelta(days=offset)
 
 
-def next_birthday(p: dict) -> dt.date:
-    b, t = born(p), today()
-    for y in (t.year, t.year + 1):
-        try:
-            d = b.replace(year=y)
-        except ValueError:  # 29 February
-            d = dt.date(y, 3, 1)
-        if d >= t:
-            return d
-    return b
-
-
 # ---- the family's accounts
 def ensure() -> dict:
     """The four accounts (made when missing, in the family list with their colours): {key: person}, each person a dict

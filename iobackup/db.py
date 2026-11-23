@@ -40,7 +40,7 @@ SCHEMA = [
     )""",
     # what to back up, where, when and how many to keep. databases: a JSON list, or "all"; schedule: the form's
     # fields as JSON, cron: the five-field expression it makes ('' for on demand only); export_files: also write the
-    # files the apps keep in their databases out as plain files in the backup (app/blobfiles.py)
+    # files the apps keep in their databases out as plain files in the backup (iobackup/blobfiles.py)
     """CREATE TABLE IF NOT EXISTS bkp_jobs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(64) NOT NULL,

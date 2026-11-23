@@ -3,5 +3,5 @@
    sign-in) and main.js (the routes and the start). Pages: the contact list with a detail pane, the edit form,
    upcoming birthdays, the family tree, ioPix people, import/export, clean up (duplicates, data quality, suggestions,
    merge history) and settings (account, display, apps and devices, address books, and for admins storage and
-   backups, server, and for suite admins security and global settings), laid out as in the other ioThing apps. */
+   backups, server, and for suite admins security and global settings), laid out as in the other ioSuite apps. */
 import './js/main.js';

@@ -3,7 +3,7 @@
 Reads are open to whoever the sign-in rule lets in (as in iopix); every change needs a member (the apps sign in
 as one, or as an editor or admin), and a change to a note of the Family space an editor (notes.py). A change the
 device made offline carries its own updatedAt: when the server already has a later edit, the answer is 409 with the
-server's copy under "current" (app/main.py); a member's change to a family note is answered the same way.
+server's copy under "current" (ionote/main.py); a member's change to a family note is answered the same way.
 """
 import time
 from urllib.parse import quote

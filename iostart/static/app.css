@@ -493,11 +493,6 @@ table.t th { font-size: var(--fs-s); color: var(--fg2); font-weight: 600; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
 .tabs button { padding: 10px 14px; border-bottom: 2px solid transparent; color: var(--fg2); white-space: nowrap; }
 .tabs button.on { color: var(--accent); border-color: var(--accent); font-weight: 600; }
-.approw { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.approw img { width: 36px; height: 36px; border-radius: 22%; flex: none; }
-.approw .nm { width: 110px; flex: none; font-weight: 600; }
-.approw input.t { flex: 1; min-width: 200px; width: auto; }
-.approw label.check { flex: none; align-items: center; }
 
 /* ---- settings › suite */
 select.t.sm { height: 34px; width: auto; padding: 0 8px; }
@@ -544,7 +539,6 @@ table.t td .dot { display: inline-block; width: 10px; height: 10px; border-radiu
   .page { padding: 16px 16px 60px; }
   .app { padding: 10px 10px; }
   .hello h1 { font-size: 22px; }
-  .approw .nm { width: auto; }
   .top { gap: 12px; }
   .apps, .glance, .glance .gside { gap: 12px; }
   .stack.across { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }

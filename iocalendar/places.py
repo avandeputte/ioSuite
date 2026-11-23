@@ -65,7 +65,7 @@ def _referer() -> str:
 
 
 def _near() -> tuple | None:
-    """(lat, lon) of the start page's weather place, when it has one (app/weather.py keeps it for hours)."""
+    """(lat, lon) of the start page's weather place, when it has one (iocalendar/weather.py keeps it for hours)."""
     try:
         h = weather.home()
     except Exception:  # noqa: BLE001 - no bias then

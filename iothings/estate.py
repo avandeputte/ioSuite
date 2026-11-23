@@ -1,6 +1,6 @@
 """ioThings's part of a person's estate planning PDF (iosuite_shared.estate): the things that are theirs (the ones
 marked for them, not the household's), with where they are, their serial number and what they cost. The whole
-inventory, with photos and receipts, is ioThings's own PDF (app/pdf.py)."""
+inventory, with photos and receipts, is ioThings's own PDF (iothings/pdf.py)."""
 import datetime as dt
 from decimal import Decimal
 

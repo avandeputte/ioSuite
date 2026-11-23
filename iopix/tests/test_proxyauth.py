@@ -100,7 +100,7 @@ def test_requests_through_the_proxy_are_signed_in(client, monkeypatch, account):
 
 
 def test_the_real_peer_survives_the_forwarded_rewrite():
-    """iosuite-shared's Forwarded middleware (uvicorn runs with proxy_headers=False) takes the visitor's address from
+    """iosuite_shared's Forwarded middleware (uvicorn runs with proxy_headers=False) takes the visitor's address from
     X-Forwarded-For only for a connection from a listed reverse proxy, and keeps the address the connection really
     came from, which proxy sign-in and the throttles trust."""
     import asyncio

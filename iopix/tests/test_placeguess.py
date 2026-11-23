@@ -1,4 +1,4 @@
-"""Place suggestions for photos without a position (app/geo/placeguess.py)."""
+"""Place suggestions for photos without a position (iopix/geo/placeguess.py)."""
 import sqlite3
 
 

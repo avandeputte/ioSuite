@@ -9,7 +9,7 @@ curl -fsSL https://raw.githubusercontent.com/avandeputte/iosuite/main/install.sh
 ```
 
 As root this puts the program in `/opt/iosuite` and runs it as a systemd service; as another user, in `~/iosuite`
-(`--into DIR` for another folder). It needs Python 3.10 or later, and installs it on Debian, Ubuntu and Fedora when it
+(`--into DIR` for another folder). It needs Python 3.11 or later, and installs it on Debian, Ubuntu and Fedora when it
 is missing.
 
 ## What it asks

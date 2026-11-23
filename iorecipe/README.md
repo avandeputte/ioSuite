@@ -1,6 +1,6 @@
 # ioRecipe
 
-*The family's recipes, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*The family's recipes, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted recipe book: a web app for the whole family to keep recipes with their ingredients, steps and photos, to import a recipe from the web by its address, from pasted text, from a photo or from a file, and to cook, shop and print from it. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL (the photos too), and the suite's shared library (`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 

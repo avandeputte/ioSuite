@@ -1,7 +1,7 @@
 """ioTask, when it is part of the suite: the tasks that are due show on their day, beside the events, and are ticked
 off from the calendar.
 
-Nothing to set up: ioTask is found in the suite's list of apps. Unlike the contacts (app/contacts.py), tasks are asked
+Nothing to set up: ioTask is found in the suite's list of apps. Unlike the contacts (iocalendar/contacts.py), tasks are asked
 for on the viewer's behalf: the request goes out from this server with the viewer's own credentials (the suite's shared
 session cookie, or the Authorization header they came with), so ioTask answers with the lists that person sees there
 and takes a tick only from someone who may change the list. Nothing is kept here.

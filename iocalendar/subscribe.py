@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 from iocalendar import __version__, db, ical, model
-from iosuite_shared import outbound, stamp, users as shared_users
+from iosuite_shared import live, outbound, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iocalendar.subscriptions")
@@ -183,11 +183,13 @@ def refresh(cid: int, force: bool = False) -> dict:
             return {"ok": False, "error": str(e)}
         db.ex("UPDATE cal_subscriptions SET checked_at = UTC_TIMESTAMP(), synced_at = UTC_TIMESTAMP(), error = NULL, etag = %s, "
               "last_modified = %s, events = %s WHERE calendar_id = %s", (got["etag"], got["modified"], out["events"], cid))
+        if out["changed"]:
+            live.changed("iocalendar", "events")  # the open calendars and the start page ask again
         return {"ok": True, **out}
 
 
 def tick() -> int:
-    """The subscriptions whose time has come, refreshed (every few minutes, app/main.py); how many were."""
+    """The subscriptions whose time has come, refreshed (every few minutes, iocalendar/main.py); how many were."""
     due = db.q("SELECT calendar_id FROM cal_subscriptions WHERE checked_at IS NULL "
                "OR checked_at < UTC_TIMESTAMP() - INTERVAL refresh_hours HOUR ORDER BY checked_at")
     for r in due:

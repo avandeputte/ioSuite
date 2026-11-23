@@ -17,7 +17,8 @@ async function call(method, url, body) {
   return r.json();
 }
 const http = (method, path, body) => { requests.push(`${method} ${path}`); return call(method, '/dav/ext' + path, body); };
-const nc = (method, path, body) => call(method, '/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2' + path, body);  // "the server changed": what another app, or the start page, does
+// "the server changed": what another browser, or the start page, does meanwhile (the same sync, as a client that is up to date)
+const elsewhere = async (ops) => call('POST', '/dav/ext/sync', { base: (await call('GET', '/dav/ext/tree')).rev, ops });
 
 function browser(kind) {
   const bm = new FakeBookmarks(kind);
@@ -87,11 +88,11 @@ const serverId = async (title) => {
   assert.equal(A.bm.show(A.other), 'Recipes[Bread],Bookmarks menu[Mozilla]');  // Chrome has no bookmarks menu: a folder
 
   // ---- a delete on the server reaches every browser
-  await nc('DELETE', `/bookmark/${await serverId('News')}`);
+  await elsewhere([{ op: 'delete', id: await serverId('News') }]);
   await A.run(); await B.run();
   assert.equal(A.bm.show(A.bar), 'Dev[Docs],Get Help');
   assert.equal(B.bm.show(B.bar), 'Dev[Docs],Get Help,---');
-  await nc('DELETE', `/folder/${await serverId('Recipes')}`);  // a folder with what is in it
+  await elsewhere([{ op: 'delete', id: await serverId('Recipes') }]);  // a folder with what is in it
   await A.run(); await B.run();
   assert.equal(A.bm.show(A.other), 'Bookmarks menu[Mozilla]');
   assert.equal(B.bm.show(B.other), '');
@@ -122,9 +123,9 @@ const serverId = async (title) => {
   assert.equal(B.bm.show(B.other), 'Tools[Mozilla]');
 
   // ---- what the start page makes at the top (a group) is in Other bookmarks everywhere; a change there arrives
-  const work = (await nc('POST', '/folder', { parent_folder: -1, title: 'Work' })).item;
-  await nc('POST', '/bookmark', { url: 'https://wiki.example/', title: 'Wiki', folders: [work.id] });
-  await nc('PUT', `/bookmark/${await serverId('Mail')}`, { title: 'Webmail' });
+  await elsewhere([{ op: 'create', ref: 'work', folder: true, title: 'Work', parent: null },
+    { op: 'create', title: 'Wiki', url: 'https://wiki.example/', parent: 'work' },
+    { op: 'update', id: await serverId('Mail'), title: 'Webmail' }]);
   await A.run(); await B.run();
   for (const X of [A, B]) assert.ok(X.bm.show(X.other).endsWith('Work[Wiki]'), X.bm.show(X.other));
   assert.equal(A.bm.show(A.bar), 'Help,Webmail,Timer');
@@ -139,7 +140,7 @@ const serverId = async (title) => {
   assert.ok(A.bm.show(A.other).includes('Work[Wiki,From A,From B]'), A.bm.show(A.other));
 
   // ---- deleted here, but changed on the server meanwhile: it comes back rather than being lost
-  await nc('PUT', `/bookmark/${await serverId('Wiki')}`, { title: 'Wiki (new address)', url: 'https://wiki2.example/' });
+  await elsewhere([{ op: 'update', id: await serverId('Wiki'), title: 'Wiki (new address)', url: 'https://wiki2.example/' }]);
   await A.bm.remove(find(A, 'Wiki').id);
   await A.run();
   assert.ok(A.bm.show(A.other).includes('Wiki (new address)'), A.bm.show(A.other));
@@ -184,7 +185,7 @@ const serverId = async (title) => {
   await V.bm.create({ parentId: vb.id, title: 'Search', url: 'https://search.example/' });
   await V.run(); await A.run();
   assert.ok(A.bm.show(A.other).endsWith('Speed Dial[]') && A.bm.show(A.bar).endsWith(',Search'));
-  await nc('DELETE', `/bookmark/${await serverId('Search')}`);
+  await elsewhere([{ op: 'delete', id: await serverId('Search') }]);
   await V.run();
   assert.equal(V.bm.show(vb.id), A.bm.show(A.bar).replace(',Search', ''));
   assert.equal(V.bm.show('4'), 'Vivaldi');

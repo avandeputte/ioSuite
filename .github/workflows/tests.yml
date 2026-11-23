@@ -28,6 +28,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
+          python-version: "3.11"
+      - name: Python, as the oldest one the installer accepts reads it
+        run: python -m compileall -q iosuite_shared iosuite_demo io*/ tools
+      - uses: actions/setup-python@v5
+        with:
           python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
@@ -58,13 +63,31 @@ jobs:
         working-directory: cloudflare/edge-auth
         run: node --test
 
+  changes:
+    # which tests this change needs (tools/parts.py): a change inside one app's folder needs that app's only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      parts: ${{ steps.pick.outputs.parts }}
+      iopix: ${{ steps.pick.outputs.iopix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 tools/parts.py "$BASE" | tee -a "$GITHUB_OUTPUT"
+
   tests:
+    needs: changes
+    if: needs.changes.outputs.parts != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 20   # a run that hangs is stopped here, not after GitHub's six hours
     strategy:
       fail-fast: false
       matrix:
-        part: [iosuite_shared, iostart, iocalendar, iotask, iocontact, ionote, iorecipe, iothings, iomoney, iodocs, iohealth, iodns, iobackup, iopix]
+        part: ${{ fromJSON(needs.changes.outputs.parts) }}
     services:
       mariadb:
         image: mariadb:11
@@ -109,6 +132,8 @@ jobs:
 
   iopix-browser:
     # ioPix's pages in a real browser (Playwright, headless Chromium), on a library the tests make from scratch
+    needs: changes
+    if: needs.changes.outputs.iopix == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30   # a run that hangs is stopped here, not after GitHub's six hours
     services:
@@ -168,6 +193,10 @@ jobs:
           .venv/bin/iosuite serve > serve.log 2>&1 &
           echo $! > serve.pid
           python tools/smoke.py --web 8080 --sync 8443 || { tail -100 serve.log; exit 1; }
+      - name: Many requests at once are all answered, within the allowance of database connections
+        env:
+          ADMIN_PASSWORD: a-password-for-the-check
+        run: python tools/load.py --web 8080 --login "alex:$ADMIN_PASSWORD" || { tail -100 serve.log; exit 1; }
       - name: The suite asks for a certificate of its own and answers HTTPS
         env:
           ADMIN_PASSWORD: a-password-for-the-check
@@ -201,58 +230,6 @@ jobs:
           .venv/bin/iosuite serve > serve.log 2>&1 &
           IOSUITE_CONFIG="$PWD/copies/pix/config.env" .venv/bin/iosuite serve > serve-pix.log 2>&1 &
           python tools/twocopies.py --web 8080 --other-web 8081 --other-app iopix --login "alex:$ADMIN_PASSWORD" || { tail -60 serve.log serve-pix.log; exit 1; }
-
-  move:
-    # tools/convert, which moves an install of the first ioSuite to this program: its own tests, then two rehearsals.
-    # An install of the first ioSuite is made from its code (the version this program was ported from) and filled
-    # with its demo data, convert.py --apply moves it, and what every app lists is held to what it listed before:
-    # once without services, once as root with the old apps as systemd services, the way a server is moved (a move
-    # that fails first and must put the old services back, the move, and going back)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30   # a run that hangs is stopped here, not after GitHub's six hours
-    services:
-      mariadb:
-        image: mariadb:11
-        env:
-          MARIADB_ROOT_PASSWORD: root
-        ports: ["3306:3306"]
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
-    env:
-      IOSUITE_TEST_DB: 127.0.0.1:3306:root:root
-      FIRST: 42cc107e82dad474e2619954c02cac1dd29e327e  # ioSuite 3.44.0 (tools/convert/convert.py, PORTED_FROM)
-    steps:
-      - uses: actions/checkout@v4
-      - name: Packages
-        run: |
-          # the machine's own Python, in an environment: what a server has, and what a service can start
-          pkgs="$(python3 -c "import glob,json; print(' '.join(sorted({p for f in glob.glob('io*/app.json') for p in json.load(open(f)).get('system', [])})))")"
-          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends python3-venv $pkgs >/dev/null
-          python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/python" -m pip install -q -e ".[all,test]"
-          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
-      - name: The converter's tests
-        run: python -m pytest -q -p no:cacheprovider tools/convert
-      - name: The first ioSuite's code
-        id: first
-        run: |
-          mkdir "$RUNNER_TEMP/first" && cd "$RUNNER_TEMP/first"
-          git init -q && git remote add origin https://github.com/avandeputte/iosuite.git
-          if GIT_TERMINAL_PROMPT=0 git fetch -q --depth 1 origin "$FIRST" && git checkout -q FETCH_HEAD; then
-            echo "there=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::The first repository cannot be read from here, so the rehearsals of the move were left out"
-          fi
-      - name: A rehearsal of the move
-        if: steps.first.outputs.there == '1'
-        run: |
-          python tools/convert/rehearse.py --old "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/rehearse" || {
-            tail -n 40 "$RUNNER_TEMP"/rehearse/*.log "$RUNNER_TEMP"/rehearse/old/*/run.log; exit 1; }
-      - name: The same with services, as a server is moved (a move that fails, the move, going back)
-        if: steps.first.outputs.there == '1'
-        run: |
-          sudo env "PATH=$PATH" "IOSUITE_TEST_DB=$IOSUITE_TEST_DB" python tools/convert/rehearse.py --service --old "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/rehearse-service" || {
-            sudo tail -n 60 "$RUNNER_TEMP"/rehearse-service/*.log; sudo journalctl -u iosuite -u iostart -n 60 --no-pager; exit 1; }
 
   image:
     # the container image, built as the Image workflow builds it, and the repository's stack file started with it:

@@ -1,8 +1,8 @@
 """Who may call a route, declared on the route itself: `dependencies=[access.signed_in]` (or admin, public). The
-markers come from iosuite-shared (app/auth.py). Every /api route carries one, and a test fails when one is missing.
+markers come from iosuite_shared (iodocs/auth.py). Every /api route carries one, and a test fails when one is missing.
 
 - public: the sign-in endpoints and the status
-- signed_in: an account: everything else (what it may change is the model's business: app/model.py)
+- signed_in: an account: everything else (what it may change is the model's business: iodocs/model.py)
 - admin: users, the server and ioDocs' settings (the currency)
 """
 from iodocs.auth import auth

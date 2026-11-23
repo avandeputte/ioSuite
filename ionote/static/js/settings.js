@@ -1,8 +1,8 @@
-/** Settings, one page as in every ioThing app (Account and Display for accounts; Server for admins;
+/** Settings, one page as in every ioSuite app (Account and Display for accounts; Server for admins;
  *  People, Apps, Servers and Keys for suite admins), the Import and export page and the change log. */
 import { $, h, api, state, icon, toast, fail, isAdmin, canWrite, fmtDate } from './core.js';
 
-/** Settings › Account (with the app passwords) and Display: iosuite-shared's panels, the same in every io app. */
+/** Settings › Account (with the app passwords) and Display: iosuite_shared's panels, the same in every io app. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 export function applyTheme(t) {
   try { localStorage.setItem('ionote.theme', t); } catch (e) { /* private mode */ }
@@ -19,7 +19,7 @@ async function displayPanel() { const ui = await accountUi(); return ui.box('the
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app (here
  *  too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
- *  iosuite-shared. */
+ *  iosuite_shared. */
 async function suitePanel(tab, sub) {
   const el = h('div');
   let ui;

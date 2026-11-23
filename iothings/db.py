@@ -11,14 +11,14 @@ SCHEMA_VERSION = 1  # recorded in thg_schema_version; the tables are made as SCH
 PREFIX = "thg"
 
 # Every table is thg_<name> (the suite's naming convention: the apps can share one database) and InnoDB/utf8mb4.
-# Everything is the household's: whoever has a role here sees every thing; who may change what is app/model.py's.
+# Everything is the household's: whoever has a role here sees every thing; who may change what is iothings/model.py's.
 SCHEMA = [
     """CREATE TABLE IF NOT EXISTS thg_settings (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iothings/auth.py)
     # where things are: a tree (the house, the kitchen, the drawer by the sink); parent_id NULL: at the top
     """CREATE TABLE IF NOT EXISTS thg_locations (
         id INT AUTO_INCREMENT PRIMARY KEY,

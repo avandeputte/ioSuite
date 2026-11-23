@@ -1,10 +1,10 @@
-"""Accounts, roles, sessions and app passwords: the shared ioThing accounts (iosuite-shared), seen from ioDocs.
+"""Accounts, roles, sessions and app passwords: the suite's accounts (iosuite_shared), seen from ioDocs.
 
 Roles as in the rest of the suite: viewer (looks at the documents they may see), member (adds documents and changes
 the ones they added or that are theirs), editor (changes every document they may see, and sees the family's except
 the private ones), admin (also the server and users); an account holds a role per app, a suite admin is admin
 everywhere. Nobody has a role here until one is given (the default role is none): which documents each one then sees
-is app/model.py's. The REST API and MCP use HTTP Basic or a bearer app password (one per program, revocable, shown once).
+is iodocs/model.py's. The REST API and MCP use HTTP Basic or a bearer app password (one per program, revocable, shown once).
 """
 from iosuite_shared import db as shared_db, users as shared
 

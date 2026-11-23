@@ -18,7 +18,7 @@ SCHEMA = [
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iomoney/auth.py)
     # An account is anything with a value: a bank account, a card, a brokerage account, a loan, and also the house and
     # the cars (kind property / vehicle), so the net worth is one sum. owner_id NULL: the household's (everyone with a
     # role here sees it); otherwise the private account of that person, seen also by the people they named
@@ -117,7 +117,7 @@ SCHEMA = [
         KEY idx_mny_holdings_symbol (symbol),
         CONSTRAINT fk_mny_holdings_account FOREIGN KEY (account_id) REFERENCES mny_accounts(id) ON DELETE CASCADE
     )""",
-    # the last quote of each symbol held (app/quotes.py), and its closing prices day by day
+    # the last quote of each symbol held (iomoney/quotes.py), and its closing prices day by day
     """CREATE TABLE IF NOT EXISTS mny_quotes (
         symbol VARCHAR(32) PRIMARY KEY,
         name VARCHAR(255) NULL,
@@ -134,7 +134,7 @@ SCHEMA = [
         close DECIMAL(18,6) NOT NULL,
         PRIMARY KEY (symbol, day)
     )""",
-    # the recurring transactions the household keeps (app/recurring.py): a bill or money that comes in regularly, found
+    # the recurring transactions the household keeps (iomoney/recurring.py): a bill or money that comes in regularly, found
     # in the transactions or added by hand. pattern: words its payee or bank's text has; account_id: that account only
     # (none: any); flow: out or in; amount: the usual one (positive; approximate: it varies); frequency: weekly,
     # biweekly, semimonthly, monthly, quarterly, yearly; day: a day it fell on (the dates follow from it).
@@ -167,7 +167,7 @@ SCHEMA = [
         k VARCHAR(300) PRIMARY KEY,
         at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
-    # a transaction split over categories (app/splits.py): its parts, each with its share of the amount (signed as the
+    # a transaction split over categories (iomoney/splits.py): its parts, each with its share of the amount (signed as the
     # transaction), a category and a note. The reports count the parts in place of the transaction; what the parts do
     # not add up to (its amount changed since) stays under the transaction's own category.
     """CREATE TABLE IF NOT EXISTS mny_splits (
@@ -182,7 +182,7 @@ SCHEMA = [
         KEY idx_mny_splits_category (category),
         CONSTRAINT fk_mny_splits_tx FOREIGN KEY (transaction_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # the receipts of a transaction (app/receipts.py): pictures and PDFs, kept here in the database (in parts, so a
+    # the receipts of a transaction (iomoney/receipts.py): pictures and PDFs, kept here in the database (in parts, so a
     # large scan stays under max_allowed_packet) so the suite's backup holds them too. They go with the transaction.
     """CREATE TABLE IF NOT EXISTS mny_receipts (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -212,7 +212,7 @@ SCHEMA = [
         PRIMARY KEY (recurring_id, kind, day),
         CONSTRAINT fk_mny_recurring_ok_item FOREIGN KEY (recurring_id) REFERENCES mny_recurring(id) ON DELETE CASCADE
     )""",
-    # the household's categories (app/categories.py): those added here, and those renamed or regrouped here, with
+    # the household's categories (iomoney/categories.py): those added here, and those renamed or regrouped here, with
     # their group. Those only in the transactions (Monarch's) are categories too, without a row.
     """CREATE TABLE IF NOT EXISTS mny_categories (
         name VARCHAR(128) PRIMARY KEY,
@@ -251,7 +251,7 @@ SCHEMA = [
         CONSTRAINT fk_mny_rules_account FOREIGN KEY (account_id) REFERENCES mny_accounts(id) ON DELETE CASCADE
     )""",
     # transfers between the household's own accounts: the money out of one account (out_id) and the same money into
-    # another (in_id), linked (app/transfers.py). how: auto (found by the amount, the days and the payee), rule (a
+    # another (in_id), linked (iomoney/transfers.py). how: auto (found by the amount, the days and the payee), rule (a
     # transfer rule found it) or hand. A linked pair is neither spending nor income.
     """CREATE TABLE IF NOT EXISTS mny_transfers (
         out_id INT NOT NULL PRIMARY KEY,
@@ -294,7 +294,7 @@ SCHEMA = [
         at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_mny_reconciled_tx FOREIGN KEY (transaction_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # a person's own tags on a transaction (app/tags.py), beside the ones Monarch Money sends (mny_transactions.tags)
+    # a person's own tags on a transaction (iomoney/tags.py), beside the ones Monarch Money sends (mny_transactions.tags)
     """CREATE TABLE IF NOT EXISTS mny_tags (
         transaction_id INT NOT NULL,
         tag VARCHAR(64) NOT NULL,
@@ -302,14 +302,14 @@ SCHEMA = [
         KEY idx_mny_tags_tag (tag),
         CONSTRAINT fk_mny_tags_tx FOREIGN KEY (transaction_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # a transaction someone looked at (app/review.py): off the Needs a look page
+    # a transaction someone looked at (iomoney/review.py): off the Needs a look page
     """CREATE TABLE IF NOT EXISTS mny_reviewed (
         transaction_id INT PRIMARY KEY,
         by_user INT NULL,
         at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_mny_reviewed_tx FOREIGN KEY (transaction_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # two transactions that look like one entered twice and a person said are not (app/duplicates.py): a_id < b_id
+    # two transactions that look like one entered twice and a person said are not (iomoney/duplicates.py): a_id < b_id
     """CREATE TABLE IF NOT EXISTS mny_duplicate_nots (
         a_id INT NOT NULL,
         b_id INT NOT NULL,
@@ -317,7 +317,7 @@ SCHEMA = [
         CONSTRAINT fk_mny_duplicate_nots_a FOREIGN KEY (a_id) REFERENCES mny_transactions(id) ON DELETE CASCADE,
         CONSTRAINT fk_mny_duplicate_nots_b FOREIGN KEY (b_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # a bank statement an account was reconciled against (app/statements.py): from start_day to end_day the balance
+    # a bank statement an account was reconciled against (iomoney/statements.py): from start_day to end_day the balance
     # went from opening to closing, and the reconciled transactions of those days add up to the difference
     """CREATE TABLE IF NOT EXISTS mny_statements (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -332,7 +332,7 @@ SCHEMA = [
         UNIQUE KEY uq_mny_statements_end (account_id, end_day),
         CONSTRAINT fk_mny_statements_account FOREIGN KEY (account_id) REFERENCES mny_accounts(id) ON DELETE CASCADE
     )""",
-    # what a person changed on a transaction (app/history.py): the fields as they were (before_json) and as they
+    # what a person changed on a transaction (iomoney/history.py): the fields as they were (before_json) and as they
     # became (after_json). batch: the changes made together (many transactions at once); what: hand, bulk, undo or
     # reset (back to Monarch's own). undone: taken back since.
     """CREATE TABLE IF NOT EXISTS mny_changes (
@@ -350,7 +350,7 @@ SCHEMA = [
         KEY idx_mny_changes_at (at),
         CONSTRAINT fk_mny_changes_tx FOREIGN KEY (transaction_id) REFERENCES mny_transactions(id) ON DELETE CASCADE
     )""",
-    # a search of the transactions a person kept under a name (app/searches.py): the page's own query string
+    # a search of the transactions a person kept under a name (iomoney/searches.py): the page's own query string
     """CREATE TABLE IF NOT EXISTS mny_searches (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -360,7 +360,7 @@ SCHEMA = [
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_mny_searches_user (user_id, position)
     )""",
-    # a rule that was suggested (app/rulecheck.py) and a person did not want: payee and category, not offered again
+    # a rule that was suggested (iomoney/rulecheck.py) and a person did not want: payee and category, not offered again
     """CREATE TABLE IF NOT EXISTS mny_rule_nots (
         k VARCHAR(400) PRIMARY KEY,
         at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

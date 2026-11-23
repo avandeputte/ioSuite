@@ -62,7 +62,10 @@ EXIFTOOL = _find_exiftool()
 
 def exiftool_cmd() -> list:
     """How to start exiftool: directly, or through perl when the script is not executable
-    (pip's and some bundled copies)."""
+    (pip's and some bundled copies). When there is none on this machine: its plain name, so starting it says
+    "No such file or directory: 'exiftool'", which is what happened, and what every caller already handles."""
+    if not EXIFTOOL:
+        return ["exiftool"]
     return [EXIFTOOL] if os.access(EXIFTOOL, os.X_OK) else ["perl", EXIFTOOL]
 
 

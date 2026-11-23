@@ -1,6 +1,6 @@
 """ioDocs: the application (start-up, who is asking, the routes and the web app).
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (iodocs/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
@@ -56,7 +56,7 @@ mcp_enabled = mcp_switch.enabled
 
 
 # who is asking, whether sign-in is required at all, the cross-site check on writes, and the MCP endpoint's gate (the
-# switch; an app password or session; every tool acts as that account): iosuite-shared's middleware
+# switch; an app password or session; every tool acts as that account): iosuite_shared's middleware
 app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES,
                                        before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set)))
 

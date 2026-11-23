@@ -1,16 +1,8 @@
-"""The bookmarks as a tree that browsers sync with: what the start page shows of it, the Nextcloud Bookmarks API as
-Floccus uses it (its sign-in flow, the lock, folders, bookmarks, hashes, order, import), the bookmarks file over WebDAV
-as Floccus uses that (lock file, .temp upload, MOVE, the size checks), and files in and out."""
+"""The bookmarks as a tree: what the start page shows of it, the sign-in flow that gives the browser extension and
+the iPhone app their app password, and files in and out."""
 import base64
-import hashlib
-import json
-import re
 
 from iostart import bookmarkfiles, bookmarks
-from iosuite_shared import testing
-
-NC = "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2"
-DAV = "/dav/bookmarks"
 
 
 def _basic(name, pw):
@@ -21,16 +13,6 @@ def _anon():
     from fastapi.testclient import TestClient
     from iostart.main import app
     return TestClient(app)  # no `with`: the app is started once per process
-
-
-def _app_password(client, scope="dav"):
-    r = client.post("/api/auth/app-passwords", json={"label": "Floccus", "scope": scope})
-    assert r.status_code == 200, r.text
-    return r.json()["password"]
-
-
-def _sha(o):
-    return hashlib.sha256(json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
 
 def test_start_page_shows_only_what_is_picked(client):
@@ -64,10 +46,9 @@ def test_start_page_shows_only_what_is_picked(client):
     assert client.get("/api/bookmarks/tree").json()["count"] == 3
 
 
-def test_nextcloud_sign_in_flow_gives_a_sync_only_app_password(client):
+def test_sign_in_flow_for_apps_gives_a_sync_only_app_password(client):
     anon = _anon()
-    assert anon.get("/dav/nextcloud/status.php").json()["installed"] is True
-    f = anon.post("/dav/nextcloud/index.php/login/v2", headers={"User-Agent": "Floccus bookmarks sync", "Host": "start.example.com"}).json()
+    f = anon.post("/dav/nextcloud/index.php/login/v2", headers={"User-Agent": "ioStart Bookmarks in Firefox", "Host": "start.example.com"}).json()
     assert f["login"].startswith("http://start.example.com/dav/nextcloud/index.php/login/v2/flow/")
     poll = lambda: anon.post(f["poll"]["endpoint"].replace("http://start.example.com", ""), data={"token": f["poll"]["token"]})  # noqa: E731
     assert poll().status_code == 404
@@ -75,7 +56,7 @@ def test_nextcloud_sign_in_flow_gives_a_sync_only_app_password(client):
     assert "Sign in to ioStart first" in anon.get(page).text  # nobody signed in: nothing to allow
     assert f'href="/?flow={page.rsplit("/", 1)[-1]}"' in anon.get(page).text  # the start page signs in and sends back here
     r = client.get(page)
-    assert "Floccus bookmarks sync" in r.text and "alex" in r.text
+    assert "ioStart Bookmarks in Firefox" in r.text and "alex" in r.text
     token = page.rsplit("/", 1)[-1]
     assert anon.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": token}).status_code == 403
     assert client.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": token}, headers={"Origin": "https://evil.example"}).status_code == 403
@@ -86,193 +67,23 @@ def test_nextcloud_sign_in_flow_gives_a_sync_only_app_password(client):
     assert poll().status_code == 404  # handed out once
     assert "no longer valid" in client.get(page).text
     auth = _basic("alex", got["appPassword"])
-    caps = anon.get("/dav/nextcloud/ocs/v2.php/cloud/capabilities?format=json", headers=auth).json()["ocs"]["data"]["capabilities"]["bookmarks"]
-    assert caps["hash-functions"] == ["sha256"] and caps["javascript-bookmarks"] is True
-    assert anon.post(f"{NC}/lock", headers=auth).status_code == 200
+    assert anon.get("/dav/ext/tree", headers=auth).status_code == 200
     # for sync only: not the rest of the start page; listed with the account's app passwords, where it is revoked
     assert anon.get("/api/apps", headers=auth).status_code == 403
     mine = client.get("/api/auth/app-passwords").json()["items"]
-    assert [(p["label"], p["scope"]) for p in mine] == [("Bookmark sync: Floccus bookmarks sync", "dav")]
+    assert [(p["label"], p["scope"]) for p in mine] == [("Bookmark sync: ioStart Bookmarks in Firefox", "dav")]
     client.delete(f"/api/auth/app-passwords/{mine[0]['id']}")
-    assert anon.get(f"{NC}/folder", headers=auth).status_code == 401
+    assert anon.get("/dav/ext/tree", headers=auth).status_code == 401
 
 
-def test_nextcloud_api_as_floccus_uses_it(client):
-    anon, auth = _anon(), _basic("alex", _app_password(client))
-    r = anon.get(f"{NC}/folder")
-    assert r.status_code == 401 and r.headers["www-authenticate"].startswith("Basic")
-    assert anon.get(f"{NC}/folder", headers=_basic("alex", "wrong")).status_code == 401
-    get = lambda p: anon.get(NC + p, headers=auth).json()  # noqa: E731
-    send = lambda m, p, body=None: anon.request(m, NC + p, headers=auth, json=body)  # noqa: E731
-    # the lock: one client at a time; a second one is told to wait
-    assert send("POST", "/lock").json() == {"status": "success"}
-    assert send("POST", "/lock").status_code == 423
-    # an empty server: the root's hash is that of no children
-    assert get("/folder/-1/hash?hashFn=sha256")["data"] == _sha({"children": []})
-    assert get("/bookmark?page=0&limit=300") == {"status": "success", "data": []}
-    assert send("GET", "/folder/-1/hash?hashFn=murmur3a").status_code == 400
-    # folders and bookmarks as the client creates them
-    bar = send("POST", "/folder", {"parent_folder": -1, "title": "Bookmarks Bar"}).json()["item"]
-    sub = send("POST", "/folder", {"parent_folder": bar["id"], "title": "Dév & <co>"}).json()["item"]
-    assert sub["parent_folder"] == bar["id"] and bar["parent_folder"] == -1
-    assert get("/bookmark?url=" + "https%3A%2F%2Fa.example%2F")["data"] == []  # never "exists already": no merging
-    a = send("POST", "/bookmark", {"url": "https://a.example/", "title": "A", "folders": [bar["id"]]}).json()["item"]
-    a2 = send("POST", "/bookmark", {"url": "https://a.example/", "title": "A again", "folders": [sub["id"]], "tags": ["x", "y"]}).json()["item"]
-    js = send("POST", "/bookmark", {"url": "javascript:void(0)", "title": "Bookmarklet", "folders": ["-1"]}).json()["item"]
-    assert a["id"] != a2["id"] and a["folders"] == [bar["id"]] and a2["tags"] == ["x", "y"] and js["folders"] == [-1] and js["target"] == "javascript:void(0)"
-    assert send("POST", "/bookmark", {"url": "", "title": "nothing", "folders": [-1]}).status_code == 400
-    assert send("POST", "/bookmark", {"url": "https://b.example", "title": "B", "folders": [99999]}).status_code == 404
-    assert get(f"/bookmark/{a['id']}")["item"]["title"] == "A"
-    # the tree, in layers
-    kids = get("/folder/-1/children?layers=-1")["data"]
-    assert [(k["type"], k["title"]) for k in kids] == [("folder", "Bookmarks Bar"), ("bookmark", "Bookmarklet")]
-    assert [(k["type"], k["title"]) for k in kids[0]["children"]] == [("folder", "Dév & <co>"), ("bookmark", "A")]
-    assert kids[0]["children"][0]["children"][0]["id"] == a2["id"]
-    one = get("/folder/-1/children?layers=0")["data"]
-    assert "children" not in one[0]
-    assert "children" in get("/folder/-1/children?layers=1")["data"][0] and "children" not in get("/folder/-1/children?layers=1")["data"][0]["children"][0]
-    assert get("/folder?root=-1&layers=-1")["data"][0]["children"][0]["title"] == "Dév & <co>"
-    assert len(get("/bookmark?page=0&limit=300")["data"]) == 3 and get("/bookmark?page=1&limit=2")["data"][0]["id"]
-    # the hashes are the ones Floccus computes for the same tree, so it skips what did not change
-    h_a, h_a2, h_js = (_sha({"title": t, "url": u}) for t, u in (("A", "https://a.example/"), ("A again", "https://a.example/"), ("Bookmarklet", "javascript:void(0)")))
-    h_sub = _sha({"title": "Dév & <co>", "children": [h_a2]})
-    h_bar = _sha({"title": "Bookmarks Bar", "children": [h_sub, h_a]})
-    assert get(f"/folder/{sub['id']}/hash?hashFn=sha256")["data"] == h_sub
-    assert get("/folder/-1/hash?hashFn=sha256")["data"] == _sha({"children": [h_bar, h_js]})
-    with_tags = _sha({"title": "Dév & <co>", "children": [_sha({"title": "A again", "url": "https://a.example/", "tags": ["x", "y"]})]})
-    assert get(f"/folder/{sub['id']}/hash?hashFn=sha256&fields[]=title&fields[]=url&fields[]=tags")["data"] == with_tags
-    # an update names the folders: the bookmark moves to the last; the order of a folder's children
-    assert send("PUT", f"/bookmark/{a2['id']}", {"url": "https://a.example/2", "title": "A2", "folders": [bar["id"]], "tags": []}).json()["item"]["folders"] == [bar["id"]]
-    assert send("PATCH", f"/folder/{bar['id']}/childorder", {"data": [{"id": str(a2["id"]), "type": "bookmark"}, {"id": f"{a['id']};{bar['id']}", "type": "bookmark"}, {"id": sub["id"], "type": "folder"}]}).status_code == 200
-    assert [k["id"] for k in get(f"/folder/{bar['id']}/childorder")["data"]] == [a2["id"], a["id"], sub["id"]]
-    assert send("PUT", f"/folder/{sub['id']}", {"parent_folder": -1, "title": "Dev"}).json()["item"]["parent_folder"] == -1
-    assert send("PUT", f"/folder/{bar['id']}", {"parent_folder": bar["id"], "title": "x"}).status_code == 400
-    # a subtree in one go (bulk import): answers with what it made
-    html = bookmarkfiles.to_html([{"type": "folder", "id": 1, "title": "Imported", "children": [{"type": "bookmark", "id": 2, "title": "I", "url": "https://i.example", "tags": ["t"]}]}], 5)
-    made = anon.post(f"{NC}/folder/{sub['id']}/import", headers=auth, files={"bm_import": ("upload.html", html, "text/html")}).json()["data"]
-    assert made[0]["type"] == "folder" and made[0]["title"] == "Imported" and made[0]["children"][0]["url"] == "https://i.example"
-    # removing: a bookmark from its folder (404 from another), a folder with what is in it
-    assert send("DELETE", f"/folder/{sub['id']}/bookmarks/{a['id']}").status_code == 404
-    assert send("DELETE", f"/folder/{bar['id']}/bookmarks/{a['id']}").json() == {"status": "success"}
-    assert send("DELETE", f"/folder/{sub['id']}").status_code == 200 and send("DELETE", f"/folder/{sub['id']}").status_code == 404
-    assert get("/tag") == [] and send("DELETE", "/lock").status_code == 200 and send("POST", "/lock").status_code == 200
-    # nothing a browser synced is on the start page until it is picked; a bookmarklet never is
-    assert client.get("/api/bookmarks").json() == {"groups": []}
-    client.patch(f"/api/bookmarks/groups/{bar['id']}", json={"start": True})
-    client.patch(f"/api/bookmarks/links/{js['id']}", json={"start": True})
-    assert [(g["name"], [l["href"] for l in g["links"]]) for g in client.get("/api/bookmarks").json()["groups"]] == [("Bookmarks Bar", ["https://a.example/2"])]
-    # a viewer's sync app reads, and is told it may not write
-    testing.add_account(client, {"name": "kid", "password": "secret123", "role": "viewer"})
-    kid = _basic("kid", "secret123")
-    assert anon.get(f"{NC}/folder/-1/children?layers=-1", headers=kid).status_code == 200
-    assert anon.post(f"{NC}/bookmark", headers=kid, json={"url": "https://k.example", "title": "K", "folders": [-1]}).status_code == 403
-
-
-FLOCCUS_XBEL = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE xbel PUBLIC "+//IDN python.org//DTD XML Bookmark Exchange Language 1.0//EN//XML" "http://pyxml.sourceforge.net/topics/dtds/xbel.dtd">
-<xbel version="1.0">
-<!--- highestId :%(highest)d: for Floccus bookmark sync browser extension -->
-%(body)s
-</xbel>"""
-
-
-def _xbel(body, highest):
-    return FLOCCUS_XBEL % {"body": body, "highest": highest}
-
-
-def test_webdav_file_as_floccus_uses_it(client):
-    anon, auth = _anon(), _basic("alex", _app_password(client))
-    req = lambda m, p, **kw: anon.request(m, f"{DAV}/{p}", headers={**auth, **kw.pop("headers", {})}, **kw)  # noqa: E731
-    size = lambda p: int(re.search(r"getcontentlength[^>]*>(\d+)<", req("PROPFIND", p, headers={"Depth": "0"}).text).group(1))  # noqa: E731
-    assert anon.request("PROPFIND", DAV + "/").status_code == 401
-    assert req("PROPFIND", "", headers={"Depth": "0"}).status_code == 207  # the connection test
-    # something made on the start page first
-    g = client.post("/api/bookmarks/groups", json={"name": "Home"}).json()
-    l = client.post(f"/api/bookmarks/groups/{g['id']}/links", json={"name": "Router", "href": "http://192.168.1.1"}).json()
-    # a sync: the lock file, the file and its size
-    assert req("GET", "bookmarks.xbel.lock").status_code == 404
-    assert req("PUT", "bookmarks.xbel.lock", content="<html><body>I am a lock file</body></html>").status_code in (201, 204)
-    r = req("GET", "bookmarks.xbel.lock")
-    assert r.status_code == 200 and r.headers["last-modified"].endswith("GMT")
-    assert client.get("/api/bookmarks/sync").json()["syncing"] is True
-    r = req("GET", "bookmarks.xbel")
-    assert r.status_code == 200 and bookmarkfiles.XBEL_HEAD in r.text and f'<bookmark href="http://192.168.1.1" id="{l["id"]}">' in r.text
-    assert f"<!--- highestId :{l['id']}:" in r.text and size("bookmarks.xbel") == len(r.content)
-    # the client adds a folder and two bookmarks under ids of its own, and uploads: .temp, its size, MOVE, the size again
-    up = _xbel(f"""<folder id="{g['id']}">
-  <title>Home</title>
-  <bookmark href="http://192.168.1.1" id="{l['id']}">
-    <title>Router &amp; modem</title>
-  </bookmark>
-  <bookmark href="javascript:alert(&apos;hi&apos;)" id="{l['id'] + 2}">
-    <title>Bookmarklet</title>
-  </bookmark>
-</folder>
-<folder id="{l['id'] + 1}">
-  <title>Other bookmarks</title>
-  <bookmark href="https://ünï.example/päth" id="{l['id'] + 3}">
-    <title>Ünï</title>
-  </bookmark>
-</folder>""", l["id"] + 3)
-    raw = up.encode()
-    assert req("PUT", "bookmarks.xbel.temp", content=raw, headers={"Content-Type": "application/xml"}).status_code == 201
-    assert size("bookmarks.xbel.temp") == len(raw)
-    assert req("MOVE", "bookmarks.xbel.temp", headers={"Destination": "http://testserver/dav/bookmarks/bookmarks.xbel", "Overwrite": "T"}).status_code == 204
-    assert size("bookmarks.xbel") == len(raw) and req("GET", "bookmarks.xbel.temp").status_code == 404
-    assert req("DELETE", "bookmarks.xbel.lock").status_code == 204 and req("GET", "bookmarks.xbel.lock").status_code == 404
-    # the tree is the file, under the client's ids; the start page keeps its picks and the link its icon fields
-    t = client.get("/api/bookmarks/tree").json()
-    assert [(x["id"], x["name"], x["start"]) for x in t["items"]] == [(g["id"], "Home", True), (l["id"] + 1, "Other bookmarks", False)]
-    assert [(x["id"], x["name"]) for x in t["items"][0]["items"]] == [(l["id"], "Router & modem"), (l["id"] + 2, "Bookmarklet")]
-    assert [x["name"] for x in client.get("/api/bookmarks").json()["groups"][0]["links"]] == ["Router & modem"]
-    # the next sync gets back what it uploaded, byte for byte
-    assert req("GET", "bookmarks.xbel").content == raw
-    # then somebody adds a link on the start page: the file is written anew, with it, and the client's size check holds
-    n = client.post(f"/api/bookmarks/groups/{g['id']}/links", json={"name": "NAS", "href": "http://nas.lan"}).json()
-    assert n["id"] == l["id"] + 4  # after the ids the client used
-    r = req("GET", "bookmarks.xbel")
-    assert f'id="{n["id"]}"' in r.text and size("bookmarks.xbel") == len(r.content) and f"highestId :{n['id']}:" in r.text
-    assert [(i["type"], i["title"]) for i in bookmarkfiles.parse_xbel(r.text)] == [("folder", "Home"), ("folder", "Other bookmarks")]
-    # while the client holds that copy, one more link appears on the start page; the client's upload (which removes
-    # "Other bookmarks" and knows nothing of the new link) keeps the new link and removes the folder
-    late = client.post(f"/api/bookmarks/groups/{g['id']}/links", json={"name": "Printer", "href": "http://printer.lan"}).json()
-    up2 = _xbel(f"""<folder id="{g['id']}">
-  <title>Home</title>
-  <bookmark href="http://nas.lan" id="{n['id']}">
-    <title>NAS</title>
-  </bookmark>
-  <bookmark href="http://192.168.1.1" id="{l['id']}">
-    <title>Router &amp; modem</title>
-  </bookmark>
-  <bookmark href="https://new.example" id="{late['id']}">
-    <title>Made in the browser, under an id the start page took meanwhile</title>
-  </bookmark>
-</folder>""", late["id"])
-    assert req("PUT", "bookmarks.xbel", content=up2.encode()).status_code == 204
-    assert size("bookmarks.xbel") == len(up2.encode())  # what it uploaded, for its check
-    home = client.get("/api/bookmarks/tree").json()["items"]
-    assert len(home) == 1
-    names = {x["name"]: x["id"] for x in home[0]["items"]}
-    assert set(names) == {"NAS", "Router & modem", "Printer", "Made in the browser, under an id the start page took meanwhile"}
-    assert names["Printer"] == late["id"] and names["Made in the browser, under an id the start page took meanwhile"] > late["id"]
-    assert [x["name"] for x in home[0]["items"]][:2] == ["NAS", "Router & modem"]
-    r = req("GET", "bookmarks.xbel")  # not what was uploaded any more: written anew, with the link that was kept
-    assert "http://printer.lan" in r.text and size("bookmarks.xbel") == len(r.content)
-    # an encrypted file cannot be read: refused, nothing changes
-    assert req("PUT", "bookmarks.xbel", content=json.dumps({"ciphertext": "abc", "salt": "def"})).status_code == 415
-    assert client.get("/api/bookmarks/tree").json()["count"] == 4
-    # the same tree as bookmarks HTML, which Floccus can sync instead; a file without ids matches what is there
-    h = req("GET", "bookmarks.html")
-    assert bookmarkfiles.HTML_HEAD in h.text and f'ID="{n["id"]}"' in h.text and size("bookmarks.html") == len(h.content)
-    plain = bookmarkfiles.to_html(bookmarkfiles.parse_html(h.text))
-    assert "ID=" not in plain and req("PUT", "bookmarks.html", content=plain.encode()).status_code == 204
-    again = client.get("/api/bookmarks/tree").json()["items"][0]["items"]
-    assert {x["name"]: x["id"] for x in again} == names
-    assert req("PUT", "notes.txt", content=b"x").status_code == 404
-    # a viewer reads the file and cannot upload one
-    testing.add_account(client, {"name": "kid", "password": "secret123", "role": "viewer"})
-    assert anon.get(f"{DAV}/bookmarks.xbel", headers=_basic("kid", "secret123")).status_code == 200
-    assert anon.put(f"{DAV}/bookmarks.xbel", headers=_basic("kid", "secret123"), content=up2.encode()).status_code == 403
+def test_what_other_sync_apps_asked_is_no_longer_answered(client):
+    """Only the sign-in flow is left under /dav/nextcloud: no Nextcloud Bookmarks API, no bookmarks file over WebDAV."""
+    pw = client.post("/api/auth/app-passwords", json={"label": "A sync app", "scope": "dav"}).json()["password"]
+    auth = _basic("alex", pw)
+    anon = _anon()
+    for path in ("/dav/nextcloud/status.php", "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2/folder",
+                 "/dav/nextcloud/ocs/v2.php/cloud/capabilities", "/dav/bookmarks/bookmarks.xbel", "/dav/bookmarks/"):
+        assert anon.get(path, headers=auth).status_code == 404, path
 
 
 def test_files_in_and_out(client):
@@ -307,7 +118,7 @@ def test_files_in_and_out(client):
     assert x[0]["children"][1]["children"][0]["url"] == "https://deep.example/" and x[0]["id"] == t[0]["id"]
     assert client.get("/api/bookmarks/export.pdf").status_code == 404
     s = client.get("/api/bookmarks/sync", headers={"host": "start.example.com"}).json()
-    assert s["nextcloud"] == "http://start.example.com/dav/nextcloud" and s["webdav"] == "http://start.example.com/dav/bookmarks/" and s["syncing"] is False
+    assert s["server"] == "http://start.example.com" and s["user"] == "alex" and "nextcloud" not in s and "webdav" not in s
 
 
 def test_order_keeps_the_places_of_what_is_not_named(client):

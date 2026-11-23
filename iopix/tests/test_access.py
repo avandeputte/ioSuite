@@ -1,4 +1,4 @@
-"""Every route declares who may call it (app/access.py): the API, the image and video routes, the share target and the
+"""Every route declares who may call it (iopix/access.py): the API, the image and video routes, the share target and the
 page itself. The declared levels match the table in access_table.json: a new route without a marker, or a route whose
 level changed by accident, fails here. Change the table on purpose when a route's audience changes."""
 import json
@@ -15,7 +15,7 @@ TABLE = json.loads((Path(__file__).parent / "access_table.json").read_text())
 
 
 def _api_routes():
-    """Every route of the route modules, whatever its address, and the ones app/main.py serves itself."""
+    """Every route of the route modules, whatever its address, and the ones iopix/main.py serves itself."""
     from iopix.main import app
     seen = set()
     for routes in [mod.router.routes for mod in (browse, images, albums, editing, settings, tools, auth, geo, backup, review, organize, faces)] + [app.routes]:

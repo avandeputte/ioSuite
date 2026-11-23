@@ -40,8 +40,23 @@ UPDATES = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentH
 current_user: contextvars.ContextVar = contextvars.ContextVar("iosuite_mcp_user", default=None)  # set per request
 
 
+class AppServer(MCPServer):
+    """An app's MCP server. A tool that changed something says so on the pages' live stream (iosuite_shared.live), as
+    a request to the app's API does: what an assistant added or changed shows on the open pages without a reload."""
+
+    async def call_tool(self, name, arguments, context=None):
+        result = await super().call_tool(name, arguments, context)
+        tool = self._tool_manager.get_tool(name)
+        notes = getattr(tool, "annotations", None)
+        reads = getattr(notes, "read_only_hint", None) or getattr(notes, "readOnlyHint", None)  # as the library's version names it
+        if tool is not None and not reads and not getattr(result, "is_error", False) and not getattr(result, "isError", False):
+            from iosuite_shared import live
+            live.changed(self.name, "mcp")
+        return result
+
+
 def make_server(app: str, label: str, version: str, instructions: str) -> MCPServer:
-    return MCPServer(app, title=label, version=version, instructions=instructions)
+    return AppServer(app, title=label, version=version, instructions=instructions)
 
 
 def who() -> dict:

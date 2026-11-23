@@ -1,4 +1,4 @@
-"""Year suggestions from the library's clues (app/ai/dateclues.py): the people's dated years, look-alikes, the camera,
+"""Year suggestions from the library's clues (iopix/ai/dateclues.py): the people's dated years, look-alikes, the camera,
 and how the clues combine with the age estimates."""
 import sqlite3
 

@@ -94,7 +94,7 @@ export async function firstAdmin() {
   const name = h('input', { type: 'text', placeholder: 'Admin user name', autocomplete: 'username' });
   const pw = h('input', { type: 'password', placeholder: 'Password (8 characters or more)', autocomplete: 'new-password' });
   const msg = h('p', { class: 'error small' });
-  return dialog('Create the admin account', h('div', {}, h('p', { class: 'muted' }, 'No accounts yet. The first account is the suite admin (admin in ioHealth and the other ioThing apps). Create it from inside your network.'),
+  return dialog('Create the admin account', h('div', {}, h('p', { class: 'muted' }, 'No accounts yet. The first account is the suite admin (admin in ioHealth and the other ioSuite apps). Create it from inside your network.'),
     h('div', { class: 'signin-form' }, name, pw), msg), [
     { label: 'Create', primary: true, action: async () => {
       try { await authApi('api/auth/setup', { method: 'POST', body: { name: name.value.trim(), password: pw.value } }); location.reload(); } catch (e) { msg.textContent = e.message; return false; }
@@ -146,7 +146,7 @@ export function renderUserMenu() {
 // ---- Settings › Account
 
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-/** Settings › Account: display name, email and password, iosuite-shared's panel (the same in every io app). */
+/** Settings › Account: display name, email and password, iosuite_shared's panel (the same in every io app). */
 export async function setAccount() {
   const el = h('div');
   await (await accountUi()).mountAccount(el, { toast, onSaved: u => { Object.assign(me.user, u); renderUserMenu(); } });
@@ -154,7 +154,7 @@ export async function setAccount() {
 }
 
 // ---- Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app
-// (here too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared.
+// (here too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared.
 
 export async function suitePanel(tab, sub) {
   const el = h('div');

@@ -1,4 +1,4 @@
-"""One search across the apps (app/search.py, GET /api/search): every app asked at once as the viewer, the answers
+"""One search across the apps (iostart/search.py, GET /api/search): every app asked at once as the viewer, the answers
 ranked together, a slow app named as late, a hidden or forbidden app left out."""
 import threading
 

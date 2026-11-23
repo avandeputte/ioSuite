@@ -1,7 +1,7 @@
 """ioDocs, when it is part of the suite: the day a passport, a driver's license or an insurance policy expires shows
 on the calendar, beside the events.
 
-Nothing to set up: ioDocs is found in the suite's list of apps. As with the bills (app/bills.py), the documents are
+Nothing to set up: ioDocs is found in the suite's list of apps. As with the bills (iocalendar/bills.py), the documents are
 asked for on the viewer's behalf (iosuite_shared.links.as_viewer, with the viewer's own credentials), so each person
 sees only the documents ioDocs shows them. Nothing is kept here.
 """

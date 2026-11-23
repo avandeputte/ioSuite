@@ -12,7 +12,7 @@ An app is recognised by its tables, in whichever database it is (the database na
 database of another kind is left alone. The bytes are read after the dump, in one transaction per database (a file
 is whole or not there), in chunks small enough for any server's max_allowed_packet.
 
-Only the standard library and the mariadb client are used, like engine.py (app/offline.py runs without the web app).
+Only the standard library and the mariadb client are used, like engine.py (iobackup/offline.py runs without the web app).
 """
 
 import hashlib

@@ -1,6 +1,6 @@
 """A TRMNL server inside the start page: a TRMNL e-ink device (or anything running TRMNL's firmware) set to this
 server asks here what to show, and gets the suite's screens as a picture, with no TRMNL cloud, plugin import, polling
-or webhook in between. app/trmnl.py has the screens' data and markup, app/trmnldraw.py draws them (no browser).
+or webhook in between. iostart/trmnl.py has the screens' data and markup, iostart/trmnldraw.py draws them (no browser).
 
 What a device does (TRMNL's open firmware, github.com/usetrmnl/firmware; its Wi-Fi setup page takes the address of a
 server of one's own). It cannot sign in through Cloudflare Access or with an account, so these four answer without a
@@ -769,7 +769,7 @@ def remove(user, dev_id: int) -> None:
 
 
 def forget_person(uid: int) -> int:
-    """Deleting a person (app/persondata.py): their devices go with them. Returns how many."""
+    """Deleting a person (iostart/persondata.py): their devices go with them. Returns how many."""
     mine = devices_of(uid)
     for d in mine:
         _drop(d["id"])

@@ -1,4 +1,4 @@
-"""The comparison and the plan (app/sync.py), without a database or a server."""
+"""The comparison and the plan (iodns/sync.py), without a database or a server."""
 from iodns.providers import Record, record
 from iodns.sync import compare, plan
 

@@ -1,5 +1,5 @@
 """The REST API the web app uses (and anyone with an app password: HTTP Basic or a bearer token). JSON in and out.
-Who may call each route is on the route (app/access.py)."""
+Who may call each route is on the route (iobackup/access.py)."""
 from __future__ import annotations
 
 import datetime as _dt

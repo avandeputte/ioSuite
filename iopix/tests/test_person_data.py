@@ -1,5 +1,5 @@
 """Deleting someone in Settings › Security removes their favourites and private albums here; shared albums and
-everybody else's stay (app/persondata.py, which the suite admin panel calls; the route itself is the shared library's)."""
+everybody else's stay (iopix/persondata.py, which the suite admin panel calls; the route itself is the shared library's)."""
 from iosuite_shared import persondata as shared_persondata
 
 from iopix import persondata

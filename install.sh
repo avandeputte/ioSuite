@@ -11,7 +11,6 @@
 # this machine runs.
 #
 #   --into DIR              the program folder (IOSUITE_BASE)
-#   --fetch                 only fetch the program and make its Python environment; set nothing up
 #   --apps APP,APP | all    exactly these apps      --add APP,APP    run these too      --remove APP,APP   stop running them
 #   --list                  what this machine runs
 #   --copy NAME --apps iopix   a second copy of the program on this machine, with ports of its own (--remove-copy NAME)
@@ -35,12 +34,11 @@ say() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 main() {
-  local base="${IOSUITE_BASE:-}" rest=() fetch=0
+  local base="${IOSUITE_BASE:-}" rest=()
   while [ $# -gt 0 ]; do
     case "$1" in
       --into) base="$2"; shift 2;;
-      --fetch) fetch=1; shift;;
-      -h|--help) sed -n '2,30p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed 's/^# \{0,1\}//' || true
+      -h|--help) sed -n '2,29p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed 's/^# \{0,1\}//' || true
                  [ -n "${BASH_SOURCE[0]:-}" ] || echo "see the top of https://github.com/$REPO/blob/$BRANCH/install.sh"; exit 0;;
       *) rest+=("$1"); shift;;
     esac
@@ -52,13 +50,12 @@ main() {
 
   # ioSuite is here already: the program itself shows the list and makes the changes
   if [ -x "$base/.venv/bin/iosuite" ] && [ -f "$base/pyproject.toml" ]; then
-    if [ "$fetch" = 1 ]; then say "ioSuite is in $base already"; exit 0; fi
     exec "$base/.venv/bin/iosuite" install ${rest[@]+"${rest[@]}"}
   fi
 
   # ---- a new server: Python, the program, its environment
   local apt=0; command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" = 0 ] && apt=1
-  pyok() { command -v python3 >/dev/null 2>&1 && python3 -c 'import sys, venv, ensurepip; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; }
+  pyok() { command -v python3 >/dev/null 2>&1 && python3 -c 'import sys, venv, ensurepip; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; }
   if ! pyok; then
     say "Installing Python"
     if [ "$apt" = 1 ]; then
@@ -66,7 +63,7 @@ main() {
       apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 python3-venv python3-pip ca-certificates >/dev/null
     elif command -v dnf >/dev/null 2>&1 && [ "$(id -u)" = 0 ]; then dnf install -y -q python3 python3-pip
     fi
-    pyok || die "ioSuite needs Python 3.10 or newer with venv (Debian, Ubuntu: apt install python3 python3-venv), then run this again"
+    pyok || die "ioSuite needs Python 3.11 or newer with venv (Debian, Ubuntu: apt install python3 python3-venv), then run this again"
   fi
 
   say "Fetching ioSuite from github.com/$REPO"
@@ -116,11 +113,6 @@ PYEOF
   "$base/.venv/bin/python" -m pip install -q --disable-pip-version-check -e "$base" || die "installing the Python packages failed (see above)"
   [ "$(id -u)" != 0 ] || ln -sf "$base/.venv/bin/iosuite" /usr/local/bin/iosuite 2>/dev/null || true
 
-  if [ "$fetch" = 1 ]; then
-    say "ioSuite is in $base; nothing is set up yet"
-    echo "Set this machine up with: $base/.venv/bin/iosuite install"
-    exit 0
-  fi
   IOSUITE_REPO="$REPO" exec "$base/.venv/bin/iosuite" install ${rest[@]+"${rest[@]}"}
 }
 main "$@"

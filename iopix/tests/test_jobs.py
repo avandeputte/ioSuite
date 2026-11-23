@@ -96,7 +96,7 @@ def test_a_burst_of_submissions_is_picked_in_order(monkeypatch):
 
 
 def test_scan_job_start_rule_and_reset(monkeypatch):
-    """The shared scan scaffolding (app/ai/scanjob.py): a start whose to-do is already inside the running job's is
+    """The shared scan scaffolding (iopix/ai/scanjob.py): a start whose to-do is already inside the running job's is
     ignored, one with something new cancels the run, and a reset cancels it and empties the job's tables."""
     from iopix.ai.scanjob import ScanJob
     from iopix.data import appdb

@@ -10,6 +10,11 @@ An app says what changed, where the change is made:
     live.changed("iocalendar", "events", user_id=None)        # everyone who may see that calendar
     live.changed("ionote", "notes", user_id=7)                # only that person's pages
 
+Most changes need no such line: a request that changed something through an app's API, or from a device that syncs
+(CalDAV, CardDAV), is noticed where every request passes (of_request). The apps say it themselves for what arrives
+another way: a tool called over MCP (iosuite_shared.mcp), an upload from the phone (ioHealth), the browser extension's
+bookmarks (ioStart), and what a job brought in (Monarch Money, a subscribed calendar, new photos on the disk).
+
 The lines go into the Shared ioSuite database (`ios_changes`, a few minutes deep), and each copy of the program has
 one reader that picks up the new lines and hands them to the browsers connected to it. So a change in a copy on one
 server reaches a page served by a copy on another, and a copy with no page open asks for nothing. Nothing calls
@@ -72,13 +77,23 @@ def _write_soon(line: dict) -> None:
 
 # The paths a change on says nothing to a page: signing in, the suite's own screens, the stream itself.
 QUIET = ("auth", "suite-admin", "live", "status", "log", "docs", "related", "feeds")
+READS = ("GET", "HEAD", "OPTIONS")
+# What a device that syncs sends when it changes something (CalDAV, CardDAV). Its reads are requests with a body
+# too (PROPFIND, REPORT), so only these count; a POST outside the API says itself when it changed something.
+SYNC_WRITES = ("PUT", "DELETE", "PATCH", "PROPPATCH", "MKCOL", "MKCALENDAR", "MOVE", "COPY")
 
 
-def of_request(app: str, path: str, api_prefix: str = "/api/") -> None:
-    """Called for every request that changed something and was answered well (Auth.install's middleware): the app's
-    pages hear "<the first part of the path> changed", which is all a page needs to know to ask again. This is why an
-    app needs no code of its own for the live stream; `changed` is for what no request does (a sync, a job)."""
+def of_request(app: str, method: str, path: str, api_prefix: str = "/api/") -> None:
+    """Called for every request that was answered well (Auth.install's middleware). One that changed something
+    through the app's API makes its pages hear "<the first part of the path> changed", which is all a page needs to
+    know to ask again; one that changed something from a device that syncs (a calendar or a contact saved on a
+    phone) makes them hear "sync". This is why an app needs no code of its own for the live stream; `changed` is for
+    what no such request does (an upload, a tool called over MCP, a job)."""
+    if method in READS:
+        return
     if not path.startswith(api_prefix):
+        if method in SYNC_WRITES:
+            changed(app, "sync")
         return
     what = path[len(api_prefix):].strip("/").split("/")[0].split("?")[0]
     if not what or what in QUIET:

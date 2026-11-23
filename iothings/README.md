@@ -1,6 +1,6 @@
 # ioThings
 
-*Everything you own, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*Everything you own, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted inventory of everything you own, in place of Homebox: what the family has and where it is (the appliances,
 the tools, the furniture, the electronics, the car, the books, the camping gear, what is stored in the attic), with the manuals, receipts, photos and warranties, and the upkeep each thing

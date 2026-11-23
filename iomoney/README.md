@@ -1,6 +1,6 @@
 # ioMoney
 
-*The household's finances, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*The household's finances, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted overview of the household's money: the accounts, balances and transactions copied in from Monarch Money,
 the portfolio with its quotes from Yahoo Finance, and what the house and the cars are worth after their loans. FastAPI

@@ -1,6 +1,6 @@
 import { api, h } from './core.js';
 
-// ------------------------------------------------------------------ the weather (app/weather.py)
+// ------------------------------------------------------------------ the weather (iocalendar/weather.py)
 // The next seven days at the start page's weather place go on the day headers; an event with a place shows the weather
 // there when it is within those days. Open-Meteo's weather codes (WMO) drawn with the start page's glyphs.
 const WX = {
