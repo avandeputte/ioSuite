@@ -51,21 +51,29 @@ def test_the_page_its_manifest_and_static_folder(tmp_path):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from iosuite_shared import pages
-    (tmp_path / "index.html").write_text('<script src="static/app.js"></script><link href="static/app.css">')
+    (tmp_path / "index.html").write_text('<script src="static/app.js"></script><link href="static/app.css"><link href="api/auth/base.css">')
+    (tmp_path / "app.js").write_text("import './js/main.js';")
+    (tmp_path / "app.css").write_text("body{}")
     (tmp_path / "manifest.webmanifest").write_text("{}")
     (tmp_path / "sw.js").write_text("// sw")
     a, b = FastAPI(), FastAPI()
-    pages.mount(a, tmp_path, "3.9.0")
-    pages.mount(b, tmp_path, "3.9.0", service_worker=True)
+    pages.mount(a, tmp_path)
+    pages.mount(b, tmp_path, service_worker=True)
     c = TestClient(a)
     r = c.get("/")
-    assert '"static/app.js?v=3.9.0"' in r.text and '"static/app.css?v=3.9.0"' in r.text and r.headers["cache-control"] == "no-cache"
+    js, css = pages.mark(tmp_path / "app.js"), pages.mark(tmp_path / "app.css")
+    assert len(js) == 10 and js != css   # a mark of what is in the file, not of the version
+    assert f'"static/app.js?v={js}"' in r.text and f'"static/app.css?v={css}"' in r.text and r.headers["cache-control"] == "no-cache"
+    assert f'"api/auth/base.css?v={pages.mark(pages.SHARED / "base.css")}"' in r.text
     assert c.get("/manifest.webmanifest").headers["content-type"] == "application/manifest+json"
     assert c.get("/static/sw.js").text == "// sw" and c.get("/sw.js").status_code == 404
     assert TestClient(b).get("/sw.js").headers["content-type"].startswith("text/javascript")
+    # the file changes: so does its mark, and with it the address the page names
+    (tmp_path / "app.js").write_text("import './js/main.js';  // changed")
+    assert pages.mark(tmp_path / "app.js") != js and f"app.js?v={js}" not in c.get("/").text
 
 
-def test_page_modules_are_never_kept_stale(tmp_path):
+def test_static_files_are_kept_for_good_only_under_their_own_mark(tmp_path):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -73,12 +81,90 @@ def test_page_modules_are_never_kept_stale(tmp_path):
     (tmp_path / "js").mkdir()
     (tmp_path / "js" / "main.js").write_text("export const a = 1;")
     (tmp_path / "app.css").write_text("body{}")
+    (tmp_path / "icon.png").write_bytes(b"\x89PNG" + bytes(2000))
     (tmp_path / "index.html").write_text("<p>")
     app = FastAPI()
-    pages.mount(app, tmp_path, "1.0")
+    pages.mount(app, tmp_path)
     c = TestClient(app)
+    # a module of the page is imported by its name alone: asked for again each time, so no update pairs it with an old one
     assert c.get("/static/js/main.js").headers["cache-control"] == "no-cache"
-    assert "cache-control" not in c.get("/static/app.css").headers
+    assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
+    v = pages.mark(tmp_path / "app.css")
+    r = c.get(f"/static/app.css?v={v}")
+    assert r.headers["cache-control"] == "public, max-age=31536000, immutable"
+    # a mark that is not this file's (the page of the version before, asking the copy that was just updated)
+    assert c.get("/static/app.css?v=0123456789").headers["cache-control"] == "no-cache"
+    assert c.get("/static/app.css?v=").headers["cache-control"] == "no-cache"
+    # unchanged: 304, saying the same about keeping it
+    again = c.get(f"/static/app.css?v={v}", headers={"If-None-Match": r.headers["etag"]})
+    assert again.status_code == 304 and again.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert c.get("/static/icon.png").headers["cache-control"] == "no-cache" and c.get("/static/nothing.js").status_code == 404
+
+
+def test_scripts_and_style_sheets_are_sent_compressed(tmp_path):
+    import gzip
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from iosuite_shared import pages
+    text = "export const a = 1;\n" * 400
+    (tmp_path / "app.js").write_text(text)
+    (tmp_path / "small.js").write_text("export const a = 1;")
+    (tmp_path / "icon.png").write_bytes(b"\x89PNG" + bytes(4000))
+    (tmp_path / "index.html").write_text("<p>")
+    app = FastAPI()
+    pages.mount(app, tmp_path)
+    c = TestClient(app)
+    with c.stream("GET", "/static/app.js", headers={"Accept-Encoding": "gzip"}) as r:
+        raw = b"".join(r.iter_raw())
+        assert r.headers["content-encoding"] == "gzip" and r.headers["vary"] == "Accept-Encoding"
+        assert r.headers["content-type"].startswith("text/javascript") and int(r.headers["content-length"]) == len(raw) < len(text) // 10
+        assert gzip.decompress(raw).decode() == text
+        etag = r.headers["etag"]
+    assert etag.startswith('W/"')
+    # the browser's copy is still the file: 304, whichever way it was sent
+    assert c.get("/static/app.js", headers={"Accept-Encoding": "gzip", "If-None-Match": etag}).status_code == 304
+    plain = c.get("/static/app.js", headers={"Accept-Encoding": "identity"})
+    assert "content-encoding" not in plain.headers and plain.text == text and plain.headers["vary"] == "Accept-Encoding"
+    assert c.get("/static/app.js", headers={"Accept-Encoding": "identity", "If-None-Match": plain.headers["etag"]}).status_code == 304
+    # not worth it: a small file, a picture; and a part of a file is sent as it is
+    for path in ("/static/small.js", "/static/icon.png"):
+        assert "content-encoding" not in c.get(path, headers={"Accept-Encoding": "gzip"}).headers
+    part = c.get("/static/app.js", headers={"Accept-Encoding": "gzip", "Range": "bytes=0-9"})
+    assert part.status_code == 206 and part.content == text[:10].encode() and "content-encoding" not in part.headers
+    assert "content-encoding" not in c.head("/static/app.js", headers={"Accept-Encoding": "gzip"}).headers
+
+
+def test_the_suite_s_own_scripts_at_their_routes(tmp_path):
+    import gzip
+
+    from fastapi import FastAPI, Request
+    from fastapi.testclient import TestClient
+
+    from iosuite_shared import pages
+    text = "export function h() {}\n" * 300
+    (tmp_path / "ui.js").write_text(text)
+    app = FastAPI()
+
+    @app.get("/api/auth/ui.js")
+    def ui(request: Request):
+        return pages.send(request, tmp_path / "ui.js", "text/javascript")
+
+    c = TestClient(app)
+    with c.stream("GET", "/api/auth/ui.js", headers={"Accept-Encoding": "gzip, br"}) as r:
+        assert r.headers["content-encoding"] == "gzip" and gzip.decompress(b"".join(r.iter_raw())).decode() == text
+        assert r.headers["cache-control"] == "no-cache" and r.headers["content-type"].startswith("text/javascript")
+        etag = r.headers["etag"]
+    # imported by its name: asked for each time, and answered 304 while it is the same (it was sent whole each time before)
+    again = c.get("/api/auth/ui.js", headers={"If-None-Match": etag})
+    assert again.status_code == 304 and again.content == b"" and again.headers["cache-control"] == "no-cache"
+    plain = c.get("/api/auth/ui.js", headers={"Accept-Encoding": "identity"})
+    assert plain.text == text and "content-encoding" not in plain.headers
+    assert c.get("/api/auth/ui.js", headers={"If-None-Match": plain.headers["etag"]}).status_code == 304
+    assert c.get(f"/api/auth/ui.js?v={pages.mark(tmp_path / 'ui.js')}").headers["cache-control"] == "public, max-age=31536000, immutable"
+    (tmp_path / "ui.js").write_text(text + "// changed\n")
+    assert c.get("/api/auth/ui.js", headers={"If-None-Match": etag}).status_code == 200
 
 
 # ---- a copy with a certificate: ports that answer HTTPS and plain HTTP both

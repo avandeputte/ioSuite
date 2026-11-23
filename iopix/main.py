@@ -238,12 +238,10 @@ shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of 
 
 @app.get("/", include_in_schema=False, dependencies=[access.public])
 def index():
-    """The page, with the version stamped on the script and stylesheet: after an update the browser (and Cloudflare,
-    which caches .js and .css at the edge) fetches the new ones instead of serving what it kept."""
-    html = (config.STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    for f in ("static/app.js", "static/app.css"):
-        html = html.replace(f'"{f}"', f'"{f}?v={APP_VERSION}"')
-    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+    """The page, with a mark on its script and style sheet (pages.stamp): after an update the browser (and
+    Cloudflare, which caches .js and .css at the edge) fetches the new ones instead of serving what it kept."""
+    return HTMLResponse(pages.stamp((config.STATIC_DIR / "index.html").read_text(encoding="utf-8"), config.STATIC_DIR),
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/sw.js", include_in_schema=False, dependencies=[access.public])
@@ -252,4 +250,4 @@ def service_worker():
     return FileResponse(config.STATIC_DIR / "sw.js", media_type="text/javascript")
 
 
-app.mount("/static", pages.Static(directory=config.STATIC_DIR), name="static")  # modules marked no-cache
+app.mount("/static", pages.Static(directory=config.STATIC_DIR), name="static")  # compressed, and kept as its address says

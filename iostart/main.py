@@ -7,8 +7,7 @@ app password), whether sign-in is required at all, and refuses cross-site writes
 suite.
 """
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from iosuite_shared import application, mcp as shared_mcp, users
+from iosuite_shared import application, mcp as shared_mcp, pages, users
 
 from iostart import __version__, api, appsignin, bookmarks, config, db, keys, mcp, news, timers
 from iostart.bookmarks import api as bookmarksapi, ext as bookmarkext
@@ -69,11 +68,9 @@ app = application.create(
 
 
 def _page(swap: dict[str, str] | None = None) -> HTMLResponse:
-    """The page, with the version stamped on the script and stylesheet: after an update the browser (and Cloudflare,
-    which caches .js and .css at the edge) fetches the new ones instead of serving what it kept."""
-    html = (config.STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    for f in ("static/app.js", "static/app.css", "static/js/theme.js"):
-        html = html.replace(f'"{f}"', f'"{f}?v={__version__}"')
+    """The page, with a mark on its script and style sheets (pages.stamp): after an update the browser (and
+    Cloudflare, which caches .js and .css at the edge) fetches the new ones instead of serving what it kept."""
+    html = pages.stamp((config.STATIC_DIR / "index.html").read_text(encoding="utf-8"), config.STATIC_DIR)
     for a, b in (swap or {}).items():
         html = html.replace(a, b)
     return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
@@ -113,4 +110,4 @@ def bookmarks_manifest():
     return _manifest("bookmarks.webmanifest")
 
 
-app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
+app.mount("/static", pages.Static(directory=config.STATIC_DIR), name="static")

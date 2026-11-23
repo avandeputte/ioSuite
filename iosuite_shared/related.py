@@ -38,13 +38,12 @@ import time
 import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import catalog, db, links, stamp, suite, users
+from iosuite_shared import catalog, db, links, pages, stamp, suite, users
 from iosuite_shared.access import json_body
 
 log = logging.getLogger("iosuite_shared.related")
@@ -313,10 +312,9 @@ def router(auth) -> APIRouter:
                                 f"That {KINDS[kind]['label'].lower()} is not there, or you may not see it" if e.status in (403, 404) else str(e)) from None
 
     @r.get("/api/related/ui.js", include_in_schema=False, dependencies=[access.signed_in])
-    def api_ui():
+    def api_ui(request: Request):
         """The panel (static/related-panel.js): "Linked" under an item, and the picker."""
-        return FileResponse(Path(__file__).with_name("static") / "related-panel.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "related-panel.js", "text/javascript")
 
     @r.get("/api/related/kinds", dependencies=[access.signed_in])
     def api_kinds(request: Request):
@@ -390,10 +388,9 @@ def router(auth) -> APIRouter:
 
     # who added the item and changed it, with what and from where (iosuite_shared.stamp): to whoever sees the item
     @r.get("/api/changes/ui.js", include_in_schema=False, dependencies=[access.signed_in])
-    def api_changes_ui():
+    def api_changes_ui(request: Request):
         """The line under an item (static/changes-panel.js): "Added by … · changed by …", and its history."""
-        return FileResponse(Path(__file__).with_name("static") / "changes-panel.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "changes-panel.js", "text/javascript")
 
     @r.get("/api/changes/{kind}/{item_id}", dependencies=[access.signed_in])
     async def api_changes(kind: str, item_id: str, request: Request):
