@@ -6,13 +6,11 @@ import { profileScope as scopeSelect } from '../../api/auth/ui.js';
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['books', 'Address books'],
-    ...(S.user.role === 'admin' ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, books: setBooks, server: setServer,
-    security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, devices: setDevices, books: setBooks, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
@@ -73,7 +71,7 @@ export async function setDevices(el) {
       how('Setup for Claude Code and JSON-configured apps',
         copyRow(`claude mcp add --transport http iocontact ${info.mcp} --header "Authorization: Bearer APP-PASSWORD"`),
         copyRow(JSON.stringify({ mcpServers: { iocontact: { command: 'npx', args: ['-y', 'mcp-remote', info.mcp, '--header', 'Authorization: Bearer APP-PASSWORD'] } } }))))
-      : (S.user.role === 'admin' ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/server' }, 'Settings › Server'), '.')) : null),
+      : (S.user.suiteAdmin ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/apps' }, 'Settings › Apps'), '.')) : null),
     h('div', { class: 'box' }, h('h2', null, icon('link'), 'Other apps (REST API)'),
       h('p', null, 'JSON, vCard or jCard with your user name and an app password. ', h('a', { class: 'lnk', href: 'api/docs', target: '_blank' }, 'API documentation')),
       copyRow(`curl -u ${info.user}:APP-PASSWORD -H 'Accept: application/vcard+json' ${info.server}/api/contacts?q=smith`))].filter(Boolean));
@@ -97,21 +95,13 @@ export async function setBooks(el) {
       })));
 }
 
-/** Settings › Security and Global settings (suite admins): the people and their role in every app (here
+/** Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app (here
     too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
     iosuite-shared. */
-export const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
 
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart:
-    iosuite-shared's panel, the same in every io app. */
-export async function setServer(el) {
-  let ui;
-  try { ui = await serverUi(); } catch (e) { el.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { toast });
-}
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);

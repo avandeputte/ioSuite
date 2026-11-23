@@ -1,4 +1,4 @@
-"""Settings › Global settings: the settings the apps read as they start (kept in the Shared ioSuite database, set on
+"""Settings › Apps › All settings: the settings the apps read as they start (kept in the Shared ioSuite database, set on
 the screen or with `iosuite set`), the addresses at each door, the restart that makes a change apply, and the log
 viewer that puts every copy's log on one timeline (iosuite_shared.admin, its endpoints, iosuite_shared.cli)."""
 import argparse

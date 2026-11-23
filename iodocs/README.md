@@ -20,7 +20,7 @@ suite's shared library ([`iosuite_shared/`](../iosuite_shared/)).
   (the home insurance). By person, by kind, and a search over everything, the text read off the scans included.
 - **Who sees it**, per document: *the family* (everyone with a role here), *its people and the grown-ups* (the people
   it is for, whoever added it, and the editors and admins; the usual), or *private* (only its people and whoever added
-  it: a will). New accounts have no role here (as in ioMoney): an admin gives one in Settings › Security.
+  it: a will). New accounts have no role here (as in ioMoney): an admin gives one in Settings › People.
 - **Reading scans** (Tesseract on the server, `iodocs/ocr.py`): a passport's or ID card's machine-readable zone (TD1, TD2
   and TD3, with their check digits) gives the kind, number, country, name, birth date, sex and the expiry. The zone is
   found by reading each band of the picture (turned too, for a photo taken sideways or upside down) with a Tesseract
@@ -44,7 +44,7 @@ suite's shared library ([`iosuite_shared/`](../iosuite_shared/)).
 - **AI assistants**: an MCP server ("when does Ava's passport expire?", "what's our car insurance policy number?").
 - **With the other apps**: ioCalendar shows the day each document expires; the start page has a *To renew* tile and
   finds documents in its search box.
-- **Settings › Security** and **Global settings** (suite admins): the suite's people, their role in every app, app
+- **Settings › People, Apps, Servers and Keys** (suite admins): the suite's people, their role in every app, app
   passwords and sign-in at the proxy; the apps, keys and tokens (iosuite_shared's panel, the same in every app).
 - Light and dark, phone-sized screens (a photo straight from the phone's camera), installable as an app.
 
@@ -90,7 +90,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioDocs has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioDocs, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioDocs, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -112,12 +112,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioDocs runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 ## API
 
@@ -127,7 +127,7 @@ The paths below are ioDocs' own: at the suite's address they are inside its fold
 | --- | --- | --- |
 | Web and JSON clients | **REST/JSON**: documents (list, search, by kind, person or status), one document, add, change, renew, delete; its files (add, read, put first, remove; each gets a name of its own, such as iodocs-000123.pdf, never the one it was uploaded under) | `/api/`, OpenAPI docs at `/api/docs` |
 | ioCalendar and the start page | the documents that expire between two days | `GET /api/expiring?start=&end=` |
-| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
+| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps), or every app's tools at ioStart's `/mcp` |
 
 Settings › Account makes **app passwords**, for the REST API (HTTP Basic, or `Authorization: Bearer <app password>`)
 and for MCP.

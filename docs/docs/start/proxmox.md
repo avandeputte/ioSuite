@@ -33,7 +33,7 @@ pct enter 105          # the container's id
 iosuite install        # the list of apps: tick and untick
 ```
 
-Updating: **Settings › Global settings › Updates** in any app, or `update` in the container's console as with every
+Updating: **Settings › Servers › Updates** in any app, or `update` in the container's console as with every
 community script, or `sh /opt/iosuite/update.sh`.
 
 ## Without questions

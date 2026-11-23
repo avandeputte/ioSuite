@@ -7,7 +7,7 @@ description: The machine's file (config.env), the settings kept in the Shared io
 ioSuite is one program. A machine that runs it has **one small file**, `config.env` in the program folder
 (`/opt/iosuite/config.env`), which says how to reach the Shared ioSuite database and which apps this machine runs.
 **Everything else is kept in the Shared ioSuite database** and changed in the browser, under
-**Settings › Global settings › Settings** in any app, or with the `iosuite set` command. There is no settings file per
+**Settings › Apps › All settings** in any app, or with the `iosuite set` command. There is no settings file per
 app.
 
 ## The machine's file
@@ -71,7 +71,7 @@ for devices and MCP answer HTTPS as well as plain HTTP.
 
 ## Settings in the database
 
-Under **Settings › Global settings › Settings** (suite admins), with a section for the whole suite and one per app.
+Under **Settings › Apps › All settings** (suite admins), with a section for the whole suite and one per app.
 A change takes effect when the app starts again; the screen has a Restart button. The whole suite's:
 
 | Setting | What it is |
@@ -94,10 +94,10 @@ note and its change log that long (the trash shows 30 days); after that an empty
 
 Three more places hold what is not a plain setting, all in the same database:
 
-- **Settings › Security**: people, roles, app passwords, sign-in at the proxy and the addresses of your reverse proxies.
-- **Settings › Global settings › Apps**: each app's default role and whether it requires sign-in.
-- **Settings › Global settings › Keys and tokens**: the keys for services outside the suite. They can be written, never read back.
-- **Settings › Global settings › Certificate**: [the suite's own certificate](../run/https.md), for HTTPS without a reverse proxy.
+- **Settings › People**: people, roles, app passwords, sign-in at the proxy and the addresses of your reverse proxies.
+- **Settings › Apps › The apps**: each app's default role and whether it requires sign-in.
+- **Settings › Keys**: the keys for services outside the suite. They can be written, never read back.
+- **Settings › Servers › Certificate**: [the suite's own certificate](../run/https.md), for HTTPS without a reverse proxy.
 
 ## The `iosuite` command
 
@@ -121,6 +121,6 @@ iosuite serve                                 # run the apps until stopped (what
 ## The log
 
 A copy keeps one log for all its apps (`data/iosuite.log`), each line marked with the app it came from. Suite admins
-read it under **Settings › Global settings › Logs**: filtered by app, level and time, searched, followed live, and
+read it under **Settings › Servers › Logs**: filtered by app, level and time, searched, followed live, and
 downloaded. When the suite runs as several copies the screen shows them on one timeline and says which server a line
 came from.

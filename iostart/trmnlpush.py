@@ -8,7 +8,7 @@ with are kept with the suite's keys and tokens (iosuite_shared.credentials, app 
     trmnl_<user id>_<screen>   the screen's webhook URL
     trmnl_<user id>_pw         an ioStart app password of the person's (label "TRMNL"), made when they first add one
 
-so a suite admin sees them (Settings › Global settings › Keys and tokens), and the person can revoke the app password
+so a suite admin sees them (Settings › Keys), and the person can revoke the app password
 in Settings › Account like any other (pushing then stops, and says so). The rest (time zone, clock, what was sent
 when) is the person's own setting (prt_settings user:<id>:trmnl), gone with their account.
 

@@ -36,7 +36,7 @@ whose backup files it reads and writes unchanged.
 
 Access: suite admins only (a backup holds everybody's data). Everybody else has no access, whatever role or default
 role says, and ioBackup takes no roles. The servers' passwords and the Google
-keys are kept with the suite's keys and tokens (start page: Settings › Global settings › Keys and tokens), never shown
+keys are kept with the suite's keys and tokens (start page: Settings › Keys), never shown
 back.
 
 ## What a backup is
@@ -167,7 +167,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioBackup has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioBackup, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioBackup, or from a shell;
 a change applies when the app starts again:
 
 ```sh

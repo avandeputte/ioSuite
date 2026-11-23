@@ -22,14 +22,14 @@ deleted, so going back is one command.
 | Database logins | one for each app | the suite's one login, given the rights on each app's database |
 | Data folders | `/opt/<app>/app/data` | `/opt/iosuite/data/<app>` |
 | Ports | one for each app | three for the suite: the pages, devices, MCP |
-| Keys an old file still held | `config.env` | Settings › Suite › Keys and tokens |
+| Keys an old file still held | `config.env` | Settings › Keys |
 
 It reads an install made by the first ioSuite's installer on Linux, on one machine or on several. An install in
 Docker containers is not covered.
 
 ## Before you start
 
-- **Update the old suite** to 3.44.0 or later, from any app's Settings › Server › Update. The program expects the
+- **Update the old suite** to 3.44.0 or later, from any app's Settings › Server › Update (the first ioSuite's own page). The program expects the
   databases as that version left them, and the converter refuses an older one.
 - **Back up the databases**, with ioBackup or `mysqldump`. The converter does not touch what the apps stored, but a
   backup is what makes any change to a server safe.
@@ -99,8 +99,7 @@ outside your network. [Reverse proxy and HTTPS](../run/reverse-proxy.md) and
 `http://SERVER/calendar/`, and for devices at `http://SERVER:8443/calendar/`. An app with a name of its own
 (`https://calendar.example.com`) keeps that name; it also answers in its folder at the suite's address.
 
-**Settings an old file held** are under each app's Settings from now on, and the keys under Settings › Suite › Keys and
-tokens. The old `config.env` files are no longer read.
+**Settings an old file held** are under each app's Settings from now on, and the keys under Settings › Keys. The old `config.env` files are no longer read.
 
 ## Options
 

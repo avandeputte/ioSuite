@@ -30,7 +30,7 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
                            added to a suite (ioPix: the photos folder); an answer is stored, with the settings in
                            `also` beside it; no answer leaves the default
   settings                 [{name, label, hint, type, default, choices}]: its own settings, kept in the Shared ioSuite
-                           database (iosuite_shared.config.declared), for Settings › Global settings › Settings and `iosuite set`
+                           database (iosuite_shared.config.declared), for Settings › Apps › All settings and `iosuite set`
   items                    [{kind, label, plural, href, id}]: the kinds of items it has; href opens one in the app
                            ("#/event/{id}"); id "uuid" for UUIDs (default: a number)
   notifications            [{kind, label, hint, admin}]: what Account › Notifications offers from it

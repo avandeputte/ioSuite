@@ -27,7 +27,7 @@ def all_users() -> list[dict]:
 
 def init() -> None:
     """The Shared ioSuite database's tables, the ADMIN_USER / ADMIN_PASSWORD account on a first start with no accounts,
-    and ioDocs' default role: none, until a suite admin says otherwise (Settings › Global settings › Apps). Passports
+    and ioDocs' default role: none, until a suite admin says otherwise (Settings › Apps › The apps). Passports
     and policies are not for everyone with an account, so each person is given a role here by name."""
     shared.init()
     if not shared_db.one("SELECT 1 AS x FROM ios_settings WHERE app = %s AND name = 'default_role'", (APP,)):

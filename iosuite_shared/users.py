@@ -397,7 +397,7 @@ def is_suite_admin(user) -> bool:
 
 
 def require_login(app: str) -> bool:
-    """Settings › Global settings › Apps › Sign-in required: nothing but the sign-in screen for visitors. On unless it
+    """Settings › Apps › The apps › Sign-in required: nothing but the sign-in screen for visitors. On unless it
     was turned off ("0"); always on in an admin tool. Off while no account exists, or nobody could sign in."""
     return any_users() and sign_in_required(app)
 

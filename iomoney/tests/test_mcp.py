@@ -1,5 +1,6 @@
 """The MCP server at /mcp: off until switched on, signed in with an app password, acting as that account; nothing for an account without a role here."""
 import json
+from iosuite_shared import mcp as shared_mcp
 
 H = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 
@@ -34,7 +35,7 @@ def test_mcp_money(client, as_user):
     secret = client.post("/api/auth/app-passwords", json={"label": "claude"}).json()["password"]
     auth = {"Authorization": f"Bearer {secret}"}
     assert rpc(client, "tools/list", auth=auth)[0] == 404  # off on a fresh install
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iomoney", True)
     client.cookies.clear()
     assert rpc(client, "tools/list")[0] == 401
     names = {t["name"] for t in rpc(client, "tools/list", auth=auth)[1]["result"]["tools"]}

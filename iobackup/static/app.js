@@ -685,14 +685,13 @@ async function onRoute() {
 }
 
 // ------------------------------------------------------------------ settings
-const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function showSettings(page, r) {
-  const tabs = [['account', 'Account'], ['display', 'Display'], ...(isAdmin() ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+  const tabs = [['account', 'Account'], ['display', 'Display'], ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, server: setServer, security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 async function setAccount(el) {
@@ -711,11 +710,6 @@ async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
-const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
-async function setServer(el) {
-  const panel = h('div'); el.append(panel);
-  try { await (await serverUi()).mount(panel, { toast }); } catch (e) { panel.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); }
 }
 // ------------------------------------------------------------------ sign-in
 function showSignIn() {

@@ -1,4 +1,4 @@
-"""The shared updater and server router, without a database: GitHub is a stub, update.sh a tiny script that writes
+"""The shared updater, without a database: GitHub is a stub, update.sh a tiny script that writes
 its result file. (The suite's daily-check switch and the rows the apps write are in test_suiteupdates.py.)"""
 import json
 import time
@@ -6,7 +6,6 @@ import urllib.error
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from iosuite_shared import updates
 from iosuite_shared.fastapi import Auth
@@ -187,60 +186,3 @@ def admin_app(auth: Auth, monkeypatch):
     return app
 
 
-def test_server_router(tmp_path, monkeypatch):
-    (tmp_path / "COMMIT").write_text("abcdef0123456789\n")  # read as the updater starts
-    u = make_updater(tmp_path, monkeypatch)
-    restarted = []
-    monkeypatch.setattr(updates.Updater, "restart", staticmethod(lambda delay=0.5: restarted.append(delay)))
-    saved = {}
-
-    def apply(body):
-        if "mcpEnabled" in body:
-            if body["mcpEnabled"] == "locked":
-                raise ValueError("MCP=1 keeps it on")
-            saved["mcp"] = body["mcpEnabled"]
-
-    auth = Auth("iotest", register=False)
-    app = admin_app(auth, monkeypatch)
-    app.include_router(auth.server_router(u, info=lambda: {"mcpEnabled": saved.get("mcp", False), "database": "db:3306/x"}, apply=apply))
-    c = TestClient(app)
-
-    ui = c.get("/api/server/ui.js")
-    assert ui.status_code == 200 and "javascript" in ui.headers["content-type"] and "export async function mount" in ui.text
-
-    s = c.get("/api/server").json()
-    assert s["name"] == auth.label
-    assert s["version"] == "1.2.0" and s["installed"] == "abcdef0" and s["repo"] == "someone/iotest"
-    assert s["database"] == "db:3306/x" and s["mcpEnabled"] is False and not s["canRun"] and "autoCheck" not in s
-
-    assert c.post("/api/server", json={"mcpEnabled": True}).json()["mcpEnabled"] is True and saved["mcp"] is True
-    assert c.post("/api/server", json={"mcpEnabled": "locked"}).status_code == 400
-    assert c.post("/api/server", json={"action": "nonsense"}).status_code == 400
-    assert c.post("/api/server").status_code == 200  # an empty body: the info
-    # updating is the suite's (/api/suite-admin/updates): one app is not updated on its own from here
-    assert c.post("/api/server", json={"action": "update"}).status_code == 400
-    assert c.post("/api/server", json={"action": "check"}).status_code == 400
-
-    assert c.post("/api/server", json={"action": "restart"}).json() == {"ok": True} and restarted == [0.5]
-
-    # the log is the copy's, read by suite admins (Settings › Global settings › Logs): not here any more
-    assert c.get("/api/log").status_code == 404 and c.get("/api/log/download").status_code == 404
-    assert s["together"] == [] and s["mcpUrl"].endswith("/mcp")
-
-
-def test_server_router_is_for_admins_only(tmp_path, monkeypatch):
-    u = make_updater(tmp_path, monkeypatch)
-    auth = Auth("iotest", register=False)
-    app = FastAPI()
-
-    @app.middleware("http")
-    async def nobody(request, call_next):
-        request.state.user = {"id": 2, "name": "bob", "role": "viewer"}
-        return await call_next(request)
-    monkeypatch.setattr("iosuite_shared.users.is_admin", lambda user: False)
-    monkeypatch.setattr("iosuite_shared.users.any_users", lambda: True)
-    app.include_router(auth.server_router(u))
-    c = TestClient(app)
-    assert c.get("/api/server").status_code == 403
-    assert c.get("/api/server/ui.js").status_code == 403
-    assert c.post("/api/server", json={"action": "restart"}).status_code == 403

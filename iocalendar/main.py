@@ -53,8 +53,8 @@ app = FastAPI(title="ioCalendar", version=__version__, lifespan=lifespan, docs_u
                           "for text/calendar or application/calendar+json (jCal) with Accept or ?format=ics|jcal.")
 
 
-# Settings › Server › MCP server: off until an admin turns it on (or MCP=1 in the environment); the MCP box of the panel
-mcp_switch = shared_mcp.Switch(db.get_setting, db.set_setting,
+# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
+mcp_switch = shared_mcp.Switch(config.APP,
                                "Lets an AI assistant read the agenda, find free time and add or change events, as you.")
 mcp_enabled = mcp_switch.enabled
 
@@ -84,11 +84,10 @@ def _status_extra(request) -> dict:
 
 
 app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the panel of Settings › Security and Global settings): the whole suite (suite admins)
+app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the panel of Settings › People, Apps, Servers and Keys): the whole suite (suite admins)
 app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
 app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite: search, items, tile, as every app answers them (app.json)
 app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(auth.server_router(updater, info=mcp_switch.info, apply=mcp_switch.apply))  # /api/server (admins)
 app.include_router(auth.profile_router(api.sync_url))  # /profile/<token>/<file> and the profile for all the apps that sync
 app.include_router(api.router)
 app.include_router(auth.feeds_router(api.feed_links))  # /api/feeds: your subscription links (Shared ioSuite database, shown once)

@@ -238,13 +238,13 @@ and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and
 
 ## Monarch Money's sign-in
 
-The sign-in is kept with the suite's keys and tokens (**Settings › Global settings › Keys and tokens**, ioMoney, suite
+The sign-in is kept with the suite's keys and tokens (**Settings › Keys**, ioMoney, suite
 admins), never in a config file:
 
 | Key | What it is |
 | --- | --- |
 | `monarch_email`, `monarch_password` | how you sign in to Monarch Money |
-| `monarch_mfa_secret` | the authenticator key: the text under the QR code Monarch shows when you set up an authenticator app (Monarch › Settings › Security). With it ioMoney makes the six-digit code itself, as your authenticator app does |
+| `monarch_mfa_secret` | the authenticator key: the text under the QR code Monarch shows when you set up an authenticator app (Monarch › Settings › People). With it ioMoney makes the six-digit code itself, as your authenticator app does |
 | `monarch_token` | the session Monarch gives on sign-in, kept by ioMoney: later syncs use it and sign in again only when Monarch no longer takes it |
 
 Without an authenticator key, Settings › Money takes the code your authenticator app shows, once. When Monarch refuses
@@ -293,7 +293,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioMoney has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioMoney, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioMoney, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -365,7 +365,7 @@ curl -u alex:APP-PASSWORD -X PATCH -H 'Content-Type: application/json' -d '{"cat
 
 ## MCP server
 
-Off until an admin turns it on in **Settings › Server**. The tools: `overview`, `net_worth_history`,
+Off until a suite admin turns it on in **Settings › Apps**. The tools: `overview`, `net_worth_history`,
 `search_transactions` (by tag and needing a look too), `data_checks`, `payees`, `bank_contact`, `spending`, `cash_flow`, `categories`, `update_transaction` (its tags and reviewed too), `add_transaction`, `rules`, `add_rule`,
 `test_rule`, `update_rule`, `delete_rule`, `apply_rules`, `link_transfers`, `possible_transfers`, `link_transaction`, `unlink_transaction`,
 `transfer_rules`, `add_transfer_rule`, `delete_transfer_rule`, `portfolio`,

@@ -371,7 +371,7 @@ async function onRoute() {
 }
 function noRole(page) {
   put(page, h('div', { class: 'empty' }, icon('lock'), h('p', null, 'You have no role in ioMoney yet.'),
-    h('p', { class: 'muted' }, 'The household’s finances are shown only to the people given a role here: a suite admin gives one in Settings › Security › Roles.')));
+    h('p', { class: 'muted' }, 'The household’s finances are shown only to the people given a role here: a suite admin gives one in Settings › People › Roles.')));
 }
 
 // ------------------------------------------------------------------ overview: the net worth, its history, the accounts
@@ -2416,12 +2416,12 @@ async function showAssets(page) {
 async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
-    ...(adm ? [['money', 'Money'], ['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(adm ? [['money', 'Money']] : []),
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   put(page, h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div', { style: { maxWidth: '900px' } }); put(page, body);
-  await ({ account: setAccount, display: setDisplay, money: setMoney, server: setServer, security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, money: setMoney, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 
 /** Settings › Money (admins): the household's currency, and Monarch Money: whether its sign-in is kept (in the
@@ -2433,7 +2433,7 @@ async function setMoney(el) {
   put(el, h('div', { class: 'box' }, h('h2', null, icon('bank'), 'The household’s currency'),
     h('p', { class: 'muted' }, 'The net worth and every total are in this currency; an account or a holding in another is converted at the day’s rate (Yahoo Finance).'),
     fld('Currency (USD, EUR, GBP…)', cur)));
-  const keysLink = S.user.suiteAdmin ? h('a', { class: 'lnk', href: '#/settings/global/keys' }, 'Global settings › Keys and tokens') : 'Global settings › Keys and tokens (a suite admin)';
+  const keysLink = S.user.suiteAdmin ? h('a', { class: 'lnk', href: '#/settings/keys' }, 'Settings › Keys') : 'Settings › Keys (a suite admin)';
   const K = st.keys || {};
   const keyRow = (k, l) => h('li', null, icon(K[k] ? 'check' : 'close', K[k] ? 'ok' : 'warn'), l, K[k] ? '' : ': not set');
   const last = st.last;
@@ -2573,23 +2573,14 @@ async function setDisplay(el) {
   put(el, ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })));
 }
 
-/** Settings › Security and Global settings (suite admins): the people, their role in every app, app
+/** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
-const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { put(el, h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
-
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart
-    (iosuite-shared's panel, the same in every io app). */
-async function setServer(el) {
-  let ui;
-  try { ui = await serverUi(); } catch (e) { put(el, h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { toast });
-}
-const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
 
 // ------------------------------------------------------------------ sign-in
 function showSignIn() {

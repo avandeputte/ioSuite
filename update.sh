@@ -18,7 +18,7 @@
 # data and the environment are never touched. The order protects the install: the Python packages the new version
 # asks for (its pyproject.toml) are installed first, and the code moves only once that succeeded, so a failed package
 # install leaves the installed version running as it was; a failed swap puts the previous files back.
-# Settings › Global settings › Updates runs this same script from the web app.
+# Settings › Servers › Updates runs this same script from the web app.
 set -e
 cd "$(dirname "$0")"
 APP="$(pwd)"

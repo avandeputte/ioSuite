@@ -44,8 +44,8 @@ single-page vanilla JS app, built the same way as the other io apps, signed in w
 - **For suite admins only**: ioDNS is an **admin tool**, so only the suite admins can use it (everybody else has no
   access here, and it takes no roles or default role); only they see it in the start page's gear menu (under Admin tools)
   and the app switchers, apart from the other apps. The servers' passwords and API keys are kept with the suite's
-  keys and tokens in the Shared ioSuite database (Settings › Global settings), never shown back.
-- **Updates, the log and Restart** under Settings › Global settings and Settings › Server, as in every app of the suite; light and dark, a phone layout,
+  keys and tokens in the Shared ioSuite database (Settings › Keys), never shown back.
+- **Updates, the log and Restart** under Settings › Servers, as in every app of the suite; light and dark, a phone layout,
   installable as a web app.
 
 ## DNS servers
@@ -110,7 +110,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioDNS has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioDNS, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioDNS, or from a shell;
 a change applies when the app starts again:
 
 ```sh

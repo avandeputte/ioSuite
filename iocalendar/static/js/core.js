@@ -169,7 +169,7 @@ export const AUTO_KINDS = ['birthdays', 'holidays', 'subscribed'];
 export const REFRESH_HOURS = [[1, 'Every hour'], [3, 'Every 3 hours'], [6, 'Every 6 hours'], [12, 'Twice a day'], [24, 'Once a day'], [168, 'Once a week']];
 export const isAuto = (c) => AUTO_KINDS.includes(c.kind);
 export const memberOf = (id) => S.members.find((m) => m.id === id);
-/** Each family member's colour, initials and face are the suite's (Settings › Security › Family), the same in every io app. */
+/** Each family member's colour, initials and face are the suite's (Settings › People › Family), the same in every io app. */
 export const memberColor = (m) => m.color || '#5f6b7a';
 /** A member's badge: their initials on their colour; `face`: their face (ioPix, else their ioContact card) when they have one. */
 export const memberBadge = (m, face = false) => h('span', { class: `mem${face && m.hasFace ? ' face' : ''}`, title: m.displayName, style: { '--mc': memberColor(m) } }, m.initials || initials(m.displayName),

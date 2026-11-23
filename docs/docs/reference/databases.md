@@ -41,7 +41,7 @@ database, and nothing else on the server.
 | ioMoney | `iomoney` | `mny_` |
 | ioDocs | `iodocs` | `doc_` |
 
-An app's database can have another name: its `DB_NAME` setting (Settings › Global settings › Settings). Every table
+An app's database can have another name: its `DB_NAME` setting (Settings › Apps › All settings). Every table
 carries its app's prefix. The tables are created on the first start; a later version adds the columns and indexes it
 needs by itself when it starts.
 

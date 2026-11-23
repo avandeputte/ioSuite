@@ -43,7 +43,7 @@ def why_not_readable(e: Exception = None) -> str:
     import getpass
     who = getpass.getuser()
     if not config.DATA_DIR.is_dir():
-        return (f"ioPix's data folder {config.DATA_DIR} does not exist. Settings › Global settings › Settings names it "
+        return (f"ioPix's data folder {config.DATA_DIR} does not exist. Settings › Apps › All settings names it "
                 f"(DATA_DIR); its photo index is built there.")
     if not os.access(config.DATA_DIR, os.W_OK):
         return (f"ioPix's data folder {config.DATA_DIR} cannot be written by {who}, the account the server runs as, "

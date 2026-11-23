@@ -44,7 +44,7 @@ def names_of(ids: set) -> dict:
 
 
 def personal_book(u: dict) -> None:
-    """Every member gets their own private address book, whichever way the account was made (here, Settings › Security,
+    """Every member gets their own private address book, whichever way the account was made (here, Settings › People,
     the shared setup or the command line): made the first time the account's books are listed (one small query). A
     viewer keeps nothing of their own."""
     if not shared.is_member(u):
@@ -95,7 +95,7 @@ KNOWN_SUITE = "shared_database"   # in ioContact's own settings: the Shared ioSu
 
 def init() -> None:
     """The Shared ioSuite database's tables, and the ADMIN_USER / ADMIN_PASSWORD account on a first start with no accounts.
-    Accounts deleted elsewhere (Settings › Security in any app, the command line) leave their books here: swept at start."""
+    Accounts deleted elsewhere (Settings › People in any app, the command line) leave their books here: swept at start."""
     shared.init()
     sweep_gone()
 

@@ -2,6 +2,7 @@
 import base64
 import json
 from iosuite_shared import testing
+from iosuite_shared import mcp as shared_mcp
 
 H = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 
@@ -41,7 +42,8 @@ def app_password(client):
 def test_mcp_switch_and_sign_in(client):
     auth, secret = app_password(client)
     assert rpc(client, "tools/list", auth=auth)[0] == 404  # off on a fresh install
-    assert client.post("/api/server", json={"mcpEnabled": True}).json()["mcpEnabled"] is True
+    shared_mcp.set_for("iocalendar", True)
+    assert shared_mcp.enabled_for("iocalendar") is True
     client.cookies.clear()
     assert rpc(client, "tools/list")[0] == 401  # nobody
     code, msg = rpc(client, "tools/list", auth=auth)
@@ -55,7 +57,7 @@ def test_mcp_switch_and_sign_in(client):
 
 def test_mcp_events(client, family_id):
     auth, _ = app_password(client)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocalendar", True)
     ev = call(client, auth, "create_event", title="Swim lessons", start="2026-11-02T16:00", end="2026-11-02T17:00", calendar="Family",
               location="City pool", repeat="FREQ=WEEKLY;COUNT=4", people=["Sam"], reminders=[30])
     assert ev["title"] == "Swim lessons" and ev["calendar"] == "Family" and ev["rrule"] == "FREQ=WEEKLY;COUNT=4"
@@ -83,7 +85,7 @@ def test_mcp_events(client, family_id):
 
 
 def test_mcp_member_cannot_change_shared(client, family_id):
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocalendar", True)
     testing.add_account(client, {"name": "kid", "password": "kidpass123", "role": "member"})
     client.cookies.clear()
     assert client.post("/api/auth/login", json={"name": "kid", "password": "kidpass123"}).status_code == 200
@@ -95,7 +97,7 @@ def test_mcp_member_cannot_change_shared(client, family_id):
 
 
 def test_mcp_viewer_only_reads(client, family_id):
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocalendar", True)
     testing.add_account(client, {"name": "vic", "password": "vicpass123", "role": "viewer"})
     client.cookies.clear()
     assert client.post("/api/auth/login", json={"name": "vic", "password": "vicpass123"}).status_code == 200

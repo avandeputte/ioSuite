@@ -4,6 +4,7 @@ the suite. The library tools answer any account; the operator and maintenance to
 import json
 
 import pytest
+from iosuite_shared import mcp as shared_mcp
 
 HEADERS = {"content-type": "application/json", "accept": "application/json, text/event-stream"}
 _bearer = {}
@@ -21,17 +22,16 @@ def _app_password(client, label="claude") -> str:
 
 @pytest.fixture(autouse=True)
 def _mcp_on(client):
-    """The endpoint is off by default (Settings › Server › MCP server); these tests switch it on, with an admin, alex, whose app
+    """The endpoint is off by default (Settings › Apps); these tests switch it on, with an admin, alex, whose app
     password the calls carry (the tests run without accounts otherwise, and the endpoint always wants one)."""
     from iopix import users
-    from iopix.data import state
-    state.set_setting("mcp_enabled", "1")
+    shared_mcp.set_for("iopix", True)
     users.create("alex", "correct horse", "admin")
     _login(client, "alex", "correct horse")
     _bearer["alex"] = f"Bearer {_app_password(client)}"
     client.cookies.clear()
     yield
-    state.set_setting("mcp_enabled", "0")
+    shared_mcp.set_for("iopix", None)
 
 
 def _auth(who="alex"):
@@ -49,14 +49,13 @@ def _viewer(client) -> str:
 
 
 def test_the_endpoint_is_off_until_switched_on(client):
-    from iopix.data import state
-    state.set_setting("mcp_enabled", "0")
+    shared_mcp.set_for("iopix", False)
     r = client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, headers=_auth())
     assert r.status_code == 404 and "switched off" in r.json()["detail"]
     _login(client, "alex", "correct horse")
-    assert client.get("/api/server").json()["mcpEnabled"] is False
-    assert client.post("/api/server", json={"mcpEnabled": True}).status_code == 200
-    assert client.get("/api/server").json()["mcpEnabled"] is True
+    assert shared_mcp.enabled_for("iopix") is False
+    shared_mcp.set_for("iopix", True)
+    assert shared_mcp.enabled_for("iopix") is True
     client.cookies.clear()
     assert _rpc(client, "tools/list")["result"]["tools"]
 

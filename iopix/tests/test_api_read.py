@@ -124,7 +124,7 @@ def test_version_is_single_sourced_and_shown(client):
     assert __version__ == iosuite_shared.__version__, "the suite has one version: shared/iosuite_shared/__init__.py"
     s = client.get("/api/status").json()
     assert s["version"] == __version__ and s["app"] == "iopix" and s["name"] == "ioPix" and "commit" in s and "update" not in s
-    assert client.get("/api/server").json()["version"] == __version__
+    assert client.get("/api/server").status_code == 404  # no Settings › Server of its own: the suite has one version
 
 
 def test_smart_albums_are_saved_searches(client):

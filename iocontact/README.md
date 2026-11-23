@@ -9,11 +9,11 @@ A self-hosted contact manager: a web app for the whole family, and the standard 
 - **Contacts** with names (prefix, first, middle, last, suffix, nickname, maiden name, phonetic names), any number of phone numbers, emails and addresses (with labels and a preferred one), birthday (with or without the year), anniversaries and other dates, company, department, job title, social profiles (LinkedIn, Facebook, Instagram, X, Threads, Bluesky, Mastodon, TikTok, YouTube, GitHub, WhatsApp, Telegram, Signal and more), websites, labels, notes and a photo.
 - **Relations** between contacts: parents, children, siblings, spouses and partners, grandparents, aunts and uncles, cousins, in-laws, step-family, godparents, friends, colleagues, managers… The other side is kept automatically (make Tim Mary's son and Mary becomes Tim's mother), labels follow the other person's gender (Brother, Sister, Sibling), and a **family tree** page lays the family out by generation. A relation can also name someone who is not a contact.
 - **The family and private books**: everyone shares the Family address book; each member also has a private Personal one and can make more private ones; editors also make shared ones. Roles as in the rest of the suite: viewers only read the shared books, members (the default) also keep their own private books, editors change shared contacts, admins also manage users and settings.
-- **Sign-in as in iopix**: the sign-in screen is a pick list of the accounts (each with the face of the contact it is linked to as *me*). Sign-in, passwords, sessions, app passwords and the users admin are iosuite_shared's routes (`/api/auth/*`, `/api/suite-admin/*`), the same in every app; repeated wrong passwords are slowed down per visitor and name, at the web sign-in, over HTTP Basic / Bearer and at the LDAP bind. An account whose password an admin removed (Settings › Security › People › No password) signs in with one click, but only at home: from outside those accounts are not offered and their sessions do not work. *Other* types a user name.
+- **Sign-in as in iopix**: the sign-in screen is a pick list of the accounts (each with the face of the contact it is linked to as *me*). Sign-in, passwords, sessions, app passwords and the users admin are iosuite_shared's routes (`/api/auth/*`, `/api/suite-admin/*`), the same in every app; repeated wrong passwords are slowed down per visitor and name, at the web sign-in, over HTTP Basic / Bearer and at the LDAP bind. An account whose password an admin removed (Settings › People › People › No password) signs in with one click, but only at home: from outside those accounts are not offered and their sessions do not work. *Other* types a user name.
 - **Birthdays**: the upcoming birthdays and anniversaries, with ages, and a **family birthday calendar** to subscribe to.
 - **ioPix**: link a contact to a person named in ioPix. The face from ioPix is the contact's photo, and the only one: ioContact stores no photos of its own, and serves the ioPix face to the web app, phones (CardDAV), vCard exports and the LDAP directory (`jpegPhoto`). A photo in an imported or synced vCard is not kept. The contact links to that person's photos, and *Link by name* links every contact whose name matches exactly one ioPix person. The ioPix people page lists everyone in ioPix and makes a contact from any of them.
 - **Duplicates** (same name, email or phone) and merging, **bulk** favorite, label, move, export and delete, search across names, emails, phone digits, companies, addresses, labels and notes.
-- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
+- **Settings › People, Apps, Servers and Keys** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - Light and dark, phone-sized screens, installable as an app.
 
 ## Run
@@ -57,7 +57,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioContact has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioContact, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioContact, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -79,16 +79,16 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ### ioPix
 
-Nothing to set up: ioContact finds ioPix in the suite's list of apps (the Shared ioSuite database) and reads from it from the server as its own service account (`iocontact-app`) with a read-only app password, both made by itself on first use and listed on the start page's Settings › Security, where a suite admin can revoke them (a new one is made the next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Global settings › Keys and tokens) goes along. The people list comes from ioPix's People (the named people with photos) and the faces from ioPix's face crops.
+Nothing to set up: ioContact finds ioPix in the suite's list of apps (the Shared ioSuite database) and reads from it from the server as its own service account (`iocontact-app`) with a read-only app password, both made by itself on first use and listed on the start page's Settings › People, where a suite admin can revoke them (a new one is made the next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Keys) goes along. The people list comes from ioPix's People (the named people with photos) and the faces from ioPix's face crops.
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioContact runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 Everything about the app is under one Settings page (the sidebar and the avatar menu; a change is saved the moment it
 is made): your own tabs (account, display, apps and devices, address books), then for admins server, and for suite admins
@@ -116,7 +116,7 @@ The paths below are ioContact's own: at the suite's address they are inside its 
 | Mail apps, desk phones, printers | **LDAP v3** (RFC 4511), read-only, inetOrgPerson plus Thunderbird's mozillaAbPersonAlpha attributes | port 3890 (389 in the Docker stack) |
 | Calendars: Apple Calendar, Google Calendar, Outlook, Thunderbird | **iCalendar** (RFC 5545) subscription of birthdays and anniversaries, yearly events: each link has a secret of its own, made in Settings › Apps and devices and shown once (an Apple profile gets its own; only a hash is kept, in the Shared ioSuite database) | `/cal/<secret>/family.ics`, `/cal/<secret>/all.ics` |
 | Moving in and out | vCard files, jCard, and **CSV in Google Contacts' and Outlook's layouts** | Import and export page, `/api/import`, `/api/export` |
-| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server) |
+| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps) |
 
 **iPhone, iPad and Mac in one step:** Settings › Apps and devices › *Download the profile* gives a configuration profile
 (`.mobileconfig`) with the CardDAV account and, if you like, the birthday calendar subscription (and the LDAP
@@ -143,7 +143,7 @@ read everything about one, add and correct contacts, link relatives and walk the
 merge duplicates, import and export vCard and CSV, link contacts to ioPix people, and, for admins, check the server's
 health, look for a new version and install it.
 
-It is off until an admin turns it on in **Settings › Server**; off, `/mcp` does not answer
+It is off until a suite admin turns it on in **Settings › Apps**; off, `/mcp` does not answer
 at all. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or
 `Authorization: Bearer <app password>`, and acts as that account: it sees the shared books and that account's private
 ones, and may change what the account may change in the web app. The server tools need an admin.

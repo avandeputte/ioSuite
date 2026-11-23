@@ -31,7 +31,6 @@ SETTINGS = {
     "digikam_closed_until": ("0", float, "epoch seconds until which the admin vouched that digiKam is closed (dbsync writes without checking)"),
     "file_scanner": ("0", bool, "watch the album folders for files added, changed or removed outside the viewer (on by default with no digiKam)"),
     "scan_interval": ("15", int, "minutes between file scanner passes"),
-    "mcp_enabled": ("0", bool, "the MCP endpoint answers (MCP=1 in the environment locks it on); stored once at first start"),
     "bg_threads": ("", int, "cores the background jobs may use; empty: BG_THREADS from the environment, half the machine by default"),
     "search_model": ("clip", str, "the embedding model behind search (clip, siglip2, jinaclip); runtime reads it with default '' to see whether one was chosen"),
     "face_detector": ("", str, "model key for face detection; empty: the registry's default (app/ai/models.py CHOICES)"),

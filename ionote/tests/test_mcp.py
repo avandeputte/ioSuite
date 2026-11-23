@@ -9,6 +9,7 @@ import pytest
 
 from helpers import NID, png
 from iosuite_shared import testing
+from iosuite_shared import mcp as shared_mcp
 
 HEADERS = {"content-type": "application/json", "accept": "application/json, text/event-stream"}
 
@@ -51,7 +52,7 @@ def signed_in(name, password):
 @pytest.fixture
 def on(client, admin):
     """The switch on, and alex's app password as a bearer header (the session cookie works too)."""
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("ionote", True)
     return app_password(client)
 
 

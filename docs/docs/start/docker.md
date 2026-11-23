@@ -63,7 +63,7 @@ native apps and devices use port 8443, MCP clients port 8444, ioContact's LDAP d
 
 - **Fewer apps:** `APPS: iostart,iocalendar,iotask`.
 - **A setting:** a `--set=APP.NAME=VALUE` line in the container's command (`--set=suite.PUBLIC_URL=https://home.example.com`),
-  or Settings › Global settings › Settings once it runs.
+  or Settings › Apps › All settings once it runs.
 - **ioPix in a container of its own**, so that its scans never slow the others: the second service at the end of the
   file, the same image with `APPS: iopix`. It is reached through the first container, at the same addresses as
   before, so nothing of it needs publishing.

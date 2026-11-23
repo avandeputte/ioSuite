@@ -3,6 +3,7 @@ from iocalendar import members
 
 from test_mcp import app_password, call
 from iosuite_shared import testing
+from iosuite_shared import mcp as shared_mcp
 
 
 def holidays_cals(client):
@@ -116,7 +117,7 @@ def test_family_member_tags(client, family_id):
 
 def test_mcp_members(client, family_id):
     members.TTL = 0
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocalendar", True)
     testing.add_account(client, {"name": "emma", "password": "emmapass99", "role": "viewer", "displayName": "Emma"})
     auth, _ = app_password(client)
     ov = call(client, auth, "overview")

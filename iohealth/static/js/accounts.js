@@ -1,6 +1,6 @@
 import { $, h } from './core.js';
 
-// ---------- accounts: sign-in, the account menu, Settings › Account (people, roles and proxy sign-in: Settings › Security) ----------
+// ---------- accounts: sign-in, the account menu, Settings › Account (people, roles and proxy sign-in: Settings › People) ----------
 // The same flow as iopix (and ionote, ioContact): accounts live in the Shared ioSuite database, so
 // one sign-in serves every app on the domain. Health data is private: nothing shows until someone signs in.
 
@@ -153,7 +153,7 @@ export async function setAccount() {
   return [el];
 }
 
-// ---- Settings › Security and Global settings (suite admins): the people and their role in every app
+// ---- Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app
 // (here too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared.
 
 export async function suitePanel(tab, sub) {

@@ -59,8 +59,8 @@ app = FastAPI(title="ioStart", version=__version__, lifespan=lifespan, docs_url=
               openapi_url="/api/openapi.json",
               description="The start page of the ioThing suite: one place with every io app, and the accounts they share.")
 
-# Settings › Server › MCP server: off until an admin turns it on (or MCP=1 in the environment); the MCP box of the panel
-mcp_switch = shared_mcp.Switch(db.get_setting, db.set_setting,
+# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
+mcp_switch = shared_mcp.Switch(config.APP,
                                "The suite's one MCP server: an AI assistant connected here with an ioStart app password uses every "
                                "app's tools as you (each app's own MCP server has to be on), and suite admins can update every app at once.")
 mcp_enabled = mcp_switch.enabled
@@ -82,9 +82,8 @@ auth.install(app, limit_for=_limit_for)
 
 
 app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin: every account, role, app password, session and app of the suite (suite admins; Settings › Security and Global settings)
+app.include_router(auth.admin_router())  # /api/suite-admin: every account, role, app password, session and app of the suite (suite admins; Settings › People, Apps, Servers and Keys)
 app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
-app.include_router(auth.server_router(updater, info=mcp_switch.info, apply=mcp_switch.apply))  # /api/server (admins)
 app.include_router(api.router)
 app.include_router(newsapi.router)  # /api/news: the feed reader (the Feeds page) and the headlines card
 app.include_router(ncbookmarks.router)  # /dav/nextcloud: the Nextcloud Bookmarks API, for Floccus and other sync apps

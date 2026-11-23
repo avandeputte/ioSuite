@@ -18,7 +18,7 @@ A self-hosted recipe book: a web app for the whole family to keep recipes with t
 - **The shopping list**, when [ioTask](../iotask/) is part of the suite: a recipe's ingredients (for the servings shown, without the ones ticked off) become tasks in one of your lists there. Nothing to set up; ioTask is asked as you.
 - **Family and private recipes**: a family recipe is seen by everyone; a private one only by its owner. A recipe can be moved from one to the other.
 - **Roles as in the other io apps**: viewers only read the family's recipes, members (the default) also keep private recipes of their own, editors change the family's recipes too, admins also manage users and settings. The same accounts, passwords and app passwords as the other io apps; one sign-in for all of them with a shared cookie domain.
-- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
+- **Settings › People, Apps, Servers and Keys** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - Light and dark, phone-sized screens, installable as an app.
 
 ## Run
@@ -62,7 +62,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioRecipe has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioRecipe, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioRecipe, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -119,12 +119,12 @@ Print reads well; handwriting mostly does not. What comes out is a draft in the 
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioRecipe runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 Everything is under one Settings page (the sidebar and the avatar menu); a change is saved the moment it is made: your own tabs (account, display), then for admins server, and for suite admins security and global settings. Import from the web is a page of its own in the sidebar.
 
@@ -146,7 +146,7 @@ The paths below are ioRecipe's own: at the suite's address they are inside its f
 | Recipes from other sites | **schema.org Recipe** (JSON-LD and microdata) read from the page at the address given; without it, the page's own lists and text, or the AI model on the server | `POST /api/import` |
 | Recipes as files | a `.zip` with `recipes.json` and `photos/`; in: that, a Mealie export or backup, a recipe as JSON | `GET /api/export`, `POST /api/import/file` |
 | The shopping list | ioTask's REST API, asked as the person signed in | `POST /api/recipes/{id}/shopping` |
-| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server) |
+| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps) |
 
 Settings › Account makes **app passwords**: one per program, revocable on its own, used with your user name for the
 REST API (HTTP Basic, or `Authorization: Bearer <app password>`) and for MCP.
@@ -181,7 +181,7 @@ look them up by words, tag or cookbook, read one in full, add and change them, i
 favourites and rate them, keep cookbooks, delete them, and,
 for admins, check the server's health, look for a new version and install it.
 
-It is off until an admin turns it on in **Settings › Server**; off, `/mcp` does not answer
+It is off until a suite admin turns it on in **Settings › Apps**; off, `/mcp` does not answer
 at all. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or
 `Authorization: Bearer <app password>`, and acts as that account, with its rights.
 

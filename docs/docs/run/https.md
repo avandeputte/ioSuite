@@ -10,7 +10,7 @@ before it runs out, and every server of the suite answers with it. No reverse pr
 have one that does this already ([Reverse proxy and HTTPS](reverse-proxy.md),
 [Cloudflare Tunnel](cloudflare.md)), you do not need this page.
 
-It is one switch for the whole suite, under **Settings › Global settings › Certificate** in any app.
+It is one switch for the whole suite, under **Settings › Servers › Certificate** in any app.
 
 ## What changes when it is on
 
@@ -35,7 +35,7 @@ there.
 
 - **A name.** A certificate is for a name, such as `home.example.com`: one that DNS points at your server. The
   server's own address (`192.168.1.151`) and a name of the home network (`nas.lan`) cannot have one.
-- **The suite's address says that name.** Under **Settings › Global settings › Settings**, the suite's address is
+- **The suite's address says that name.** Under **Settings › Apps › All settings**, the suite's address is
   `http://home.example.com`, or from a shell:
 
     ```sh
@@ -62,7 +62,7 @@ DNS*, limited to the zones of your names. The token goes into the Certificate sc
 
 ## Switching it on
 
-Under **Settings › Global settings › Certificate**: tick *Ask for a certificate*, choose the authority and the proof,
+Under **Settings › Servers › Certificate**: tick *Ask for a certificate*, choose the authority and the proof,
 and press **Save and ask now**. The screen says what the authority answered: the certificate's names and the day it
 holds until, or the authority's own words when it said no.
 

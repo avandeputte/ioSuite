@@ -16,7 +16,7 @@
 
 Everything reads the machine's file (config.env in the program folder; --config names another one, or a folder that
 holds it), which says how to reach the Shared ioSuite database. `set` and `settings` are the Settings screen
-(Settings › Global settings › Settings) for when the pages cannot be reached: a wrong address stored, say.
+(Settings › Apps › All settings) for when the pages cannot be reached: a wrong address stored, say.
 """
 import argparse
 import getpass
@@ -123,7 +123,7 @@ def set_cmd(a, out=print) -> int:
         raise SystemExit(f"error: {str(e).strip(chr(39))}")
     where = r["app"] or "the whole suite"
     out(f"ok: {r['name']} of {where} " + (f"is {r['value']}" if r["value"] else "is removed (the default applies)"))
-    out("    it applies when the app starts again: systemctl restart iosuite, or Restart under Settings › Global settings › Settings")
+    out("    it applies when the app starts again: systemctl restart iosuite, or Restart under Settings › Apps › All settings")
     return 0
 
 

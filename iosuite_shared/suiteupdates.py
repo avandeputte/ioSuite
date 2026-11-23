@@ -1,4 +1,4 @@
-"""Updating the suite: every app at once, from Settings › Global settings › Updates (in any app) or an AI assistant
+"""Updating the suite: every app at once, from Settings › Servers › Updates (in any app) or an AI assistant
 over the start page's MCP endpoint.
 
 The suite has one version (iosuite_shared.__version__), which every app carries, and one update: every app to the

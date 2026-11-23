@@ -12,7 +12,7 @@ from ionote import access, backup, config, db, notes
 from ionote.http import attachment, user_name
 
 router = APIRouter()
-TEXTS = ("app_name",)  # the MCP switch is Settings › Server (POST /api/server {mcpEnabled})
+TEXTS = ("app_name",)  # the MCP switch is the suite's: Settings › Apps (iosuite_shared.mcp.set_for)
 
 
 @router.get("/api/settings", dependencies=[access.public])
@@ -26,7 +26,7 @@ async def api_settings_set(request: Request):
     body = await json_body(request)
 
     def save():
-        for k, v in body.items():  # sign-in required is a suite admin’s, on Settings › Global settings › Apps
+        for k, v in body.items():  # sign-in required is a suite admin’s, on Settings › Apps
             if k in TEXTS:
                 db.set_setting(k, str(v or "").strip()[:40])
     await run_in_threadpool(save)

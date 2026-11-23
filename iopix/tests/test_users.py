@@ -4,7 +4,7 @@ manage settings, maintenance and users; sessions are signed cookies."""
 from iosuite_shared import sessions
 from iopix import users
 from helpers import login as _login
-from iosuite_shared import testing, users as shared_users
+from iosuite_shared import mcp as shared_mcp, testing, users as shared_users
 
 
 def test_open_until_first_user(client, fresh):
@@ -129,7 +129,7 @@ def test_account_linked_to_a_person(client, fresh):
 def test_require_login_locks_everything_but_the_sign_in(client, fresh, lib):
     shared_users.create("alex", "correct horse", suite_admin=True)
     _login(client, "alex", "correct horse")
-    assert client.patch("/api/suite-admin/apps/iopix", json={"requireLogin": True}).status_code == 200  # Settings › Global settings › Apps
+    assert client.patch("/api/suite-admin/apps/iopix", json={"requireLogin": True}).status_code == 200  # Settings › Apps
     assert client.get("/api/status").json()["requireLogin"] is True
     client.cookies.clear()
     # a visitor: the shell and the sign-in endpoints work, nothing else does
@@ -153,8 +153,7 @@ def test_require_login_locks_everything_but_the_sign_in(client, fresh, lib):
         assert client.get(f"/face/{people[1]['id']}").status_code == 401
         assert client.get(f"/face/{people[0]['id']}", headers={"cf-ray": "1"}).status_code == 401, "from outside: no faces, as no tiles"
     client.cookies.clear()
-    from iopix.data import state as _st
-    _st.set_setting("mcp_enabled", "1")  # the endpoint itself is off by default
+    shared_mcp.set_for("iopix", True)  # the endpoint itself is off by default
     r = client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, headers={"accept": "application/json, text/event-stream"})
     assert r.status_code == 401, "MCP needs an app password (or a session)"
     _login(client, "alex", "correct horse")
@@ -163,7 +162,7 @@ def test_require_login_locks_everything_but_the_sign_in(client, fresh, lib):
     r = client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
                     headers={"accept": "application/json, text/event-stream", "authorization": "Bearer " + pw})
     assert r.status_code == 200
-    _st.set_setting("mcp_enabled", "0")
+    shared_mcp.set_for("iopix", None)
     # signed in again: everything is back
     _login(client, "alex", "correct horse")
     assert client.get("/api/meta").status_code == 200

@@ -7,7 +7,7 @@
     HOST=127.0.0.1,192.168.1.151     several of them (commas or spaces)
 
 The other settings go to uvicorn as they are. The apps read X-Forwarded-* themselves (from this machine and the
-reverse proxies listed under Settings › Security), so uvicorn must not rewrite the peer (proxy_headers=False).
+reverse proxies listed under Settings › People), so uvicorn must not rewrite the peer (proxy_headers=False).
 
 A copy with a certificate (iosuite_shared.certs) answers HTTPS on some of its ports. Those ports go on answering
 plain HTTP as well: a connection that begins with a TLS handshake gets HTTPS, any other is served as before, so what

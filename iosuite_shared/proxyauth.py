@@ -12,7 +12,7 @@ The header is believed only from the proxy itself, never from anyone who can rea
   where cloudflared runs) stands.
 
 Settings: kept once for the whole suite in the Shared ioSuite database (ios_settings, app ''), the only place they are
-read from: the start page's Settings › Security and every app's own Settings change them. config.env and the environment
+read from: the start page's Settings › People and every app's own Settings change them. config.env and the environment
 are never read for them.
 CF_ACCESS_AUD holds one AUD tag or several (comma-separated): one Cloudflare Access application covering *.example.com
 has one, an application per host one each, and a token for any of them is accepted.
@@ -253,7 +253,7 @@ def aud_tags(v) -> list:
 
 
 def suite_status() -> dict:
-    """The suite-wide proxy sign-in settings, for the start page's Settings › Security (none of these is a secret)."""
+    """The suite-wide proxy sign-in settings, for the start page's Settings › People (none of these is a secret)."""
     values = {k: db.settings_of("").get(k.lower(), "") for k in KEYS}
     return {"values": values, "auds": aud_tags(values["CF_ACCESS_AUD"]), "seen": dict(seen), "presets": list(PRESETS)}
 
@@ -354,7 +354,7 @@ _forwarders = {"raw": None, "nets": LOOPBACK}
 def forwarders(fresh: bool = False) -> tuple:
     """The networks whose X-Forwarded-For and X-Forwarded-Proto are believed: this machine, the suite's other
     machines (a copy passing a request across: iosuite_shared.suite.machines), and the reverse proxies listed under
-    Settings › Security (AUTH_PROXY_TRUSTED), whatever the sign-in mode. While the settings cannot be read, this
+    Settings › People (AUTH_PROXY_TRUSTED), whatever the sign-in mode. While the settings cannot be read, this
     machine only. `fresh`: the suite's machines read again when the list is more than a moment old."""
     try:
         raw = db.get_setting("auth_proxy_trusted", "", "")

@@ -11,6 +11,7 @@ from iosuite_shared import apppasswords
 from iocontact.fold import fold
 from iocontact.tests.test_carddav import dav
 from iocontact.tests.test_mcp import app_password, call
+from iosuite_shared import mcp as shared_mcp
 
 
 def test_fold():
@@ -41,7 +42,7 @@ def test_rest_search_ignores_accents(client, family_id):
 def test_mcp_search_ignores_accents(client, family_id):
     _people(client, family_id)
     auth, _ = app_password(client)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocontact", True)
     found = call(client, auth, "search_contacts", text="celia")
     assert found["total"] == 1 and found["contacts"][0]["name"] == "Célia Dupont"
     assert call(client, auth, "get_contact", contact="celia dupont")["fn"] == "Célia Dupont"

@@ -40,7 +40,7 @@ and sign-in (Cloudflare Access too), the same installer, updater, Docker image a
 - **Text in pictures**: read on the device where the picture was taken (Apple's Vision framework, on the Mac and
   iPhone), and sent along; for pictures added in the web app the server reads it itself with RapidOCR.
 - **Settings**: Account (with your app passwords) and Display for everyone signed in (the same panels as every io app), Server for admins; a change is saved the moment it is made.
-- **Settings › Security** (suite admins): the whole suite's people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
+- **Settings › People** (suite admins): the whole suite's people and their role in every app, app passwords, keys and tokens, the apps (default role, sign-in required) and sign-in at the proxy; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - **Offline**: the apps keep a full copy and send their changes when the server can be reached; the API settles
   conflicts per note by the time of the edit (below).
 - **The clipboard Inbox stays on each device.** Only notes you save go to the server.
@@ -87,7 +87,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioNote has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioNote, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioNote, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -109,12 +109,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioNote runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 ## Reverse proxy and HTTPS
 
@@ -163,7 +163,7 @@ it put in the Family space stays.
 | **editor** | plus the Family space: add notes to it, change and delete them, take them back out |
 | **admin** | plus settings, accounts, updates and the server log |
 
-**Sign-in required** (Settings › Global settings › Apps, on by default) also closes the open routes to visitors, but for the app shell, `/api/status` and the sign-in routes (the MCP endpoint wants an app password either way).
+**Sign-in required** (Settings › Apps › The apps, on by default) also closes the open routes to visitors, but for the app shell, `/api/status` and the sign-in routes (the MCP endpoint wants an app password either way).
 Sessions are random tokens in an HttpOnly cookie (`iothing_session`, shared by the apps on the domain) valid for
 30 days and renewed while in use; each records where it began and was last seen (address, through Cloudflare or
 not, web or which app): `GET /api/auth/sessions` for your own, `GET /api/suite-admin/users/<id>/sessions` for suite admins. Passwords
@@ -203,7 +203,7 @@ server has is answered with 409 (or `stale` in a push) and the server's copy, wh
 
 ## MCP server
 
-Settings › Server turns on an MCP endpoint at `/mcp` (off by default), the same in every app of the
+Settings › Apps turns on an MCP endpoint at `/mcp` (off by default), the same in every app of the
 suite. An assistant such as Claude can then:
 
 - read: `notes_overview`, `search_notes` (words, folder, tag, pinned, picture, source, dates, sort), `get_note`,

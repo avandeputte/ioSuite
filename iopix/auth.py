@@ -57,7 +57,7 @@ def set_person(user_id: int, tag_id):
 
 
 def _on_update(user_id: int, body: dict):
-    """A change to an account may carry {person}: the account's face badge (Settings › Security › People sets it through
+    """A change to an account may carry {person}: the account's face badge (Settings › People › People sets it through
     the suite admin routes; an account's own PATCH /api/auth/me passes only its name and email)."""
     if "person" in body:
         if not person_tag(body["person"]):

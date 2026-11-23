@@ -28,7 +28,7 @@ def all_users() -> list[dict]:
 
 def init() -> None:
     """The Shared ioSuite database's tables, the ADMIN_USER / ADMIN_PASSWORD account on a first start with no accounts,
-    and ioMoney's default role: none, until a suite admin says otherwise (Settings › Global settings › Apps). Money is
+    and ioMoney's default role: none, until a suite admin says otherwise (Settings › Apps › The apps). Money is
     not for everyone in the family, so each person is given a role here by name."""
     shared.init()
     if not shared_db.one("SELECT 1 AS x FROM ios_settings WHERE app = %s AND name = 'default_role'", (APP,)):

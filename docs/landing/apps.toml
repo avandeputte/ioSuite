@@ -65,7 +65,7 @@ title = "One address for every app"
 text = "The start page answers at the suite's address itself and every app in a folder of it: one name and one certificate reach them all."
 [[iostart.features]]
 title = "Updates for the whole suite"
-text = "Settings › Global settings › Updates shows the suite's version on every app and brings them all up to date with one button."
+text = "Settings › Servers › Updates shows the suite's version on every app and brings them all up to date with one button."
 
 [[iostart.together]]
 app = "iocalendar"

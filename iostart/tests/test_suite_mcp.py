@@ -80,7 +80,7 @@ def suite_mcp(client, task_port):
             suite.forget(key)
     suite.register("iotask", "ioTask", url="https://task.example.com", internal_url=f"http://127.0.0.1:{task_port}")
     suite.register("iocalendar", "ioCalendar", url=None, internal_url="http://127.0.0.1:1")  # nothing listens there
-    assert client.post("/api/server", json={"mcpEnabled": True}).status_code == 200
+    shared_mcp.set_for("iostart", True)
     STATE.update(on=True, added=[])
     mcp.forget()
     secret = client.post("/api/auth/app-passwords", json={"label": "claude"}).json()["password"]

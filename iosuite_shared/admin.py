@@ -4,7 +4,7 @@ Accounts (with their role in every app), app passwords of every account in every
 every app keeps (iosuite_shared.credentials; never their values), and the suite's apps with the per-app access settings
 (default_role, require_login: on unless turned off, always on in an admin tool), the settings the apps read as they
 start, their addresses door by door, and the log of every copy on one timeline. `Auth.admin_router()` serves it at
-/api/suite-admin/* (suite admins only); every app's Settings › Security and Global settings are its screen.
+/api/suite-admin/* (suite admins only); every app's Settings › People, Apps, Servers and Keys are its screen.
 
 The apps are the registered ones (ios_apps) plus any app key that only shows up in roles, settings or app passwords
 (an app that is not installed any more, or has not started since the registry came in).
@@ -47,6 +47,9 @@ def apps() -> list:
     roles = {r["app"]: r["n"] for r in db.q("SELECT app, count(*) AS n FROM ios_user_roles GROUP BY app")}
     pws = {r["app"]: r["n"] for r in db.q("SELECT app, count(*) AS n FROM ios_app_passwords GROUP BY app")}
     creds = {r["app"]: r["n"] for r in db.q("SELECT app, count(*) AS n FROM ios_credentials WHERE name NOT LIKE 'link\\_%' GROUP BY app")}
+    from iosuite_shared import mcp as shared_mcp
+    mcp_switches = shared_mcp.switches()          # {app: on} as stored ("" : the suite's switch)
+    suite_mcp = mcp_switches.pop("", False)
     out = []
     for k in keys:
         a = dict(reg.get(k) or {"app": k, "name": k, "description": None, "version": None, "color": None, "icon": None, "url": None,
@@ -55,13 +58,19 @@ def apps() -> list:
         a["defaultRole"] = users.default_role(k)  # none in an admin tool, which is for suite admins only
         a["requireLogin"] = users.sign_in_required(k)  # always in an admin tool
         a["roles"], a["appPasswords"], a["credentials"] = roles.get(k, 0), pws.get(k, 0), creds.get(k, 0)
+        a["mcp"] = mcp_switches.get(k)      # None: it follows the suite's switch
+        a["mcpOn"] = mcp_switches.get(k, suite_mcp)
         out.append(a)
     return sorted(out, key=lambda a: (not a["registered"], (a["name"] or a["app"]).lower(), a["app"]))
 
 
-def set_app(app: str, default_role=None, require_login=None) -> dict:
-    """Change an app's access settings (None: unchanged)."""
+def set_app(app: str, default_role=None, require_login=None, mcp="keep") -> dict:
+    """Change an app's access settings (None: unchanged). mcp: True/False for its MCP server, None to follow the
+    suite's switch, "keep" to leave it as it is."""
     app = clean_app(app)
+    if mcp != "keep":
+        from iosuite_shared import mcp as shared_mcp
+        shared_mcp.set_for(app, mcp)
     if default_role is not None:
         if suite.is_admin_tool(app):
             raise Invalid("An admin tool is for suite admins only; it has no default role")
@@ -531,5 +540,6 @@ def logs(request=None, after: dict = None, limit: int = 300, **filters) -> dict:
 
 
 def overview() -> dict:
+    from iosuite_shared import mcp as shared_mcp
     return {"apps": apps(), "users": accounts(), "roles": list(users.ROLES), "defaultRoles": list(DEFAULT_ROLES),
-            "scopes": list(PERSON_SCOPES)}
+            "scopes": list(PERSON_SCOPES), "mcpSuite": shared_mcp.switches().get("", False)}

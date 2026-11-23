@@ -1,5 +1,5 @@
 /** Sign-in and accounts: the session (loadUser sets S.USER and the fields that come with it), the user menu, the sign-in
- *  and setup dialogs, and the Security and Global settings tabs of Settings. */
+ *  and setup dialogs, and the suite's own tabs of Settings (People, Apps, Servers, Keys). */
 import { $, SETTINGS, api, errorBox, fill, h, icon, post } from './core.js';
 const suiteUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);  // the suite's sign-in (the two-step code, passkeys), fetched when someone signs in
 import { S, applyBadgePref, applyTheme, avatarOf, brandName, hashFor, onRoute, toast, toastError } from './state.js';
@@ -73,7 +73,7 @@ async function signOut() {
   if (S.REQUIRE_LOGIN) { location.reload(); return; }
   S.USER = null; SETTINGS.user = null; renderUserMenu(); await pollStatus(); applyBadgePref(); applyTheme(); S.viewKey = null; onRoute(); accountChanged(); toast('Signed out.');
 }
-/** Settings › Security (people, roles, app passwords, sign-in at the proxy) or Settings › Global settings (the apps, keys
+/** Settings › People (people, roles, app passwords, sign-in at the proxy) or Settings › Apps (the apps, keys
  *  and tokens), for suite admins and the whole suite. The same panel in every io app, served by iosuite-shared. */
 export function suiteSection(tab) {
   const box = h('div');

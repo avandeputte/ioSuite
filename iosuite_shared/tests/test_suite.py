@@ -101,7 +101,7 @@ def test_api_lists_for_signed_in_and_a_forgotten_app_goes():
     c.post("/api/auth/login", json={"name": "bob", "password": "secret123"})
     body = c.get("/api/auth/suite").json()
     assert body["app"] == "iostart" and {a["app"] for a in body["items"]} == {"iopix", "iostart"}
-    assert suite.forget("iopix")  # Settings › Global settings › Apps (test_admin: DELETE /api/suite-admin/apps/<app>)
+    assert suite.forget("iopix")  # Settings › Apps › The apps (test_admin: DELETE /api/suite-admin/apps/<app>)
     assert [a["app"] for a in c.get("/api/auth/suite").json()["items"]] == ["iostart"]
 
 

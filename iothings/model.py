@@ -396,7 +396,7 @@ def label_ids(names_or_ids, make: bool = True) -> list[int]:
 # ---- the family: whose a thing is
 
 def family() -> list[dict]:
-    """The suite's family (Settings › Security › Family), each with how many things (not archived) are theirs:
+    """The suite's family (Settings › People › Family), each with how many things (not archived) are theirs:
     [{id, name, displayName, initials, color, hasFace, count}], by display name. The same people, colours and initials
     as in every app. Everyone in it can be given a thing, whether or not they use ioThings (a child's bike)."""
     n = {r["user_id"]: int(r["n"]) for r in db.q("SELECT p.user_id, COUNT(*) AS n FROM thg_item_people p JOIN thg_items i "

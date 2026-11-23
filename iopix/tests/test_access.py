@@ -47,5 +47,5 @@ def test_markers_refuse_the_right_people(client):
         pytest.skip("no accounts in this library: everyone may edit")
     r = client.post("/api/photos/trash", json={"ids": []})
     assert r.status_code in (401, 403) and "editor" in r.json()["detail"].lower()
-    r = client.get("/api/server")
-    assert r.status_code in (401, 403) and r.json()["detail"] == "Admins only"
+    r = client.get("/api/suite-admin/overview")
+    assert r.status_code in (401, 403)

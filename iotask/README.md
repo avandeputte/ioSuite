@@ -18,10 +18,10 @@ Self-hosted task lists: a web app for the whole family, and the standard protoco
 - **Activity and undo**: who added, changed, ticked off, moved or deleted what, in the web app, in a reminders app or through an assistant, per list or for all of them. Every change can be taken back: **Undo** shows for ten seconds after a change, and on the Activity page for as long as the task is still as that change left it. Deleting a task with its subtasks, "Clear completed" or adding a template is one step, undone as one.
 - **Templates**: save a list's tasks (with notes, priorities, links, people and subtasks) as a template, and add them to a list again later, or start a new list with them: the packing list, the weekly shop. Shared with everyone, or your own.
 - **Print**: a list prints as a checklist (the list's ⋯ menu, or the browser's Print).
-- **Family members on tasks**: tag a task with the people of the family it is for. The tags show as coloured initials, the sidebar's Family list shows only one person's (or a few people's) tasks, and the tag is kept as an iCalendar `CATEGORIES` value with the member's name. The REST API (`?member=emma`) and MCP filter by member as well. The family is the suite's one list (Settings › Security › Family, suite admins), the same in every app: each member's colour, initials and face (their ioPix person, else their ioContact card) match everywhere. An account that is not a person (an admin or guest) can be taken out there: it is not offered as a tag and gets no private list.
+- **Family members on tasks**: tag a task with the people of the family it is for. The tags show as coloured initials, the sidebar's Family list shows only one person's (or a few people's) tasks, and the tag is kept as an iCalendar `CATEGORIES` value with the member's name. The REST API (`?member=emma`) and MCP filter by member as well. The family is the suite's one list (Settings › People › Family, suite admins), the same in every app: each member's colour, initials and face (their ioPix person, else their ioContact card) match everywhere. An account that is not a person (an admin or guest) can be taken out there: it is not offered as a tag and gets no private list.
 - **Search** across titles and notes, **import** of .ics files with to-dos, **export** of each list, and keyboard shortcuts (`n` new, `t` today, `s` scheduled, `a` all, `/` search).
 - **Roles as in the other io apps**: viewers only read the shared lists, members (the default) also keep their own private lists, editors change the shared lists too, admins also manage users and settings. The same accounts, passwords and app passwords as the other io apps; one sign-in for all of them with a shared cookie domain.
-- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
+- **Settings › People, Apps, Servers and Keys** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - Light and dark, phone-sized screens, installable as an app.
 
 No events: those belong in [ioCalendar](../iocalendar/).
@@ -68,7 +68,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioTask has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioTask, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioTask, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -87,12 +87,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioTask runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 Everything is under one Settings page (the sidebar and the avatar menu); a change is saved the moment it is made: your own tabs (account, display, apps and
 devices, lists), then for admins family and server (with Export: each list as an
@@ -118,7 +118,7 @@ The paths below are ioTask's own: at the suite's address they are inside its fol
 | Any app that reads calendar files | **iCalendar** (RFC 5545): every task is kept as the `VTODO` it came in as, so properties ioTask does not edit (other apps' X- properties, Apple's sort order) survive a round trip; `DUE`, `RRULE`, `VALARM`, `PRIORITY`, `RELATED-TO` (subtasks) and `CATEGORIES` included | CalDAV, `/api/tasks/<id>?format=ics`, import/export |
 | Web and JSON clients | **REST/JSON**, and iCalendar by content negotiation (`Accept: text/calendar`): lists, tasks with filters (due, a range of days, status, member, words), a task from one line of plain English (`{"text": …}`, previewed by `/api/quick`), ticking off, postponing, subtasks, the order by hand, the activity log and undo, templates, import/export | `/api/`, OpenAPI docs at `/api/docs` |
 | iPhone, iPad and Mac in one step | **Apple configuration profile** (`com.apple.caldav.account`) | Settings › Apps and devices |
-| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server) |
+| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps) |
 
 **iPhone, iPad and Mac in one step:** Settings › Apps and devices › *Download the profile* gives a configuration profile
 (`.mobileconfig`) with the CalDAV account and a new CalDAV-only app password for that device inside (or none, and the device asks).
@@ -161,7 +161,7 @@ read what is due, search tasks, add, change, tick off, move and delete them, mak
 import iCalendar files, see who did what lately and take a change back (undo), and, for admins, check the server's
 health, look for a new version and install it.
 
-It is off until an admin turns it on in **Settings › Server**; off, `/mcp` does not answer
+It is off until a suite admin turns it on in **Settings › Apps**; off, `/mcp` does not answer
 at all. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or
 `Authorization: Bearer <app password>`, and acts as that account, with its rights.
 

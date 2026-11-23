@@ -24,7 +24,7 @@ per port**, whatever the number of apps and wherever they run (an app that runs 
 | Phones, native apps, devices | `https://home.example.com:8443` | `192.168.1.10:8443` |
 | MCP clients | `https://home.example.com:8444` | `192.168.1.10:8444` |
 
-Then tell the suite its three addresses, once, under **Settings › Global settings › Settings** (or with the command):
+Then tell the suite its three addresses, once, under **Settings › Apps › All settings** (or with the command):
 
 ```sh
 iosuite set suite PUBLIC_URL https://home.example.com
@@ -164,7 +164,7 @@ comes through the proxy counts as outside your network**, which is the safe side
 cannot be made, an install without accounts shows nothing but its sign-in screen, and an account without a password
 gets no one-click sign-in.
 
-Set it once, as a suite admin, in any app: **Settings › Security › Sign-in at the proxy › Reverse proxy addresses**.
+Set it once, as a suite admin, in any app: **Settings › People › Sign-in at the proxy › Reverse proxy addresses**.
 Enter the address the proxy connects from (`192.168.1.2`), several of them, or a network (`172.18.0.0/16` for a
 Docker network). Leave *Proxy* at Off unless the proxy also signs people in ([below](#sign-in-at-the-proxy)).
 
@@ -201,7 +201,7 @@ certificate you name in the machine's file: [The suite's own certificate](https.
 
 When the proxy already makes people sign in (Cloudflare Access, Authelia, Authentik, oauth2-proxy...), the suite can
 take that sign-in instead of asking again: the proxy names the person in a header, and the suite signs in the account
-with that email (or name). It is one setting for the whole suite, under **Settings › Security › Sign-in at the
+with that email (or name). It is one setting for the whole suite, under **Settings › People › Sign-in at the
 proxy** in any app:
 
 | Setting | |

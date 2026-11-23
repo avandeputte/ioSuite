@@ -115,7 +115,7 @@ quotes, and what the house and the cars are worth after their loans.
 
 ## Monarch Money's sign-in
 
-The Monarch email, password and authenticator key go in **Settings › Global settings › Keys and tokens** (suite
+The Monarch email, password and authenticator key go in **Settings › Keys** (suite
 admins), with the rest of the suite's keys: never in a config file. The authenticator key is the text under the QR code
 Monarch shows when you set up an authenticator app; with it ioMoney makes the six-digit code itself. Settings › Money
 shows what is set, the last syncs and **Sync now**.

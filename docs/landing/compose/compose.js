@@ -507,7 +507,7 @@
                                "; phones, native apps and devices use port " + hp.sync + ", MCP clients port " + hp.mcp + ".";
     out.push({title: "Sign in", head: "addresses",
               text: "Sign in as " + (s.admin.user.trim() || "the admin") + " with the password you chose: it is a suite admin, an admin of every app. " +
-                    (s.demo ? "The demo family signs in as morgan, riley, ava or theo, password calloway (Morgan is a suite admin too)." : "Add the family under Settings › Security › People.") + where +
+                    (s.demo ? "The demo family signs in as morgan, riley, ava or theo, password calloway (Morgan is a suite admin too)." : "Add the family under Settings › People › People.") + where +
                     " Calendar, reminders and contacts accounts, the native apps and widgets use the address for devices, with an app password; each app's Settings › Apps and devices shows what to type." +
                     (s.apps.iocontact && s.iocontact.ldap ? " ioContact's LDAP directory is on port " + s.iocontact.ldapPort + "." : ""),
               code: open.join("\n")});

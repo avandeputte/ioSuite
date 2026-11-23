@@ -10,6 +10,7 @@ from iosuite_shared import push, users
 from iothings import db, notify
 from conftest import sign_in
 from test_api import new
+from iosuite_shared import mcp as shared_mcp
 
 # rows as Homebox writes them (Tools › Export inventory): its own columns, a field, labels with ';', a formula-guarded cell
 HOMEBOX = (
@@ -88,7 +89,7 @@ def test_mcp_tools(client):
     secret = client.post("/api/auth/app-passwords", json={"label": "claude"}).json()["password"]
     auth = {"Authorization": f"Bearer {secret}"}
     assert rpc(client, "tools/list", auth=auth)[0] == 404  # off on a fresh install
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iothings", True)
     client.cookies.clear()
     names = {t["name"] for t in rpc(client, "tools/list", auth=auth)[1]["result"]["tools"]}
     assert {"overview", "search_items", "get_item", "create_item", "update_item", "delete_item", "list_locations", "create_location",

@@ -8,13 +8,11 @@ import { profileScope as scopeSelect } from '../../api/auth/ui.js';
 export async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['lists', 'Lists'],
-    ...(adm ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, lists: setLists, server: setServer,
-    security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, devices: setDevices, lists: setLists, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 export const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
@@ -98,7 +96,7 @@ export async function setDevices(el) {
       how('Setup for Claude Code and JSON-configured apps',
         copyRow(`claude mcp add --transport http iotask ${info.mcp} --header "Authorization: Bearer APP-PASSWORD"`),
         copyRow(JSON.stringify({ mcpServers: { iotask: { command: 'npx', args: ['-y', 'mcp-remote', info.mcp, '--header', 'Authorization: Bearer APP-PASSWORD'] } } }))))
-      : (S.user.role === 'admin' ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/server' }, 'Settings › Server'), '.')) : null),
+      : (S.user.suiteAdmin ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/apps' }, 'Settings › Apps'), '.')) : null),
     h('div', { class: 'box' }, h('h2', null, icon('link'), 'Other apps (REST API)'),
       h('p', null, 'JSON or iCalendar with your user name and an app password. ', h('a', { class: 'lnk', href: info.api, target: '_blank' }, 'API documentation')),
       copyRow(`curl -u ${info.user}:APP-PASSWORD "${info.server}/api/tasks?due=today"`))].filter(Boolean));
@@ -143,26 +141,21 @@ export async function setLists(el, r) {
   h('div', { class: 'box' }, h('h2', null, icon('template'), 'Templates'),
     h('p', { class: 'muted' }, 'A list’s tasks kept to add again: a packing list, the weekly shop. Save one from a list (here, or in the list’s ⋯ menu); add its tasks with “Add from a template…” in a list’s ⋯ menu, or start a new list with it.'),
     tpls.length ? h('table', { class: 't' }, tpls.map(tplRow)) : null));
+  await exportBox(el);
   if (r.sub) setTimeout(() => $(`#list-${r.sub}`)?.scrollIntoView({ block: 'start' }), 0);
 }
 
-/** Settings › Security and Global settings (suite admins): the people, their role in every app, app
-    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
-export const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+/** Settings › People, Apps, Servers and Keys (suite admins): everything the suite keeps in the Shared ioSuite
+    database. The same panel in every io app, served by iosuite-shared. */
+export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
 
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart
-    (iosuite-shared's panel, the same in every io app), then Export: each list as an .ics file. */
-export async function setServer(el) {
-  let ui;
-  const panel = h('div');
-  el.append(panel);
-  try { ui = await serverUi(); } catch (e) { panel.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(panel, { toast });
+/** The lists as .ics files, under Settings › Lists. */
+export async function exportBox(el) {
   await loadLists();
   el.append(h('div', { class: 'box' }, h('h2', null, icon('download'), 'Export'),
     h('p', null, 'Each list as an .ics file.'),
@@ -170,4 +163,3 @@ export async function setServer(el) {
       h('td', { class: 'muted' }, `${c.count || 0} open tasks`),
       h('td', { style: { textAlign: 'right' } }, h('a', { class: 'pillbtn noic', href: `api/lists/${c.id}/export` }, 'Download')))))));
 }
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);

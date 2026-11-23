@@ -36,7 +36,7 @@ COPY . .
 RUN pip install --no-cache-dir --no-deps -e . \
     && useradd --uid 1000 --user-group --create-home --shell /usr/sbin/nologin iosuite \
     && mkdir -p /data && chown -R iosuite:iosuite /data /app
-# the commit the image was built from, for Settings › Global settings › Updates (the workflow passes it)
+# the commit the image was built from, for Settings › Servers › Updates (the workflow passes it)
 ARG COMMIT=unknown
 RUN echo "$COMMIT" > COMMIT
 VOLUME ["/data"]

@@ -3,7 +3,7 @@
 Monarch has no public API; the community's Python library (`monarchmoneycommunity`, the maintained fork of
 `monarchmoney`) speaks to the same GraphQL API Monarch's web app uses. Nothing goes the other way: ioMoney only reads.
 
-The sign-in is kept with the suite's keys and tokens (Settings › Global settings › Keys and tokens, ioMoney), never in
+The sign-in is kept with the suite's keys and tokens (Settings › Keys, ioMoney), never in
 a config file: the Monarch email, the password and the authenticator key (the text under the QR code Monarch shows when
 the authenticator app is set up; with it ioMoney makes the six-digit code itself). On the first sync ioMoney signs in
 and keeps the long-lived session Monarch gives a trusted device (monarch_token, also there); later syncs use that and
@@ -47,7 +47,7 @@ KEYS = [
     {"name": "monarch_email", "label": "Monarch Money email", "hint": "the email you sign in to Monarch Money with"},
     {"name": "monarch_password", "label": "Monarch Money password"},
     {"name": "monarch_mfa_secret", "label": "Monarch Money authenticator key",
-     "hint": "the text under the QR code Monarch shows when you set up the authenticator app (Settings › Security there)"},
+     "hint": "the text under the QR code Monarch shows when you set up the authenticator app (Settings › People there)"},
     {"name": "monarch_token", "label": "Monarch Money session",
      "hint": "kept here by ioMoney after it signs in; clear it to make ioMoney sign in again"},
 ]
@@ -107,7 +107,7 @@ async def _sign_in(code: str = None):
     RequireMFA, Captcha, LoginFailed = _errors()
     email, pw, secret = _cred("monarch_email"), _cred("monarch_password"), _cred("monarch_mfa_secret").replace(" ", "")
     if not (email and pw):
-        raise NeedsSignIn("Add the Monarch Money email and password in Settings › Global settings › Keys and tokens (ioMoney)")
+        raise NeedsSignIn("Add the Monarch Money email and password in Settings › Keys (ioMoney)")
     mm = _new()
     try:
         if code:

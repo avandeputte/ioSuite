@@ -118,7 +118,7 @@ def test_require_sign_in_shows_only_the_login_dialog(page, server, browser):
         visitor.locator(".modal button:text-is('Sign in')").click()
         visitor.wait_for_selector(".tile img", timeout=15000)
         assert visitor.locator(".modal-back").count() == 0 and visitor.locator("#main").is_visible()
-        # the setting is under Settings › Global settings › Apps (Sign-in required), for every app
+        # the setting is under Settings › Apps (Sign-in required), for every app
         visitor.goto(server + "/#/settings/global/apps"); visitor.wait_for_selector(".iosa h2:has-text('Apps')", timeout=10000)
         assert visitor.locator(".iosa tr:has-text('iopix') input[type=checkbox]").is_checked()
         ctx.close()

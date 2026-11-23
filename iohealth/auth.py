@@ -6,7 +6,7 @@ stays here: the role an account holds in ioHealth, and its health data, which no
 
 Roles: a viewer sees their own data; a member (the default) can also upload it (the iPhone app signs in as a member or more, with an
 app password); an admin can also see Server; accounts, roles and the sign-in
-settings are for suite admins (Settings › Security, the Shared ioSuite database).
+settings are for suite admins (Settings › People, the Shared ioSuite database).
 """
 import logging
 

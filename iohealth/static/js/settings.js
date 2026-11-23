@@ -3,15 +3,14 @@ import { api, apiCache, applyTheme, pageTitle, saveSettings, settings } from './
 import { card, seg } from './charts.js';
 import { accountUi, isAdmin, me, setAccount, suitePanel, toast } from './accounts.js';
 
-// ---------- settings: tabs, as in every ioThing app (#/settings/account … #/settings/server) ----------
+// ---------- settings: tabs, as in every ioThing app (#/settings/account … #/settings/apps) ----------
 // One Settings page for everything, in every ioThing app. Each tab loads only what it shows. The account's own tabs
 // come first, then the admins' (the server) and the suite admins' (Security:
-// people, roles, app passwords, sign-in at the proxy; Global settings: the apps, keys; iosuite-shared's panel).
+// People, Apps, Servers and Keys: everything the suite keeps in the Shared ioSuite database; iosuite-shared's panel).
 
-export const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export const SETTINGS_TABS = () => [['account', 'Account'], ['display', 'Display'], ['health', 'Health'], ['goals', 'Goals and alerts'],
-  ...(isAdmin() ? [['server', 'Server']] : []),
-  ...(me.isSuiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+  ...(me.isSuiteAdmin ? Object.entries(SUITE_TABS) : [])];
 
 /** The page title and a row of tabs linking to #/<view>/<tab>.
  *  Draws at once; the tab fills the returned body when its data is in. */
@@ -28,10 +27,11 @@ export function tabbedPage(main, view, ic, title, tabs, arg) {
 }
 
 pages.settings = async (main, arg, params) => {
-  const [t, sub] = (arg || '').split('/');  // #/settings/security/<part>
+  const [t, sub] = (arg || '').split('/');  // #/settings/people/<part>
   const { tab, body } = tabbedPage(main, 'settings', 'gear', 'Settings', SETTINGS_TABS(), t);
   const els = await ({ account: setAccount, display: setDisplay, health: setHealth, goals: setGoals,
-    server: setServer, security: () => suitePanel(tab, sub), global: () => suitePanel(tab, sub) }[tab])(body);
+    people: () => suitePanel(tab, sub), apps: () => suitePanel(tab, sub), servers: () => suitePanel(tab, sub),
+    keys: () => suitePanel(tab, sub) }[tab])(body);
   if (els) body.replaceChildren(...els.filter(Boolean));
 };
 
@@ -120,14 +120,3 @@ export async function setGoals() {
       alertIn('sync', 'No sync from the iPhone for', 'hours'))];
 }
 
-// ---- Settings › Server (admins): the version and its updates, the server log and Restart:
-// iosuite-shared's panel, the same in every ioThing app.
-
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
-export async function setServer() {
-  const el = h('div');
-  let ui;
-  try { ui = await serverUi(); } catch (e) { return [h('p', { class: 'error' }, `The Server panel did not load: ${e.message}`)]; }
-  await ui.mount(el, { toast });
-  return [el];
-}

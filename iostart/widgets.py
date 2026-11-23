@@ -14,8 +14,8 @@ Content-Security-Policy allows only this origin), so ioPix's thumbnails come thr
 
 The app is found in the suite's list of apps and asked on the viewer's behalf (iosuite_shared.links.as_viewer): on
 localhost when it runs on this machine, then at its address inside the network, then at its public one; the suite's
-Cloudflare Access service token goes with every request when one is set (Settings › Global settings › Keys and
-tokens). Only the address and the Cloudflare headers come from there: the credentials stay the viewer's own.
+Cloudflare Access service token goes with every request when one is set (Settings › Keys
+). Only the address and the Cloudflare headers come from there: the credentials stay the viewer's own.
 
 Every app is asked with a short timeout: an app that is down, or that this account has no access to, leaves its tile
 as it was (the page hides the block) instead of holding up the others. An app that did not answer at any of its

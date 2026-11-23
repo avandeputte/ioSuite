@@ -62,7 +62,7 @@ def test_sessions():
 
 
 def test_cookie_domain(monkeypatch):
-    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Global settings)
+    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Apps › All settings)
     assert sessions.cookie_domain("photo.example.com") == "example.com"
     assert sessions.cookie_domain("notes.example.com:8610") == "example.com"
     assert sessions.cookie_domain("192.168.1.5:8600") is None

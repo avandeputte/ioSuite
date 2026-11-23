@@ -253,12 +253,11 @@ def test_caldav_only_app_passwords(client):
 
 
 
-def test_settings_server_is_the_shared_panel(client):
-    """Settings › Server is iosuite-shared's panel: its module, and the MCP box, with no This server box."""
-    assert "export async function mount" in client.get("/api/server/ui.js").text
-    s = client.get("/api/server").json()
-    assert s["name"] == "ioCalendar" and "mcpEnabled" in s and s["mcpAbout"]
-    assert "about" not in s
+def test_the_app_has_no_server_page_of_its_own(client):
+    """Settings › Server is gone: the version, the log, updating and the MCP switch are the suite's
+    (Settings › Apps and Settings › Servers)."""
+    assert client.get("/api/server/ui.js").status_code == 404
+    assert client.get("/api/server").status_code == 404
     assert client.post("/api/auth/logout_all").status_code in (404, 405)  # Sign out is the only sign out
 
 

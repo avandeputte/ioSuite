@@ -5,8 +5,8 @@
 # Edit the CHANGE ME spots below (or put the same names in a .env file next to this file): the passwords, the admin,
 # the photos folder. The suite then answers on port 80: the start page at /, every app in its folder (/calendar/,
 # /notes/, …). Phones, native apps and devices use port 8443, MCP clients port 8444. For HTTPS put a reverse proxy in
-# front and say where the suite is under Settings › Global settings › Settings (or with --set below), or let the
-# suite ask for a certificate of its own (Settings › Global settings › Certificate) and publish port 443 below.
+# front and say where the suite is under Settings › Apps › All settings (or with --set below), or let the
+# suite ask for a certificate of its own (Settings › Servers › Certificate) and publish port 443 below.
 #
 # On its first start the container makes the databases (one per app, on the same server) and the suite's one login,
 # the tables and the first admin (iosuite stack: see iosuite_shared/stack.py); later starts change nothing that is
@@ -49,7 +49,7 @@ services:
     container_name: iosuite
     ports:
       - "80:80"                          # the pages
-      # - "443:443"                      # the pages over HTTPS, once the suite has its own certificate (Settings › Global settings › Certificate)
+      # - "443:443"                      # the pages over HTTPS, once the suite has its own certificate (Settings › Servers › Certificate)
       - "8443:8443"                      # phones, native apps and devices: CalDAV, CardDAV, bookmark sync, ioHealth, widgets
       - "8444:8444"                      # MCP clients
       - "389:3890"                       # ioContact's LDAP directory for mail apps (read-only); drop it when not needed

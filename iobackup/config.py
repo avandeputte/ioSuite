@@ -1,4 +1,4 @@
-"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Global settings › Settings
+"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Apps › All settings
 changes them; app.json lists the app's own). What ioBackup keeps
 (servers, destinations, jobs, the history of runs) lives in MariaDB; the passwords and Google keys with the suite's
 keys and tokens. The settings every app of the suite shares come from iosuite_shared.config.standard."""

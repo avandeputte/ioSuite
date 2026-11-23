@@ -26,7 +26,7 @@ lists the apps it reaches, and suite admins also get `suite_version` and `update
 
 ## Turn it on
 
-MCP is **off on a fresh install**. An admin turns it on per app under **Settings › Server**; while off, `/mcp` doesn't
+MCP is **off on a fresh install**. A suite admin turns it on per app under **Settings › Apps**; while off, `/mcp` doesn't
 answer at all. The port can also stay closed altogether: `MCP_PORT=off` in the machine's file.
 
 ## Connect an assistant
@@ -40,7 +40,7 @@ claude mcp add --transport http iosuite https://mcp.example.com/mcp \
 ```
 
 That address is whatever reaches port 8444: a name of its own at your reverse proxy (told to the suite as `MCP_URL`
-under Settings › Global settings › Settings), or `http://<server>:8444/mcp` on a home network without HTTPS. Settings ›
+under Settings › Apps › All settings), or `http://<server>:8444/mcp` on a home network without HTTPS. Settings ›
 Server shows the address to use.
 
 For **Claude Desktop** on a computer in your network, use the `mcp-remote` bridge in `claude_desktop_config.json`

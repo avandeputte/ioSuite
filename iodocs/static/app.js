@@ -171,7 +171,7 @@ function dueWords(days) {
 }
 const sizeWords = (n) => (n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`);
 const personOf = (id) => S.family.find((m) => m.id === id);
-/** A family member's badge (the suite's family, Settings › Security › Family: the same colour, initials and face in every
+/** A family member's badge (the suite's family, Settings › People › Family: the same colour, initials and face in every
     io app): their initials on their colour; `face`: their face (ioPix, else their ioContact card) when they have one. */
 const memberBadge = (m, face = false) => h('span', { class: `mem${face && m.hasFace ? ' face' : ''}`, title: m.displayName, style: { '--mc': m.color || '#5f6b7a' } }, m.initials || initials(m.displayName),
   face && m.hasFace ? h('img', { src: `api/auth/family/${m.id}/face`, alt: '', loading: 'lazy', onerror: (e) => { e.currentTarget.parentNode.classList.remove('face'); e.currentTarget.remove(); } }) : null);
@@ -760,12 +760,11 @@ async function showForm(page, r) {
 async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
-    ...(adm ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, server: setServer, security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
@@ -788,23 +787,14 @@ async function setDisplay(el) {
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Documents'), h('div', { class: 'grid' }, fld('Open on', sv))));
 }
 
-/** Settings › Security and Global settings (suite admins): the people, their role in every app, app
+/** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
-const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
-
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart
-    (iosuite-shared's panel, the same in every io app). */
-async function setServer(el) {
-  let ui;
-  try { ui = await serverUi(); } catch (e) { el.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { toast });
-}
-const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
 
 // ------------------------------------------------------------------ sign-in
 function showSignIn() {

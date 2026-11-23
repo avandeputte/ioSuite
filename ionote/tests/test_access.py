@@ -4,6 +4,7 @@ import json
 
 from helpers import NID
 from iosuite_shared import testing
+from iosuite_shared import mcp as shared_mcp
 
 
 def test_open_until_the_first_account_exists(client):
@@ -73,12 +74,11 @@ def test_a_header_proxy_signs_in_only_from_a_trusted_address(client, admin):
 
 
 def test_updating_is_the_suites_not_the_apps(client, admin):
-    """One version and one update for the suite (Settings › Global settings › Updates): the app's status carries no
-    update of its own, and its Server page only restarts."""
+    """One version and one update for the suite (Settings › Servers): the app's status carries no update of its own,
+    and the app has no Settings › Server of its own."""
     s = client.get("/api/status").json()
     assert s["version"] and s["commit"] and "update" not in s
-    assert "autoCheck" not in client.get("/api/server").json()
-    assert client.post("/api/server", json={"action": "update"}).status_code == 400
+    assert client.get("/api/server").status_code == 404
 
 
 def test_ionote_registers_in_the_suites_list_of_apps(client):
@@ -126,14 +126,15 @@ def test_suite_apps_for_the_app_switcher(client):
     assert [(a["name"], a["url"], a["icon"]) for a in other] == [("ioPix", "https://photo.example.net", "https://photo.example.net/static/icons/mark.svg")]
 
 
-def test_settings_server_is_the_shared_panel(client, admin):
-    """Settings › Server is iosuite-shared's panel, with the MCP switch; /api/settings no longer has a second one."""
-    assert "export async function mount" in client.get("/api/server/ui.js").text
-    s = client.get("/api/server").json()
-    assert s["name"] == "ioNote" and s["mcpEnabled"] is False and s["mcpAbout"]
-    assert client.post("/api/server", json={"mcpEnabled": True}).json()["mcpEnabled"] is True
+def test_the_mcp_switch_is_the_suites(client, admin):
+    """The switch is a row of the Shared ioSuite database, set under Settings › Apps; /api/settings has no second
+    one, and the app has no Settings › Server of its own."""
+    assert client.get("/api/server/ui.js").status_code == 404
+    assert shared_mcp.enabled_for("ionote") is False
+    shared_mcp.set_for("ionote", True)
+    assert shared_mcp.enabled_for("ionote") is True
     assert "mcp_enabled" not in client.get("/api/settings").json()
-    client.post("/api/server", json={"mcpEnabled": False})
+    shared_mcp.set_for("ionote", False)
     assert client.post("/api/auth/logout_all").status_code in (404, 405)  # Sign out is the only sign out
 
 

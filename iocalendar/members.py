@@ -1,7 +1,7 @@
 """Family members on events: an event on the Family calendar (or any calendar) can be tagged with the people of the
 family it is for ("Emma's swimming", "Dad's dentist").
 
-The family is the suite's one list (iosuite_shared.family, Settings › Security › Family for suite admins), less the
+The family is the suite's one list (iosuite_shared.family, Settings › People › Family for suite admins), less the
 accounts with no role in ioCalendar: the same people, colours and initials as in every app. Only a member of the family
 gets a private calendar of their own here. A tag is kept in the event
 itself as an iCalendar CATEGORIES value with the member's display name, so calendar apps (Apple Calendar, Thunderbird,

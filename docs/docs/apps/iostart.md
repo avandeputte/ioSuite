@@ -28,7 +28,7 @@ every app works without it. It earns its place once you run two or more apps.
 - **Weather** (AccuWeather, a free key), **Home Assistant** entities you can switch from the page, and **bookmarks**.
 - **A wall display** for a tablet: photos behind a big clock, the weather, today's and the coming days' events.
 - **Your own page**: each person hides and orders tiles and cards.
-- **One MCP server for the whole suite** (off until an admin turns it on under Settings › Server): connect an AI
+- **One MCP server for the whole suite** (off until a suite admin turns it on under Settings › Apps): connect an AI
   assistant here once and it gets every app's tools, each app still deciding what you may do there. See
   [AI assistants](../run/assistants.md).
 - **The suite's address**: the start page answers at the address itself and every app in a folder of it

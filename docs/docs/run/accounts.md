@@ -32,8 +32,9 @@ all of them**, and one sign-in at the suite's address (and across the apps' own 
 
 ## Where to manage them
 
-In any app, as a suite admin: **Settings › Security** (People, Roles, App passwords, Sign-in at the proxy) and
-**Settings › Global settings** (Apps, Settings, Updates, Keys and tokens, Logs). It is the same panel in every app.
+In any app, as a suite admin: **Settings › People** (People, Family, Roles, App passwords, Sign-in at the proxy),
+**Settings › Apps** (the apps and all their settings), **Settings › Servers** (updates, the certificate, the log) and
+**Settings › Keys**. It is the same panel in every app.
 Everyone has **Settings › Account** (name, email, password, two-step sign-in and passkeys, their app passwords) and
 **Settings › Display** (the theme, kept with the account).
 
@@ -49,7 +50,7 @@ iosuite sign-in-reset emma        # a lost phone: two-step sign-in off, passkeys
 
 ## Deleting someone
 
-Delete an account under **Settings › Security › People**: open the person and press Delete. Before anything happens,
+Delete an account under **Settings › People › People**: open the person and press Delete. Before anything happens,
 the panel asks every app what is only that person's and lists it: their private calendars, lists, address book,
 recipes and cookbooks, private money accounts, notes, health data, favourites, private albums, own bookmarks and home page layout, and their
 sessions, app passwords and notification devices. To go ahead you type their user name. Each app then removes its
@@ -62,11 +63,11 @@ data the next time it starts.
 ## Estate planning PDF
 
 If someone in the family dies, the people settling the estate need their details in one place. Open the person under
-**Settings › Security › People** and press **Make the estate PDF**; anyone can make their own under **Settings ›
+**Settings › People › People** and press **Make the estate PDF**; anyone can make their own under **Settings ›
 Account**. Every app adds what it knows about that person:
 
 - **ioContact**: their own card and their closest family (spouse or partner, parents, siblings, children, emergency
-  contacts) with each one's phone, email and address. Link their card under Settings › Security › Family.
+  contacts) with each one's phone, email and address. Link their card under Settings › People › Family.
 - **ioDocs**: their documents and the household's (wills first, then insurance, deeds, tax papers…), with numbers,
   dates and the scans.
 - **ioMoney**: their accounts and the household's, with the bank, the last digits of the number and the balance; the

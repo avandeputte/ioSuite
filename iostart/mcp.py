@@ -3,11 +3,11 @@ iosuite_shared.mcp.add_suite_update_tools) and every other app's tools, so an as
 that spans apps ("put Friday's dinner ingredients on the shopping list") with one connection and one app password.
 
 An assistant signs in with a user name and an ioStart app password (Settings › Account), like any other MCP client of
-the suite; the switch is at Settings › Server. The other apps' tools are listed under the app's key and an underscore
+the suite; the switches are at Settings › Apps. The other apps' tools are listed under the app's key and an underscore
 (iocalendar_add_event, iotask_add_task...). A call is passed on to that app's own MCP server as the same person,
 with the same sign-in: every app takes an ioStart app password at its /mcp (iosuite_shared.apppasswords.HUB), so each
 app still decides what this person may see and change there, exactly as when the assistant talks to it directly. An
-app whose MCP server is switched off (its own Settings › Server), or where the person has no role, offers nothing.
+app whose MCP server is switched off (the suite's Settings › Apps), or where the person has no role, offers nothing.
 The start page reaches each app as iosuite_shared.links does: localhost on the same machine, then its internal
 address, then its public one, with the suite's Cloudflare Access service token when there is one.
 """
@@ -83,7 +83,7 @@ shared_mcp.add_suite_update_tools(server)
 @server.tool(annotations=shared_mcp.READ_ONLY)
 async def suite_apps() -> dict:
     """apps: the apps of the suite this MCP server passes calls on to, one line each: app (the prefix of its tools), name,
-    status (ok; off: its MCP server is switched off in that app's Settings › Server; no_access: you have no role
+    status (ok; off: its MCP server is switched off in Settings › Apps; no_access: you have no role
     there; no_mcp: it has no MCP server; unreachable: it did not answer; sign_in: connect here with an ioStart app
     password so calls can be passed on), tools (how many), and instructions (how that app's tools fit together: read
     them before using an app's tools for the first time)."""
@@ -233,7 +233,7 @@ async def _why(app: str, e: BaseException) -> dict:
             pass
         if r.status_code == 404:
             if "switched off" in detail:
-                return {"status": "off", "detail": "Its MCP server is switched off (Settings › Server in that app)."}
+                return {"status": "off", "detail": "Its MCP server is switched off (Settings › Apps)."}
             return {"status": "no_mcp", "detail": "It has no MCP server."}
         if r.status_code in (401, 403):
             return {"status": "no_access", "detail": detail[:200] or "It did not take your sign-in."}

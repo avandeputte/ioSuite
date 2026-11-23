@@ -1,4 +1,4 @@
-"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Global settings › Settings
+"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Apps › All settings
 changes them; app.json lists the app's own). Everything stored
 lives in MariaDB, the scans of the documents too (so a backup of the database is a backup of everything). The
 settings every app of the suite shares come from iosuite_shared.config.standard."""

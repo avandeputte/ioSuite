@@ -1,4 +1,4 @@
-/** Settings: one page in tabs, as in every ioThing app (the Security and Global settings tabs are users.js), and the
+/** Settings: one page in tabs, as in every ioThing app (the suite's own tabs are users.js), and the
  *  Tools page. */
 import { PREF, UNITS, act, api, dfDayLocal, errorBox, fill, fmtBytes, fmtWhen, h, icon, loadingBox, main, nf, plural, post, regionUsesMiles, store } from './core.js';
 import { S, THEMES, applyBadgePref, applyTheme, avatarOf, hashFor, infoPrefsEditor, photosWith, pollSoon, toast, toastError } from './state.js';
@@ -201,7 +201,7 @@ const OPEN_COMPARE = new Set();  // model groups whose "Compare the models" fold
 // the first is always shown
 const STABS = {
   settings: [['account', 'Account'], ['display', 'Display'], ['editing', 'Editing'], ['library', 'Library'], ['ai', 'AI'],
-    ['server', 'Server'], ['security', 'Security'], ['global', 'Global settings']],
+    ['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']],
 };
 const stab = (k) => h('span', { class: 'stab-mark', 'data-tab': k, hidden: true });
 /** Each heading and the rows under it become one box, as the shared panels draw theirs. */
@@ -383,6 +383,10 @@ function libraryTab(c) {
         switchField('digikam_sync', !!d.sync, { on: 'Sync with digiKam on.', off: 'Sync with digiKam off.', after: () => setTimeout(again, 1500) }));
     })(),
     scannerRow(c),
+    h('h2', null, 'Backups'),
+    row('Download a backup', S.NO_DK ? `${S.APP_NAME}’s database and search index, as a zip.` : `digiKam’s database as it is now, and ${S.APP_NAME}’s database and search index as a zip.`,
+      h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, S.NO_DK ? null : backupButton('digikam', 'digiKam database'),
+        backupButton('app', `${S.APP_NAME} data (zip)`))),
   ];
 }
 
@@ -469,8 +473,6 @@ export async function showTools() {
   boxed([...page.children].slice(1));
 }
 
-/** Settings › Server: iosuite-shared's panel, the same in every ioThing app, then the backups to download. */
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
 /** A backup is made by a POST (it writes a large dump, so no link on another site may start one): a form, whose
  * answer the browser saves as a download. */
 function backupButton(which, label) {
@@ -478,16 +480,6 @@ function backupButton(which, label) {
     h('button', { class: 'pillbtn', type: 'submit' }, icon('download'), h('span', null, label)));
 }
 
-function serverTab(c) {
-  const { row } = c;
-  const box = h('div');
-  serverUi().then((ui) => ui.mount(box, { toast })).catch((e) => fill(box, errorBox(new Error(`The Server panel did not load: ${e.message}`))));
-  return [stab('server'), box,
-    h('h2', null, 'Backups'),
-    row('Download a backup', S.NO_DK ? `${S.APP_NAME}’s database and search index, as a zip.` : `digiKam’s database as it is now, and ${S.APP_NAME}’s database and search index as a zip.`,
-      h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, S.NO_DK ? null : backupButton('digikam', 'digiKam database'),
-        backupButton('app', `${S.APP_NAME} data (zip)`)))];
-}
 async function settingsPage(view) {
   let m;
   if (!main.querySelector('.spage:not(.tpage)')) main.replaceChildren(h('div', { class: 'page spage' }, loadingBox('Loading the settings…')));
@@ -504,9 +496,7 @@ async function settingsPage(view) {
     S.IS_ADMIN && S.EDITING ? editingTab(c) : null,
     S.IS_ADMIN ? libraryTab(c) : null,
     S.IS_ADMIN ? [stab('ai'), aiSection(view)] : null,
-    S.IS_ADMIN ? serverTab(c) : null,
-    suite ? [stab('security'), suiteSection('security')] : null,
-    suite ? [stab('global'), suiteSection('global')] : null,
+    ...(suite ? ['people', 'apps', 'servers', 'keys'].map((k) => [stab(k), suiteSection(k)]) : []),
   ));
   settingsTabs(main.querySelector('.spage'), view);
 }

@@ -569,7 +569,7 @@ async function editServer(s) {
   };
   const body = h('div', { class: 'pform' }, h('div', { class: 'grid' }, fld('Kind', kind), fld('Name', name), fld('View', view, 'which answers this server gives')), fieldsBox,
     h('label', { class: 'check' }, enabled, ' Kept in sync (off: left out of comparisons and pushes)'), status,
-    h('p', { class: 'muted small' }, 'The password or key is kept with the suite\'s keys and tokens (Settings › Global settings), never shown again.'));
+    h('p', { class: 'muted small' }, 'The password or key is kept with the suite\'s keys and tokens (Settings › Keys), never shown again.'));
   kind.onchange = drawFields;
   drawFields();
   const testIt = async () => { status.textContent = 'Testing…'; status.className = 'muted small'; try { const r = await api('api/servers/test', { method: 'POST', json: { ...collect(), id: s ? s.id : null } }); status.textContent = r.message; status.className = r.ok ? 'okmsg small' : 'warn small'; } catch (e) { status.textContent = e.message; status.className = 'warn small'; } return undefined; };
@@ -657,14 +657,14 @@ async function showHistory(page) {
 }
 
 // ------------------------------------------------------------------ settings
-const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['views', 'Views'], ['data', 'Export and import'],
-    ...(isAdmin() ? [['server', 'Server']] : []), ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, views: setViews, data: setData, server: setServer, security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, views: setViews, data: setData, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 async function setAccount(el) {
@@ -715,11 +715,6 @@ async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
-const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
-async function setServer(el) {
-  const panel = h('div'); el.append(panel);
-  try { await (await serverUi()).mount(panel, { toast }); } catch (e) { panel.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); }
 }
 // ------------------------------------------------------------------ sign-in
 function showSignIn() {

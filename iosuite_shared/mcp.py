@@ -12,7 +12,7 @@ MCP clients sign in like any other client of the suite: HTTP Basic with the user
 app password (Settings › Account); every tool acts as that account. An ioStart app password (without a limit) signs in
 at every app's /mcp too: the start page's /mcp is the suite's one MCP server and passes calls on with it
 (apppasswords.HUB, iostart/app/mcp.py). The switch is a setting of the app
-(`enabled(get_setting, forced)`): off until an admin turns it on under Settings › Server, or MCP=1 in the environment.
+(`enabled_for(app)`): off until a suite admin turns it on under Settings › Apps.
 """
 import contextvars
 import time
@@ -119,31 +119,45 @@ def clamp(n, lo: int, hi: int) -> int:
     return max(lo, min(n, hi))
 
 
-def enabled(get_setting) -> bool:
-    """The switch: the app's `mcp_enabled` setting, off by default; off too while the settings cannot be read."""
+def enabled_for(app: str) -> bool:
+    """Whether this app's MCP server is on: its own `mcp_enabled` row in the Shared ioSuite database, else the
+    suite-wide one (db.get_setting falls back to it), else off. Off too while the settings cannot be read."""
+    from iosuite_shared import db
     try:
-        return get_setting(SETTING, "0") == "1"
+        return db.get_setting(SETTING, "0", app) == "1"
     except Exception:  # noqa: BLE001  the database is away
         return False
 
 
-class Switch:
-    """One app's Settings › Server › MCP server: `enabled` is the switch (the gate's test), `info` and `apply` the MCP
-    box of the server panel (Auth.server_router's info= and apply=). `about` says what an assistant may do there."""
+def set_for(app: str, on) -> None:
+    """Turn this app's MCP server on or off (app "": the switch every app follows unless it says otherwise).
+    `on` None: the app's own row is removed, so it follows the suite's switch again."""
+    from iosuite_shared import db
+    db.set_setting(SETTING, None if on is None else ("1" if on else "0"), app)
 
-    def __init__(self, get_setting, set_setting, about: str):
-        self._get, self._set, self.about = get_setting, set_setting, about
+
+def switches() -> dict:
+    """{app: on} as stored: the suite's switch under "" and a row for every app that says otherwise (Settings ›
+    Apps). An app with no row of its own follows the suite's."""
+    from iosuite_shared import db
+    out = {}
+    for r in db.q("SELECT app, value FROM ios_settings WHERE name = %s", (SETTING,)):
+        out[r["app"]] = r["value"] == "1"
+    return out
+
+
+class Switch:
+    """One app's MCP server: `enabled` is the switch (the gate's test), `about` says what an assistant may do there.
+    It is a setting of the Shared ioSuite database, so Settings › Apps shows every app's in one place."""
+
+    def __init__(self, app: str, about: str):
+        self.app, self.about = app, about
 
     def enabled(self) -> bool:
-        return enabled(self._get)
+        return enabled_for(self.app)
 
     def info(self) -> dict:
         return {"mcpEnabled": self.enabled(), "mcpAbout": self.about}
-
-    def apply(self, body: dict) -> None:
-        """{mcpEnabled: bool} sent to POST /api/server."""
-        if "mcpEnabled" in body:
-            self._set(SETTING, "1" if body["mcpEnabled"] else "0")
 
 
 def mount(app, server: MCPServer, path: str = PATH) -> None:

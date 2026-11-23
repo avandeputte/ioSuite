@@ -23,7 +23,7 @@ Two ways for the data to reach TRMNL, as the person's TRMNL is set up:
   Settings › TRMNL; the start page then sends the screen's data there itself (trmnlpush.py: every 15 minutes
   when it changed, once an hour at least; TRMNL takes 12 an hour per plugin, 5 KB each). The webhook addresses and
   the app password it reads with are kept with the suite's keys and tokens (iosuite_shared.credentials), so a suite
-  admin sees them in Settings › Global settings › Keys and tokens.
+  admin sees them in Settings › Keys.
 
 Either way the data is read as the person, with what they may see in each app and nothing more (widgets.fetch: the
 apps' standard tile endpoints, on the person's own sign-in): there is no service account behind it.

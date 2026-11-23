@@ -1,7 +1,7 @@
 """Family members on tasks: a task on the Family list (or any list) can be for one or more people of the family
 ("Emma: pack the swim bag", "Dad: renew the passport").
 
-The family is the suite's one list (iosuite_shared.family, Settings › Security › Family for suite admins), less the
+The family is the suite's one list (iosuite_shared.family, Settings › People › Family for suite admins), less the
 accounts with no role in ioTask: the same people, colours and initials as in every app. Only a member of the family
 gets a private list of their own here. The tag is kept in the task itself as an iCalendar CATEGORIES value with the member's
 display name, so reminders apps that show categories show it, and a category typed there with a member's name (or

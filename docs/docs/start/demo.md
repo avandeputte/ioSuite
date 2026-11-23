@@ -19,7 +19,7 @@ The demo data is a package of its own in the program folder, which nothing loads
 | `ava` | Ava, 14 | member |
 | `theo` | Theo, 9 | member |
 
-They all sign in with the password `calloway`. The four are in the family list (Settings › Security › Family), each
+They all sign in with the password `calloway`. The four are in the family list (Settings › People › Family), each
 with a colour, linked to their card in ioContact and their face in ioPix.
 
 ## What each app gets
@@ -65,7 +65,7 @@ turns the demo on; each app adds its share as it starts (the four accounts come 
 later adds its own at its first start too, until `iosuite demo --off`, which stops that and removes nothing.
 
 The demo data is added once per app, and it is meant for a suite that starts with it: the easiest way out is to start
-over (on Docker, with an empty data folder). Deleting the four accounts under Settings › Security › People removes
+over (on Docker, with an empty data folder). Deleting the four accounts under Settings › People › People removes
 each one's own data in every app, but what the family shares (the Family calendar and lists, the household's
 accounts, the things, the family recipes) stays, as it would for a real person. ioPix adds demo photos only when it
 keeps its own library, in a folder `Calloway family (demo)` of the photos folder: a digiKam library is never added to.

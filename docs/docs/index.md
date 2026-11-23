@@ -49,9 +49,9 @@ Two **admin tools** come with the suite, for the person who runs the servers. On
   Everything else is under Settings, in the browser.
 - **One installer**: a line on any Linux server or Mac, a Proxmox VE container, or one Docker image (amd64 and
   arm64). Run it again to add or remove an app. See [Requirements](start/requirements.md).
-- **The same Settings**: Account and Display for everyone; Server (version, restart) for admins; Security and Global
-  settings (apps, settings, updates, keys, the log) for suite admins.
-- **One version, one update**: a daily check, then one **Update** button under Settings › Global settings › Updates.
+- **The same Settings**: Account and Display for everyone; People, Apps, Servers and Keys for suite admins (who may
+  sign in and with which role, the apps and all their settings, updates and the certificate, the log, and the keys).
+- **One version, one update**: a daily check, then one **Update** button under Settings › Servers › Updates.
   See [Updates](run/updates.md).
 - **An MCP server** in ioPix, ioNote, ioCalendar, ioTask, ioRecipe, ioThings, ioMoney, ioDocs and ioContact, so an AI
   assistant such as Claude can work with them as you, with an app password; ioStart's passes on every app's tools

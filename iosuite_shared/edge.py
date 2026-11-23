@@ -8,8 +8,7 @@ A SHA-256 is enough here and fast for the Worker: an app password is 144 random 
 its hash. Account passwords are never sent. The server still checks every password itself, so a stale key
 only lets a request reach it, never in.
 
-Off unless all three are set. They are the whole suite's keys in the Shared ioSuite database (Settings › Global settings ›
-Keys and tokens, or `iosuite edge --account-id … --namespace-id … --token-file …`), so every app has them at once, and
+Off unless all three are set. They are the whole suite's keys in the Shared ioSuite database (Settings › Keys, or `iosuite edge --account-id … --namespace-id … --token-file …`), so every app has them at once, and
 they are kept nowhere else:
 
     cf_kv_account_id      the Cloudflare account id

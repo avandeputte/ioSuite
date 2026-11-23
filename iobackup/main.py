@@ -64,7 +64,6 @@ async def drive_error(request: Request, e: gdrive.DriveError):
 app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
 app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js): the whole suite (suite admins)
 app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
-app.include_router(auth.server_router(updater))  # /api/server (admins)
 app.include_router(api.router)
 
 

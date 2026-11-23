@@ -329,13 +329,6 @@ def test_digikam_offline_banner_and_sync_setting(page, server):
     page.wait_for_selector(".srow:has-text('Sync with digiKam')", timeout=10000)
     assert page.locator(".srow", has_text="Sync with digiKam").locator("input[type=checkbox]").is_checked()
 
-def test_the_server_tab_says_where_the_log_is(page, server):
-    """The log is the suite's, one for all the apps of a server: the Server tab no longer shows a box of its own."""
-    page.goto(server + "/#/settings/server")
-    page.wait_for_selector(".iosv .sv-box:has-text('Server log')", timeout=10000)
-    assert "Global settings › Logs" in page.locator(".iosv .sv-box", has_text="Server log").inner_text()
-    assert page.locator(".iosv pre").count() == 0
-
 def test_grid_header_stays_while_scrolling_and_delete_asks_first(page, server):
     page.set_viewport_size({"width": 1300, "height": 800})
     page.goto(server + "/#/photos")

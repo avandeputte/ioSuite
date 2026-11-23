@@ -2,6 +2,7 @@
 import base64
 import json
 from iosuite_shared import testing
+from iosuite_shared import mcp as shared_mcp
 
 H = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 
@@ -41,7 +42,8 @@ def app_password(client, name="alex"):
 def test_mcp_switch_and_sign_in(client):
     auth, secret = app_password(client)
     assert rpc(client, "tools/list", auth=auth)[0] == 404  # off on a fresh install
-    assert client.post("/api/server", json={"mcpEnabled": True}).json()["mcpEnabled"] is True
+    shared_mcp.set_for("iocontact", True)
+    assert shared_mcp.enabled_for("iocontact") is True
     client.cookies.clear()
     assert rpc(client, "tools/list")[0] == 401  # nobody
     code, msg = rpc(client, "tools/list", auth=auth)
@@ -55,7 +57,7 @@ def test_mcp_switch_and_sign_in(client):
 
 def test_mcp_contacts_relations_and_permissions(client, family_id):
     auth, _ = app_password(client)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocontact", True)
     mary = call(client, auth, "create_contact", contact={"fn": "Mary Ray", "gender": "F", "birthday": "1960-03-04",
                                                          "emails": ["mary@example.com"], "phones": [{"value": "+1 555 0100", "label": "mobile"}]})
     assert mary["name"]["family"] == "Ray" and mary["birthday"] == {"year": 1960, "month": 3, "day": 4} and mary["book"] == "Family"
@@ -106,8 +108,7 @@ def test_mcp_contacts_relations_and_permissions(client, family_id):
     assert "No contact" in call(client, auth, "get_contact", contact=str(mine["id"]))["error"]
 
 
-def test_server_status_for_admins(client):
-    s = client.get("/api/server").json()
-    assert s["version"] and "canRun" in s and s["mcpEnabled"] is False
-    assert "autoCheck" not in s and "update" not in client.get("/api/status").json()  # updating is the suite's
-    assert client.post("/api/server", json={"action": "update"}).status_code == 400
+def test_the_switch_is_off_on_a_fresh_install_and_updating_is_the_suite_s(client):
+    assert shared_mcp.enabled_for("iocontact") is False
+    assert "update" not in client.get("/api/status").json()  # updating is the suite's
+    assert client.get("/api/server").status_code == 404      # no Settings › Server of its own

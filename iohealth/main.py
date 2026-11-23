@@ -74,14 +74,13 @@ def _status_extra(request) -> dict:
 
 app.include_router(auth.router())        # /api/auth/*: login, accounts, logout, me, settings, password, setup, sessions, app-passwords, proxy
 app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite/tile: the start page's tile (app.json)
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › Security panel): the whole suite (suite admins)
+app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People panel): the whole suite (suite admins)
 app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
 app.include_router(upload.router)
 app.include_router(webapi.router)
 app.include_router(usual.router)       # /api/usual: what is outside the account's usual
 
 
-app.include_router(auth.server_router(updater))  # /api/server: admins
 
 
 pages.mount(app, config.STATIC_DIR, __version__)  # /, the manifest and /static

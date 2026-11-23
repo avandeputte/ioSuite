@@ -70,7 +70,7 @@ whole suite, pointed at either server (the one with the start page is the natura
 The servers call each other at their addresses inside the network. A server that cannot tell its own (in a container
 behind a bridge, say) is told in its file: `INTERNAL_URL=http://192.168.1.152`.
 
-Settings › Global settings › Updates updates all of them: each server sees the request in the Shared ioSuite database
+Settings › Servers › Updates updates all of them: each server sees the request in the Shared ioSuite database
 and runs its own update. `update.sh` in the program folder does one server by hand.
 
 ### Moving an app to another server

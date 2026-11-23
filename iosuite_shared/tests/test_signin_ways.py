@@ -166,7 +166,7 @@ def with_passkey(app, phone, c=None):
 
 
 def test_add_a_passkey_and_sign_in_with_it(monkeypatch):
-    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Global settings)
+    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Apps › All settings)
     app, _ = make_app()
     notes, _ = make_app("ionote")
     phone = Phone()

@@ -29,7 +29,7 @@ runs elsewhere on to it (iosuite_shared.doors).
 An admin tool (ioDNS, ioBackup) is for suite admins only: everybody else is "none" there (whatever a
 role row or default role says), and a switcher shows it apart from the others.
 
-A suite admin may forget an app that was uninstalled (Settings › Global settings › Apps: `DELETE
+A suite admin may forget an app that was uninstalled (Settings › Apps › The apps: `DELETE
 /api/suite-admin/apps/{app}`); it comes back the next time it starts.
 """
 import ipaddress

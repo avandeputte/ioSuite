@@ -118,7 +118,7 @@ def test_a_page_in_a_browser_reaches_mcp_only_under_a_known_name(monkeypatch):
     suite._hosts.clear()
     pub = TestClient(app, base_url="https://contacts.example.org", client=LAN)
     assert pub.post("/mcp", headers={**basic("alex", pw), "origin": "https://contacts.example.org"}).status_code == 200
-    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Global settings)
+    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Apps › All settings)
     dom = TestClient(app, base_url="https://contacts.example.com", client=LAN)
     assert dom.post("/mcp", headers={**basic("alex", pw), "origin": "https://contacts.example.com"}).status_code == 200
     assert not suite.known_host("iocontact", "example.com.evil.example") and not suite.known_host("iocontact", "")

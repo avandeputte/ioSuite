@@ -24,7 +24,7 @@ def _int(v) -> int | None:
 @router.get("/api/summary", dependencies=[access.signed_in])
 def summary(request: Request):
     """How many things (still yours, archived, warranties ending soon, upkeep due within a week, what they cost), the
-    places (a tree, each with its path), the labels and the family (Settings › Security › Family), each with how many
+    places (a tree, each with its path), the labels and the family (Settings › People › Family), each with how many
     things; the currency; and what you may do."""
     u = request.state.user
     return {"counts": model.counts(), "locations": model.locations(), "labels": model.labels(), "family": model.family(),

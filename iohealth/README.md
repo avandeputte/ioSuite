@@ -45,7 +45,7 @@ under More.
 | **Glucose** | blood glucose from a CGM or meter: average, GMI (estimated A1c), time in/below/above range, variability (CV), low episodes; readings with your target band and optional overlays (heart rate, steps, carbohydrates, insulin, workouts…); the daily pattern (ambulatory glucose profile) and time in range per day; **glucose around workouts and meals**: the average change from an hour before to three hours after, per activity or per meal size (from logged carbohydrates), and each event's numbers. A workout's own page shows its glucose curve too. mg/dL or mmol/L and the target range are set in Settings |
 | **Correlations** | pick two metrics and a period: a scatter plot of the days (click a dot for that day), the correlation, how much one explains the other and the best-fit line, same day or "the day before" (sleep, workouts or carbs, then the next day's glucose). Includes glucose time in range and variability per day and workout minutes. A table ranks what else goes with the second metric |
 | **Records** | fastest running efforts from the GPS routes, best days, health bests, ring streaks, and bests per activity |
-| **Settings** | in tabs, as in ioContact and ioCalendar (`#/settings/<tab>`; each tab loads only what it shows). *Account*: your name, email and password (iosuite_shared's panel, the same in every io app). *Display*: theme (light, dark or system, kept with your account), units (automatic from your region, kilometres or miles), and which pages and metrics to show (turn off Sleep, Glucose or any metric you don't use and it disappears from the menu, the dashboard, Metrics and Records). *Health*: glucose unit and target range, maximum heart rate (default 220 − age from your date of birth). *Goals and alerts*: **goals** (any metric, at least or at most: 10,000 steps a day, weight at most 75 kg, 7.5 h of sleep…) and the thresholds for dashboard alerts. For admins: *Server*: iosuite_shared's panel, the same in every io app: the installed version, the database and time zone, the server log, Restart. For suite admins: *Security* (people and their role in every app, app passwords, sign-in at the proxy) and *Global settings* (the apps, keys and tokens), the suite's admin panel, the same as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`) |
+| **Settings** | in tabs, as in ioContact and ioCalendar (`#/settings/<tab>`; each tab loads only what it shows). *Account*: your name, email and password (iosuite_shared's panel, the same in every io app). *Display*: theme (light, dark or system, kept with your account), units (automatic from your region, kilometres or miles), and which pages and metrics to show (turn off Sleep, Glucose or any metric you don't use and it disappears from the menu, the dashboard, Metrics and Records). *Health*: glucose unit and target range, maximum heart rate (default 220 − age from your date of birth). *Goals and alerts*: **goals** (any metric, at least or at most: 10,000 steps a day, weight at most 75 kg, 7.5 h of sleep…) and the thresholds for dashboard alerts. For suite admins: *People* (people and their role in every app, the family, app passwords, sign-in at the proxy), *Apps* (where each app answers, who may use it, whether an AI assistant may, and every setting), *Servers* (the version and updates, the certificate, the log) and *Keys* (the keys and tokens), the suite's admin panel, the same as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`) |
 | **Notifications** | through the suite's web push (Settings › Account › Notifications, per person): *Health goals*, when a sync brings one of today's goals up to it; *Weekly health summary*, on Monday at your morning time, last week's steps a day, sleep a night and workouts next to the week before; *Outside your usual*, on the day your resting heart rate, heart rate variability or sleep leaves what is usual for you (the Heads-up list's own check, made on the server: at your morning time, and after each sync from then on, once) |
 
 **Export.** The ⤓ CSV buttons download what a chart or table shows (Metrics, Day, glucose readings and responses,
@@ -101,7 +101,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioHealth has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioHealth, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioHealth, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -122,12 +122,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioHealth runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 ## Reverse proxy and HTTPS
 
@@ -153,10 +153,10 @@ its health data. A *suite admin* is admin in every app.
 | **viewer** | see their own data, and their own settings and goals |
 | **member** (the default) | plus upload their own data: the iPhone app signs in as a member or more |
 | **editor** | the same as a member: everyone's data is their own, so there is nothing shared to change |
-| **admin** | plus Server in Settings; accounts, roles and the sign-in settings are for suite admins (Settings › Security) |
+| **admin** | plus Server in Settings; accounts, roles and the sign-in settings are for suite admins (Settings › People) |
 
 Settings › Account is where you change your name, email and password. Every setting saves as soon as you change it. The iPhone app signs in with this server's address, your user
-name and your password; a script can use an **app password** instead (made by a suite admin under Settings › Security › App passwords). Sessions are random tokens in an HttpOnly cookie (`iothing_session`, shared
+name and your password; a script can use an **app password** instead (made by a suite admin under Settings › People › App passwords). Sessions are random tokens in an HttpOnly cookie (`iothing_session`, shared
 by the apps on the domain) valid for 30 days and renewed while in use; passwords are Argon2id-hashed; wrong passwords
 cost a growing wait.
 

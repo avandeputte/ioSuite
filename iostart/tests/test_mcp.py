@@ -1,5 +1,6 @@
 """The MCP server at /mcp: off until switched on, signed in with an app password; updating every app at once (suite admins)."""
 import json
+from iosuite_shared import mcp as shared_mcp
 
 H = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 
@@ -32,8 +33,7 @@ def test_mcp_updates_every_app(client):
     secret = client.post("/api/auth/app-passwords", json={"label": "claude"}).json()["password"]
     auth = {"Authorization": f"Bearer {secret}"}
     assert rpc(client, "tools/list", auth=auth)[0] == 404  # off on a fresh install
-    assert client.post("/api/server", json={"mcpEnabled": True}).status_code == 200
-    assert client.get("/api/server").json()["mcpEnabled"] is True
+    shared_mcp.set_for("iostart", True)
     client.cookies.clear()
     assert rpc(client, "tools/list")[0] == 401
     names = {t["name"] for t in rpc(client, "tools/list", auth=auth)[1]["result"]["tools"]}

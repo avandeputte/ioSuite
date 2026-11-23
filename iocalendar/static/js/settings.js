@@ -8,13 +8,11 @@ import { profileScope as scopeSelect } from '../../api/auth/ui.js';
 export async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['calendars', 'Calendars'], ['holidays', 'Holidays and birthdays'],
-    ...(adm ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', SUITE_TABS.security], ['global', SUITE_TABS.global]] : [])];
+    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, calendars: setCalendars, holidays: setHolidays, server: setServer,
-    security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, devices: setDevices, calendars: setCalendars, holidays: setHolidays, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 export const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
@@ -96,7 +94,7 @@ export async function setDevices(el) {
       how('Setup for Claude Code and JSON-configured apps',
         copyRow(`claude mcp add --transport http iocalendar ${info.mcp} --header "Authorization: Bearer APP-PASSWORD"`),
         copyRow(JSON.stringify({ mcpServers: { iocalendar: { command: 'npx', args: ['-y', 'mcp-remote', info.mcp, '--header', 'Authorization: Bearer APP-PASSWORD'] } } }))))
-      : (S.user.role === 'admin' ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/server' }, 'Settings › Server'), '.')) : null),
+      : (S.user.suiteAdmin ? h('div', { class: 'box' }, h('h2', null, icon('ai'), 'AI assistants (MCP)'), h('p', { class: 'muted' }, 'Off. Turn it on in ', h('a', { class: 'lnk', href: '#/settings/apps' }, 'Settings › Apps'), '.')) : null),
     h('div', { class: 'box' }, h('h2', null, icon('link'), 'Other apps (REST API)'),
       h('p', null, 'JSON, iCalendar or jCal with your user name and an app password. ', h('a', { class: 'lnk', href: info.api, target: '_blank' }, 'API documentation')),
       copyRow(`curl -u ${info.user}:APP-PASSWORD "${info.server}/api/occurrences?start=${ymd(new Date())}&end=${ymd(addDays(new Date(), 7))}"`))].filter(Boolean));
@@ -131,6 +129,7 @@ export async function setCalendars(el) {
           try { await api(`api/calendars/${c.id}`, { method: 'DELETE' }); await loadCals(); onRoute(); } catch (e) { fail(e); }
         } }, 'Delete') : null)] : h('p', { class: 'muted' }, auto ? (c.kind === 'holidays' ? 'Filled from Settings › Holidays and birthdays.' : 'Filled from ioContact (Settings › Holidays and birthdays).') : `${c.count || 0} events. Editors and admins change shared calendars.`));
   }));
+  await exportBox(el);
 }
 
 /** An outside calendar's address, how often it is fetched and how the last fetch went; the address only for those who manage it. */
@@ -157,9 +156,9 @@ function subscriptionBox(c, sub, manage) {
     } }, icon('repeat', 's'), 'Fetch now'))];
 }
 
-/** Settings › Security and Global settings (suite admins): the people, their role in every app, app
-    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
-export const SUITE_TABS = { security: 'Security', global: 'Global settings' };
+/** Settings › People, Apps, Servers and Keys (suite admins): everything the suite keeps in the Shared ioSuite
+    database. The same panel in every io app, served by iosuite-shared. */
+export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
@@ -241,14 +240,8 @@ export async function setHolidays(el) {
   await birthdaysBox(el);
 }
 
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart
-    (iosuite-shared's panel, the same in every io app), then Export: each calendar as an .ics file. */
-export async function setServer(el) {
-  let ui;
-  const panel = h('div');
-  el.append(panel);
-  try { ui = await serverUi(); } catch (e) { panel.append(h('p', { class: 'warn' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(panel, { toast });
+/** The calendars as .ics files, under Settings › Calendars. */
+export async function exportBox(el) {
   await loadCals();
   el.append(h('div', { class: 'box' }, h('h2', null, icon('download'), 'Export'),
       h('p', null, 'Each calendar as an .ics file.'),
@@ -257,4 +250,3 @@ export async function setServer(el) {
         h('td', { style: { textAlign: 'right' } }, h('a', { class: 'pillbtn noic', href: `api/calendars/${c.id}/export` }, 'Download'))))),
       ));
 }
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);

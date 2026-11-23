@@ -2457,13 +2457,13 @@ async function showPair(page, r) {
 // ------------------------------------------------------------------ settings
 async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
-  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page'], ['ha', 'Home Assistant']] : []), ...(adm ? [['server', 'Server']] : []),
-    ...(S.user.suiteAdmin ? [['security', 'Security'], ['global', 'Global settings']] : [])];
+  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page'], ['ha', 'Home Assistant']] : []),
+    ...(S.user.suiteAdmin ? [['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']] : [])];
   if (!tabs.some(([k]) => k === r.tab)) r.tab = 'account';
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, bookmarks: setBookmarkSettings, trmnl: setTrmnl, apps: setHome, weather: setHome, ha: setHomeAssistant, server: setServer, security: setSuite, global: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, bookmarks: setBookmarkSettings, trmnl: setTrmnl, weather: setHome, ha: setHomeAssistant, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
@@ -3177,7 +3177,7 @@ function dragSort(handle, item, o) {
 
 // ------------------------------------------------------------------ settings › security and global settings (suite admins)
 /* Everything in the Shared ioSuite database, for the whole suite: Security (people and their role in every app, roles,
-   app passwords, sign-in at the proxy) and Global settings (the apps, keys and tokens). The same panel in every io app,
+   app passwords, sign-in at the proxy), Apps, Servers and Keys. The same panel in every io app,
    served by iosuite-shared at /api/suite-admin/ui.js. */
 async function setSuite(el, r) {
   let ui;
@@ -3188,15 +3188,9 @@ async function setSuite(el, r) {
 // ------------------------------------------------------------------ settings › server (admins)
 /* The server panel every io app shares (iosuite-shared /api/server/ui.js): version and updates,
    the server log and Restart. */
-async function setServer(el) {
-  let ui;
-  try { ui = await serverUi(); } catch (e) { el.append(h('p', { class: 'err' }, `The Server panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { toast });
-}
-const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
 
 /** Suite admins: one note when a newer version of the suite is out (every app has the same one), with Update now.
- *  Hidden until the next version when dismissed. The details are Settings › Global settings › Updates. */
+ *  Hidden until the next version when dismissed. The details are Settings › Servers › Updates. */
 async function updateNote() {
   if (!S.user || !S.user.suiteAdmin) return;
   let u;
@@ -3204,7 +3198,7 @@ async function updateNote() {
   $('#updnote')?.remove();
   let dismissed = null; try { dismissed = localStorage.getItem('iostart.updateDismissed'); } catch { /* private mode */ }
   if (u.status !== 'update' || !u.latest || dismissed === u.latest) return;
-  const page = '#/settings/global/updates';
+  const page = '#/settings/apps/updates';
   const b = h('div', { id: 'updnote', role: 'status' }, icon('update'),
     h('span', null, `ioSuite v${u.latest} is available (now v${u.installed || '?'}).`),
     u.canUpdate ? h('button', { class: 'pillbtn primary noic', onclick: async () => {

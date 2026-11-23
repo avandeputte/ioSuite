@@ -215,7 +215,7 @@ def test_the_throttle_counts_by_the_address_the_proxy_saw():
 
 # ---- the app's address
 def test_only_an_admin_request_sets_the_address(monkeypatch):
-    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Global settings)
+    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Apps › All settings)
     suite.invalidate()
     app, _ = make_app("iocalendar", register=True, app_label="ioCalendar")
     users.create("alex", "secret123", "admin", "iocalendar")

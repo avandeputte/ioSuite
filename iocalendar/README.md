@@ -12,16 +12,16 @@ A self-hosted calendar: a web app for the whole family, and the standard protoco
 - **Views**: month, week, day and agenda, with a small month to jump around, drag and drop to move an event (to another day, or another time in the week and day views), a line at the current time, search across titles, places, people and notes, and keyboard shortcuts (`t` today, `n` new, `d`/`w`/`m`/`a` the views, ←/→ earlier and later, `/` search, `e` change the open event).
 - **ioContact (optional)**: the people on an event come from your contacts (picked as you type, with a link back to each), and a shared, read-only **Birthdays** calendar shows the birthdays and anniversaries kept in ioContact, brought up to date every six hours.
 - **ioTask (optional)**: the tasks that are due show on their day, beside the events, in every view: a round tick in the list's colour, at their time when they have one. Tick one off (or open it again) right on the calendar; a repeating task moves on to its next day. Click the title to open the task in ioTask. Each person sees the lists they see in ioTask, the Family filter applies to tasks too, and **Tasks due** in the sidebar hides them.
-- **Place suggestions**: typing an event's place suggests addresses and places from Google Places, near the start page's weather place, when the suite has a Google key (ioPix's Google server key, else its Google Maps API key, in Settings › Security › Keys and tokens; it needs Places API (New) enabled). The key stays on the server: the page asks ioCalendar, ioCalendar asks Google. No key: a plain text field.
+- **Place suggestions**: typing an event's place suggests addresses and places from Google Places, near the start page's weather place, when the suite has a Google key (ioPix's Google server key, else its Google Maps API key, in Settings › People › Keys and tokens; it needs Places API (New) enabled). The key stays on the server: the page asks ioCalendar, ioCalendar asks Google. No key: a plain text field.
 - **Weather**: the forecast on each of the next seven days (the day headers of the month, week and agenda views) at the start page's weather place, and on an event that has a place, the weather there at its time. Nothing to set up: the place comes from ioStart (Settings › Weather), the forecast from Open-Meteo (free, no key), an event's place is looked up once with OpenStreetMap's Nominatim (only the place's text leaves the server). No ioStart place: no weather on the days; events with a place still get theirs.
 - **ioMoney (optional)**: the household's coming bills (Monarch Money's recurring transactions) show on the day they are due, with the payee and the amount, to the people who have a role in ioMoney; nobody else sees them or the sidebar's **Bills due**, which hides them. Click one to see its payments in ioMoney.
 - **ioDocs (optional)**: the day a passport, a driver's license or an insurance policy expires shows on the calendar,
   for the people ioDocs shows that document to; **Documents expiring** in the sidebar hides them.
 - **Public holidays**: shared, read-only **Holidays** calendars with the public holidays of one or more countries and, if you like, a state or province for each (Settings › Holidays and birthdays; it starts with the country of the family's time zone, else the United States). Worked out on the server with the `holidays` package (nothing is fetched), last year to three years ahead, renewed daily; anyone can hide each one in the sidebar.
 - **Outside calendars**: subscribe to a calendar by its web address (`https://`, `http://` or `webcal://`: a school's, a sports club's, the bin collection) from the + beside Shared or Mine. It is kept as a read-only calendar beside the family's own, fetched again on a schedule (hourly to weekly, Settings › Calendars, or Fetch now), with its reminders dropped. The server only fetches hosts on the internet (not itself, the home network or link-local; every redirect checked the same way), at most 16 MB within 20 s; the address is shown only to those who manage the calendar (members their own, editors the shared ones).
-- **Family members on events**: tag an event with the people of the family it is for ("For Emma"). The tags show as coloured initials on the calendar, the sidebar's Family list shows only one person's (or a few people's) events, and the tag is kept as an iCalendar `CATEGORIES` value with the member's name, so phones and calendar apps show it and a category typed there tags the event here too. The REST API, the subscription links (`?member=emma`) and MCP filter by member as well. The family is the suite's one list (Settings › Security › Family, suite admins), the same in every app: each member's colour, initials and face (their ioPix person, else their ioContact card) match everywhere. An account that is not a person (an admin or guest) can be taken out there: it is not offered as a tag and gets no private calendar.
+- **Family members on events**: tag an event with the people of the family it is for ("For Emma"). The tags show as coloured initials on the calendar, the sidebar's Family list shows only one person's (or a few people's) events, and the tag is kept as an iCalendar `CATEGORIES` value with the member's name, so phones and calendar apps show it and a category typed there tags the event here too. The REST API, the subscription links (`?member=emma`) and MCP filter by member as well. The family is the suite's one list (Settings › People › Family, suite admins), the same in every app: each member's colour, initials and face (their ioPix person, else their ioContact card) match everywhere. An account that is not a person (an admin or guest) can be taken out there: it is not offered as a tag and gets no private calendar.
 - **Roles as in the other io apps**: viewers only read the shared calendars, members (the default) also keep their own private calendars, editors change shared events, admins also manage users and settings. The same accounts, passwords and app passwords as ioPix, ioNote and ioContact; one sign-in for all of them with a shared cookie domain.
-- **Settings › Security** and **Global settings** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
+- **Settings › People, Apps, Servers and Keys** (suite admins): the whole suite's people and their role in every app, app passwords and sign-in at the proxy; the apps, keys and tokens; the same panel as on the start page and in every io app (iosuite_shared's `/api/suite-admin/ui.js`).
 - Light and dark, phone-sized screens, installable as an app.
 
 No tasks or to-dos: those belong in their own app.
@@ -70,7 +70,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioCalendar has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioCalendar, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioCalendar, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -94,8 +94,8 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 Nothing to set up. ioCalendar finds ioContact in the suite's list of apps (the Shared ioSuite database) and reads from
 it from the server as its own service account (`iocalendar-app`) with a read-only app password, both made by itself on
-first use and listed on the start page's Settings › Security, where a suite admin can revoke them (a new one is made the
-next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Global settings › Keys and tokens)
+first use and listed on the start page's Settings › People, where a suite admin can revoke them (a new one is made the
+next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Keys)
 goes along. The Birthdays calendar is filled from ioContact's birthday feed and brought up to date every six hours
 (and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `python -m iocalendar.cli sync-birthdays`).
 
@@ -122,12 +122,12 @@ licenses and policies ioDocs shows them, on the day they expire. **Documents exp
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioCalendar runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 Everything is under one Settings page (the sidebar and the avatar menu); a change is saved the moment it is made: your own tabs (account, display, apps and
 devices, calendars, holidays and birthdays), then for admins family and server (with Export: each calendar as an
@@ -154,7 +154,7 @@ The paths below are ioCalendar's own: at the suite's address they are inside its
 | Calendars that cannot sign in: Google Calendar, Outlook, Apple Calendar subscriptions | **iCalendar subscriptions** (`webcal://`), one calendar or all of them, and **free/busy** (VFREEBUSY): each link has a secret of its own, made in Settings › Apps and devices and shown once (one per app or device, stopped one at a time; only a hash of it is kept, in the Shared ioSuite database) | `/ics/<token>/<calendar>.ics`, `/ics/<token>/all.ics`, `/ics/<token>/freebusy.vfb` |
 | Web and JSON clients | **REST/JSON** with **jCal** (RFC 7265) and iCalendar by content negotiation (`Accept: application/calendar+json` or `text/calendar`): occurrences in a range (repeating events expanded), events, calendars, free/busy, import/export | `/api/`, OpenAPI docs at `/api/docs` |
 | iPhone, iPad and Mac in one step | **Apple configuration profile** (`com.apple.caldav.account`) | Settings › Apps and devices |
-| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server) |
+| AI assistants: Claude and anything else that speaks MCP | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps) |
 
 **iPhone, iPad and Mac in one step:** Settings › Apps and devices › *Download the profile* gives a configuration profile
 (`.mobileconfig`) with the CalDAV account and a new CalDAV-only app password for that device inside (or none, and the device asks).
@@ -187,7 +187,7 @@ read the agenda, search events, find when people are free, add, change, move and
 ones after it, or the whole series), make calendars, import iCalendar files, and, for admins, check the server's health,
 bring the birthdays up to date, look for a new version and install it.
 
-It is off until an admin turns it on in **Settings › Server**; off, `/mcp` does not answer
+It is off until a suite admin turns it on in **Settings › Apps**; off, `/mcp` does not answer
 at all. Every assistant signs in with an **app password** (Settings › Account › App passwords), as HTTP Basic or
 `Authorization: Bearer <app password>`, and acts as that account, with its rights.
 

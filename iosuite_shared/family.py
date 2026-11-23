@@ -1,5 +1,5 @@
 """The family: one list of the people in it for the whole suite, kept in the Shared ioSuite database and managed by suite
-admins in Settings › Security › Family. ioCalendar tags events with them, ioTask gives them tasks, and every app shows
+admins in Settings › People › Family. ioCalendar tags events with them, ioTask gives them tasks, and every app shows
 a member the same way: the same colour, the same initials and the same face.
 
 Everyone with an account people use is in the family unless a suite admin took them out (an "admin" account or a

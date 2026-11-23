@@ -41,13 +41,14 @@ def test_viewer_cannot_change_settings(client):
     assert client.get("/api/apps").status_code == 200
     assert client.get("/api/home/settings").status_code == 403
     assert client.post("/api/home/settings", json={"photoStrip": "off"}).status_code == 403
-    assert client.get("/api/server").status_code == 403
 
 
-def test_server_info(client):
-    s = client.get("/api/server").json()
-    assert s["version"] and "canRun" in s and "autoCheck" not in s  # the daily check is the suite's switch (Updates)
-    assert "about" not in s and "progress" in s and s["repo"] and s["branch"]
+def test_there_is_no_server_page_of_its_own(client):
+    """Settings › Server is gone: the version, the log, updating and the MCP switch are the suite's
+    (Settings › Apps and Settings › Servers)."""
+    assert client.get("/api/server").status_code == 404
+    assert client.get("/api/server/ui.js").status_code == 404
+    assert client.get("/api/status").json()["version"]
     assert client.get("/api/log").status_code in (200, 405)  # the server log, when there is one (without, the path only takes a TRMNL device's POST)
 
 
@@ -56,7 +57,6 @@ def test_the_server_log_is_for_admins_only(client):
     client.post("/api/auth/logout")
     assert client.post("/api/auth/login", json={"name": "kid2", "password": "secret123"}).status_code == 200
     assert client.get("/api/log").status_code in (403, 405)  # 405: the tests run without a log file, so the path only takes a TRMNL device's POST
-    assert client.post("/api/server", json={"action": "restart"}).status_code == 403
 
 
 def test_the_shell_its_files_and_the_icon_are_public(client):
@@ -104,7 +104,6 @@ def test_suite_admin_screen(client):
     # ann administers ioStart, but not the suite: Settings › Security is not hers
     client.post("/api/auth/logout")
     assert client.post("/api/auth/login", json={"name": "ann", "password": "secret123"}).status_code == 200
-    assert client.get("/api/server").status_code == 200
     assert client.get("/api/suite-admin").status_code == 403
     assert client.post("/api/suite-admin/users", json={"name": "x", "password": "secret123"}).status_code == 403
 

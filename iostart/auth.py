@@ -17,8 +17,8 @@ APP = config.APP
 
 auth = Auth(APP, version=__version__, public_url=config.PUBLIC_URL or None)
 
-# the version check and the self-update (update.sh), shared with the suite: Settings › Server,
-# GET/POST /api/server and GET /api/log (main.py mounts the router)
+# the version check and the self-update (update.sh), shared with the suite: Settings › Servers › Updates,
+# served by the suite admin panel (/api/suite-admin/updates)
 updater = Updater(APP, __version__, user_agent="iostart",
                   result_file=config.DATA_DIR / ".update-result")
 

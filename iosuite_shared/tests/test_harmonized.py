@@ -63,7 +63,7 @@ def test_status_is_public_and_the_same_shape_everywhere():
     s = c.get("/api/status").json()
     assert s["user"] == {"id": 1, "name": "alex", "displayName": "alex", "email": "a@b.c", "role": "admin", "suiteAdmin": True, "passwordless": False}
     assert s["signedIn"] and s["isAdmin"] and s["mine"] and s["commit"] == "abcdef0" and s["usersExist"]
-    assert "update" not in s  # updating is the suite's: Settings › Global settings › Updates
+    assert "update" not in s  # updating is the suite's: Settings › Servers › Updates
     # sign-in required: the status still answers a visitor, with nothing about the install
     db.set_setting("require_login", "1", "iotest")
     v = TestClient(app, base_url="http://test.example.com")
@@ -105,7 +105,7 @@ def test_mcp_gate_switch_sign_in_and_the_context():
     app, _, _ = make_app(mcp_on=lambda: on["v"], seen=seen)
     c = TestClient(app, base_url="http://test.example.com")
     r = c.post("/mcp", json={})
-    assert r.status_code == 404 and "switched off (Settings › Server)" in r.json()["detail"]
+    assert r.status_code == 404 and "switched off (Settings › Apps)" in r.json()["detail"]
     on["v"] = True
     assert c.post("/mcp", json={}).status_code == 401  # an assistant always signs in, even before the first account exists
     c.post("/api/auth/setup", json={"name": "alex", "password": "secret123"})
@@ -123,16 +123,21 @@ def test_mcp_gate_switch_sign_in_and_the_context():
 def test_mcp_helpers():
     from mcp.server.mcpserver.exceptions import ToolError
     assert shared_mcp.clamp("7", 1, 5) == 5 and shared_mcp.clamp(None, 1, 5) == 1 and shared_mcp.clamp(3, 1, 5) == 3
-    store = {}
-    assert shared_mcp.enabled(lambda k, d: store.get(k, d)) is False
-    switch = shared_mcp.Switch(lambda k, d: store.get(k, d), lambda k, v: store.__setitem__(k, v), "what it offers")
-    switch.apply({"mcpEnabled": True})
-    assert store == {"mcp_enabled": "1"} and switch.enabled() and switch.info() == {"mcpEnabled": True, "mcpAbout": "what it offers"}
-    switch.apply({"action": "restart"})  # nothing of its own in the body: left as it is
-    assert switch.enabled()
-    switch.apply({"mcpEnabled": False})
+    # the switch is one row per app in the Shared ioSuite database, set under Settings › Apps
+    switch = shared_mcp.Switch("iotest", "what it offers")
+    assert shared_mcp.enabled_for("iotest") is False and switch.enabled() is False
+    shared_mcp.set_for("iotest", True)
+    assert switch.enabled() and switch.info() == {"mcpEnabled": True, "mcpAbout": "what it offers"}
+    assert shared_mcp.switches()["iotest"] is True
+    shared_mcp.set_for("iocalendar", False)
+    assert shared_mcp.switches() == {"iotest": True, "iocalendar": False}  # one app's switch is not another's
+    shared_mcp.set_for("iotest", None)  # no row of its own: the app follows the suite's switch
+    assert "iotest" not in shared_mcp.switches() and switch.enabled() is False
+    db.set_setting(shared_mcp.SETTING, "1", "")
+    assert switch.enabled() is True
+    db.set_setting(shared_mcp.SETTING, None, "")
+    shared_mcp.set_for("iotest", False)
     assert not switch.enabled()
-    assert shared_mcp.enabled(lambda k, d: 1 / 0) is False
     with pytest.raises(ToolError):
         shared_mcp.who()
     users.create("alex", "secret123", "admin", "iotest", suite_admin=True)  # once accounts exist, roles count

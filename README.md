@@ -71,7 +71,7 @@ On every port an app answers both at a name of its own (`https://calendar.exampl
 suite's address (`https://home.example.com/calendar/`). A request that comes in by the wrong port is sent to the
 right one.
 
-For HTTPS, put a reverse proxy in front, or let the suite do it: under **Settings › Global settings › Certificate**
+For HTTPS, put a reverse proxy in front, or let the suite do it: under **Settings › Servers › Certificate**
 (or `iosuite cert --on`) it asks Let's Encrypt for a certificate for its names, renews it, and answers HTTPS itself,
 the pages on port 443 (`HTTPS_PORT`) and devices and MCP on the ports they have, which go on answering plain HTTP as
 well.
@@ -90,7 +90,7 @@ APPS=iostart,iocalendar,iotask      # empty: every app installed
 # PORT=80  SYNC_PORT=8443  MCP_PORT=8444  HTTPS_PORT=443  HOST=…  DATA_DIR=…  LOG_FILE=…  TLS_CERT_FILE=…  TLS_KEY_FILE=…
 ```
 
-Everything else is kept in the Shared ioSuite database and set under **Settings › Global settings › Settings**, or
+Everything else is kept in the Shared ioSuite database and set under **Settings › Apps › All settings**, or
 from a shell when the pages cannot be reached:
 
 ```sh
@@ -103,7 +103,7 @@ iosuite apps                       # which apps this machine runs, and where eac
 ## One log
 
 A copy writes one log (`<DATA_DIR>/iosuite.log`, 20 MB at most with four older ones kept), every line marked with the
-app it came from. Suite admins read it under **Settings › Global settings › Logs**, from any app: filtered to the app
+app it came from. Suite admins read it under **Settings › Servers › Logs**, from any app: filtered to the app
 it was opened from, or every app on one timeline; with several copies, every copy's lines merged by time.
 
 ## From a checkout

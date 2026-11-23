@@ -1,4 +1,4 @@
-"""What a person keeps in the suite, seen and removed from one place: deleting an account (Settings › Security ›
+"""What a person keeps in the suite, seen and removed from one place: deleting an account (Settings › People ›
 People, in any app) also removes what that person kept in every app, after the panel showed what that is.
 
 Each app says what it keeps for a person by setting `auth.person_data = fn`, where fn(user_id, remove) returns

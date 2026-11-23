@@ -11,7 +11,7 @@ Which app a line is from: the logger's name says (iocalendar.model, iosuite_shar
 request or start-up this is (iosuite_shared.host.CURRENT); "-" for what is nobody's in particular (the web server
 starting, the host itself, a library on a thread of its own).
 
-`read()` is what the suite's log viewer shows (Settings › Global settings › Logs: iosuite_shared.admin asks every copy of the
+`read()` is what the suite's log viewer shows (Settings › Servers › Logs: iosuite_shared.admin asks every copy of the
 suite and merges their lines by time): the lines of this copy, filtered by app, level, time and text, with a cursor
 to ask for what came after. `tail()` is the same for the apps' MCP tools: one app's last lines as text.
 """

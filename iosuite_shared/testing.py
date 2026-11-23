@@ -129,7 +129,7 @@ def app_env(app: str, name: str, log_file: str = None, **stored_settings) -> dic
 
 
 def store(app: str, **values) -> None:
-    """Stored settings of an app ('' : the whole suite's), as Settings › Global settings › Settings or `iosuite set` would write them.
+    """Stored settings of an app ('' : the whole suite's), as Settings › Apps › All settings or `iosuite set` would write them.
     An app reads its own once, when its config module is imported: later changes reach only what reads them live."""
     from iosuite_shared import db
     db.init()
@@ -257,7 +257,7 @@ def check_access_declared(app, declared, ignore=("/api/openapi.json", "/api/docs
 
 
 def add_account(client, body: dict):
-    """Make an account the way Settings › Security › People does (POST /api/suite-admin/users), as the suite admin
+    """Make an account the way Settings › People › People does (POST /api/suite-admin/users), as the suite admin
     `client` is signed in as. {role} is the account's role in the app `client` talks to; the rest is the panel's body."""
     body = dict(body)
     role = body.pop("role", None)

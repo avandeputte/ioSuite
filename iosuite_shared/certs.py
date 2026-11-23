@@ -1,7 +1,7 @@
 """The suite's own certificate: asked for and renewed by the suite (ACME: Let's Encrypt or another authority), kept in
 the Shared ioSuite database, and served by every copy, so the suite answers HTTPS without a reverse proxy in front.
 
-What a suite admin sets (Settings › Global settings › Certificate, or `iosuite cert`) is one row of ios_settings
+What a suite admin sets (Settings › Servers › Certificate, or `iosuite cert`) is one row of ios_settings
 (app '', "certificate"), JSON:
 
     on      ask for a certificate and serve it

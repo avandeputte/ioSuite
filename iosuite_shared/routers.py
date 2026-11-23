@@ -174,7 +174,7 @@ def auth_router(self) -> APIRouter:
         """The account's password, asked again before a change to how it signs in (a new password, a passkey, the
         second step): a session left open on a shared computer changes none of them. Wrong ones are counted."""
         if u.get("passwordless"):
-            raise HTTPException(403, "This account signs in with one click; a suite admin can give it a password under Settings › Security")
+            raise HTTPException(403, "This account signs in with one click; a suite admin can give it a password under Settings › People")
         pkey = f"pw|{u['id']}"
         wait = users.login_wait(pkey)
         if wait:
@@ -387,7 +387,7 @@ def auth_router(self) -> APIRouter:
     @r.get("/api/auth/family", dependencies=[access.signed_in])
     def api_family(request: Request):
         """The family (iosuite_shared.family): [{id, name, displayName, initials, color, hasFace}], by display name. The
-        same list, colours and initials in every app; suite admins change it in Settings › Security › Family."""
+        same list, colours and initials in every app; suite admins change it in Settings › People › Family."""
         return {"items": [family.public(m) for m in family.members()]}
 
     @r.get("/api/auth/family/{uid}/face", dependencies=[access.signed_in])
@@ -464,7 +464,7 @@ def admin_router(self) -> APIRouter:
 
     @r.get("/ui.js", dependencies=[access.suite_admin])
     def api_ui():
-        """The panel itself (static/suite-admin.js), one ES module every app mounts in its Settings › Security and Global settings tabs:
+        """The panel itself (static/suite-admin.js), one ES module every app mounts in its Settings › People, Apps, Servers and Keys tabs:
         ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); ui.mount(el, {sub, toast})."""
         return FileResponse(Path(__file__).with_name("static") / "suite-admin.js", media_type="text/javascript",
                             headers={"Cache-Control": "no-cache"})
@@ -609,8 +609,15 @@ def admin_router(self) -> APIRouter:
     @r.patch("/apps/{key}", dependencies=[access.suite_admin])
     async def api_app(key: str, request: Request):
         body = await json_body(request)
+        mcp = "keep"
+        if "mcp" in body:  # this app's MCP server: on, off, or null to follow the suite's switch
+            mcp = None if body["mcp"] is None else bool(body["mcp"])
+        if key == "_suite" and mcp != "keep":  # the switch every app follows unless it says otherwise
+            from iosuite_shared import mcp as shared_mcp
+            call(shared_mcp.set_for, "", mcp)
+            return {"app": "_suite", "mcpSuite": bool(mcp)}
         return call(suite_admin.set_app, key, default_role=body.get("defaultRole"),
-                    require_login=None if body.get("requireLogin") is None else bool(body["requireLogin"]))
+                    require_login=None if body.get("requireLogin") is None else bool(body["requireLogin"]), mcp=mcp)
 
     @r.delete("/apps/{key}", dependencies=[access.suite_admin])
     def api_forget_app(key: str, request: Request, data: int = 0):
@@ -683,8 +690,9 @@ def admin_router(self) -> APIRouter:
 
     @r.post("/updates", dependencies=[access.suite_admin])
     async def api_updates_ask(request: Request):
-        """Body {action: check | update}: every app asks GitHub, or every app that is behind updates itself; they
-        pick it up within seconds. {autoCheck: bool} saves the daily check, one switch for the suite."""
+        """Body {action: check | update | restart}: every app asks GitHub, every app that is behind updates itself,
+        or the apps named by `apps` start again (none: every app, so every copy of the program); they pick it up
+        within seconds. {autoCheck: bool} saves the daily check, one switch for the suite."""
         from iosuite_shared import updates as upd
         body = await json_body(request)
         who = me(request)
@@ -692,7 +700,8 @@ def admin_router(self) -> APIRouter:
             await run_in_threadpool(upd.set_auto_check, bool(body["autoCheck"]))
         asked = []
         if body.get("action") or "autoCheck" not in body:
-            asked = await run_in_threadpool(call, suiteupdates.request, body.get("action"), (who or {}).get("name"))
+            asked = await run_in_threadpool(call, suiteupdates.request, body.get("action"), (who or {}).get("name"),
+                                            body.get("apps") or None)
             authlog.info("suite admin: %s asked of %s by %s", body.get("action"), ", ".join(asked) or "no app", (who or {}).get("name"))
         return {"asked": asked, **await run_in_threadpool(updates_now)}
 
@@ -743,58 +752,6 @@ def admin_router(self) -> APIRouter:
         return {**proxyauth.suite_status(), "here": auth.proxy.status()}
 
     return r
-
-def server_router(self, updater, info=None, apply=None) -> APIRouter:
-    """Settings › Server, the same in every app (admins):
-        GET  /api/server/ui.js           the panel itself (static/server-panel.js), mounted by the app's Server tab:
-                                         ui = await import(new URL('api/server/ui.js', document.baseURI).href); ui.mount(el, {toast})
-        GET  /api/server                 the app's name, the installed version and commit, the app's switches
-        POST /api/server {action}        action: restart; anything else in the body goes to apply(body)
-                                         (updating is the suite's: /api/suite-admin/updates)
-    The log is the copy's, read by suite admins (Settings › Global settings › Logs: /api/suite-admin/logs).
-    `info()` returns extra fields for GET /api/server that the panel shows: mcpEnabled (the MCP box) and
-    mcpAbout (what /mcp offers). `apply(body)` saves the app's own
-    switches sent in the POST body (mcpEnabled) and raises ValueError when one cannot be set."""
-    from fastapi.responses import FileResponse
-    access, label = self.access, self.label
-    r = APIRouter()
-
-    def server_info(request):
-        from iosuite_shared import doors, host
-        extra = info() if info else {}
-        return {"name": label, "app": self.app, **updater.status(), **(extra or {}), "together": host.together(self.app),
-                "mcpUrl": doors.mcp_base(request, self.app) + doors.MCP_PATH}
-
-    @r.get("/api/server/ui.js", dependencies=[access.admin])
-    def api_server_ui():
-        return FileResponse(Path(__file__).with_name("static") / "server-panel.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
-
-    @r.get("/api/server", dependencies=[access.admin])
-    async def api_server_info(request: Request):
-        return await run_in_threadpool(server_info, request)
-
-    @r.post("/api/server", dependencies=[access.admin])
-    async def api_server_action(request: Request):
-        body = await json_body(request) if int(request.headers.get("content-length") or 0) else {}
-        try:
-            if apply:
-                rr = apply(body)
-                if hasattr(rr, "__await__"):
-                    await rr
-        except ValueError as e:
-            raise HTTPException(400, str(e))
-        action = body.get("action")
-        if action == "restart":
-            authlog.info("%s restarted by %s", label, (self.current_user(request) or {}).get("name"))
-            updater.restart()
-            return {"ok": True}
-        if action:
-            raise HTTPException(400, "action must be restart")
-        return await run_in_threadpool(server_info, request)
-
-    return r
-
 
 # ---- the status: public, the same shape in every app
 def status_router(self, updater=None, extra=None) -> APIRouter:

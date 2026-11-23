@@ -68,8 +68,7 @@ Then step 3 with the ids it prints and that token file. By hand:
    copy its id. Or run `npx wrangler kv namespace create APP_PASSWORDS`.
 2. **API token** for the apps. Go to My Profile › API Tokens › Create Token › Custom token, with the permission
    *Account › Workers KV Storage › Edit* on your account only. Nothing else is needed.
-3. **The apps.** Store the three values once in the Shared ioSuite database, for the whole suite: Settings › Global settings ›
-   Keys and tokens on the start page, or on a server that runs the suite:
+3. **The apps.** Store the three values once in the Shared ioSuite database, for the whole suite: Settings › Keys on the start page, or on a server that runs the suite:
 
    ```
    iosuite edge --account-id …  --namespace-id …  --token-file token.txt

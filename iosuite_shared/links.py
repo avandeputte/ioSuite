@@ -16,8 +16,8 @@ cannot be read from. url() is the public one, for links people click. The reader
 <app>-app, on no sign-in screen) with an app password of the other app that may only read (scope 'read'),
 and a viewer role there. Both are made the first time they are needed; the password is kept in the keys and tokens
 store (iosuite_shared.credentials) under the reader, and made again when the other app stops taking it (revoked from
-Settings › Security, say). When the other app sits behind Cloudflare Access, the suite-wide Cloudflare Access service
-token (keys `cf_access_client_id` and `cf_access_client_secret` of the whole suite, Settings › Global settings › Keys and tokens)
+Settings › People, say). When the other app sits behind Cloudflare Access, the suite-wide Cloudflare Access service
+token (keys `cf_access_client_id` and `cf_access_client_secret` of the whole suite, Settings › Keys)
 goes with every request.
 
 The other way to ask: on a person's behalf, as_viewer(). A page that shows something of another app (the start page's

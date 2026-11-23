@@ -4,6 +4,7 @@ import json
 from iocontact import enrich
 from iocontact.tests.test_api import mk
 from iocontact.tests.test_mcp import app_password, call
+from iosuite_shared import mcp as shared_mcp
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
 
@@ -44,7 +45,7 @@ def test_lookup_suggest_accept_dismiss(client, family_id, monkeypatch):
 
 def test_mcp_suggestions_wait_for_a_person(client, family_id):
     auth, _ = app_password(client)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocontact", True)
     c = mk(client, family_id, fn="Tim Ray")
     out = call(client, auth, "suggest_contact_update", contact="Tim Ray", source="Claude, web search",
                suggestions=[{"field": "title", "value": "Teacher", "evidence": "https://school.example/staff"},
@@ -59,7 +60,7 @@ def test_mcp_suggestions_wait_for_a_person(client, family_id):
 
 def test_mcp_duplicates_merge_undo_quality(client, family_id):
     auth, _ = app_password(client)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("iocontact", True)
     mk(client, family_id, name={"given": "Robert", "family": "Smith"}, org="Acme")
     mk(client, family_id, name={"given": "Bob", "family": "Smith"}, org="Globex", phones=[{"value": "+1 555 0100"}])
     groups = call(client, auth, "find_duplicates")

@@ -7,7 +7,7 @@
 
 Accounts are the suite's: `iosuite admin NAME --app iomoney` makes an admin of this app (the installer makes the first
 admin of the suite), `iosuite password NAME` sets a password. The Monarch sign-in is kept with the suite's keys and
-tokens (Settings › Global settings › Keys and tokens).
+tokens (Settings › Keys).
 """
 import sys
 

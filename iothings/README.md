@@ -18,7 +18,7 @@ single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files
   **Labels** with a colour. Both in the sidebar, with how many things each holds.
 - **Whose it is**: a thing can be marked as one or more people's of the family (Emma's bike, Dad's laptop, the
   children's games console); marked as nobody's, it is the household's. The family is the suite's one list
-  (Settings › Security › Family, suite admins), with the same colours, initials and faces as in ioTask and
+  (Settings › People › Family, suite admins), with the same colours, initials and faces as in ioTask and
   ioCalendar, and everyone in it can be given a thing, whether or not they use ioThings. The sidebar's **Family**
   lists each person with how many things are theirs and shows them; the cards and the table show their faces;
   searching a name ("emma", "emma's") finds their things too. The REST API (`people` on a thing, `?person=` on the
@@ -67,7 +67,7 @@ single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files
 - **Roles as in the other io apps**: viewers look; members (the default) add things, attach files and keep the upkeep
   and the log; editors change and delete everything, and keep the places and labels in order; admins also choose the
   currency (Settings › Things) and run the server. The same accounts, passwords and app passwords as the other io apps.
-- **Settings › Security** and **Global settings** (suite admins): the suite's people, their role in every app, app
+- **Settings › People, Apps, Servers and Keys** (suite admins): the suite's people, their role in every app, app
   passwords and sign-in at the proxy; the apps, keys and tokens (iosuite_shared's panel, the same in every app).
 - Light and dark, phone-sized screens, installable as an app.
 
@@ -113,7 +113,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioThings has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioThings, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioThings, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -133,12 +133,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioThings runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 ## API
 
@@ -149,7 +149,7 @@ The paths below are ioThings' own: at the suite's address they are inside its fo
 | Web and JSON clients | **REST/JSON**: things (list, search, by place or label, archived), one thing, add, change, duplicate, delete, its files (each gets a name of its own, such as iothings-000123.jpg, never the one it was uploaded under), upkeep and log; places and labels | `/api/`, OpenAPI docs at `/api/docs` |
 | Inventory PDF | everything, photos and receipts included, as one PDF | `POST`/`GET /api/export-pdf`, `GET /api/export-pdf/file` |
 | Homebox | Homebox's CSV, in and out; everything from a Homebox server, files and log too | `POST /api/import/homebox`, `GET /api/export.csv`, `POST`/`GET /api/import/homebox-server` |
-| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Server), or every app's tools at ioStart's `/mcp` |
+| AI assistants | **Model Context Protocol** (streamable HTTP, and stdio) | `/mcp` (switched on in Settings › Apps), or every app's tools at ioStart's `/mcp` |
 
 Settings › Account makes **app passwords**, for the REST API (HTTP Basic, or `Authorization: Bearer <app password>`)
 and for MCP.

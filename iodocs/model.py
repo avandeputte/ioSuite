@@ -243,7 +243,7 @@ def clean(data: dict, partial: bool = False) -> dict:
 # ---- the family: whose a document is
 
 def family(u: dict | None = None) -> list[dict]:
-    """The suite's family (Settings › Security › Family), each with how many documents this account sees are theirs."""
+    """The suite's family (Settings › People › Family), each with how many documents this account sees are theirs."""
     n = {}
     if u:
         where, args = visible_sql(u)

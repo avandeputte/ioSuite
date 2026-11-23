@@ -159,7 +159,7 @@ export function parseHash() {
   const i = raw.indexOf('?');  // only the first ? starts the query: #/photos?q=why? keeps its question mark
   let path = i < 0 ? raw : raw.slice(0, i);
   const params = new URLSearchParams(i < 0 ? '' : raw.slice(i + 1));
-  // Settings carries its tab and the part of it in the path, as in every io app: #/settings/security/people
+  // Settings carries its tab and the part of it in the path, as in every io app: #/settings/people/people
   const [first, tab, part] = path.split('/');
   if (first === 'settings') { path = first; if (tab) params.set('tab', tab); if (part) params.set('part', part); }
   return { view: VIEWS.includes(path) ? path : 'explore', params };  // Explore is the home page

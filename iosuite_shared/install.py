@@ -22,7 +22,7 @@ What a new machine is asked, each with an option to answer it ahead (--yes: no q
                             the login is made for (iosuite_shared.provision)
     --mariadb               install MariaDB on this machine first (apt), when it has no database server
     --admin NAME            the first admin (password from ADMIN_PASSWORD, else asked; empty: made in the browser)
-    --address URL           the suite's address (https://home.example.com): Settings › Global settings › Settings
+    --address URL           the suite's address (https://home.example.com): Settings › Apps › All settings
     --set APP.NAME=VALUE    a setting to store (iopix.PHOTOS_ROOT=/srv/photos, suite.TZ=Europe/Brussels); repeatable. An
                             app added just now asks for the few it cannot guess (ioPix: the photos folder) unless given
     --host, --port, --sync-port, --mcp-port     where it listens (every address; 80, 8443, 8444; off: not opened)
@@ -109,7 +109,7 @@ def write_env(path, changes: dict, header: str = "") -> None:
 
 
 HEADER = """# The machine's file: how this machine reaches the Shared ioSuite database, and what it runs.
-# Everything else is kept in the Shared ioSuite database: Settings › Global settings › Settings, or `iosuite set`.
+# Everything else is kept in the Shared ioSuite database: Settings › Apps › All settings, or `iosuite set`.
 # Written by `iosuite install`; run it again to change the apps."""
 
 
@@ -650,7 +650,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
                         admin.set_setting(k, name, value)
                     log(f"  {k}.{q['name']} = {answer}")
                 except (LookupError, ValueError) as e:
-                    log(f"  note: {e}; set it under Settings › Global settings › Settings")
+                    log(f"  note: {e}; set it under Settings › Apps › All settings")
     # an app this copy no longer runs leaves the suite's list, unless another copy has taken it up
     from iosuite_shared import suite
     for k in here:
@@ -681,7 +681,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
         log(f"  the login's password was made up; it is in {file} (other machines of the suite need the same one)")
     where = cfg.get("INTERNAL_URL") or f"http://{socket.gethostname()}{'' if ports[0] in (80, 0) else f':{ports[0]}'}"
     if service:
-        log(f"\nioSuite answers at {where}/   (the log: journalctl -u {unit_name(a.copy)} -f, or Settings › Global settings › Logs)")
+        log(f"\nioSuite answers at {where}/   (the log: journalctl -u {unit_name(a.copy)} -f, or Settings › Servers › Logs)")
     else:
         log(f"\nStart it with: {'IOSUITE_CONFIG=' + str(file) + ' ' if a.copy else ''}{base}/.venv/bin/iosuite serve   (then {where}/)")
     log("Run `iosuite install` again at any time to change the apps of this machine.")

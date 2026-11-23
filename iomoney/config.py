@@ -1,9 +1,9 @@
-"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Global settings › Settings
+"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Apps › All settings
 changes them; app.json lists the app's own). Everything stored
 lives in MariaDB. The settings every app of the suite shares come from iosuite_shared.config.standard.
 
 The Monarch Money sign-in and any other key are not settings: they are kept in the Shared ioSuite database with the
-suite's other keys and tokens (Settings › Global settings › Keys and tokens; app/monarch.py declares them)."""
+suite's other keys and tokens (Settings › Keys; app/monarch.py declares them)."""
 from pathlib import Path
 
 from iosuite_shared import config as shared

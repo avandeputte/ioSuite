@@ -57,7 +57,7 @@ def data(user_id: int) -> list:
     me = model.full(int(me_id)) if me_id else None
     if not me:
         return [{"title": "Contact details and family", "order": 10,
-                 "intro": "No ioContact card is linked to this person. A suite admin links it under Settings › Security › Family "
+                 "intro": "No ioContact card is linked to this person. A suite admin links it under Settings › People › Family "
                           "(or the person marks their own card “This is me” in ioContact); their relatives come from that card."}]
     stated = [r for r in me["relations"] if r["relatedId"] or r["relatedName"]]
     books = [r["id"] for r in db.q("SELECT id FROM con_address_books")]

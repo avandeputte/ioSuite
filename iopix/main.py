@@ -98,8 +98,8 @@ def _open_to_visitors(request: Request) -> bool:
     return False
 
 
-# Settings › Server › MCP server: off until an admin turns it on (or MCP=1 in the environment); the MCP box of the panel
-mcp_switch = shared_mcp.Switch(appstate.get_setting, appstate.set_setting,
+# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
+mcp_switch = shared_mcp.Switch(config.APP,
                                "Lets an AI assistant search, look at and organize your photos, as you.")
 mcp_enabled = mcp_switch.enabled
 
@@ -227,9 +227,8 @@ app.include_router(editing.router)
 app.include_router(settings.router)
 app.include_router(tools.router)
 app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(auth.server_router(updater, info=mcp_switch.info, apply=mcp_switch.apply))  # /api/server: admins
 app.include_router(auth_routes.router)
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › Security and Global settings panel): the whole suite (suite admins)
+app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People, Apps, Servers and Keys panel): the whole suite (suite admins)
 app.include_router(geo.router)
 app.include_router(backup.router)
 app.include_router(review.router)

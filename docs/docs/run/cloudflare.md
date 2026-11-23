@@ -40,14 +40,13 @@ path `^/(dav|\.well-known|ics)(/|$)`, service `http://192.168.1.10:8443`.
 1. In Zero Trust › Access › Applications, add a **self-hosted** application for `home.example.com` (and the apps'
    own names: `*.example.com` covers them) with a policy that lets your family in.
 2. Copy the application's **AUD tag** (Overview › Application Audience tag).
-3. In any app, as a suite admin: **Settings › Security › Sign-in at the proxy** › Cloudflare Access, with your team
+3. In any app, as a suite admin: **Settings › People › Sign-in at the proxy** › Cloudflare Access, with your team
    (`myteam.cloudflareaccess.com`) and the AUD tag. Several AUD tags, comma-separated, if you made an application
    per host.
 
 That setting is kept in the Shared ioSuite database, so every app picks it up. The signed token Cloudflare adds to
 every request (`Cf-Access-Jwt-Assertion`) is checked against your team's keys and signs in the account with that
-email, then that name. Sign out also ends the Access session. Keep **Sign-in required** (Settings › Global settings ›
-Apps) on, as it is by default, so nobody gets in without it. Requests through Cloudflare never get one-click sign-in
+email, then that name. Sign out also ends the Access session. Keep **Sign-in required** (Settings › Apps) on, as it is by default, so nobody gets in without it. Requests through Cloudflare never get one-click sign-in
 for passwordless accounts.
 
 ## The names for devices and MCP stay outside Access
@@ -87,8 +86,7 @@ holds a short-lived secret and gives one profile.
 
 Since the name for devices is outside Access, a small **Cloudflare Worker** can check the app password there and
 turn wrong ones away before they reach your server. The suite keeps a Workers KV namespace up to date with a SHA-256
-of each app password (never an account password). Store the three settings once under Settings › Global settings ›
-Keys and tokens:
+of each app password (never an account password). Store the three settings once under Settings › Keys:
 
 ```sh
 iosuite edge --account-id … --namespace-id … --token-file token.txt

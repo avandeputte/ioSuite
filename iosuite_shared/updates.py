@@ -4,7 +4,6 @@ and restarting.
     from iosuite_shared.updates import Updater
     updater = Updater("iocalendar", version=__version__)                    # the program folder, repository and branch: the machine's (config)
     updater.start_daily()                                                   # the daily check, while the setting is on
-    app.include_router(auth.server_router(updater))                         # GET/POST /api/server
 
 The suite is one program in one repository and has one version, which every app carries: iosuite_shared.__version__.
 An update is a higher version on the branch; a commit that leaves the version as it is (the docs, a workflow) is
@@ -15,7 +14,7 @@ which repository and branch to follow through IOSUITE_RESULT, IOSUITE_REPO, IOSU
 environment. Docker installs are updated by pulling the image, so there the check only reports.
 
 One copy of the program runs several apps, and an update is the copy's: every app keeps its Updater and its row in
-the Shared ioSuite database (iosuite_shared.suiteupdates), so Settings › Global settings › Updates and the start
+the Shared ioSuite database (iosuite_shared.suiteupdates), so Settings › Servers › Updates and the start
 page's MCP endpoint go on listing the apps, but the apps of one copy ask GitHub once between them and run update.sh
 once (`_Copy`), each writing the same outcome to its own row.
 
@@ -189,7 +188,7 @@ class Updater:
         try:
             from iosuite_shared import push
             push.notify_admins("updates", f"ioSuite {version} is out", f"This server has {self.version}. Update every app in one go "
-                               "under Settings › Global settings › Updates.", url=push.link("iostart", "#/settings/global/updates"),
+                               "under Settings › Servers › Updates.", url=push.link("iostart", "#/settings/global/updates"),
                                once=f"update:{version}")
         except Exception:  # noqa: BLE001 - a notification that cannot go out never stops the check
             pass

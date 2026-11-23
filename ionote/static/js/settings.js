@@ -1,5 +1,5 @@
 /** Settings, one page as in every ioThing app (Account and Display for accounts; Server for admins;
- *  Security and Global settings for suite admins), the Import and export page and the change log. */
+ *  People, Apps, Servers and Keys for suite admins), the Import and export page and the change log. */
 import { $, h, api, state, icon, toast, fail, isAdmin, canWrite, fmtDate } from './core.js';
 
 /** Settings › Account (with the app passwords) and Display: iosuite-shared's panels, the same in every io app. */
@@ -17,7 +17,7 @@ async function accountPanel() {
 }
 async function displayPanel() { const ui = await accountUi(); return ui.box('theme', 'Appearance', ui.themeRow(currentTheme(), applyTheme)); }
 
-/** Settings › Security and Global settings (suite admins): the people and their role in every app (here
+/** Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app (here
  *  too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
  *  iosuite-shared. */
 async function suitePanel(tab, sub) {
@@ -25,17 +25,6 @@ async function suitePanel(tab, sub) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { return h('p.err', `The panel did not load: ${e.message}`); }
   await ui.mount(el, { tab, sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${tab}/${x}`) });
-  return el;
-}
-
-/** Settings › Server (admins): the MCP switch, the version and its updates, the server log and Restart:
- *  iosuite-shared's panel, the same in every io app. */
-export const serverUi = () => import(new URL('api/server/ui.js', document.baseURI).href);
-async function serverPanel() {
-  const el = h('div');
-  let ui;
-  try { ui = await serverUi(); } catch (e) { return h('p.err', `The Server panel did not load: ${e.message}`); }
-  await ui.mount(el, { toast });
   return el;
 }
 
@@ -55,14 +44,17 @@ async function tabbedPage(base, title, ic, hue, tabs, tab) {
 }
 const render = () => again();
 
-/** Settings: Account and Display for accounts; Server for admins; Security and Global settings for
+/** Settings: Account and Display for accounts; and the suite's own tabs (People, Apps, Servers, Keys) for
  *  suite admins. Before any account exists, only Display. */
 export function renderSettings(tab, sub) {
   const tabs = [];
   if (state.me.user) tabs.push(['account', 'Account', accountPanel]);
   tabs.push(['display', 'Display', async () => [await displayPanel()]]);
-  if (isAdmin()) tabs.push(['server', 'Server', async () => [await serverPanel()]]);
-  if (state.me.isSuiteAdmin) tabs.push(['security', 'Security', async () => [await suitePanel('security', sub)]], ['global', 'Global settings', async () => [await suitePanel('global', sub)]]);
+  if (state.me.isSuiteAdmin) {
+    for (const [k, l] of [['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']]) {
+      tabs.push([k, l, async () => [await suitePanel(k, sub)]]);
+    }
+  }
   return tabbedPage('settings', 'Settings', 'gear', 'var(--c-gray)', tabs, tab);
 }
 

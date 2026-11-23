@@ -18,7 +18,7 @@ what the app will show on the start page later (today's events, the newest photo
   tile. Each person can hide tiles in Customize. What the tiles and cards show is asked of each app by this server
   with the viewer's own sign-in (so each person sees only what they may see there), on localhost when the app runs on
   the same machine, else at its LAN address, else its public one, with the suite's Cloudflare Access service token
-  (Settings › Global settings › Keys and tokens) when one is set.
+  (Settings › Keys) when one is set.
 - **A search box** at the top (⌘K / Ctrl-K): as you type it lists the bookmarks that match, what the apps find
   for you (ioContact's people, ioCalendar's coming events, ioTask's open tasks, ioRecipe's recipes, ioThings' things, ioDocs' documents, your ioNote notes,
   ioMoney's payees and transactions ("plumber", or an amount: "$280"), ioPix's people, albums, folders and places; each asked
@@ -209,15 +209,15 @@ what the app will show on the start page later (today's events, the newest photo
   - *A bookmarks file over WebDAV* at `<address>/dav/bookmarks/`: `bookmarks.xbel` (XBEL) or `bookmarks.html`
     (the bookmarks HTML of browsers), for Floccus's WebDAV kind of account and anything else that syncs such a file.
     Name and app password; no passphrase (an encrypted file cannot be read, so it is refused).
-  - App passwords live in the Shared ioSuite database like all others (Settings › Account, Settings › Security). A
+  - App passwords live in the Shared ioSuite database like all others (Settings › Account, Settings › People). A
     viewer's sync app can read; changing takes an editor or admin. Behind Cloudflare Access, `/dav/*` needs the same
     bypass as the other apps' CalDAV / CardDAV paths. A bookmark is in one folder (the same address in two folders is
     two bookmarks); bookmarklets and other non-web addresses sync but never show on the start page.
 - **The suite's accounts**: the same sign-in as every io app (the account tiles, one click for an account without a password),
   Settings › Account (display name, email, password) and Settings › Display (the theme, kept with the account), both
   iosuite_shared's panels, the same in every io app; every setting saves as soon as you change it. Accounts and roles
-  are managed under Settings › Security (below). Sign-in at a reverse proxy (Cloudflare Access…) works as in the other apps.
-- **Suite administration** (Settings › Security and Settings › Global settings, suite admins only): everything in the Shared ioSuite database for the
+  are managed under Settings › People (below). Sign-in at a reverse proxy (Cloudflare Access…) works as in the other apps.
+- **Suite administration** (Settings › People, Apps, Servers and Keys; suite admins only): everything in the Shared ioSuite database for the
   whole suite. **People**: add, rename and delete accounts, email, sign-in list, suite admin, set or remove a password,
   their role in every app, their sessions (end one or all) and app passwords. **Roles**: a grid of everyone against
   every app (or "default", the app's default role). **App passwords**: everyone's, in every app, with their scope
@@ -227,8 +227,8 @@ what the app will show on the start page later (today's events, the newest photo
   (`iocalendar-app`…, under People), with which apps read from each other without any setup. **Apps**: each app's default role (none makes it
   invitation-only) and sign-in requirement; forget an uninstalled app. **Sign-in at the proxy** for the whole suite. The
   panel is iosuite_shared's (`/api/suite-admin/ui.js` on `/api/suite-admin`), so every io app shows the same one.
-- **Updates**: the suite has one version, the same for every app. When a newer one is out, suite admins see one note on the start page with **Update now**; Settings › Global settings › Updates shows the installed version against GitHub with one **Update** button and every app's own line under Details. The version and Restart are under Settings › Server, the log under Settings › Global settings › Logs, as in every app of the suite.
-- **One MCP server for the whole suite** (`/mcp`, off until switched on at Settings › Server): connect an AI assistant here once, with your user name and an ioStart app password (Settings › Account), and it gets every app's tools, named after the app (`iocalendar_…`, `iotask_…`, `iorecipe_…`), so one request can span apps ("put Friday's dinner ingredients on the shopping list"). Each call is passed on to that app's own MCP server as you, so each app still decides what you may see and change there; an app whose own MCP server is off (its Settings › Server), or where you have no role, offers nothing. `suite_apps` lists the apps with their status and their own instructions. An ioStart app password (one without a limit) also signs in at any app's `/mcp` directly. ioStart's own tools: `suite_version` and `update_suite` update every app at once (suite admins).
+- **Updates**: the suite has one version, the same for every app. When a newer one is out, suite admins see one note on the start page with **Update now**; Settings › Servers › Updates shows the installed version against GitHub with one **Update** button and a line, with its own **Restart**, for each server the suite runs on. The log is under Settings › Servers › Logs, as in every app of the suite.
+- **One MCP server for the whole suite** (`/mcp`, off until switched on at Settings › Apps): connect an AI assistant here once, with your user name and an ioStart app password (Settings › Account), and it gets every app's tools, named after the app (`iocalendar_…`, `iotask_…`, `iorecipe_…`), so one request can span apps ("put Friday's dinner ingredients on the shopping list"). Each call is passed on to that app's own MCP server as you, so each app still decides what you may see and change there; an app whose own MCP server is off (its own switch under Settings › Apps), or where you have no role, offers nothing. `suite_apps` lists the apps with their status and their own instructions. An ioStart app password (one without a limit) also signs in at any app's `/mcp` directly. ioStart's own tools: `suite_version` and `update_suite` update every app at once (suite admins).
 - Light and dark, a phone layout, installable as a web app (manifest and icons).
 
 ## Run
@@ -272,7 +272,7 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 
 ioStart has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
 ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
-**Settings › Global settings › Settings**, which has a section for the whole suite and one for ioStart, or from a shell;
+**Settings › Apps › All settings**, which has a section for the whole suite and one for ioStart, or from a shell;
 a change applies when the app starts again:
 
 ```sh
@@ -296,12 +296,12 @@ machine's file and the three ports are in the guide's [Configuration](../docs/do
 
 ## Updates
 
-The suite is one program with one version, so every app is updated together: **Settings › Global settings › Updates**
+The suite is one program with one version, so every app is updated together: **Settings › Servers › Updates**
 (suite admins, in any app) shows the installed version and the newest one, with one **Update** button; from a shell it is
 `update.sh` in the program folder, and in Docker the image is pulled. See [Updates](../docs/docs/run/updates.md).
 
-**Settings › Server** shows the version ioStart runs and has **Restart**. The log is one for the whole copy of the program,
-each line marked with its app: suite admins read it under **Settings › Global settings › Logs**.
+The suite runs one version, so **Settings › Servers › Updates** shows it with a line and a **Restart** button for each server the suite runs on. The log is one for the whole copy of the program,
+each line marked with its app: suite admins read it under **Settings › Servers › Logs**.
 
 ## Reverse proxy and HTTPS
 

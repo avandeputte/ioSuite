@@ -3,16 +3,17 @@
    keys and tokens, the apps with their default role and sign-in requirement, sign-in at a reverse proxy, and the family
    (who is in it, their colour, their ioContact card and their person in photos: the same in every app).
 
-   It fills two Settings tabs, Security (people, roles, app passwords, sign-in at the proxy) and Global settings (the
-   apps and their addresses, the settings the apps read as they start, the suite's own certificate, updates, keys and
-   tokens, and the log of every server on one timeline): TABS.
+   It fills four Settings tabs (TABS): People (people, the family, roles, app passwords, sign-in at the proxy), Apps
+   (the apps, their addresses, who may use them, their MCP switch, and every setting they read as they start),
+   Servers (version and updates, the suite's certificate, restarting, and the log of every server on one timeline)
+   and Keys (keys and tokens).
    Served by iosuite-shared at <app>/api/suite-admin/ui.js (Auth.admin_router()); it talks to the API next to it, so an
    app served under a sub-path works too. One ES module, no build step, its own styles (scoped under .iosa), using the
    app's colours when it has them (--fg, --fg2, --bg, --line, --accent, --brand, --danger; ioHealth's --text, --muted,
    --card, --link). h() and the fetch helper come from the account panels' module next to it (api/auth/ui.js).
 
      const ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href);
-     ui.mount(el, { tab: 'security', sub: 'people', toast, onSub: (s) => history.replaceState(null, '', `#/settings/security/${s}`) });
+     ui.mount(el, { tab: 'people', sub: 'people', toast, onSub: (s) => history.replaceState(null, '', `#/settings/people/${s}`) });
 */
 import { client, downloadEstate, h } from '../auth/ui.js';   // the element builder and fetch helper every panel shares
 
@@ -213,16 +214,19 @@ function sinceText(ts) {
 const appLabel = (o, key) => (o.apps.find((a) => a.app === key) || {}).name || key;
 
 // ------------------------------------------------------------------ the panel
-export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'Apps'], ['settings', 'Settings'], ['certificate', 'Certificate'], ['updates', 'Updates'], ['keys', 'Keys and tokens'], ['logs', 'Logs']];
-/** The two Settings tabs the panel fills, in every app: #/settings/security/<sub> and #/settings/global/<sub>. */
+export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'The apps'], ['settings', 'All settings'], ['updates', 'Updates'], ['certificate', 'Certificate'], ['logs', 'Logs'], ['keys', 'Keys and tokens']];
+/** The Settings tabs the panel fills, in every app (suite admins): #/settings/<tab>/<sub>. They are named after what
+    they hold, so nobody has to work out what "global" means. */
 export const TABS = {
-  security: { label: 'Security', subs: ['people', 'family', 'roles', 'passwords', 'signin'],
+  people: { label: 'People', subs: ['people', 'family', 'roles', 'passwords', 'signin'],
     intro: 'Who can sign in to the io apps, who is in the family, and with which role. Changes apply to every app.' },
-  global: { label: 'Global settings', subs: ['apps', 'settings', 'certificate', 'updates', 'keys', 'logs'],
-    intro: 'Settings for every io app: default roles, sign-in, addresses, settings, the certificate, updates, keys and the log.' },
+  apps: { label: 'Apps', subs: ['apps', 'settings'], intro: 'The apps of the suite: where each answers, who may use it, whether an AI assistant may, and every setting they read as they start.' },
+  servers: { label: 'Servers', subs: ['updates', 'certificate', 'logs'],
+    intro: 'The servers the suite runs on: their version and updates, the certificate they answer HTTPS with, and their log.' },
+  keys: { label: 'Keys', subs: ['keys'], intro: 'The keys and tokens the apps use to reach other services. They are stored once, for the whole suite, and never shown again.' },
 };
 
-/** Draw the panel into `el`. Options: tab (security or global: which parts are shown, see TABS), sub (the first part
+/** Draw the panel into `el`. Options: tab (people, apps, servers or keys: which parts are shown, see TABS), sub (the first part
     shown), onSub(sub) (called when another part is picked, e.g. to put it in the address), toast(msg) (the app's own
     toast; else the panel's). */
 export async function mount(el, opts = {}) {
@@ -230,7 +234,7 @@ export async function mount(el, opts = {}) {
   if (opts.toast) toast = opts.toast;
   const root = h('div', { class: 'iosa' });
   el.replaceChildren(root);
-  const tab = TABS[opts.tab] || TABS.security;
+  const tab = TABS[opts.tab] || TABS.people;
   const subs = SUBS.filter(([k]) => tab.subs.includes(k));
   let sub = subs.some(([k]) => k === opts.sub) ? opts.sub : subs[0][0];
   let photo = null;  // ioPix's People (the person in photos), read once, when People is first shown
@@ -575,7 +579,7 @@ function roles(el, ctx) {
         people.filter((u) => u.roles[a.app]).map((u) => chip(u, a)), adder(a))]));
   draw();
   el.append(box('lock', 'Roles',
-    h('p', { class: 'sa-muted' }, 'Each app gives everyone its default role (set under Global settings › Apps). Only the people who have another role in an app are listed there. Each role can do what the one before it does:'),
+    h('p', { class: 'sa-muted' }, 'Each app gives everyone its default role (set under Settings › Apps). Only the people who have another role in an app are listed there. Each role can do what the one before it does:'),
     legend(),
     admins.length ? h('div', { class: 'sa-admins' }, h('span', { class: 'sa-muted' }, 'Suite admins, admin in every app:'),
       admins.map((u) => h('span', { class: 'sa-chip' }, u.displayName)), h('span', { class: 'sa-muted sa-small' }, 'Change this under People.')) : null,
@@ -649,12 +653,27 @@ async function keys(el, ctx) {
     order.length ? order.map((a) => [h('h3', null, a === '' ? 'Whole suite' : appLabel(o, a)), h('div', null, groups[a].map(row))]) : h('p', { class: 'sa-muted' }, 'No app keeps any yet.')));
 }
 
+/** One app's MCP switch: ticked as it stands, and said to follow the suite's switch while it has none of its own. */
+function mcpBox(a, o) {
+  const box = h('input', { type: 'checkbox', checked: a.mcpOn, title: a.mcp === null || a.mcp === undefined ? 'Follows the switch above' : 'Set for this app' });
+  box.onchange = async () => {
+    try { await api(`apps/${a.app}`, { method: 'PATCH', json: { mcp: box.checked === o.mcpSuite ? null : box.checked } }); a.mcpOn = box.checked; toast('Saved'); }
+    catch (e) { box.checked = !box.checked; fail(e); }
+  };
+  return box;
+}
+
 function apps(el, ctx) {
   const { o } = ctx;
   el.append(box('apps', 'Apps',
-    h('p', { class: 'sa-muted' }, 'The default role is what someone without a role in the app gets (“none”: invitation only). Admin tools are for suite admins only. “Sign-in required” shows visitors only the sign-in page: on unless you turn it off, and always on in an admin tool.'),
+    h('p', { class: 'sa-muted' }, 'The default role is what someone without a role in the app gets (“none”: invitation only). Admin tools are for suite admins only. “Sign-in required” shows visitors only the sign-in page: on unless you turn it off, and always on in an admin tool. “AI assistant” is the app’s MCP server: an assistant connected to the suite uses the tools of the apps ticked here, as whoever signed it in.'),
+    h('label', { class: 'sa-check' }, h('input', { type: 'checkbox', checked: o.mcpSuite,
+      onchange: async (e) => {
+        try { await api('apps/_suite', { method: 'PATCH', json: { mcp: e.target.checked } }); o.mcpSuite = e.target.checked; toast('Saved'); ctx.redraw(); }
+        catch (err) { e.target.checked = !e.target.checked; fail(err); }
+      } }), h('span', null, 'An AI assistant may use every app, unless the app says otherwise')),
     legend(),
-    h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'App'), h('th', null, 'Version'), h('th', null, 'Default role'), h('th', null, 'Sign-in required'), h('th', null, 'In use'), h('th')),
+    h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'App'), h('th', null, 'Version'), h('th', null, 'Default role'), h('th', null, 'Sign-in required'), h('th', null, 'AI assistant'), h('th', null, 'In use'), h('th')),
       o.apps.map((a) => {
         const dr = a.adminTool ? h('span', { class: 'sa-muted sa-small' }, TOOL_NOTE)
           : h('select', { class: 'sa-in sa-sm' }, (o.defaultRoles || ['none', 'viewer', 'member', 'editor']).map((x) => h('option', { value: x, selected: x === a.defaultRole ? true : null }, `${x} (${ROLE_HELP[x]})`)));
@@ -664,7 +683,7 @@ function apps(el, ctx) {
         return h('tr', null,
           h('td', null, h('span', { style: { whiteSpace: 'nowrap' } }, h('span', { class: 'sa-dot', style: { background: a.color || 'var(--sa-fg2)' } }), ' ', a.url ? h('a', { class: 'sa-app', href: a.url, target: '_blank', rel: 'noopener' }, h('b', null, a.name)) : h('b', null, a.name)),
             h('div', { class: 'sa-muted sa-small' }, a.registered ? `${a.app} · seen ${sinceText(a.lastSeen)}` : `${a.app} · not registered (only in the data)`)),
-          h('td', { class: 'sa-small' }, a.version || '–'), h('td', null, dr), h('td', null, rl),
+          h('td', { class: 'sa-small' }, a.version || '–'), h('td', null, dr), h('td', null, rl), h('td', null, mcpBox(a, o)),
           h('td', { class: 'sa-small' }, `${a.roles} role${a.roles === 1 ? '' : 's'}, ${a.appPasswords} app password${a.appPasswords === 1 ? '' : 's'}`),
           h('td', { style: { textAlign: 'right' } }, h('button', { class: 'sa-btn danger', onclick: () => forgetApp(ctx, a) }, 'Forget')));
       }))));
@@ -976,11 +995,12 @@ async function updates(el) {
     const was = list.querySelector('details');
     list.replaceChildren(h('details', { open: (was ? was.open : uneven) ? true : null },
       h('summary', { class: 'sa-muted', style: { cursor: 'pointer' } }, `Details: ${d.copies.length} server${d.copies.length === 1 ? '' : 's'}`),
-      h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'Server'), h('th', null, 'Version'), h('th', null, 'Last update')),
+      h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'Server'), h('th', null, 'Version'), h('th', null, 'Last update'), h('th')),
         d.copies.map((c) => h('tr', null,
           h('td', null, h('b', null, where(c)), h('div', { class: 'sa-muted sa-small' }, `${c.apps.length} app${c.apps.length === 1 ? '' : 's'}: ${c.names.join(', ')}`)),
           h('td', { class: 'sa-small' }, c.version || '–', c.behind ? [' ', h('span', { class: 'sa-badge' }, 'behind')] : null, c.commit ? h('div', { class: 'sa-muted' }, c.commit) : null),
-          h('td', { class: 'sa-small' }, last(c)))))));
+          h('td', { class: 'sa-small' }, last(c)),
+          h('td', { style: { textAlign: 'right' } }, h('button', { class: 'sa-btn', disabled: c.watching ? null : true, onclick: () => restartCopy(c) }, 'Restart')))))));
   };
   draw();
   if (round) watch();
@@ -988,6 +1008,13 @@ async function updates(el) {
   el.append(box('update', 'Updates',
     h('p', { class: 'sa-muted' }, 'The suite has one version. Every server of the suite updates as one: each copy of the program installs the new version with update.sh and starts again; settings and data stay.'),
     head, h('label', { class: 'sa-check' }, auto, h('span', null, 'Check for a new version daily')), list));
+}
+
+/** Start one server of the suite again: every app of that copy, since they are one program. */
+async function restartCopy(c) {
+  const name = c.copy || 'this server';
+  if (!await confirmDialog('Restart', `Start ${name} again? ${c.names.join(', ')} go with it; they are back within seconds.`, 'Restart')) return;
+  try { await api('restart', { method: 'POST', json: { apps: c.apps } }); toast(`${name} is restarting…`); } catch (e) { fail(e); }
 }
 
 async function forgetApp(ctx, a) {

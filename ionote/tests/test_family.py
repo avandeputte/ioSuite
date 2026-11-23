@@ -8,6 +8,7 @@ from helpers import NID, NID2, pdf, png
 from iosuite_shared import testing, users
 
 from ionote import db
+from iosuite_shared import mcp as shared_mcp
 
 OWN = "BBBBBBBB-1111-2222-3333-444444444444"
 
@@ -204,7 +205,7 @@ def test_visitors_see_no_family_notes(client, admin):
 def test_assistants_read_family_notes_and_only_editors_change_them(client, admin):
     from test_mcp import _call, anon, app_password, signed_in
     _family(client, admin)
-    client.post("/api/server", json={"mcpEnabled": True})
+    shared_mcp.set_for("ionote", True)
     sam = app_password(signed_in("sam", "secretpw3"), "sam's")
     eve = app_password(signed_in("eve", "secretpw2"), "eve's")
     a = anon()

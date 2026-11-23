@@ -610,7 +610,7 @@ async def apply_template(tid: int, request: Request):
 
 @router.get("/api/members", dependencies=[access.signed_in])
 def family_members(request: Request):
-    """The family members a task can be for: the suite's family (Settings › Security › Family) less the accounts with no role
+    """The family members a task can be for: the suite's family (Settings › People › Family) less the accounts with no role
     here, [{id, name, displayName, initials, color, hasFace}]; a face is at /api/auth/family/{id}/face. Filter with
     ?member= (ids or names)."""
     return {"items": members.public(members.family())}

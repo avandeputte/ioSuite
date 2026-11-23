@@ -15,7 +15,7 @@ The kinds (KINDS) say which app a kind belongs to: somebody who does not use ioH
 sent, its goal alerts; the admin kinds (a failed backup, a new version) are for suite admins only.
 
 The sender's key pair (VAPID, RFC 8292) is made the first time it is needed and kept with the suite's keys and tokens
-(Settings › Global settings › Keys and tokens, "Notifications sender key"); clearing it there makes a new one, and every
+(Settings › Keys, "Notifications sender key"); clearing it there makes a new one, and every
 device has to turn notifications on again. Messages are encrypted for the device (RFC 8291, aes128gcm), so the push
 service in between (Apple's, Google's, Mozilla's) cannot read them. No extra package: `cryptography` and `pyjwt` come
 with proxy sign-in already.

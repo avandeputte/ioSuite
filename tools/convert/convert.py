@@ -306,7 +306,7 @@ def plan(olds: list, base: Path, data: str = "copy", device_address: str = "", m
                     p["settings"].append((key, name, _moved(value, o, new_data / key, data)))
             elif name == "MCP":
                 p["notes"].append(f"{names[key]}: MCP={value} in the old file kept its MCP server {'on' if config.as_flag(value) else 'off'} whatever "
-                                  f"Settings said; it now follows the switch under its Settings › Server › MCP server")
+                                  f"Settings said; it now follows the switch under Settings › Apps")
         for name, where, wins in CARRIED.get(key, []):
             if c.get(name):
                 p["carried"].append((key, where, c[name], wins, name))

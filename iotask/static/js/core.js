@@ -245,7 +245,7 @@ export function defaultList() {
   return w.find((c) => c.id === +S.settings.defaultList) || w.find((c) => c.mine) || w[0] || null;
 }
 export const memberOf = (id) => S.members.find((m) => m.id === id);
-/** Each family member's colour, initials and face are the suite's (Settings › Security › Family), the same in every io app. */
+/** Each family member's colour, initials and face are the suite's (Settings › People › Family), the same in every io app. */
 export const memberColor = (m) => m.color || '#5f6b7a';
 /** A member's badge: their initials on their colour; `face`: their face (ioPix, else their ioContact card) when they have one. */
 export const memberBadge = (m, face = false) => h('span', { class: `mem${face && m.hasFace ? ' face' : ''}`, title: m.displayName, style: { '--mc': memberColor(m) } }, m.initials || initials(m.displayName),

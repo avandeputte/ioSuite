@@ -7,7 +7,6 @@ dependencies that say who may call a route, and the routers with the sign-in and
     app.include_router(auth.router())        # /api/auth/* : login, accounts, logout, me, settings, password, setup
     app.include_router(auth.admin_router())  # /api/suite-admin: every account, role, app password, session and app (suite admins)
     app.include_router(auth.status_router(updater, extra=...))   # GET /api/status, public, the same shape in every app
-    app.include_router(auth.server_router(updater))              # GET/POST /api/server (admins)
     app.include_router(auth.related_router()) # /api/related: linked items across the apps (+ ui.js, the panel)
     auth.install(app, limit_for=...)         # 400 for bad input, the security headers, no-store on the API, the body cap
 
@@ -369,10 +368,6 @@ class Auth:
         """/api/suite-admin/*: everything in the Shared ioSuite database, for suite admins."""
         return routers.admin_router(self)
 
-    def server_router(self, updater, info=None, apply=None) -> APIRouter:
-        """Settings › Server: the panel (GET /api/server/ui.js), GET/POST /api/server (admins)."""
-        return routers.server_router(self, updater, info, apply)
-
     def status_router(self, updater=None, extra=None) -> APIRouter:
         """GET /api/status, open to everyone: the same shape in every app."""
         return routers.status_router(self, updater, extra)
@@ -416,12 +411,12 @@ class Auth:
             if p != path and not p.startswith(path + "/"):
                 return None
             if not enabled():
-                return JSONResponse({"detail": "The MCP server is switched off (Settings › Server)."}, status_code=404)
+                return JSONResponse({"detail": "The MCP server is switched off (Settings › Apps)."}, status_code=404)
             if "origin" in request.headers or "sec-fetch-site" in request.headers:  # sent by a page in a browser
                 for name in ("host", "x-forwarded-host"):
                     if name in request.headers and not suite.known_host(auth.app, request.headers[name]):
                         return JSONResponse({"detail": f"{auth.label} is not known by the name {request.headers[name][:80]!r}. Set its public address under "
-                                                       "Settings › Global settings › Settings, or open it there once as an admin."}, status_code=403)
+                                                       "Settings › Apps › All settings, or open it there once as an admin."}, status_code=403)
             user = auth.current_user(request)
             if not user:
                 return JSONResponse({"detail": "Sign in with your user name and an app password (HTTP Basic), or send 'Authorization: Bearer "
@@ -443,7 +438,7 @@ class Auth:
           `not_found` names the app's own exception classes that mean 404;
         - the forwarded headers (proxyauth.Forwarded): the address the connection came from is kept for proxy sign-in
           and the throttles, and X-Forwarded-For / -Proto are believed from this machine and from the reverse proxies
-          listed under Settings › Security (the app starts uvicorn with proxy_headers=False);
+          listed under Settings › People (the app starts uvicorn with proxy_headers=False);
         - the headers: X-Content-Type-Options: nosniff, Referrer-Policy: same-origin, and X-Frame-Options: SAMEORIGIN
           with Content-Security-Policy: frame-ancestors 'self' (a page of another site cannot show the app in a frame;
           a <meta> policy cannot say that) on everything, Cache-Control: no-store on the API (api_prefix) and no-cache
