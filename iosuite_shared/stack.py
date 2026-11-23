@@ -14,7 +14,9 @@ others wait until the first is healthy. No container of its own, so none is left
      iopix.PHOTOS_DIR=/photos; iosuite_shared.config) and `--proxies LIST` (the addresses the reverse proxies connect
      from). Each is written when it differs from what this command wrote the last time, so a later `up` of the same
      file leaves alone what a suite admin has changed under Settings since; a stack file that says something new is
-     applied.
+     applied. A setting this container's file said before and no longer says goes back to its default, unless a
+     suite admin has changed it since. Containers are told apart by their INTERNAL_URL, so one that says nothing
+     (ioPix's, when it runs apart) leaves what the other said.
   4. with `--demo`: the demo switch (iosuite_shared.demo): every app adds its share of the demo data (the made-up
      Calloway family) at its first start. Only on a suite with no accounts but the admin's yet, so a later `up` of a
      stack that has been used for real never adds it.
@@ -29,7 +31,8 @@ import os
 import sys
 import time
 
-DECLARED = "stack_declared"  # ios_settings, app '': what this command last wrote, as JSON {"proxies": "a,b", "set": {"suite.PUBLIC_URL": "…"}}
+DECLARED = "stack_declared"  # ios_settings, app '': what this command last wrote, as JSON {"proxies": "a,b", "set": {"suite.PUBLIC_URL": "…"},
+#                              "by": {"suite.PUBLIC_URL": "http://iosuite"}} (by: the container that said it, its INTERNAL_URL)
 WAIT_S = 60
 ONLY_HERE = ("DB_ADMIN_PASSWORD", "ADMIN_PASSWORD")  # not handed on to the program that is started after `--`
 
@@ -110,33 +113,57 @@ def parse_set(items) -> dict:
     return out
 
 
-def declare(settings=None, proxies=None, log=print) -> dict:
-    """Step 3. Returns what was written: {"proxies": …, "set": {key: value}} with only what changed."""
+def _suite(app) -> str:
+    from iosuite_shared import admin
+    return admin.SUITE if app in ("suite", "_suite") else app
+
+
+def declare(settings=None, proxies=None, log=print, who=None) -> dict:
+    """Step 3. Returns what was written: {"proxies": …, "set": {key: value}, "unset": [key]} with only what changed.
+    `who` is this container (its INTERNAL_URL)."""
     from iosuite_shared import admin, db, proxyauth
+    who = os.environ.get("INTERNAL_URL", "") if who is None else who
+    settings = settings or {}
     try:
         last = json.loads(db.get_setting(DECLARED, "", "") or "{}")
     except ValueError:
         last = {}
-    now = {"proxies": last.get("proxies"), "set": dict(last.get("set") or {})}
-    wrote = {}
-    for key, value in (settings or {}).items():
+    now = {"proxies": last.get("proxies"), "set": dict(last.get("set") or {}), "by": dict(last.get("by") or {})}
+    wrote, changed = {}, False
+    for key, value in settings.items():
+        if now["by"].get(key) != who:
+            now["by"][key] = who
+            changed = True
         if (last.get("set") or {}).get(key) == value:
             continue
         app, name = key.split(".", 1)
         try:
-            admin.set_setting(admin.SUITE if app in ("suite", "_suite") else app, name, value)
+            admin.set_setting(_suite(app), name, value)
         except (LookupError, ValueError) as e:
             raise SystemExit(f"error: --set {key}: {str(e).strip(chr(39))}")
         now["set"][key] = value
         wrote.setdefault("set", {})[key] = value
         log(f"  {key} = {value or '(the default)'}")
+    for key in [k for k, by in (last.get("by") or {}).items() if by == who and k not in settings]:
+        was = now["set"].pop(key, None)  # what this container's file said before and no longer says
+        now["by"].pop(key, None)
+        changed = True
+        app, name = key.split(".", 1)
+        if not was or db.settings_of("" if _suite(app) == admin.SUITE else app).get(name) != was:
+            continue  # a suite admin has changed it since: theirs now
+        try:
+            admin.set_setting(_suite(app), name, "")
+        except (LookupError, ValueError):
+            continue  # a setting this version no longer has
+        wrote.setdefault("unset", []).append(key)
+        log(f"  {key} = (the default: the stack file no longer says)")
     if proxies is not None:
         now["proxies"] = ",".join(_names(proxies))
         if last.get("proxies") != now["proxies"]:
             proxyauth.save_suite({"AUTH_PROXY_TRUSTED": ", ".join(_names(proxies))})
             wrote["proxies"] = now["proxies"]
             log("  reverse proxy addresses: " + (now["proxies"] or "none"))
-    if wrote:
+    if wrote or changed:
         db.set_setting(DECLARED, json.dumps(now, sort_keys=True), "")
     return wrote
 

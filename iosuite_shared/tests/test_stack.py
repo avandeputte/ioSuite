@@ -76,11 +76,34 @@ def test_what_the_stack_says_is_written_once_and_again_only_when_it_changes():
     db.settings_cache.clear()
     assert stack.declare(said, "10.186.30.10,10.186.30.11", log=QUIET) == {}
     assert db.settings_of("")["PUBLIC_URL"] == "https://family.example.com" and db.get_setting("auth_proxy_trusted", "", "") == "192.168.1.2"
-    # a stack file that says something else is applied; what it no longer says stays as it is
-    assert stack.declare({"suite.PUBLIC_URL": "https://new.example.com"}, "", log=QUIET) == {"set": {"suite.PUBLIC_URL": "https://new.example.com"}, "proxies": ""}
+    # a stack file that says something else is applied; what it no longer says goes back to its default
+    assert stack.declare({"suite.PUBLIC_URL": "https://new.example.com"}, "", log=QUIET) == {
+        "set": {"suite.PUBLIC_URL": "https://new.example.com"}, "unset": ["iopix.PHOTOS_ROOT"], "proxies": ""}
     assert db.settings_of("")["PUBLIC_URL"] == "https://new.example.com" and db.get_setting("auth_proxy_trusted", "", "") == ""
-    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/photos"}
-    assert stack.declare(None, None, log=QUIET) == {}
+    assert db.settings_of("iopix") == {}
+    assert stack.declare({"suite.PUBLIC_URL": "https://new.example.com"}, None, log=QUIET) == {}
+
+
+def test_what_a_file_no_longer_says_is_left_alone_once_an_admin_changed_it():
+    stack.declare({"suite.PUBLIC_URL": "https://home.example.com", "suite.TZ": "Europe/Brussels"}, None, log=QUIET)
+    db.set_setting("PUBLIC_URL", "https://family.example.com")
+    db.settings_cache.clear()
+    assert stack.declare({}, None, log=QUIET) == {"unset": ["suite.TZ"]}
+    assert db.settings_of("") .get("PUBLIC_URL") == "https://family.example.com" and "TZ" not in db.settings_of("")
+    assert json.loads(db.get_setting(stack.DECLARED, "", "")) == {"by": {}, "proxies": None, "set": {}}
+
+
+def test_a_container_that_says_nothing_leaves_what_another_said():
+    said = {"suite.PUBLIC_URL": "https://home.example.com", "iopix.PHOTOS_ROOT": "/library/photos"}
+    stack.declare(said, "", log=QUIET, who="http://iosuite")
+    assert stack.declare(None, None, log=QUIET, who="http://iopix") == {}  # ioPix's container, apart
+    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/library/photos"}
+    # two containers that each say something keep their own
+    assert stack.declare({"iopix.THUMB_HEIGHT": "400"}, None, log=QUIET, who="http://iopix") == {"set": {"iopix.THUMB_HEIGHT": "400"}}
+    assert stack.declare(said, "", log=QUIET, who="http://iosuite") == {}
+    assert db.settings_of("iopix") == {"PHOTOS_ROOT": "/library/photos", "THUMB_HEIGHT": "400"}
+    assert stack.declare({"suite.PUBLIC_URL": "https://home.example.com"}, "", log=QUIET, who="http://iosuite") == {"unset": ["iopix.PHOTOS_ROOT"]}
+    assert db.settings_of("iopix") == {"THUMB_HEIGHT": "400"}
 
 
 def test_a_setting_no_app_has_stops_the_start():

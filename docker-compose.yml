@@ -65,8 +65,7 @@ services:
       - stack
       - --db-admin=root
       - --set=iopix.PHOTOS_ROOT=/library/photos
-      - --set=iopix.DIGIKAM_DB_TYPE=none            # without digiKam: ioPix keeps the library itself and scans the folder
-      - --set=iopix.DIGIKAM_CHECK=none
+      - --set=iopix.DIGIKAM_CHECK=none              # a container cannot see whether digiKam is open
       # - --set=suite.PUBLIC_URL=https://home.example.com     # behind a reverse proxy: where the suite is
       # - --set=suite.COOKIE_DOMAIN=example.com               # one sign-in for every name under it
       # - --proxies=172.16.0.0/12                             # the addresses the reverse proxy connects from
