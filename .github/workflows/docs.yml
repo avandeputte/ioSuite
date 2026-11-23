@@ -28,11 +28,11 @@ jobs:
         env:
           NO_MKDOCS_2_WARNING: "1"
       - name: Deploy to Cloudflare Workers
-        # wrangler.jsonc says what; the two repository secrets say where (docs/CLOUDFLARE.md). Without them the run
-        # fails here, saying so: a site that silently was not published is worse than a red run
+        # wrangler.jsonc says what; the two repository secrets say where (docs/CLOUDFLARE.md). Without them the site
+        # is built and not published, and the run says so in a warning
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::The site was built but not published: the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (docs/CLOUDFLARE.md)."
-            exit 1
+            echo "::warning::The site was built but not published: the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (docs/CLOUDFLARE.md)."
+            exit 0
           fi
           npx --yes wrangler@4 deploy
