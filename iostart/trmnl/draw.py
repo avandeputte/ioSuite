@@ -1,6 +1,6 @@
 """TRMNL screens as pictures: the image a TRMNL device shows, drawn here from the same markup TRMNL's cloud renders
-(app/trmnl_markup, TRMNL's design framework), without a browser. For the TRMNL server inside the start page
-(iostart/trmnlserver.py): a device asks for a picture, not a page.
+(iostart/trmnl/markup, TRMNL's design framework), without a browser. For the TRMNL server inside the start page
+(iostart/trmnl/server.py): a device asks for a picture, not a page.
 
 What TRMNL's framework does with CSS and its plugins.js, this does for the part of the framework the suite's screens
 use, to the pixel where it could be measured against Chromium (tests/test_trmnl_draw.py lists what is covered):
@@ -15,7 +15,7 @@ use, to the pixel where it could be measured against Chromium (tests/test_trmnl_
     glyphs and graphs are written in (glyph: circle with a dashed stroke turned by rotate, rect, polygon, path with
     M L H V A Z, g with fill and stroke, preserveAspectRatio="none").
 
-The fonts are the framework's own (app/trmnl_fonts: TRMNL12/16/21 and Inter, SIL Open Font License), the grays are
+The fonts are the framework's own (iostart/trmnl/fonts: TRMNL12/16/21 and Inter, SIL Open Font License), the grays are
 its dither patterns for 1-bit and 2-bit screens and plain grays from 4 bits up. A denser screen (the TRMNL X: 1.8 of
 its pixels to one of the framework's) is laid out at the framework's size and drawn larger, in Inter throughout, as
 the framework does there: lengths in the framework's pixels fall between the screen's, so letters are set where
@@ -36,7 +36,7 @@ import zlib
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, features
 
 RAQM = features.check("raqm")  # sets a font's features: tabular figures (value--tnums); without it the figures keep their own widths
-FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trmnl_fonts")
+FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 W, H = 800, 480          # the framework's own screen, in its pixels; another screen is this times its scale
 GAP = 10
 INF = 10 ** 9

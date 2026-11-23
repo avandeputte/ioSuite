@@ -8,7 +8,7 @@ from iostart import config
 
 from iosuite_shared import db as shared_db
 
-SCHEMA_VERSION = 10  # 10: feeds, the reader (prt_feeds, prt_feed_items, prt_feed_subs, prt_feed_marks: iostart/news.py); 9: kitchen timers (prt_timers); 8: TRMNL devices (prt_trmnl_devices); 7: shared and personal bookmarks (owner, shared; prt_bookmark_starts)
+SCHEMA_VERSION = 10  # 10: feeds, the reader (prt_feeds, prt_feed_items, prt_feed_subs, prt_feed_marks: iostart/news/__init__.py); 9: kitchen timers (prt_timers); 8: TRMNL devices (prt_trmnl_devices); 7: shared and personal bookmarks (owner, shared; prt_bookmark_starts)
 PREFIX = "prt"
 
 # Every table is InnoDB/utf8mb4. Accounts and app passwords live in the Shared ioSuite database (iosuite_shared,
@@ -25,7 +25,7 @@ SCHEMA = [
     # group with its links; on a link, NULL follows its folder, 1 shows it anyway and 0 hides it. `rev` / `created_rev`
     # are the store's revision (prt_settings bookmarks_rev) when the row last changed and when it was made.
     # `owner` is the account (ios_users.id) whose bookmark it is; `shared` 1: everyone sees it, and only an admin of
-    # the start page changes it (iostart/bookmarks.py has the rules).
+    # the start page changes it (iostart/bookmarks/__init__.py has the rules).
     """CREATE TABLE IF NOT EXISTS prt_bookmark_nodes (
         id INT PRIMARY KEY,
         parent_id INT NULL,
@@ -64,7 +64,7 @@ SCHEMA = [
         PRIMARY KEY (user_id, node_id),
         FOREIGN KEY (node_id) REFERENCES prt_bookmark_nodes(id) ON DELETE CASCADE
     )""",
-    # a bookmarked site's own icon (iostart/siteicons.py), one per scheme://host[:port]: what a link without an icon of
+    # a bookmarked site's own icon (iostart/bookmarks/icons.py), one per scheme://host[:port]: what a link without an icon of
     # its own shows. data NULL: looked for, none found
     """CREATE TABLE IF NOT EXISTS prt_site_icons (
         site VARCHAR(255) PRIMARY KEY,
@@ -73,7 +73,7 @@ SCHEMA = [
         etag CHAR(16) NULL,
         fetched_at DATETIME NOT NULL
     )""",
-    # the TRMNL e-ink devices that ask this server what to show (iostart/trmnlserver.py), by MAC address. `code` is what a
+    # the TRMNL e-ink devices that ask this server what to show (iostart/trmnl/server.py), by MAC address. `code` is what a
     # device nobody took yet shows on its screen; `owner` (ios_users.id) the person who typed it in Settings › TRMNL,
     # whose screens it shows. settings: {playlist, refresh, bits}; state: what the device last said about itself and
     # what it was last sent. Its key is not here: with the suite's keys and tokens (trmnl_device_<id>).
@@ -110,7 +110,7 @@ SCHEMA = [
 
 
 def _tables() -> list:
-    from iostart import news  # the reader's tables are written where they are explained (iostart/news.py)
+    from iostart import news  # the reader's tables are written where they are explained (iostart/news/__init__.py)
     return SCHEMA + news.SCHEMA
 
 

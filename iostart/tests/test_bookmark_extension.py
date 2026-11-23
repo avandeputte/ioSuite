@@ -1,4 +1,4 @@
-"""The browser extension's sync API (/dav/ext, iostart/bookmarkext.py), and the extension's own sync engine
+"""The browser extension's sync API (/dav/ext, iostart/bookmarks/ext.py), and the extension's own sync engine
 (static/extension/sync.js) run by node against this app: browsers in memory that add, change, move and delete, a server that
 deletes, and every browser ending the same."""
 import base64

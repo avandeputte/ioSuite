@@ -8,7 +8,7 @@ suite.
 """
 from iosuite_shared import application, chores, mcp as shared_mcp
 
-from iomoney import __version__, api, config, db, history, mcp, model, monarch, quotes, suiteitems, users
+from iomoney import __version__, api, config, db, history, holdings, mcp, model, monarch, quotes, suiteitems, users
 from iomoney.auth import auth, updater
 
 # Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
@@ -23,8 +23,8 @@ def background() -> None:
     if monarch.due():
         monarch.sync()
     quotes.refresh()
-    model.revalue_manual_investments()
-    model.write_estimates()
+    holdings.revalue_manual_investments()
+    holdings.write_estimates()
     history.prune()
 
 

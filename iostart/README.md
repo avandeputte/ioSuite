@@ -69,7 +69,7 @@ what the app will show on the start page later (today's events, the newest photo
   yours (a TRMNL server of your own inside the network, or TRMNL's cloud through Cloudflare Access with a service
   token); or, when TRMNL's cloud cannot reach the start page, the start page sends each screen to the plugin's webhook
   every 15 minutes when it changed (the webhook addresses and the app password it reads with are kept with the suite's
-  keys and tokens). The markup is in iostart/trmnl_markup/, on TRMNL's own design framework. Health shows the day's
+  keys and tokens). The markup is in iostart/trmnl/markup/, on TRMNL's own design framework. Health shows the day's
   rings (Move, Exercise, Stand, in black alone) and the week's steps as bars, Money what falls due on each of the
   week's days, Weather the hours' temperatures as a curve: pictures the markup writes itself, as SVG. On a TRMNL X
   (the framework's `lg:` classes) the text is larger and the halves and quadrants list more, so the larger screen
@@ -95,12 +95,12 @@ what the app will show on the start page later (today's events, the newest photo
   redraw every time; the device's detailed log; a reset (it forgets its Wi-Fi and key and sets up again). A battery
   at 15% tells its owner once (Account › Notifications › TRMNL screens). Firmware updates are not offered from here.
   The pictures are drawn in Python
-  (iostart/trmnldraw.py, no browser), from the same markup, laid out as TRMNL's framework does and held against its own
+  (iostart/trmnl/draw.py, no browser), from the same markup, laid out as TRMNL's framework does and held against its own
   renders in the tests (tests/trmnl_ref); an unchanged picture keeps its name, so the device does not fetch it again.
   The device signs its requests (`/api/setup`, `/api/display`, `/api/current_screen`, `/api/log`,
   `/api/trmnl/image/…`, open without a
   sign-in) with a key of its own, kept with the suite's keys and tokens; a reset device gets a new key only while its
-  owner has Pair again open. Fonts: TRMNL's own and Inter (iostart/trmnl_fonts, SIL Open Font License).
+  owner has Pair again open. Fonts: TRMNL's own and Inter (iostart/trmnl/fonts, SIL Open Font License).
 - **A dot by each app's name**: green when the app answers its `/api/status`, red when it does not. Bookmarks the
   server cannot reach get a red dot too. The server asks each app once a minute and pings each bookmark every five (HEAD, redirects not followed; never its own address or a link-local one).
 - **Two layouts** (Customize the page › Layout, per person or per device). *A card for each app*: each app with something to show
@@ -199,7 +199,7 @@ what the app will show on the start page later (today's events, the newest photo
     browser's own bookmarks the same as the tree, both ways, with nothing to configure but the address. The bookmarks
     bar is the top-level folder "Bookmarks bar", Firefox's bookmarks menu the folder "Bookmarks menu", Other bookmarks
     everything else at the top, so every browser shows the same. It sends what changed in the browser in one request
-    (`/dav/ext`, `iostart/bookmarkext.py`) and makes the browser the tree that comes back, so a delete here or in another
+    (`/dav/ext`, `iostart/bookmarks/ext.py`) and makes the browser the tree that comes back, so a delete here or in another
     browser goes everywhere. One-click sign-in (`iostart/appsignin.py`: an app password of its own, for sync only).
     Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe) (Chrome, Edge, Vivaldi, Brave, Opera); Firefox and builds of your own
     from Settings › Bookmarks or a release. `.github/workflows/extension.yml` packages each version as a release and,
@@ -330,22 +330,28 @@ The package `iostart/` of the repository:
 main.py            the application: what is ioStart's own (its jobs, routes and two pages), handed to iosuite_shared.application
 mcp.py             the suite's one MCP server (/mcp): every app's tools passed on as the person asking, suite_apps, suite_version and update_suite
 access.py          who may call a route: the markers every /api route carries (public, signed_in, editor, admin)
-api.py             the REST API: the apps and their settings (sign-in, accounts, status, the server, updates and the log: iosuite_shared's routers)
+api.py             the page's own routes: the apps and the layout, the weather, the search, the tiles, the timers, the rates, the wall display
+                   (sign-in, accounts, status, the server, updates and the log are iosuite_shared's routers)
 apps.py            the suite's apps as they registered (iosuite_shared.suite) and the order of their tiles
 status.py          is each app up (its /api/status) and does it have an update; is each bookmark reachable
 layout.py          each account's own layout: hidden tiles and cards, the tiles' order, the photo strip
 search.py          one search: every app asked at once as the viewer, the finds ranked together
 widgets.py         what the tiles and cards show, what the search box finds and adds: ioPix, ioCalendar, ioTask, ioHealth, ioMoney, ioDocs, ioNote and ioContact asked over their APIs with the viewer's sign-in
-bookmarkcheck.py      Tidy up: the bookmarks whose address no longer answers, is gone or moved, and the same address kept twice
 weather.py         AccuWeather: the settings, the place search, the cached conditions and forecast
-homeassistant.py      Home Assistant: the settings, the chosen entities and their state, switching them, the search, the alerts
-ha_feed.py         Home Assistant's websocket: state changes folded into the copy, streamed to the pages
-bookmarks.py       the bookmark groups and links
-news.py            the reader: feeds fetched once for everybody, each person's own subscriptions, read and starred; the loop
-newsapi.py         its routes (/api/news)
-feedread.py        RSS, Atom and JSON Feed as one shape, a site's feed found from its page, an article's HTML made safe, OPML
 timers.py          kitchen timers: the family's, from the search box; the "timer done" notification, one of the copy's jobs
 rates.py           the exchange rates for the search box's currency conversions (ECB, through Frankfurter)
+wall.py            the wall display on a device: its feed, its photos, pairing
+appsignin.py       how the browser extension and the iPhone app sign in (/dav/nextcloud/index.php/login/v2)
+bookmarks/         the bookmarks: __init__.py the groups and links; api.py their routes; check.py Tidy up (addresses that no longer
+                   answer, the same address kept twice); icons.py a site's own icon; files.py import and export; sync.py and ext.py
+                   what the browser extension and the iPhone app sync with (/dav/ext)
+news/              the reader: __init__.py feeds fetched once for everybody, each person's own subscriptions, read and starred, the
+                   job; api.py its routes (/api/news); read.py RSS, Atom and JSON Feed as one shape, a site's feed found from its
+                   page, an article's HTML made safe, OPML
+homeassistant/     Home Assistant: __init__.py the settings, the chosen entities and their state, switching them, the search, the
+                   alerts; api.py its routes (/api/ha); feed.py its websocket: state changes folded into the copy, streamed to the pages
+trmnl/             TRMNL e-ink screens: __init__.py the screens and their data; api.py the routes; push.py the pushes to TRMNL's
+                   cloud; server.py the devices that ask this server; draw.py the screens drawn without a browser; markup/, fonts/
 auth.py            the shared accounts and the updater (iosuite_shared), as ioStart uses them
 db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own

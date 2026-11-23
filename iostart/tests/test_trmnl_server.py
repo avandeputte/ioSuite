@@ -1,4 +1,4 @@
-"""The TRMNL server inside the start page (iostart/trmnlserver.py): what a device running TRMNL's firmware asks, whose
+"""The TRMNL server inside the start page (iostart/trmnl/server.py): what a device running TRMNL's firmware asks, whose
 screens it gets, and what its owner sets in Settings › TRMNL. The apps are stood in for as in tests/test_trmnl.py."""
 import io
 import os
@@ -8,7 +8,7 @@ from PIL import Image
 
 from iosuite_shared import apppasswords, credentials, users
 
-from iostart import trmnldraw, trmnlserver
+from iostart.trmnl import draw as trmnldraw, server as trmnlserver
 
 TZ = "America/New_York"
 MAC = "AA:BB:CC:00:11:22"
@@ -264,7 +264,7 @@ def test_remove(client, paired):
 
 def test_the_app_password_stays_while_something_reads_with_it(client, paired, monkeypatch):
     from iosuite_shared import outbound
-    from iostart import trmnlpush
+    from iostart.trmnl import push as trmnlpush
     out, key, dev = paired
     alex = users.find("alex")
     monkeypatch.setattr(outbound, "check", lambda url, allowed=None: "203.0.113.5")

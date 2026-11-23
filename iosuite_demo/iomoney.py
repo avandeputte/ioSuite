@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import iosuite_demo as demo
 
-from iomoney import categories, model, recurring, users
+from iomoney import categories, holdings, model, recurring, users
 
 DAYS = 182  # how far back the transactions go
 BANK = "Cascade Valley Credit Union"  # made up, as is every institution here
@@ -164,11 +164,11 @@ def seed(people: dict) -> None:
                     (college, [("VT", "etf", "Total world stock ETF", 160, 118.20)])):
         total = 0.0
         for sym, kind, name, shares, price in rows:
-            model.create_holding(m, a, {"symbol": sym, "kind": kind, "name": name, "shares": shares, "price": price,
+            holdings.create_holding(m, a, {"symbol": sym, "kind": kind, "name": name, "shares": shares, "price": price,
                                         "costBasis": round(shares * price * 0.82, 2)})
             total += shares * price
         trend(a, total, 9, 0.02)
-    model.revalue_manual_investments()
+    holdings.revalue_manual_investments()
 
     for name, pattern, account, amount, freq, day, cat, sub in [
         ("Mortgage", "cascade valley cu mortgage", checking, "2150.00", "monthly", 1, "Mortgage", False),

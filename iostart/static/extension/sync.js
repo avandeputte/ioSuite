@@ -13,7 +13,7 @@
  *
  * A sync: read the browser's tree; work out what changed in it since the tree last synced (`snap`, kept with the
  * server's revision): made, renamed, re-addressed, moved, reordered, deleted; send that as ops in one request
- * (iostart/bookmarkext.py applies them together); then make the browser's tree the tree that comes back. So a delete on
+ * (iostart/bookmarks/ext.py applies them together); then make the browser's tree the tree that comes back. So a delete on
  * the server, or in another browser, goes from this browser too. The very first sync matches what is already on both
  * sides (folders by name, links by address) and adds the rest to the server ("merge"), or takes the server's tree
  * and drops what only this browser had ("server").
@@ -210,7 +210,7 @@
       for (const k of Object.keys(parts)) if (lroots[k]) pair(lroots[k].children || [], parts[k].children);
     }
 
-    /** What changed in the browser since the snapshot, as ops (see iostart/bookmarkext.py). */
+    /** What changed in the browser since the snapshot, as ops (see iostart/bookmarks/ext.py). */
     localOps(lroots, roots, canWrite, first = false, mode = 'merge') {
       const st = this.state, snap = st.snap, ops = [];
       if (!canWrite || (first && mode === 'server')) return { ops };

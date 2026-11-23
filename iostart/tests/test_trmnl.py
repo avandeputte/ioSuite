@@ -1,4 +1,4 @@
-"""TRMNL screens (iostart/trmnl.py) and the start page's pushes to TRMNL's cloud (iostart/trmnlpush.py). The apps are stood in
+"""TRMNL screens (iostart/trmnl/__init__.py) and the start page's pushes to TRMNL's cloud (iostart/trmnl/push.py). The apps are stood in
 for by their own providers over a table (conftest.apps_answer); TRMNL is never called."""
 import base64
 import datetime as dt
@@ -12,7 +12,8 @@ import pytest
 
 from iosuite_shared import apppasswords, credentials, outbound, users
 
-from iostart import trmnl, trmnlpush, weather
+from iostart import trmnl, weather
+from iostart.trmnl import push as trmnlpush
 
 TZ = "America/New_York"
 

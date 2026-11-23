@@ -8,7 +8,7 @@ changes in one request, applied together.
                                   answers {rev, ids, tree, refused}: the tree after them, the ids given to what it
                                   made, and how many changes were not taken (a shared bookmark, by someone who does
                                   not manage them: it comes back as it was)
-    GET  <address>/dav/ext/icon/<id>  the icon of a link's site, as the server keeps it (iostart/siteicons.py); 404 without one
+    GET  <address>/dav/ext/icon/<id>  the icon of a link's site, as the server keeps it (iostart/bookmarks/icons.py); 404 without one
 
 ioStart, the iPhone and iPad app (the repository avandeputte/iosuite-apps), speaks the same API: it shows the tree,
 sends what is changed in it as ops, and draws the links with the icons.
@@ -28,7 +28,7 @@ applied creates, then updates, then orders, then deletes. A change to something 
 something changed on the server after `base` (in another browser, or on the start page) is skipped too: it comes back
 to the browser, which is the safe way round.
 
-The tree is the account's (iostart/bookmarks.py): their own bookmarks and the shared ones, in the same folders; a node the
+The tree is the account's (iostart/bookmarks/__init__.py): their own bookmarks and the shared ones, in the same folders; a node the
 account may not change carries "shared": true and "readOnly": true. Someone who is not an admin of the start page can
 add their own links in a shared folder; what they change of the shared bookmarks themselves is refused and goes back.
 """
@@ -38,7 +38,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
-from iostart import __version__, apps as _apps, bookmarks, bookmarksync as sync, siteicons, widgets as _widgets
+from iostart import __version__, apps as _apps, bookmarks, widgets as _widgets
+from iostart.bookmarks import sync, icons as siteicons
 from iosuite_shared import live, users
 
 BASE = "/dav/ext"

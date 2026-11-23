@@ -41,7 +41,8 @@ def client(_client):
         suite.register(key, "io" + key[2:].capitalize(), url=f"https://{key[2:]}.example.com", version="1.0",
                        description=key[2:].capitalize(), color="#123456")
     apps.forget_registry()
-    from iostart import bookmarkcheck, homeassistant, status, widgets
+    from iostart import homeassistant, status, widgets
+    from iostart.bookmarks import check as bookmarkcheck
     homeassistant.reload()  # the settings of the test before, the apps it found down, the answers it kept
     widgets.forget()
     status.forget()

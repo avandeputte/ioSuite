@@ -1,6 +1,6 @@
 """A TRMNL server inside the start page: a TRMNL e-ink device (or anything running TRMNL's firmware) set to this
 server asks here what to show, and gets the suite's screens as a picture, with no TRMNL cloud, plugin import, polling
-or webhook in between. iostart/trmnl.py has the screens' data and markup, iostart/trmnldraw.py draws them (no browser).
+or webhook in between. iostart/trmnl/__init__.py has the screens' data and markup, iostart/trmnl/draw.py draws them (no browser).
 
 What a device does (TRMNL's open firmware, github.com/usetrmnl/firmware; its Wi-Fi setup page takes the address of a
 server of one's own). It cannot sign in through Cloudflare Access or with an account, so these four answer without a
@@ -55,7 +55,8 @@ import time
 from iosuite_shared import credentials, push, suite
 from iosuite_shared.errors import Invalid
 
-from iostart import config, db, trmnl, trmnldraw, trmnlpush
+from iostart import config, db, trmnl
+from iostart.trmnl import draw as trmnldraw, push as trmnlpush
 
 log = logging.getLogger("iostart.trmnl")
 APP = config.APP

@@ -10,7 +10,8 @@ import unittest.mock as um
 
 import pytest
 
-from iostart import bookmarkcheck, widgets
+from iostart import widgets
+from iostart.bookmarks import check as bookmarkcheck
 from conftest import via_providers
 
 
