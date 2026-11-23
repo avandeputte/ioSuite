@@ -22,6 +22,7 @@ jobs:
       contents: read
       packages: write
     runs-on: ubuntu-latest
+    timeout-minutes: 45   # a run that hangs is stopped here, not after GitHub's six hours
     strategy:
       fail-fast: false
       matrix:

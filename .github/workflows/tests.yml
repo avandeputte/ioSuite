@@ -14,13 +14,16 @@ on:
 permissions:
   contents: read
 
+# A pull request's newer push stops the run of its older one. A push to main is never stopped by the next: each
+# commit there gets its own answer, and nobody is mailed that a run was cancelled.
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # a run that hangs is stopped here, not after GitHub's six hours
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,6 +60,7 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # a run that hangs is stopped here, not after GitHub's six hours
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +110,7 @@ jobs:
   iopix-browser:
     # ioPix's pages in a real browser (Playwright, headless Chromium), on a library the tests make from scratch
     runs-on: ubuntu-latest
+    timeout-minutes: 30   # a run that hangs is stopped here, not after GitHub's six hours
     services:
       mariadb:
         image: mariadb:11
@@ -135,6 +140,7 @@ jobs:
     # MariaDB administrator), then every app in one copy, asked from outside; the copy asks a certificate authority
     # of the checks' own for a certificate and answers HTTPS with it
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # a run that hangs is stopped here, not after GitHub's six hours
     services:
       mariadb:
         image: mariadb:11
@@ -203,6 +209,7 @@ jobs:
     # once without services, once as root with the old apps as systemd services, the way a server is moved (a move
     # that fails first and must put the old services back, the move, and going back)
     runs-on: ubuntu-latest
+    timeout-minutes: 30   # a run that hangs is stopped here, not after GitHub's six hours
     services:
       mariadb:
         image: mariadb:11
@@ -251,6 +258,7 @@ jobs:
     # the container image, built as the Image workflow builds it, and the repository's stack file started with it:
     # MariaDB and one container with every app, then ioPix moved to a container of its own
     runs-on: ubuntu-latest
+    timeout-minutes: 30   # a run that hangs is stopped here, not after GitHub's six hours
     steps:
       - uses: actions/checkout@v4
       - name: Build the image

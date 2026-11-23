@@ -21,6 +21,7 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # a run that hangs is stopped here, not after GitHub's six hours
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

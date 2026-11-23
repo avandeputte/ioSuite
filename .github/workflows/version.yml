@@ -23,6 +23,7 @@ permissions:
 jobs:
   version:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # a run that hangs is stopped here, not after GitHub's six hours
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
