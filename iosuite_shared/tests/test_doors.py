@@ -50,8 +50,12 @@ def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), 
              "headers": [(b"host", name.encode()), *[(k.encode(), v.encode()) for k, v in headers]],
              "server": ("10.0.0.5", port), "client": (peer, 50000)}
     got = {"status": 0, "headers": {}, "body": b""}
+    asked = []
 
     async def receive():
+        if asked:  # the request was read: nothing more comes while the visitor waits for the answer
+            await asyncio.Event().wait()
+        asked.append(1)
         return {"type": "http.request", "body": b"", "more_body": False}
 
     async def send(m):
@@ -312,6 +316,33 @@ def test_a_request_for_another_copy_s_app_is_passed_to_that_copy_s_same_door(mon
     assert s == 307 and hd["location"] == "http://home.example.com:8444/pix/mcp" and len(passed) == 2
 
 
+def test_a_request_passed_across_arrives_inside_the_app(monkeypatch):
+    """Two copies joined for real: the first passes what is asked in ioPix's folder on, and the second hands it to
+    ioPix with the path inside the app, in that folder, the visitor's cookie with it."""
+    import httpx2
+    machine(monkeypatch)
+    second = a_host("iopix")
+    seen = []
+
+    async def other_copy(scope, receive, send):
+        seen.append((scope["path"], scope["server"][0]))
+        await second(scope, receive, send)
+    wire = httpx2.AsyncClient(transport=httpx2.ASGITransport(app=other_copy, client=(HERE, 50001)), trust_env=False)
+    monkeypatch.setattr(doors, "client", lambda: wire)
+    first = a_host("iostart", "iocalendar", remote={"iopix": {"web": "http://10.0.0.9", "sync": "http://10.0.0.9:8443", "mcp": None}})
+    s, _, b = ask(first, "/pix/api/photos", headers=[("cookie", "ios_session=abc")], query="q=sea")
+    assert s == 200 and b["app"] == "iopix" and b["path"] == "/api/photos" and b["folder"] == "/pix" and b["door"] == "web"
+    assert b["cookie"] == "ios_session=abc"
+    assert seen == [("/api/photos", "10.0.0.9")]
+    s, _, b = ask(first, "/pix/api/photos", port=8443, method="POST", headers=[("authorization", "Basic abc")])
+    assert s == 200 and b["path"] == "/api/photos" and b["folder"] == "/pix" and b["door"] == "sync" and b["authorization"] == "Basic abc"
+    assert len(seen) == 2
+    # at ioPix's own name there is no folder to tell the other copy about
+    first.table.hosts["photos.example.com"] = "iopix"
+    s, _, b = ask(first, "/api/photos", name="photos.example.com")
+    assert s == 200 and b["app"] == "iopix" and b["path"] == "/api/photos" and not b["folder"]
+
+
 def test_a_request_that_was_passed_across_is_never_passed_on_again(monkeypatch):
     machine(monkeypatch)
     h = a_host("iostart", remote={"iopix": {"web": "http://10.0.0.9"}})
@@ -348,8 +379,9 @@ def test_the_table_knows_names_folders_and_where_other_copies_are(monkeypatch):
                        "calsync.example.com": "iocalendar"}  # an address in a folder is nobody's own name
     assert t.folders["calendar"] == "iocalendar" and t.folders["pix"] == "iopix" and t.folders["money"] == "iomoney"
     assert set(t.remote) == {"iopix", "iomoney"}
-    assert t.remote["iopix"] == {"web": "http://10.0.0.9/pix", "sync": "http://10.0.0.9:8443/pix", "mcp": None}
-    assert t.remote["iomoney"]["web"] == "http://10.0.0.9/money" and t.remote["iomoney"]["sync"] is None
+    # the other copy's doors, without the app's folder: a request is passed across with its path inside the app
+    assert t.remote["iopix"] == {"web": "http://10.0.0.9", "sync": "http://10.0.0.9:8443", "mcp": None}
+    assert t.remote["iomoney"]["web"] == "http://10.0.0.9" and t.remote["iomoney"]["sync"] is None
 
 
 def test_the_host_reads_the_table_itself_and_keeps_serving_when_it_cannot(monkeypatch):

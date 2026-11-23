@@ -271,7 +271,9 @@ def load_table(local: tuple = ()) -> Table:
                 if h:
                     t.hosts.setdefault(h, k)
         if k not in local:
-            where = {WEB: suite.upstream_of(a), SYNC: suite.upstream_of(a, "internalSyncUrl"), MCP: suite.upstream_of(a, "internalMcpUrl")}
+            # the copy's door, not the app's folder at it: a request is passed across with its path inside the app
+            where = {WEB: _origin(suite.upstream_of(a)), SYNC: _origin(suite.upstream_of(a, "internalSyncUrl")),
+                     MCP: _origin(suite.upstream_of(a, "internalMcpUrl"))}
             if any(where.values()):
                 t.remote[k] = where
     for k in local:  # this copy's own, as their settings say (they may not have registered yet)
@@ -283,6 +285,14 @@ def load_table(local: tuple = ()) -> Table:
                     t.hosts[h] = k
     t.outer = prefix.of_url(config.suite_setting("PUBLIC_URL"))
     return t
+
+
+def _origin(url) -> str | None:
+    """scheme://host:port of an address (None for none)."""
+    if not url:
+        return None
+    u = urlsplit(url)
+    return f"{u.scheme}://{u.netloc}" if u.scheme and u.netloc else None
 
 
 def _headers(scope: dict) -> dict:
