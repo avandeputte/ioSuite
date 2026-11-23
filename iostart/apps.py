@@ -20,7 +20,7 @@ from iosuite_shared.errors import Invalid
 log = logging.getLogger("iostart.apps")
 SELF = "iostart"
 REGISTRY_TTL = 30  # seconds the suite's list is kept here (asked on every tile, widget and status call)
-_registry = {"at": 0.0, "items": {}}
+_registry = {"at": 0.0, "items": {}, "rev": -1}
 
 # the apps whose manifest gives their tile a place (app.json "start": rank), in that order; any other follows by name
 ORDER = sorted((k for k, m in catalog.APPS.items() if (m.get("start") or {}).get("rank")), key=lambda k: catalog.APPS[k]["start"]["rank"])
@@ -33,15 +33,16 @@ def is_key(k) -> bool:
 
 
 def registered() -> dict:
-    """{app key: entry} from the suite's list (iosuite_shared.suite.apps()), kept REGISTRY_TTL seconds; the last list
-    known when the Shared ioSuite database does not answer."""
-    now = time.time()
-    if now - _registry["at"] > REGISTRY_TTL:
+    """{app key: entry} from the suite's list (iosuite_shared.suite.apps()), kept REGISTRY_TTL seconds, or until this
+    copy changes the list (an app registers, an admin reaches the suite at an address for the first time: the tiles
+    are there on the first page); the last list known when the Shared ioSuite database does not answer."""
+    now, rev = time.time(), suite.door_rev()
+    if now - _registry["at"] > REGISTRY_TTL or rev != _registry["rev"]:
         try:
             _registry["items"] = {a["app"]: a for a in suite.apps()}
         except Exception as e:  # noqa: BLE001 - the Shared ioSuite database is down: the last list known
             log.warning("the suite's list of apps: %s", e)
-        _registry["at"] = now
+        _registry.update(at=now, rev=rev)
     return _registry["items"]
 
 

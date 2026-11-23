@@ -20,9 +20,10 @@ def test_iostart_registers_itself(client):
 def test_only_registered_apps_have_a_tile(client):
     suite.forget("iocalendar")
     _registered(iopix={"name": "ioPix", "url": "https://photo.example.com", "version": "2.1.0"}, ionote={"name": "ioNote"})
-    by = {t["key"]: t for t in client.get("/api/apps", headers={"host": "home.lan:8630"}).json()["items"]}
+    by = {t["key"]: t for t in client.get("/api/apps").json()["items"]}
     assert by["iopix"]["url"] == "https://photo.example.com" and by["iopix"]["version"] == "2.1.0"
-    assert "iocalendar" not in by and "ionote" not in by  # not registered, or registered without an address
+    # not registered, or registered without an address while the suite's own is not known either
+    assert "iocalendar" not in by and "ionote" not in by
 
 
 def test_an_app_the_page_does_not_know_gets_a_tile(client):
@@ -43,3 +44,18 @@ def test_a_known_app_tile_is_what_it_registered(client):
     _registered(iopix={"name": "ioPix", "url": "http://nas.lan:8600", "description": "Photos", "color": "#3b4a8c"})
     t = next(t for t in client.get("/api/apps").json()["items"] if t["key"] == "iopix")
     assert (t["name"], t["tagline"], t["color"], t["icon"]) == ("ioPix", "Photos", "#3b4a8c", "http://nas.lan:8600/static/icons/mark.svg")
+
+
+def test_the_tiles_are_there_on_the_first_page_an_admin_asks_for(client):
+    """A new install, where nobody stored the suite's address: the first request of an admin notes the address the
+    suite was reached at, and the tiles of that same page are the apps in their folders at it (not a minute later)."""
+    from iosuite_shared import db as shared_db
+    for key in apps.ORDER:
+        suite.forget(key)
+    suite.register("iocalendar", "ioCalendar")  # as an app registers itself when no address is stored for it
+    shared_db.ex("UPDATE ios_apps SET seen_url = NULL, configured_url = NULL WHERE app = 'iostart'")
+    suite.invalidate()
+    apps.forget_registry()
+    assert apps.tiles() == []  # no address known yet: read, and kept as the page keeps the list
+    items = client.get("/api/apps", headers={"host": "home.lan:8630"}).json()["items"]
+    assert [(t["key"], t["url"]) for t in items] == [("iocalendar", "http://home.lan:8630/calendar")]

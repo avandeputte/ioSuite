@@ -238,6 +238,8 @@ def note_seen(app: str, request, take_address: bool = True) -> None:
         _seen[app] = (origin if better else known[0], rank if better else known[1], now)
     if better:
         n = db.ex("UPDATE ios_apps SET seen_url = %s, last_seen_at = %s WHERE app = %s", (origin, int(now), app))
+        with _lock:  # the suite's address may be this one: the page asked for next has the apps' addresses already
+            _door.update(at=0.0, rev=_door["rev"] + 1)
     else:
         n = db.ex("UPDATE ios_apps SET last_seen_at = %s WHERE app = %s", (int(now), app))
     if not n:  # not registered (yet): try again on a later request
