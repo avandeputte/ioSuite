@@ -26,7 +26,9 @@ def test_the_settings_page(page, server):
     page.wait_for_selector("h1:has-text('Settings')", timeout=10000)
     page.wait_for_selector(".stabs", timeout=10000)  # the sections arrive with /api/tools
     tabs = page.locator(".stabs button").all_inner_texts()
-    assert [t for t in tabs if t not in ("Account",)][:5] == ["Display", "Editing", "Library", "AI", "People"], "the order every io app uses"
+    # the app's own tabs, in the order every io app uses; the suite's four (People, Apps, Servers, Keys) are a suite
+    # admin's and are tested where one signs in (test_accounts.py)
+    assert [t for t in tabs if t not in ("Account",)] == ["Display", "Editing", "Library", "AI"], "the order every io app uses"
     heads = page.locator("h2").evaluate_all("els => els.map((e) => e.textContent)")
     for h in ("Display", "AI analysis and models", "Editing", "Metadata templates", "Library", "Backups"):
         assert any(x.startswith(h) for x in heads), (h, heads)
@@ -53,11 +55,6 @@ def test_the_settings_page(page, server):
     assert page.locator(".srow b", has_text="digiKam database").count() == 1, "where the library is"
     assert page.locator(".srow b", has_text="Metadata consistency").count() == 0, "the tools have their own page"
     assert page.locator(".srow b", has_text="Download a backup").count() == 1, "the backups sit with the library"
-    page.locator(".stabs button", has_text="Apps").click()
-    page.wait_for_selector(".iosa h2:has-text('Apps')", timeout=10000)
-    assert page.locator(".iosa tr:has-text('iopix') td:nth-child(5) input[type=checkbox]").count() == 1, "the MCP switch is in one place, per app"
-    page.locator(".stabs button", has_text="Servers").click()
-    page.wait_for_selector(".iosa h2:has-text('Jobs')", timeout=10000)
     assert page.locator(".navfoot a[data-v=maintenance]").count() == 0 and page.locator(".navfoot a[data-v=settings]").count() == 1, "at the foot of the sidebar"
 
 def test_the_tools_page(page, server):

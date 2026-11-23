@@ -18,8 +18,6 @@ at the same moment. A run that raises is logged, counted and shown on the screen
 """
 import asyncio
 import logging
-import os
-import socket
 import time
 
 from starlette.concurrency import run_in_threadpool
@@ -35,9 +33,10 @@ KEEP_S = 7 * 86400  # a row of a job nothing registers any more is forgotten aft
 
 
 def copy_name() -> str:
-    """The name of this copy, as the suite's screens show it: the machine, and the copy's own name beside it."""
-    host = os.environ.get("IOSUITE_COPY") or socket.gethostname() or "server"
-    return host[:64]
+    """The name of this copy, the same one the Logs and Updates screens use (iosuite_shared.suite.copy_name): the
+    machine's name, with the port of its pages beside it when two copies share a machine."""
+    from iosuite_shared import suite
+    return suite.copy_name()
 
 
 class Job:
