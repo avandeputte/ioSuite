@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 SHARED = Path(__file__).with_name("static")
+PUBLIC = SHARED / "public"  # served in every app's /static, after the app's own files
 STAMPED = ("static/app.js", "static/app.css", "static/js/theme.js", "api/auth/base.css")
 TEXT = (".js", ".css", ".html", ".svg", ".json", ".webmanifest", ".txt")  # what is worth compressing
 SMALL = 1024  # under this, compressing saves nothing
@@ -81,7 +82,13 @@ def send(request, file: Path, media_type: str) -> Response:
 
 class Static(StaticFiles):
     """/static: as StaticFiles answers (304 when unchanged, ranges), with the text files compressed for a browser
-    that takes that, and Cache-Control said for each: for good when asked for by its mark, else no-cache."""
+    that takes that, and Cache-Control said for each: for good when asked for by its mark, else no-cache. Beside the
+    app's own files it has what the suite keeps once for every app (static/public here: static/vendor/leaflet, the
+    maps of ioPix and ioHealth), so an app serves it from wherever it runs."""
+
+    def __init__(self, *, directory, **kw):
+        super().__init__(directory=directory, **kw)
+        self.all_directories = [*self.all_directories, PUBLIC]   # the app's own first
 
     async def get_response(self, path, scope):
         r = await super().get_response(path, scope)

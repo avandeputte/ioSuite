@@ -99,6 +99,13 @@ def test_static_files_are_kept_for_good_only_under_their_own_mark(tmp_path):
     again = c.get(f"/static/app.css?v={v}", headers={"If-None-Match": r.headers["etag"]})
     assert again.status_code == 304 and again.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert c.get("/static/icon.png").headers["cache-control"] == "no-cache" and c.get("/static/nothing.js").status_code == 404
+    # what the suite keeps once is in every app's /static (the maps), after the app's own files; nothing else of the shared folder is
+    assert "Leaflet 1.9.4" in c.get("/static/vendor/leaflet/leaflet.js").text
+    assert c.get("/static/vendor/leaflet/images/marker-icon.png").headers["content-type"] == "image/png"
+    assert c.get("/static/frame.js").status_code == 404 and c.get("/static/../frame.js").status_code == 404
+    (tmp_path / "vendor" / "leaflet").mkdir(parents=True)
+    (tmp_path / "vendor" / "leaflet" / "leaflet.js").write_text("// the app's own")
+    assert c.get("/static/vendor/leaflet/leaflet.js").text == "// the app's own"
 
 
 def test_scripts_and_style_sheets_are_sent_compressed(tmp_path):
