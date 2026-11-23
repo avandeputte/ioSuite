@@ -1,6 +1,6 @@
-"""Kitchen timers (app/timers.py), the exchange rates for the search box's conversions (app/rates.py), and what the
-iPhone app's widgets and Siri read and add (/dav/ext/today and friends, app/bookmarkext.py) with a full app password
-from the sign-in flow (?scope=full, app/ncbookmarks.py)."""
+"""Kitchen timers (iostart/timers.py), the exchange rates for the search box's conversions (iostart/rates.py), and what the
+iPhone app's widgets and Siri read and add (/dav/ext/today and friends, iostart/bookmarkext.py) with a full app password
+from the sign-in flow (?scope=full, iostart/ncbookmarks.py)."""
 import base64
 import time
 

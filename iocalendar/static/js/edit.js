@@ -156,7 +156,7 @@ export async function showEdit(page, r) {
   drawRepeat();
   // place, people
   const place = h('input', { class: 't', value: j.location || '', placeholder: 'Address or place', autocomplete: S.status.places ? 'off' : null });
-  // suggestions from Google Places while typing, when the suite has a Google key (app/places.py); else a plain field
+  // suggestions from Google Places while typing, when the suite has a Google key (iocalendar/places.py); else a plain field
   const pdrop = h('div', { class: 'drop', hidden: true });
   if (S.status.places) {
     const session = globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;

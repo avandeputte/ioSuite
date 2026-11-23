@@ -27,9 +27,9 @@ _ready = False
 error = None  # why the configured database could not be used at start
 
 # ---- schema: every table is nts_<name>, the suite's naming convention (the apps can share one database), InnoDB
-# and utf8mb4 (migrate() adds that). Accounts live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+# and utf8mb4 (migrate() adds that). Accounts live in the Shared ioSuite database (iosuite_shared, ionote/auth.py)
 SCHEMA = [
-    # accounts live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts live in the Shared ioSuite database (iosuite_shared, ionote/auth.py)
     ('CREATE TABLE IF NOT EXISTS nts_settings (name VARCHAR(191) PRIMARY KEY, value MEDIUMTEXT, '
      'updated_at DATETIME(3) NULL)'),
     # one row per change: its id is the rev stamped on what changed

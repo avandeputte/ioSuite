@@ -1,12 +1,11 @@
 """The date report: every date in a file and its sidecar, set against the folder's dates."""
-import os
 import subprocess
 
 import pytest
 
 from iopix.photos import datecheck, edits
 
-pytestmark = pytest.mark.skipif(not os.path.exists(edits.exiftool_cmd()[-1]) and len(edits.exiftool_cmd()) == 1, reason="exiftool not installed")
+pytestmark = pytest.mark.skipif(not edits.EXIFTOOL, reason="exiftool is not available here")
 
 
 def test_dates_that_agree_with_the_folder_are_found(tmp_path):

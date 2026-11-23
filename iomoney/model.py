@@ -4,10 +4,10 @@ the net worth, and who sees and changes what.
 Everything hangs off an account. An account is the household's (owner_id NULL: everyone with a role here sees it;
 editors and admins change it) or a private one: its owner's, seen by them and by the people they name (mny_account_people)
 and by nobody else, an admin or a suite admin included (members and more keep their own and change those they see).
-A viewer only looks. Nobody without a role here sees anything (ioMoney's default role is none: app/users.py).
+A viewer only looks. Nobody without a role here sees anything (ioMoney's default role is none: iomoney/users.py).
 
 Amounts are kept as DECIMAL and worked with as Decimal; the API gives them as numbers rounded to the cent. An account
-has a currency; totals are in the household's currency (Settings › Money; app/quotes.py converts).
+has a currency; totals are in the household's currency (Settings › Money; iomoney/quotes.py converts).
 """
 import datetime as dt
 import json
@@ -54,8 +54,8 @@ CENT = Decimal("0.01")
 MAX_AMOUNT = Decimal("999999999999.99")
 DETAIL_FIELDS = {"address": 255, "year": 4, "make": 64, "model": 64, "vin": 32, "mileage": 12, "boughtOn": 10,
                  "boughtFor": 20, "yearlyRate": 8, "notes": 2000,
-                 "floor": 20,  # a cash account: the balance it should not go under (app/forecast.py warns)
-                 "rate": 8, "payment": 20}  # a loan: its yearly interest in percent and what is paid a month (app/payoff.py)
+                 "floor": 20,  # a cash account: the balance it should not go under (iomoney/forecast.py warns)
+                 "rate": 8, "payment": 20}  # a loan: its yearly interest in percent and what is paid a month (iomoney/payoff.py)
 # what is kept to deal with an account's bank (mny_account_info), and how long each may be
 INFO_FIELDS = {"accountNumber": 64, "routingNumber": 32, "iban": 42, "swift": 11, "phone": 40, "phoneAbroad": 40,
                "website": 255, "email": 255, "address": 1000, "username": 128, "openedOn": 10, "notes": 4000}
@@ -816,7 +816,7 @@ def _tx_filter(u: dict, q: str = "", account: int = None, category: str = None, 
     if account:
         where += " AND t.account_id = %s"
         args.append(int(account))
-    if category:  # a split transaction (app/splits.py) by its parts' categories, not its own
+    if category:  # a split transaction (iomoney/splits.py) by its parts' categories, not its own
         whole = "NOT EXISTS (SELECT 1 FROM mny_splits s WHERE s.transaction_id = t.id)"
         if category == "-":
             where += (f" AND (((t.category IS NULL OR t.category = '') AND {whole}) OR EXISTS (SELECT 1 FROM mny_splits s "
@@ -957,7 +957,7 @@ def create_transaction(u: dict, a: dict, b: dict) -> dict:
 def update_transaction(u: dict, t: dict, b: dict, what: str = "hand", batch: str = None) -> dict:
     """The category, the notes, hidden (left out of the sums), the payee's name and the tags: kept as changed here,
     also by the next sync. A manual account's transaction also takes a new date and amount. The change is kept
-    (app/history.py: what and batch say how it was made), and the transaction counts as looked at (app/review.py)."""
+    (iomoney/history.py: what and batch say how it was made), and the transaction counts as looked at (iomoney/review.py)."""
     from iomoney import history, review, splits, tags
     _need(can_write(u, t))
     own = tags.of([t["id"]]).get(t["id"], [])
@@ -1062,13 +1062,13 @@ def delete_transaction(u: dict, t: dict) -> None:
 
 
 def categories(u: dict) -> list[dict]:
-    """Every category (app/categories.py): those the transactions have and those added here."""
+    """Every category (iomoney/categories.py): those the transactions have and those added here."""
     from iomoney import categories as cats
     return cats.items(u)
 
 
 def _not_transfer() -> str:
-    """Neither half of a transfer between the household's own accounts: linked (app/transfers.py), or in Monarch's
+    """Neither half of a transfer between the household's own accounts: linked (iomoney/transfers.py), or in Monarch's
     Transfers group."""
     return ("(t.category_group IS NULL OR LOWER(t.category_group) NOT IN ('transfers', 'transfer')) "
             "AND NOT EXISTS (SELECT 1 FROM mny_transfers x WHERE x.out_id = t.id OR x.in_id = t.id)")

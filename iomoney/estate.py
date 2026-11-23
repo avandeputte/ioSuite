@@ -91,8 +91,8 @@ def _accounts(rows: list, user_id: int) -> list:
         out += [[label, str(det[k])] for k, label in DETAILS if det.get(k) not in (None, "")]
         loan = by_id.get(a["loan_id"])  # only a loan listed here too (never one they or the asker do not see)
         if loan:
-            out.append(["Loan against it", f"{loan['name']}{f' ({loan['institution']})' if loan['institution'] else ''}: "
-                                           f"{_money(loan['balance'], loan['currency'], True)}"])
+            held = f" ({loan['institution']})" if loan["institution"] else ""
+            out.append(["Loan against it", f"{loan['name']}{held}: {_money(loan['balance'], loan['currency'], True)}"])
         items.append({"title": a["name"], "subtitle": _whose(a, user_id, True), "rows": out})
     return [{"title": "Accounts and assets", "order": 30,
              "intro": "Their accounts in ioMoney and the household’s, as last seen. Numbers show only their last digits: "

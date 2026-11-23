@@ -1,6 +1,6 @@
 # ioDocs
 
-*The family's papers, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*The family's papers, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioMoney](../iomoney/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 A self-hosted home for the family's papers: passports, ID cards, driver's licenses, visas, insurance policies, the car's
 registration, birth and marriage certificates, wills, health cards. Each one with its scans, who it belongs to, its

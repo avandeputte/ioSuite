@@ -6,7 +6,7 @@ app password and turns away a request whose app password is wrong before it reac
 | App | Paths | Devices |
 |---|---|---|
 | ioCalendar, ioContact | `/dav*` | Apple Calendar and Contacts, DAVx5, Thunderbird (HTTP Basic) |
-| ioSuite (the start page) | `/dav*` (not the Nextcloud sign-in flow under `/dav/nextcloud/index.php/login/v2` and `/dav/nextcloud/status.php`, which answer before a sync app has a password) | Floccus and other bookmark sync apps: the Nextcloud Bookmarks API at `/dav/nextcloud`, the bookmarks file at `/dav/bookmarks/` (HTTP Basic) |
+| ioSuite (the start page) | `/dav*` (not the sign-in flow for apps under `/dav/nextcloud/index.php/login/v2`, which answers before an app has a password) | the ioStart Bookmarks browser extension and the iPhone app: bookmark sync at `/dav/ext` (HTTP Basic) |
 | ioHealth | `/v1/*` (not `/v1/health`, which answers without a password) | the iPhone app's uploads (HTTP Basic, or Bearer) |
 
 Someone guessing passwords there then never touches the server, and a WAF rate limit on the DAV paths stops them
@@ -27,8 +27,8 @@ In Zero Trust › Access › Applications, add a self-hosted application per hos
 Nothing else of the host is opened: the web app, `/api` and `/mcp` stay behind Access. On `/dav*` the server asks for an
 app password itself, and this Worker turns wrong ones away first.
 
-Bookmark sync on the start page (Floccus, as a *Nextcloud Bookmarks* account at `https://start.example.com/dav/nextcloud`)
-signs in through a page under `/dav` too. It is opened in your browser, where you are signed in to ioSuite already, and
+Bookmark sync on the start page (the ioStart Bookmarks extension, the iPhone app) signs in through a page under `/dav`
+too. It is opened in your browser, where you are signed in to ioSuite already, and
 it only ever hands out an app password after you press Allow there.
 
 ## How it works

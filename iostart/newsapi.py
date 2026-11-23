@@ -1,4 +1,4 @@
-"""The reader's routes (app/news.py): a person's feeds, their articles, what is read and starred, OPML in and out, and
+"""The reader's routes (iostart/news.py): a person's feeds, their articles, what is read and starred, OPML in and out, and
 the start page's headlines card. Everything here is the asking person's own: a member or more (a viewer keeps nothing
 of their own, as in the other apps)."""
 from fastapi import APIRouter, HTTPException, Request

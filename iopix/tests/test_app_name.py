@@ -17,7 +17,7 @@ def test_app_name_setting_brands_status_and_manifest(client):
 
 
 def test_lowercase_iopix_shows_the_wordmark_spelling(client):
-    """A name saved as "iopix" (before the capital P) still shows as ioPix, like the other ioThing apps."""
+    """A name saved as "iopix" (before the capital P) still shows as ioPix, like the other ioSuite apps."""
     client.post("/api/settings", json={"app_name": "iopix"})
     try:
         assert client.get("/api/status").json()["appName"] == "ioPix"

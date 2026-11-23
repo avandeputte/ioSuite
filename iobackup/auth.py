@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite-shared), as ioBackup uses them.
+"""The shared the suite's accounts (iosuite_shared), as ioBackup uses them.
 
 Accounts, passwords, sessions, app passwords and roles live in the Shared ioSuite database (IOSUITE_DB_* in
 config.env), shared with the other apps of the suite: one sign-in serves every app on the domain (COOKIE_DOMAIN).

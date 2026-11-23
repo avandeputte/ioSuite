@@ -1,6 +1,6 @@
 # ioBackup
 
-*The database backups of the ioThing suite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
+*The database backups of ioSuite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
 [ioContact](../iocontact/), [ioNote](../ionote/), [ioPix](../iopix/),
 [ioHealth](../iohealth/), [ioTask](../iotask/), [ioDNS](../iodns/)).*
 

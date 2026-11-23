@@ -1,7 +1,6 @@
 """Settings: the Settings page, the databases, album roots and the map provider."""
 import json
 import os
-import threading
 import time
 
 from fastapi import APIRouter
@@ -19,6 +18,7 @@ from iopix.geo import geocode, maps
 from iopix.ai.semantic import ready as semantic_ready, ENGINES, semantic
 from iopix.http import json_body
 from iopix.runtime import start_prewarm
+from iosuite_shared import serve
 
 
 from iopix.routes.browse import photos_cached
@@ -252,7 +252,7 @@ async def api_database_retry():
     """Try the configured database again (it was unreachable at start); the viewer restarts when it answers now."""
     if not await run_in_threadpool(appdb.retry):
         raise HTTPException(400, f"Still unavailable: {appdb.error}")
-    threading.Timer(1.0, lambda: os._exit(0)).start()
+    serve.end(1.0)
     return {"ok": True, "restarting": True}
 
 

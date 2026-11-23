@@ -173,6 +173,11 @@ function reconnected() {
 const lookAgain = () => { if (NET.lost) pollSoon(300); };
 window.addEventListener('online', lookAgain);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pollSoon(300); });  // back in view: catch up now
+// something of ioPix changed elsewhere (another tab, an assistant, new photos on the disk): look now, not at the next
+// poll (the suite's one live stream, iosuite_shared/static/live.js)
+import(new URL('api/live.js', document.baseURI).href)
+  .then((live) => live.onChange('iopix:*', () => pollSoon(300), { wait: 800 }))
+  .catch(() => { /* no stream on this server: the poll shows what changed */ });
 async function start() {
   let st = null;
   try { st = await api('api/status'); } catch { /* the poll below says what is wrong */ }

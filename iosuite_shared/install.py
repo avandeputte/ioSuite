@@ -292,14 +292,15 @@ def sh(cmd: list, **kw):
     return subprocess.run(cmd, **kw)
 
 
-def pip_install(base: Path, extras: str, run=sh, log=print) -> None:
+def pip_install(base: Path, extras: str, run=sh, log=print, kept: Path = None) -> None:
     """The Python packages of these extras into the folder's environment (uv when it is there: much faster)."""
     target = f"{base}[{extras}]" if extras else str(base)
     py = str(base / ".venv" / "bin" / "python")
     cmd = ["uv", "pip", "install", "-q", "-p", py, "-e", target] if shutil.which("uv") else [py, "-m", "pip", "install", "-q", "--disable-pip-version-check", "-e", target]
     log(f"  Python packages: {extras or 'the suite’s own'}")
     if run(cmd).returncode != 0:
-        die("installing the Python packages failed (see above); nothing else was changed")
+        die("installing the Python packages failed (see above); nothing is running differently"
+            + (f", and the answers so far are kept in {kept}" if kept else ""))
     (base / "EXTRAS").write_text(extras + "\n")
 
 
@@ -472,6 +473,7 @@ def show(base: Path, log=print) -> None:
 
 def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path = UNIT_DIR, base: Path = None, systemd: bool = None) -> int:
     from iosuite_shared import catalog, config
+    named = config.FILE if base is None else None  # the file --config or IOSUITE_CONFIG named for this run
     base = Path(base or config.BASE)
     if a.list:
         show(base, log)
@@ -490,6 +492,12 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     if a.copy and "" not in copies(base):
         die("this machine has no ioSuite yet: set the main copy up first (iosuite install), then add a second one")
     file = base / "copies" / a.copy / "config.env" if a.copy else base / "config.env"
+    if named is not None and named.resolve() not in (file.resolve(), (base / "config.env").resolve()):
+        # the services and the copies of a folder are found by where their files are: one kept elsewhere would be
+        # written here beside it, and the copy would go on reading the other. (The folder's own file is what is read
+        # when nothing is named: a second copy is added from there.)
+        die(f"the installer keeps this copy's file at {file}, and --config or IOSUITE_CONFIG names {named}: "
+            "leave that out" + ("" if a.copy else ", or give a second copy a name of its own with --copy NAME"))
     cfg = read_env(file)
     main_cfg = read_env(base / "config.env") if a.copy else cfg
     new = not a.copy and not cfg.get("IOSUITE_DB_PASSWORD")  # a second copy is of the same suite: the main copy's database
@@ -592,7 +600,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     extras = extras_for(all_apps(base), list(dict.fromkeys(chosen + kept)))
     was = (base / "EXTRAS").read_text().strip() if (base / "EXTRAS").exists() else None
     if extras != was:
-        pip_install(base, extras, run, log)
+        pip_install(base, extras, run, log, kept=file)
     else:
         log(f"  Python packages: {extras} (as before)")
     apt_install(missing_system(all_apps(base), run), run, log)

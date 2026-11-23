@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-# the shared accounts (iosuite-shared): a fresh database on the test MariaDB (a Docker container, or
+# the shared accounts (iosuite_shared): a fresh database on the test MariaDB (a Docker container, or
 # IOSUITE_TEST_DB=host:port:user:password), never the suite's live `iosuite`
 from iosuite_shared import testing as _authtest  # noqa: E402
 

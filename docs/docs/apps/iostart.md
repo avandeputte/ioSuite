@@ -43,12 +43,11 @@ bookmarks bar, Other bookmarks (and Firefox's bookmarks menu) match folders on t
 delete in one browser reaches every other browser within a minute.
 
 - **Chrome, Edge, Vivaldi, Brave, Opera**: [install it from the Chrome Web Store](https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe).
-- **Firefox**: open the signed `.xpi` of the newest `extension-v…` [release](https://github.com/avandeputte/iosuite/releases?q=extension).
+- **Firefox**: open the signed `.xpi` of the newest `extension-v…` [release](https://github.com/avandeputte/iosuite-old/releases?q=extension).
 
 Then type the start page's address in the extension (away from home: the suite's
 [address for devices](../reference/configuration.md#the-three-ports)), choose how the first sync goes, and sign in: it gets an app
-password of its own, for bookmark sync only. Settings › Bookmarks on the start page also takes Floccus and other apps
-that sync over Nextcloud Bookmarks or WebDAV. What it sends and keeps: [privacy policy](../privacy/iostart-bookmarks.md).
+password of its own, for bookmark sync only. What it sends and keeps: [privacy policy](../privacy/iostart-bookmarks.md).
 
 ## With the other apps
 

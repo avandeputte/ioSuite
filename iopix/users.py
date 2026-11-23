@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite_shared), seen from iopix: what the rest of the app asks of them.
+"""The shared the suite's accounts (iosuite_shared), seen from iopix: what the rest of the app asks of them.
 
 The suite's role ladder (viewer, member, editor, admin; iosuite_shared.users): a viewer browses with their own settings
 kept on the server, favorites and viewer albums; an editor makes every library write (edits, tags, faces, place tags,

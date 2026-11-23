@@ -52,7 +52,7 @@ export function buildNav() {
 }
 
 /** The app mark and name, top left (in the sidebar, and in the top bar while the sidebar is put away or on a phone).
- *  Alone, it is the link to the Dashboard. When other ioThing apps are registered in the suite (iosuite-shared's
+ *  Alone, it is the link to the Dashboard. When other ioSuite apps are registered in the suite (iosuite_shared's
  *  suite_apps), the mark opens a menu of them, each a link to that app, and the name stays the link to the Dashboard. */
 export let suiteApps = [];
 export function brand(cls) {
@@ -60,7 +60,7 @@ export function brand(cls) {
   const name = (tag, attrs) => h(tag, attrs, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Health'));
   if (!suiteApps.length) return h('a', { class: cls, href: '#/', title: 'Dashboard' }, mark(), name('span', { class: 'brand-name' }));
   return h('div', { class: cls },
-    h('button', { class: 'suitebtn', title: 'ioThing apps', 'aria-label': 'ioThing apps', 'aria-haspopup': 'menu', onclick: e => toggleSuite(e.currentTarget) }, mark()),
+    h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: e => toggleSuite(e.currentTarget) }, mark()),
     name('a', { class: 'brand-name', href: '#/', title: 'Dashboard' }));
 }
 export function drawBrands() {
@@ -102,7 +102,7 @@ export function toggleSuite(btn) {
   if (!suiteApps.length) return;
   // the apps, then the admin tools (ioDNS…) in a section of their own: the server sends those to their admins only
   const apps = suiteApps.filter((a) => !a.adminTool), tools = suiteApps.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
+  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
   const r = btn.getBoundingClientRect();

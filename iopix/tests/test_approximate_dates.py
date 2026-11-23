@@ -1,4 +1,4 @@
-"""Approximate dates (app/photos/dateprecision.py): only the year (or the month) is known, or nothing. The photo keeps
+"""Approximate dates (iopix/photos/dateprecision.py): only the year (or the month) is known, or nothing. The photo keeps
 a full placeholder date where one is required (digiKam's database, the XMP dates digiKam reads), the known part in
 XMP photoshop:DateCreated, and a tag under "Date approximate" that every copy carries; the viewer shows "1992" or
 "Date unknown", and the change log undoes it."""

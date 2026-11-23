@@ -1,4 +1,4 @@
-"""Clothing matches within an event (app/ai/clothing.py): an unnamed person box takes the name of the named box it looks
+"""Clothing matches within an event (iopix/ai/clothing.py): an unnamed person box takes the name of the named box it looks
 most like, only when the match is clear."""
 import pytest
 

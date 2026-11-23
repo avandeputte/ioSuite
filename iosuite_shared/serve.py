@@ -15,9 +15,11 @@ talked to the port without HTTPS (a device set up with the server's address, the
 proxy) is not cut off the day a certificate arrives."""
 import asyncio
 import logging
+import os
 import socket
 import ssl
 import sys
+import threading
 
 log = logging.getLogger("iosuite_shared.serve")
 FIRST_BYTE_S = 15.0    # how long a connection may stay silent before it says whether it speaks TLS
@@ -80,6 +82,33 @@ def context(certfile: str, keyfile: str = None) -> ssl.SSLContext:
     return ctx
 
 
+SERVER = None      # the web server of this process while it serves (run()): what end() asks to stop
+STOP_S = 20.0      # how long an orderly stop may take before the process ends anyway
+
+
+def end(delay: float = 0.5) -> None:
+    """End this copy shortly, so that the service manager starts it again (systemd Restart=always, launchd KeepAlive,
+    Docker restart: unless-stopped): after an update, a restart asked under Settings, settings that could not be read.
+
+    It ends as a stop from the service manager does: the web server takes no new requests and gives the open ones
+    their moment, every app's shutdown runs (the jobs stop between two pieces of work, the helper process and ioPix's
+    job process end, the database connections close), and the process leaves with exit code 0. `delay` lets the
+    request that asked for it be answered first. A stop that has not ended after STOP_S is cut short, and a process
+    that is not serving (a command, a test) ends at once."""
+    def stop():
+        server = SERVER
+        if server is None:
+            os._exit(0)
+        log.info("stopping, to be started again")
+        last = threading.Timer(STOP_S, lambda: os._exit(0))
+        last.daemon = True
+        last.start()
+        server.should_exit = True
+    t = threading.Timer(delay, stop)
+    t.daemon = True
+    t.start()
+
+
 def run(target, host: str, ports, secure=None, **settings) -> None:
     """Serve the ASGI application `target` on every address HOST names and every port of `ports` (one, or a list).
 
@@ -93,14 +122,17 @@ def run(target, host: str, ports, secure=None, **settings) -> None:
     secure = [p for p in ports if secure is None or p in set(secure)] if certfile else []
     plain = [p for p in ports if p not in secure]
     first = names[0].strip("[]")
+    global SERVER
     if not secure and len(names) == 1 and len(ports) == 1:
-        uvicorn.run(target, host=first, port=ports[0], **settings)
+        SERVER = uvicorn.Server(uvicorn.Config(target, host=first, port=ports[0], **settings))
+        SERVER.run()
         return
     said = f"listening on {', '.join(names)} port {', '.join(str(p) for p in ports)}"  # uvicorn names no address for sockets it is handed
     if not secure:
         socks = _bind(names, ports, host, [])
         print(said, file=sys.stderr)
-        uvicorn.Server(uvicorn.Config(target, host=first, port=ports[0], **settings)).run(sockets=socks)
+        SERVER = uvicorn.Server(uvicorn.Config(target, host=first, port=ports[0], **settings))
+        SERVER.run(sockets=socks)
         return
     try:
         CONTEXT = context(certfile, keyfile)
@@ -109,7 +141,7 @@ def run(target, host: str, ports, secure=None, **settings) -> None:
     plain_socks = _bind(names, plain, host, [])
     secure_socks = _bind(names, secure, host, plain_socks)
     print(f"{said}; HTTPS on port {', '.join(str(p) for p in secure)}", file=sys.stderr)
-    server = uvicorn.Server(uvicorn.Config(target, host=first, port=ports[0], **settings))
+    server = SERVER = uvicorn.Server(uvicorn.Config(target, host=first, port=ports[0], **settings))
 
     async def both() -> None:
         doors = asyncio.create_task(_https_doors(server, secure_socks, CONTEXT), name="https-doors")

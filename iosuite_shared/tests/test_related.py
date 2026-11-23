@@ -74,7 +74,7 @@ def suite_apps(monkeypatch):
     calls = []
 
     def ask(request, app, path, params=None, image=False, timeout=5):
-        """The app's /api/suite/* answered by its own provider (app/suiteitems.py), over the answers of its API in SEEN."""
+        """The app's /api/suite/* answered by its own provider (iosuite_shared/suiteitems.py), over the answers of its API in SEEN."""
         if app == "ionote":
             raise related.Unavailable(502, "ionote does not answer")
 

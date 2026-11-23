@@ -1,5 +1,5 @@
 """The REST API (JSON) the web app uses. OpenAPI docs at /api/docs. Who may call a route is declared on it
-(app/access.py); what an account may change is the model's business (app/model.py).
+(iothings/access.py); what an account may change is the model's business (iothings/model.py).
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`.
@@ -15,10 +15,6 @@ from iosuite_shared.access import json_body
 from iothings import access, files, homebox, homebox_api, model, pdf, upkeep
 
 router = APIRouter()
-
-
-def _int(v) -> int | None:
-    return int(v) if str(v or "").strip().isdigit() else None
 
 
 @router.get("/api/summary", dependencies=[access.signed_in])

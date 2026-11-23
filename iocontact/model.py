@@ -249,7 +249,7 @@ def by_uid(book_id: int, uid: str) -> dict | None:
     return db.one("SELECT * FROM con_contacts WHERE address_book_id = %s AND uid = %s AND deleted = 0", (book_id, uid))
 
 
-# The account a request acts as (app/main.py sets it for every request; None in the LDAP server, the command line and
+# The account a request acts as (iocontact/main.py sets it for every request; None in the LDAP server, the command line and
 # the tests that call the model directly: nothing is hidden there).
 viewer: ContextVar = ContextVar("iocontact_viewer", default=None)
 
@@ -383,6 +383,9 @@ def display_name(c: dict) -> str:
 def validate(c: dict) -> dict:
     """Normalise a contact dict from the API, vCard or CSV."""
     nm = c.get("name") or {}
+    if not isinstance(nm, dict):  # a name in one piece ("Ada Lovelace"): taken as fn is, and split below
+        c = dict(c, fn=c.get("fn") or str(nm))
+        nm = {}
     out = dict(c)
     out["name"] = {k: _clean(nm.get(k), 128 if k in ("given", "additional", "family") else 64) or "" for k in ("prefix", "given", "additional", "family", "suffix")}
     # a name typed into fn alone (from the web form's single box or a CSV with only "Name") is split for N

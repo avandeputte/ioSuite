@@ -11,7 +11,7 @@ name = "iosuite"
 dynamic = ["version"]  # the suite's one version: iosuite_shared.__version__
 description = "Self-hosted apps for the family (ioStart, ioPix, ioNote, ioCalendar, ioContact, ioTask, ioRecipe, ioThings, ioMoney, ioDocs, ioHealth, ioDNS, ioBackup) as one program that runs the apps it is told to"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 dependencies = [
   "fastapi<1",

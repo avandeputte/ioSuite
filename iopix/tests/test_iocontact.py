@@ -1,4 +1,4 @@
-"""ioContact: birthdays of the people here, read from the suite's address book (app/iocontact.py)."""
+"""ioContact: birthdays of the people here, read from the suite's address book (iopix/iocontact.py)."""
 import base64
 import datetime
 import json

@@ -1,4 +1,4 @@
-"""Smart crop (app/ai/smartcrop.py): the focus point of a photo and the crop box around it; the badges answer and the
+"""Smart crop (iopix/ai/smartcrop.py): the focus point of a photo and the crop box around it; the badges answer and the
 fitted thumbnail carry it."""
 from iopix.ai import smartcrop
 

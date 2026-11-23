@@ -65,7 +65,7 @@ body.side-docked #menubtn, body.side-docked .topbrand { display: none; }
 .brand-name .io { color: var(--muted); } .brand-name .nm { color: var(--accent); }
 .topbrand .brand-name { font-size: 22px; }
 .brand-mark { flex: none; }
-/* the suite's app switcher: with other ioThing apps registered, the mark opens a menu of them (as in ioContact) */
+/* the suite's app switcher: with other ioSuite apps registered, the mark opens a menu of them (as in ioContact) */
 .suitebtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: 0 -5px; padding: 0;
   border: 0; border-radius: 8px; background: none; cursor: pointer; }
 .suitebtn:hover, .suitebtn:focus-visible { background: var(--line); }
@@ -130,12 +130,6 @@ h1.ptitle .muted { font-size: 13px; font-weight: 400; margin-left: 4px; }
 .stabs button:hover { color: var(--text); }
 .stabs button.on { color: var(--accent); }
 .stabs button.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); }
-.srow { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); }
-.srow:first-of-type { border-top: 0; }
-.srow > div:first-child { flex: 1; min-width: 0; }
-.srow > :not(:first-child) { flex: none; max-width: 60%; }
-.srow .note { color: var(--muted); font-size: 13px; }
-.okc { color: var(--good); }
 
 /* ---- phones: More, a sheet with the destinations the bottom bar has no room for */
 .sheetgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 6px; }
@@ -282,7 +276,6 @@ table.grid td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); }
 .scatter circle:hover { stroke: var(--text); stroke-width: 2; }
 .corr-bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; }
 
-
 /* PDF export (print): no menus or buttons, light colours, cards kept whole, charts scaled to the paper. */
 @page { margin: 12mm; }
 @media print {
@@ -327,6 +320,5 @@ table.grid td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); }
   .map { height: 340px; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .kpi .value { font-size: 22px; }
-  .srow { flex-wrap: wrap; } .srow > :not(:first-child) { max-width: none; }
   input, select { font-size: 16px; }  /* under 16px, iOS zooms the page in when a field gets focus */
 }

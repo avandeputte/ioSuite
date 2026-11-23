@@ -1,4 +1,4 @@
-/** The ioThing suite's other apps (iosuite-shared's suite_apps, GET /api/auth/suite). When other apps are registered,
+/** The suite's other apps (iosuite_shared's suite_apps, GET /api/auth/suite). When other apps are registered,
  *  the iopix logo top left (in the sidebar; in the top bar on a phone) opens a menu of them, each a link to that app.
  *  Alone, the logo and the name are the link to Explore and nothing else changes. Signed-in accounts only (the list needs one). */
 import { $, api, h } from './core.js';
@@ -31,7 +31,7 @@ export async function loadSuite() {
  *  logo button instead. */
 const mark = () => h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' });
 function suiteButton(id) {
-  return h('button', { type: 'button', id, class: 'suitebtn', title: 'ioThing apps', 'aria-haspopup': 'menu', 'aria-label': 'ioThing apps',
+  return h('button', { type: 'button', id, class: 'suitebtn', title: 'ioSuite apps', 'aria-haspopup': 'menu', 'aria-label': 'ioSuite apps',
     onclick: (e) => toggleSuite(e.currentTarget) }, mark());
 }
 function draw() {
@@ -76,7 +76,7 @@ function toggleSuite(btn) {
   if (!apps.length) return;
   // the apps, then the admin tools (ioDNS…) in a section of their own: the server sends those to their admins only
   const main = apps.filter((a) => !a.adminTool), tools = apps.filter((a) => a.adminTool);
-  pop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: `--cols:${Math.min(3, Math.max(main.length, tools.length))}` },
+  pop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: `--cols:${Math.min(3, Math.max(main.length, tools.length))}` },
     ...main.map(tile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(tile)] : []));
   document.body.append(pop);
   btn.setAttribute('aria-expanded', 'true');

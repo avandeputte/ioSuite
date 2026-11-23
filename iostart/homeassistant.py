@@ -9,7 +9,7 @@ through this server, with the one token, so what the page can do is what the adm
 - every entity's state may be read by anyone signed in (the card, the wall, the search box);
 - an entity is switched (a light, a switch, a scene, a script, a lock, a cover…) only when the admin ticked
   "control" for it, and only by an editor or an admin of the start page: a viewer sees the state and switches nothing
-  (app/api.py). Home Assistant itself decides nothing per person.
+  (iostart/api.py). Home Assistant itself decides nothing per person.
 
 Home Assistant is on the local network and quick: all its states are fetched in one call and kept STATES_TTL seconds
 here, so a houseful of open pages refreshing at once costs one call. The settings come from the database once every
@@ -38,7 +38,7 @@ TIMEOUT = 6
 MAX_ENTITIES = 40       # on the card
 LOW_BATTERY = 15        # percent
 _lock = threading.Lock()
-_cache = {"at": 0.0, "items": None, "live": False}   # live: fed by the websocket (app/ha_feed.py), never stale
+_cache = {"at": 0.0, "items": None, "live": False}   # live: fed by the websocket (iostart/ha_feed.py), never stale
 feed = Feed(sys.modules[__name__])
 _ENTITY_RE = re.compile(r"^[a-z_0-9]+\.[a-z0-9_]+$")
 
@@ -469,7 +469,7 @@ def home() -> dict:
     out = {"enabled": True, "name": house() or "Home", "url": url(), "items": items, "live": feed.live,
            "wall": [c["id"] for c in chosen if c["wall"]], "alerts": alerts(states, chosen, by)}
     _home.update(key=key, v=out)
-    return out  # shared between the pages: read, never changed (app/api.py copies what it changes)
+    return out  # shared between the pages: read, never changed (iostart/api.py copies what it changes)
 
 
 def alerts(states: list[dict], chosen: list[dict], by: dict | None = None) -> list[dict]:

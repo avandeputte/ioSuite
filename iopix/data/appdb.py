@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
-from iosuite_shared import schema
+from iosuite_shared import db as shared_db, schema
 
 from iopix import config
 from iopix.digikam import library as _library
@@ -237,76 +237,53 @@ def _mysql_raw(c: dict):
                            charset="utf8mb4", autocommit=False, connect_timeout=8, read_timeout=120, write_timeout=120)
 
 
-_tl = threading.local()  # one MySQL connection per thread, kept open: a fresh TCP+auth handshake per query was most of a request
+class _Lent:
+    """A connection out of the pool (iosuite_shared.db.Pool, as every app of the suite keeps one, drawing on the
+    copy's one allowance of connections): close() rolls back whatever was not committed and gives it back for the
+    next use, on whichever thread; a broken one is closed. Each connect() is lent a connection of its own, so a reader
+    opened inside a writer's block (a setting looked up, a photo's row read) never rolls back or commits the writer's
+    work."""
 
-
-class _Kept:
-    """A pooled PyMySQL connection: close() rolls back whatever was not committed and keeps the socket for the
-    next use on this thread; a broken one is dropped so the next connect() opens a new one. The connection is
-    leased to one holder at a time (_tl.busy): closing it ends the lease."""
-
-    def __init__(self, raw):
-        self.raw = raw
+    def __init__(self, raw, pool):
+        self.raw, self._pool = raw, pool
 
     def __getattr__(self, name):
         return getattr(self.raw, name)
 
     def close(self):
-        if getattr(_tl, "raw", None) is self.raw:
-            _tl.busy = False
+        pool, self._pool = self._pool, None
+        if pool is None:  # closed before
+            return
         try:
             self.raw.rollback()
         except Exception:
-            try:
-                self.raw.close()
-            except Exception:
-                pass
-            if getattr(_tl, "raw", None) is self.raw:
-                _tl.raw = None
+            pool.give_back(self.raw, broken=True)
+        else:
+            pool.give_back(self.raw)
 
 
-class _Own:
-    """A connection of its own for a nested use while the thread's pooled one is leased: a reader opened inside a
-    writer's block (a setting looked up, a photo's row read) must not roll back or commit the writer's work, so it
-    gets a connection that really closes."""
-
-    def __init__(self, raw):
-        self.raw = raw
-
-    def __getattr__(self, name):
-        return getattr(self.raw, name)
-
-    def close(self):
-        try:
-            self.raw.close()
-        except Exception:
-            pass
+_pool = None      # the pool of the configured database
+_pool_key = None  # (host, port, database, user) it was made for
 
 
-def _mysql_kept(c: dict):
+def _lend(c: dict) -> _Lent:
+    """A pooled connection to the configured database (a pool made anew when the configuration names another)."""
+    global _pool, _pool_key
     key = (c["host"], c["port"], c["database"], c["user"])
-    raw = getattr(_tl, "raw", None)
-    if raw is not None and getattr(_tl, "busy", False):
-        return _Own(_mysql_raw(c))  # the pooled connection is in use further up this thread's stack
-    if raw is not None and getattr(_tl, "key", None) == key:
-        try:
-            raw.ping()  # a dead socket raises: dropped below, and a new connection is opened
-            _tl.busy = True
-            return _Kept(raw)
-        except Exception:
-            try:
-                raw.close()
-            except Exception:
-                pass
-    _tl.raw, _tl.key, _tl.busy = _mysql_raw(c), key, True
-    return _Kept(_tl.raw)
+    with _lock:
+        if _pool is None or _pool_key != key:
+            if _pool is not None:
+                _pool.drain()
+            _pool, _pool_key = shared_db.Pool(lambda: _mysql_raw(settings())), key
+        pool = _pool
+    return _Lent(pool.borrow(), pool)
 
 
 def connect(timeout: float = 10, cfg: dict = None) -> VConn:
-    """The configured viewer database (pooled per thread), or a given configuration (its own connection, for
+    """The configured viewer database (out of the pool), or a given configuration (its own connection, for
     tests and switching). `timeout` is kept for the callers that pass one (the server's own timeouts apply)."""
     c = cfg or settings()
-    return VConn(_mysql_raw(c) if cfg is not None else _mysql_kept(c), True, True)
+    return VConn(_mysql_raw(c) if cfg is not None else _lend(c), True, True)
 
 
 write_lock = threading.Lock()  # one writer at a time in this process: the jobs and the requests take turns, never wait on row locks

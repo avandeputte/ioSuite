@@ -1,4 +1,4 @@
-"""The status dots (app/status.py) and each person's own layout (app/layout.py)."""
+"""The status dots (iostart/status.py) and each person's own layout (iostart/layout.py)."""
 import pytest
 
 from conftest import via_providers

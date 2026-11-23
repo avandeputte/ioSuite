@@ -1,4 +1,4 @@
-"""Accounts, roles, sessions and app passwords: the shared ioThing accounts (iosuite-shared), seen from ioRecipe.
+"""Accounts, roles, sessions and app passwords: the suite's accounts (iosuite_shared), seen from ioRecipe.
 
 Roles as in the rest of the suite: viewer (reads the family's recipes), member (also keeps private recipes of their
 own), editor (changes the family's recipes too), admin (also settings and users); an account holds a role per app, a

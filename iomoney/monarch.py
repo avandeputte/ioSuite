@@ -9,7 +9,7 @@ the authenticator app is set up; with it ioMoney makes the six-digit code itself
 and keeps the long-lived session Monarch gives a trusted device (monarch_token, also there); later syncs use that and
 sign in again only when Monarch no longer takes it. A one-time code can also be given by hand (Settings › Money).
 
-What a sync does (sync(); every SYNC_HOURS hours from the chores in app/main.py, and Sync now):
+What a sync does (sync(); every SYNC_HOURS hours from the chores in iomoney/main.py, and Sync now):
 - accounts: each Monarch account is an account here (source monarch), with its balance today; a new one brings its
   balance history. Real estate (Zillow) and vehicles are accounts too: the house's and the cars' values come from there.
   Name, hidden and "in the net worth" stay as changed here; Monarch decides the rest.
@@ -24,8 +24,8 @@ What a sync does (sync(); every SYNC_HOURS hours from the chores in app/main.py,
   link broke). An existing one takes the new id, and the next sync matches the transactions Monarch sends under it
   with those kept (same amount, a few days apart): none is there twice, and what was changed here stays.
 - holdings of the investment accounts, with Monarch's last price (used while there is no quote).
-Monarch's recurring transactions (its bills) are not taken: ioMoney finds them itself (app/recurring.py).
-A category renamed, merged or regrouped here (app/categories.py) stays so: what Monarch sends under its old name
+Monarch's recurring transactions (its bills) are not taken: ioMoney finds them itself (iomoney/recurring.py).
+A category renamed, merged or regrouped here (iomoney/categories.py) stays so: what Monarch sends under its old name
 comes in under the new one, in its group here.
 """
 import asyncio
@@ -36,7 +36,7 @@ import re
 import threading
 from decimal import Decimal
 
-from iosuite_shared import credentials, stamp
+from iosuite_shared import credentials, live, stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import categories, config, db, model, receipts
@@ -286,7 +286,7 @@ def _from_transactions(aids) -> int:
 def _put_tx(t: dict, aid: int, groups: dict, cats: tuple = None) -> bool:
     """Insert or refresh one Monarch transaction in account aid (what was changed here by hand stays); one hidden in
     Monarch is not kept here (removed when it was): False. cats: the household's renamed categories and their groups
-    (app/categories.py maps())."""
+    (iomoney/categories.py maps())."""
     if t.get("hideFromReports"):
         had = db.one("SELECT id FROM mny_transactions WHERE source = 'monarch' AND external_id = %s", (str(t["id"]),))
         if had:
@@ -681,6 +681,7 @@ def sync(by: int = None, full: bool = False, only: int = None, years: int = 2) -
               "WHERE id = %s", (msg, got["accounts"], got["transactions"], got["holdings"], sid))
         log.info("Monarch sync: %s", msg)
         _record_new(started, by)
+        live.changed("iomoney", "transactions")  # the open pages (ioMoney's, the start page's tile) ask again
         try:
             from iomoney import quotes
             quotes.refresh()

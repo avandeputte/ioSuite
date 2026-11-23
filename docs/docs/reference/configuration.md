@@ -36,6 +36,7 @@ HTTPS_PORT=443                     # the pages over HTTPS, once there is a certi
 TLS_CERT_FILE=…  TLS_KEY_FILE=…    # a certificate of your own, instead of the one the suite asks for
 DATA_DIR=/opt/iosuite/data         # what the apps write on their own, each in a folder of its name
 LOG_FILE=/opt/iosuite/data/iosuite.log   # the one log (off: the journal only)
+DB_CONNECTIONS=60                  # the most database connections this copy holds at once, all apps together
 HELPER=on                          # heavy work in a helper process beside the copy (off: inside the copy)
 HELPER_MEMORY_MB=2048              # the most the helper may hold (default: half the machine's or container's memory)
 ADMIN_USER=…  ADMIN_PASSWORD=…     # the first admin, on an empty Shared ioSuite database
@@ -53,6 +54,18 @@ Only the five `IOSUITE_DB_*` lines are needed. Restart the service after changin
 | `127.0.0.1,192.168.1.151` | each address named |
 
 In Docker, leave `HOST` alone and publish the ports where you want them instead (`ports: ["127.0.0.1:80:80"]`).
+
+## Database connections
+
+A copy holds at most `DB_CONNECTIONS` connections to the database server at once, for all of its apps together (60
+unless the file says otherwise). When all are in use, a request waits for one, up to twenty seconds, instead of asking
+the database server for more than it gives: MariaDB allows 151 in all, by default, and answers the rest with an
+error. A request that waited in vain is answered `503` with `Retry-After`.
+
+Idle connections are closed after two minutes, and an app that needs one while the copy is at its allowance gets the
+longest-idle one of another app. The helper process and ioPix's job process are processes of their own, each with a
+quarter of that allowance beside the copy's. With several copies on one database server, their allowances add up: keep the sum
+under the server's `max_connections`, or raise that.
 
 ## The helper process
 
@@ -161,8 +174,14 @@ changed in every app of the suite, so a page refreshes the moment there is a rea
 timer. A task ticked off in ioTask refreshes the start page's Today card; an event moved in ioCalendar refreshes a
 calendar open in another tab; a photo added in ioPix refreshes the start page's strip.
 
-Nothing has to be configured, and an app needs no code of its own for it: every request that changed something says
-so. The lines travel through the Shared ioSuite database (`ios_changes`, kept a few minutes), so a change made on one
+Every app's own page listens too, and draws what it shows again when something of that app changed somewhere else:
+a calendar or a contact saved on a phone (CalDAV, CardDAV), a task an assistant added over MCP, a sync from the
+iPhone's Health app, new transactions from Monarch Money, a subscribed calendar that was read again, photos that
+appeared on the disk, another person, another tab. A page is never drawn again under what somebody is doing: while a
+dialog is open, something is being typed, or a form is on the page, it waits.
+
+Nothing has to be configured, and an app needs no code of its own for the usual case: every request that changed
+something says so. The lines travel through the Shared ioSuite database (`ios_changes`, kept a few minutes), so a change made on one
 server reaches a page served by another, and a copy nobody has a page open on asks for nothing.
 
 A line says only which app's what changed, and when — never what changed — so it is safe for any signed-in page, and

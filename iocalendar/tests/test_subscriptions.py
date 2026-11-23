@@ -1,4 +1,4 @@
-"""Outside calendars subscribed to by their web address (kind 'subscribed', app/subscribe.py): fetched safely, kept
+"""Outside calendars subscribed to by their web address (kind 'subscribed', iocalendar/subscribe.py): fetched safely, kept
 read-only, brought in line on refresh, and managed only by those who could change such a calendar."""
 import http.server
 import threading

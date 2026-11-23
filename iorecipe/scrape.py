@@ -3,9 +3,9 @@
 Most recipe sites describe their recipe for search engines as schema.org Recipe data, as JSON-LD in a <script> or as
 microdata (itemprop) on the page's own elements; that is read first, and is the surest. A page without it is read as
 a person would: the lists a recipe plugin marks as its ingredients and instructions, or the text under a heading
-"Ingredients" (in the languages app/textimport.py knows), with the steps after it when the page writes them out.
-When that finds no complete recipe and the server has its AI model (app/ai.py), the model reads the page's text.
-The page is fetched with iosuite-shared's outbound opener: only addresses on the internet, each redirect checked
+"Ingredients" (in the languages iorecipe/textimport.py knows), with the steps after it when the page writes them out.
+When that finds no complete recipe and the server has its AI model (iorecipe/ai.py), the model reads the page's text.
+The page is fetched with iosuite_shared's outbound opener: only addresses on the internet, each redirect checked
 like the first.
 """
 import gzip

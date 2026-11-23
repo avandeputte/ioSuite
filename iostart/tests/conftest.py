@@ -57,7 +57,7 @@ _PROVIDERS = {}
 
 def via_providers(table: dict, asked: list, sent: list = None, cookie: bool = True):
     """A stand-in for widgets.fetch: the suite's standard endpoints (/api/suite/*) answered by each app's own provider
-    (its app/suiteitems.py, run here), which reads the app's own API from table {(key, path): reply or
+    (its suiteitems.py, run here), which reads the app's own API from table {(key, path): reply or
     callable(params)}; a path of the app's own API (quick add) straight from the table. asked: (key, path, params[,
     cookie]) of every request to an app's own API."""
     from pathlib import Path

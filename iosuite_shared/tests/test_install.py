@@ -283,6 +283,33 @@ def test_a_second_copy_on_one_machine(machine, monkeypatch):
         go(machine, "--yes", "--copy", "pix", "--apps", "all", systemd=True)
     said = go(machine, "--list")[1]
     assert any(t.startswith("iosuite-pix: ioPix") for t in said) and any("pages 8081" in t for t in said)
+
+
+def test_a_machine_s_file_kept_elsewhere_is_refused_and_the_folder_s_own_is_not(machine, monkeypatch, tmp_path):
+    """What `iosuite install` is given by the command: the file the run read (--config, IOSUITE_CONFIG, or the
+    folder's own when nothing is named), and no folder."""
+    from iosuite_shared import config
+    (machine / "units").mkdir()
+    monkeypatch.setattr(install, "ensure_user", lambda user, run=None, log=None: None)
+    installed(machine)
+    monkeypatch.setattr(config, "BASE", machine)
+
+    def run(named, *argv):
+        monkeypatch.setattr(config, "FILE", named)
+        a = cli._parser().parse_args(["install", "--yes", *argv])
+        return install.main(a, log=lambda *x: None, run=Ran(), unit_dir=machine / "units", systemd=True)
+    assert run(machine / "config.env", "--copy", "pix") == 0  # nothing named: a second copy is added from the folder's own
+    assert install.read_env(machine / "copies" / "pix" / "config.env")["APPS"] == "iopix"
+    assert run(machine / "copies" / "pix" / "config.env", "--copy", "pix") == 0  # the copy's own file named
+    assert run(machine / "config.env") == 0
+    elsewhere = tmp_path / "elsewhere.env"
+    elsewhere.write_text("PORT=81\n")
+    with pytest.raises(SystemExit, match="leave that out, or give a second copy a name"):
+        run(elsewhere)
+    with pytest.raises(SystemExit, match="leave that out$"):
+        run(elsewhere, "--copy", "pix")
+    with pytest.raises(SystemExit, match="--copy NAME"):
+        run(machine / "copies" / "pix" / "config.env")  # the second copy's file, and the main copy asked for
     # and away again
     ran = Ran()
     go(machine, "--remove-copy", "pix", ran=ran, systemd=True)

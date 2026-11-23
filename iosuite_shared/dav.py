@@ -1,8 +1,8 @@
 """The WebDAV server ioCalendar and ioTask (CalDAV) and ioContact (CardDAV) share: the XML of RFC 4918, the multistatus
 response, the preconditions and the small header rules, and on them `Server` (PROPFIND, PROPPATCH, GET, PUT, DELETE,
 MKCOL, sync-collection, multiget, discovery) and `CalDAV` (calendar-query, MKCALENDAR, the calendar properties). What a
-calendar, a task list or an address book is, and what is kept of an object, stays in each app (app/caldav.py,
-app/carddav.py): a subclass that fills in the hooks.
+calendar, a task list or an address book is, and what is kept of an object, stays in each app (iocalendar/caldav.py,
+iocontact/carddav.py): a subclass that fills in the hooks.
 
 Needs defusedxml and FastAPI (the `dav` extra): a client's XML is parsed without entity expansion or external entities.
 """

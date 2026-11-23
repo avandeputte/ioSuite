@@ -1,4 +1,4 @@
-"""Request size limits (app/config.py; iosuite-shared's body cap enforces the same ones on every request): a body is
+"""Request size limits (iocontact/config.py; iosuite_shared's body cap enforces the same ones on every request): a body is
 read up to its limit, never all of it into memory first."""
 from fastapi import HTTPException, Request
 

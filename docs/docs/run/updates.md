@@ -22,6 +22,10 @@ step leaves the running version as it was), and the service starts again; the ap
 their tables as they start. The page follows along and reloads when the suite is back. When the suite runs on several
 servers, each of them sees the request and updates itself.
 
+A restart from this page, or after an update, ends the program as `systemctl stop` would: requests that are being
+answered get their answer, every app closes what it has open, and background jobs stop between two pieces of work.
+The service manager (systemd, launchd or Docker) then starts it again.
+
 ## From a shell
 
 ```sh

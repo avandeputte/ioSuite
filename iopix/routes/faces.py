@@ -383,7 +383,7 @@ async def api_datehints_set(request: Request):
 
 @router.get("/api/people/list", dependencies=[access.public])
 def api_people_list():
-    """Every person in People, by name: {people: [{id, name, photos}]}. The suite's admin panel (iosuite-shared,
+    """Every person in People, by name: {people: [{id, name, photos}]}. The suite's admin panel (iosuite_shared,
     Settings › Security › People › Person in photos) reads it, from any io app, to link an account to its person."""
     con = db()
     try:

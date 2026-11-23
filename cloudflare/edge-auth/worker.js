@@ -17,10 +17,10 @@ const GUARDED = {
   iocontact: { paths: [/^\/dav(\/|$)/] },
   iotask: { paths: [/^\/dav(\/|$)/] },
   iohealth: { paths: [/^\/v1\//], open: [/^\/v1\/health\/?$/] },
-  // the start page's bookmark sync (Nextcloud Bookmarks API and the WebDAV file). Open: what a sync app asks before it
-  // has a password (is this a Nextcloud), and Nextcloud's sign-in flow, which is how it gets one: the app starts it and
-  // polls without credentials, and the page in between is the browser's, signed in with the session cookie
-  iostart: { paths: [/^\/dav(\/|$)/], open: [/^\/dav\/nextcloud\/status\.php$/, /^\/dav\/nextcloud\/index\.php\/login\/v2(\/|$)/] },
+  // the start page's bookmark sync (the ioStart Bookmarks extension, the iPhone app). Open: the sign-in flow for apps,
+  // which is how one gets its password: the app starts it and polls without credentials, and the page in between is
+  // the browser's, signed in with the session cookie
+  iostart: { paths: [/^\/dav(\/|$)/], open: [/^\/dav\/nextcloud\/index\.php\/login\/v2(\/|$)/] },
 };
 const DEFAULT = { paths: [/^\/dav(\/|$)/] };
 

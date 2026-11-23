@@ -25,9 +25,11 @@ export function route() {
   return { view: 'list' };
 }
 
-export async function onRoute() {
+export async function onRoute(keep) {
   const r = route();
   const main = $('#main');
+  const list = main.querySelector('.listpane');
+  const top = keep === true && list ? list.scrollTop : null;   // drawn again because something changed elsewhere: the list stays where it was
   try {
     if (r.view === 'list' || r.view === 'contact' || r.view === 'edit' || r.view === 'new') {
       if (r.scope && JSON.stringify(r.scope) !== JSON.stringify(S.scope)) { S.scope = r.scope; S.sel.clear(); S.selecting = false; }
@@ -35,6 +37,7 @@ export async function onRoute() {
       if (!main.querySelector('.listpane')) main.replaceChildren(h('div', { class: 'listpane' }), h('div', { class: 'detailpane' }));
       await loadList();
       drawList();
+      if (top !== null) main.querySelector('.listpane').scrollTop = top;
       main.classList.toggle('showdetail', r.view !== 'list');
       const pane = main.querySelector('.detailpane');
       if (r.view === 'contact') await showContact(r.id, pane);
@@ -89,5 +92,11 @@ export async function start() {
   window.addEventListener('hashchange', onRoute);
   onRoute();
   loadSuite();
+  // what changed elsewhere shows by itself: a phone that synced, another person, an assistant (the suite's one live
+  // stream, iosuite_shared/static/live.js); a contact being edited is left alone
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iocontact', async () => { S.all = null; await loadMeta(); await onRoute(true); },
+      { when: () => ['list', 'contact', 'upcoming'].includes(route().view) && !S.selecting }))
+    .catch(() => { /* no stream on this server */ });
 }
 start().catch(fail);

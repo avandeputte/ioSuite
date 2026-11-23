@@ -24,7 +24,7 @@ LDAP_PORT = env_int("LDAP_PORT", 3890)
 LDAP_HOST = [h.strip("[]") for h in serve.hosts(env("LDAP_HOST", globals()["HOST"]))]  # HOST: the machine's, from standard()
 LDAP_BASE = env("LDAP_BASE", "dc=iocontact")
 
-# ioPix is found in the suite's list of apps and signed in to by itself (app/iopix.py): nothing to set
+# ioPix is found in the suite's list of apps and signed in to by itself (iocontact/iopix.py): nothing to set
 
 MAX_IMPORT_BYTES = 64 * 1024 * 1024   # a vCard, CSV or JSON file to import
 MAX_JSON_BYTES = 16 * 1024 * 1024     # any other request body: a contact (JSON or vCard, a photo inline) or a CardDAV request

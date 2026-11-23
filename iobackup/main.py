@@ -1,6 +1,6 @@
 """ioBackup: the application (start-up, who is asking, the routes and the web app).
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (iobackup/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.

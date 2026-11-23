@@ -75,25 +75,25 @@ def test_the_stored_password_goes_to_the_stored_server_only(monkeypatch):
 
 
 def test_a_nested_reader_does_not_roll_back_the_writer_above_it():
-    """The per-thread pooled connection is leased to one block at a time: a reader opened inside a writer's block
-    (a setting looked up, a row read) gets a connection of its own, so its close() ends nothing of the writer's."""
+    """Each block is lent a connection of its own out of the pool: a reader opened inside a writer's block (a setting
+    looked up, a row read) never shares the writer's, so its close() ends nothing of the writer's."""
     from iopix.data import state
     state.init()
     with appdb.writer() as con:
         con.execute("INSERT OR REPLACE INTO pix_settings (name, value) VALUES (?, ?)", ("zz_nested_probe", "kept"))
         with appdb.reader() as inner:
-            assert inner.raw is not con.raw, "the nested reader has its own connection"
+            assert inner.raw.raw is not con.raw.raw, "the nested reader has its own connection"
             inner.execute("SELECT 1").fetchone()
         own = appdb.connect()  # what a writer opened inside a library transaction (Sync off) gets: a connection of its own
         try:
-            assert isinstance(own.raw, appdb._Own) and own.raw is not con.raw
+            assert own.raw.raw is not con.raw.raw
             own.execute("INSERT OR REPLACE INTO pix_settings (name, value) VALUES (?, ?)", ("zz_nested_probe2", "own"))
             own.commit()
         finally:
             own.close()
         assert con.execute("SELECT value FROM pix_settings WHERE name = ?", ("zz_nested_probe",)).fetchone()[0] == "kept", "the outer write survived the nested blocks"
     with appdb.reader() as con:
-        assert isinstance(con.raw, appdb._Kept), "after the blocks, the pooled connection is leased again"
+        assert isinstance(con.raw, appdb._Lent), "after the blocks, a connection out of the pool again"
         assert con.execute("SELECT value FROM pix_settings WHERE name = ?", ("zz_nested_probe",)).fetchone()[0] == "kept"
     with appdb.writer() as con:
         con.execute("DELETE FROM pix_settings WHERE name LIKE 'zz_nested_probe%'")

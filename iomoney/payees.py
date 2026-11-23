@@ -4,7 +4,7 @@ them in order.
 A payee renamed here (or merged into another: the same thing) is renamed in every transaction that has it, and a rule
 is kept ("the payee is Old: call it New") so that what Monarch Money sends later under the old name comes in under the
 new one. A payee's usual category is a rule too ("the payee is Name: its category is Groceries"), tried before the
-other rules. Both are the household's rules (app/model.py): editors make them, and they show on the Rules page."""
+other rules. Both are the household's rules (iomoney/model.py): editors make them, and they show on the Rules page."""
 from iosuite_shared import users as shared_users
 from iosuite_shared.errors import Invalid
 

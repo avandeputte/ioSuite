@@ -27,14 +27,15 @@ def test_run(monkeypatch):
             self.config = config
 
         def run(self, sockets=None):
-            calls.append(("server", self.config, [s.getsockname()[0] for s in sockets]))
-            for s in sockets:
+            calls.append(("server", self.config, [s.getsockname()[0] for s in sockets or []]))
+            for s in sockets or []:
                 s.close()
-    fake = types.SimpleNamespace(run=lambda target, **kw: calls.append(("run", target, kw)), Server=Server,
-                                 Config=lambda target, **kw: (target, kw))
+    fake = types.SimpleNamespace(Server=Server, Config=lambda target, **kw: (target, kw))
     monkeypatch.setitem(sys.modules, "uvicorn", fake)
-    serve.run("app.main:app", "127.0.0.1", 8630, proxy_headers=False)
-    assert calls == [("run", "app.main:app", {"host": "127.0.0.1", "port": 8630, "proxy_headers": False})]
+    monkeypatch.setattr(serve, "SERVER", None)
+    serve.run("app.main:app", "127.0.0.1", 8630, proxy_headers=False)   # one address, one port: the web server opens it
+    assert calls == [("server", ("app.main:app", {"host": "127.0.0.1", "port": 8630, "proxy_headers": False}), [])]
+    assert isinstance(serve.SERVER, Server)  # what end() asks to stop
     a, b = _free_port(), _free_port()  # a copy's doors: one address, several ports
     serve.run("app.main:app", "127.0.0.1", [a, b], proxy_headers=False)
     assert calls.pop() == ("server", ("app.main:app", {"host": "127.0.0.1", "port": a, "proxy_headers": False}), ["127.0.0.1", "127.0.0.1"])
@@ -220,3 +221,69 @@ def test_free_and_reload_without_https_doors(monkeypatch):
     assert not serve.free("192.0.2.77", port)  # not an address of this machine
     monkeypatch.setattr(serve, "CONTEXT", None)
     assert serve.reload("/nowhere.pem") is False
+
+
+ENDING = '''
+import contextlib, json, pathlib, sys, threading
+from iosuite_shared import serve
+
+mark = pathlib.Path(sys.argv[2])
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    yield
+    mark.write_text("the apps were stopped")
+
+
+async def app(scope, receive, send):
+    if scope["type"] == "lifespan":
+        async with lifespan(None):
+            while True:
+                m = await receive()
+                if m["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif m["type"] == "lifespan.shutdown":
+                    break
+        await send({"type": "lifespan.shutdown.complete"})
+        return
+    if scope["path"] == "/restart":
+        serve.end(0.2)
+    body = json.dumps({"ok": True}).encode()
+    await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+    await send({"type": "http.response.body", "body": body})
+
+if len(sys.argv) > 3:   # a thread that never ends: the stop is cut short, the process still leaves
+    serve.STOP_S = 1.0
+    threading.Thread(target=threading.Event().wait).start()
+serve.run(app, "127.0.0.1", int(sys.argv[1]), log_config=None, timeout_graceful_shutdown=2)
+'''
+
+
+@pytest.mark.parametrize("stuck", [False, True])
+def test_a_restart_stops_the_copy_as_the_service_manager_would(tmp_path, stuck):
+    """serve.end(): what asked is answered, the apps' shutdown runs, and the process leaves with exit code 0 for the
+    service manager to start it again; one that cannot finish (a thread that never ends) leaves all the same."""
+    import subprocess
+    import time
+    (tmp_path / "server.py").write_text(ENDING)
+    port, mark = _free_port(), tmp_path / "mark"
+    proc = subprocess.Popen([sys.executable, str(tmp_path / "server.py"), str(port), str(mark), *(["stuck"] if stuck else [])],
+                            stderr=subprocess.PIPE, text=True)
+    try:
+        end = time.time() + 30
+        while True:
+            try:
+                s = socket.create_connection(("127.0.0.1", port), timeout=1)
+                break
+            except OSError:
+                assert proc.poll() is None and time.time() < end, proc.stderr.read()
+                time.sleep(0.1)
+        assert _http(s, "/restart", close=True) == {"ok": True}   # answered before it stops
+        s.close()
+        assert proc.wait(15) == 0
+        assert mark.read_text() == "the apps were stopped"
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+

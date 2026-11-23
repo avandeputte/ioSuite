@@ -217,7 +217,7 @@ def test_pool_reuses_connections_and_drops_broken_ones():
         cur.execute("SELECT 1 AS x")
         assert cur.fetchone()["x"] == 1
     pool.drain()
-    assert pool._kept.empty()
+    assert pool.idle() == 0
 
 
 def test_a_type_error_in_a_route_is_a_500_not_a_400():

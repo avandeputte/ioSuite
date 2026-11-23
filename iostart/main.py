@@ -1,6 +1,6 @@
 """ioStart: the application (start-up, who is asking, the routes and the web app).
 
-Who may call a route is declared on the route (app/access.py); iosuite-shared's middleware works out who is asking
+Who may call a route is declared on the route (iostart/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
@@ -16,7 +16,7 @@ from iosuite_shared import mcp as shared_mcp, users
 from iosuite_shared import demo as suite_demo
 from iosuite_shared.updates import setup_log
 
-from iostart import __version__, api, bookmarkdav, bookmarkext, bookmarks, config, db, keys, mcp, ncbookmarks, news, newsapi, timers, trmnlpush
+from iostart import __version__, api, appsignin, bookmarkext, bookmarks, config, db, keys, mcp, news, newsapi, timers, trmnlpush
 from iostart.auth import auth, updater
 
 setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
@@ -25,10 +25,10 @@ log = logging.getLogger("iostart")
 # what a visitor may still fetch when sign-in is required: the app shell and its files, and the API docs
 OPEN_PATHS = ("/", "/bookmarks", "/manifest.webmanifest", "/bookmarks.webmanifest", "/api/docs", "/api/openapi.json")
 # /mcp signs in on its own (Auth.mcp_gate); the sync protocols under /dav answer 401 with a Basic challenge themselves
-# (a sync app shows that as "wrong password"), and the Nextcloud sign-in flow starts before anyone is signed in; a wall
+# (a sync app shows that as "wrong password"), and the sign-in flow for apps starts before anyone is signed in; a wall
 # display asks for its pairing code before it has a sign-in (approving one takes a signed-in person: its route says so)
 OPEN_PREFIXES = ("/static/", "/mcp", "/dav/", "/api/wall/pair")
-# a TRMNL e-ink device set to this server (app/trmnlserver.py) has no account: it signs its requests with its own key
+# a TRMNL e-ink device set to this server (iostart/trmnlserver.py) has no account: it signs its requests with its own key
 TRMNL_DEVICE = {("GET", "/api/setup"), ("GET", "/api/display"), ("GET", "/api/current_screen"), ("POST", "/api/log")}
 
 
@@ -43,8 +43,8 @@ async def lifespan(app: FastAPI):
     await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
     await run_in_threadpool(bookmarks.claim_unowned)  # bookmarks nobody owns become the first admin's
     await run_in_threadpool(keys.declare)  # the Home Assistant token and AccuWeather key live with the suite's keys and tokens
-    timers.run()  # the "timer done" notifications, every couple of seconds (app/timers.py)
-    news.run()  # the feeds people follow, read every half hour (app/news.py)
+    timers.run()  # the "timer done" notifications, every couple of seconds (iostart/timers.py)
+    news.run()  # the feeds people follow, read every half hour (iostart/news.py)
     trmnlpush.start()  # the screens people asked the start page to push to TRMNL's cloud (Settings › TRMNL), every few minutes
     updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
     log.info("ioStart %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ioStart", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,
               openapi_url="/api/openapi.json",
-              description="The start page of the ioThing suite: one place with every io app, and the accounts they share.")
+              description="The start page of ioSuite: one place with every io app, and the accounts they share.")
 
 # Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
 mcp_switch = shared_mcp.Switch(config.APP,
@@ -67,7 +67,7 @@ mcp_enabled = mcp_switch.enabled
 
 
 # who is asking, whether sign-in is required at all, the cross-site check on writes, and the MCP endpoint's gate (the
-# switch; an app password or session; every tool acts as that account): iosuite-shared's middleware
+# switch; an app password or session; every tool acts as that account): iosuite_shared's middleware
 app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES, is_open=_device_asks,
                                        before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set,
                                                                     on_request=mcp.remember_sign_in)))
@@ -87,8 +87,7 @@ app.include_router(auth.live_router())  # /api/live: the one live-refresh stream
 app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
 app.include_router(api.router)
 app.include_router(newsapi.router)  # /api/news: the feed reader (the Feeds page) and the headlines card
-app.include_router(ncbookmarks.router)  # /dav/nextcloud: the Nextcloud Bookmarks API, for Floccus and other sync apps
-app.include_router(bookmarkdav.router)  # /dav/bookmarks: the bookmarks as a file over WebDAV
+app.include_router(appsignin.router)  # /dav/nextcloud/index.php/login/v2: how the extension and the iPhone app sign in
 app.include_router(bookmarkext.router)  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)
 shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of everything else
 

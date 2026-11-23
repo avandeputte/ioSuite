@@ -1,5 +1,5 @@
 """The REST API the web app uses (and anyone with an app password: HTTP Basic or a bearer token). JSON in and out.
-Who may call each route is on the route (app/access.py)."""
+Who may call each route is on the route (iodns/access.py)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
@@ -278,7 +278,7 @@ async def run_ddns(request: Request):
     return await run_in_threadpool(ddns.run, who(request), bool(b.get("push")))
 
 
-# ---------------------------------------------------------------- history (/api/log is the server log, iosuite-shared's)
+# ---------------------------------------------------------------- history (/api/log is the server log, iosuite_shared's)
 
 @router.get("/history", dependencies=[access.signed_in])
 def history(limit: int = 200):

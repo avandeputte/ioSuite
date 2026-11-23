@@ -250,7 +250,7 @@ $('#print-btn')?.addEventListener('click', printPage);
 // settings.goals: [{type, dir: 'min' (at least) | 'max' (at most), value}] in the units the app shows.
 export const goalFor = t => (settings.goals || []).find(g => g.type === t && g.value !== '' && isFinite(+g.value));
 export const goalMet = (g, v) => v != null && (g.dir === 'max' ? v <= +g.value : v >= +g.value);
-export const ALERT_DEFAULTS = { tir: 70, lows: 1, rhr: 5, hrv: 15, sleep: 45, sync: 24 }; // rhr, hrv and sleep: as app/usual.py DEFAULTS
+export const ALERT_DEFAULTS = { tir: 70, lows: 1, rhr: 5, hrv: 15, sleep: 45, sync: 24 }; // rhr, hrv and sleep: as iohealth/usual.py DEFAULTS
 export const alertSetting = k => { const v = settings.alerts?.[k]; return v === '' || v == null || !isFinite(+v) ? ALERT_DEFAULTS[k] : +v; };
 
 // Sections and metrics can be switched off in Settings; switched-off metrics are left out of every list and chart.
@@ -300,18 +300,19 @@ const charts = () => vendor('static/vendor/uPlot.iife.min.js', 'static/vendor/uP
 const maps = () => vendor('static/vendor/leaflet.js', 'static/vendor/leaflet.css');
 const NEEDS = { settings: [], records: [], map: [maps], workout: [charts, maps] };  // every other page: the charts
 
-export async function render() {
+export async function render(keep) {
   resetPage();
   const r = route();
   const pageName = r.page === 'workout' ? 'workouts' : r.page;
   setNavOn(pageName);
   const main = $('#app');
-  loading(main);
-  main.scrollTo(0, 0);
+  const top = keep === true ? main.scrollTop : 0;   // drawn again because new data arrived: stay where the page was
+  if (keep !== true) { loading(main); main.scrollTo(0, 0); }
   const f = pages[r.page] || pages.dashboard;
   try {
     await Promise.all((NEEDS[pages[r.page] ? r.page : 'dashboard'] || [charts]).map(load => load()));
     await f(main, r.arg, r.params);
+    if (top) main.scrollTo(0, top);
   } catch (e) { showError(main, e); }
 }
 window.addEventListener('hashchange', render);

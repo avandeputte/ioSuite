@@ -1,5 +1,5 @@
 """Demo data for iohealth (the iosuite_demo package): three months of made-up Apple Health data for each Calloway, as their phones would
-upload it (the same code path as an upload: app/upload.py's Batch). Steps, distance, active energy and heart rate
+upload it (the same code path as an upload: iohealth/upload.py's Batch). Steps, distance, active energy and heart rate
 through the day, resting heart rate and HRV, sleep stages every night, weight, activity rings for the parents and Ava,
 and workouts: Morgan's runs (with a route near home), Riley's rides, Ava's swims, Theo's soccer."""
 import datetime as dt

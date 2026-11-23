@@ -96,11 +96,10 @@ export async function start() {
   await onRoute();
   loadSuite();
   setInterval(moveNowLine, 60000);
-  // come back to the tab: show what changed elsewhere (a phone, another person)
-  let away = Date.now();
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { away = Date.now(); return; }
-    if (Date.now() - away > 60000 && ['month', 'week', 'day', 'agenda'].includes(route().view) && !document.querySelector('.dialog-back')) { loadCals().then(drawView).catch(() => {}); }
-  });
+  // what changed elsewhere shows by itself: a phone that synced, a subscribed calendar, another person, an assistant,
+  // a task given a day in ioTask (the suite's one live stream, iosuite_shared/static/live.js)
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iocalendar', () => loadCals().then(drawView), { also: ['iotask:*'], when: () => ['month', 'week', 'day', 'agenda'].includes(route().view) }))
+    .catch(() => { /* no stream on this server: the page shows what changed at its next visit */ });
 }
 start().catch(fail);

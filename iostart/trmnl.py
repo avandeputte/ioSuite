@@ -391,7 +391,7 @@ def _glyph(icon) -> int:
 
 
 def _forecast(request, z, now, h24):
-    """The start page's weather (app/weather.py, as the wall display reads it: wall._weather): now, the next eight
+    """The start page's weather (iostart/weather.py, as the wall display reads it: wall._weather): now, the next eight
     hours (y: each one's place on the curve of their temperatures), five days. Everyone signed in may see it, as on the start page."""
     units = wall.units_of(getattr(request.state, "user", None))
     w = wall._weather(z, units)

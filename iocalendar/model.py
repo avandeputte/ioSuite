@@ -4,8 +4,8 @@ the app searches and draws from), occurrences in a time range, search, import, a
 Calendars: the shared ones (owner_id NULL, Family first) that everyone sees, and each account's own private ones
 (Personal, made the first time a member uses ioCalendar). Viewers only read the shared calendars; members also keep
 their own private ones; editors change the shared ones too; admins also manage settings and users. A calendar of kind 'birthdays' is
-filled from ioContact, one of kind 'holidays' from the holiday rules (app/holiday.py), one of kind 'subscribed' from an
-outside calendar's web address (app/subscribe.py); nobody changes their events here.
+filled from ioContact, one of kind 'holidays' from the holiday rules (iocalendar/holiday.py), one of kind 'subscribed' from an
+outside calendar's web address (iocalendar/subscribe.py); nobody changes their events here.
 """
 import datetime as dt
 import re

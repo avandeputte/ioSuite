@@ -1,4 +1,4 @@
-"""Videos (app/ai/videos.py): the cover frame, chapters, transcript cleaning, and what the API serves."""
+"""Videos (iopix/ai/videos.py): the cover frame, chapters, transcript cleaning, and what the API serves."""
 import json
 
 import pytest

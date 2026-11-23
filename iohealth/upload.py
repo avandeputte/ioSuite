@@ -22,6 +22,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
 from iohealth import access, db, rollup, webapi
+from iosuite_shared import live
 
 log = logging.getLogger("iohealth.upload")
 router = APIRouter()
@@ -374,6 +375,8 @@ async def finish(session_id: int, request: Request):
             f()
         for f in on_user_sync:
             threading.Thread(target=f, args=(uid,), name="after-sync", daemon=True).start()
+        if applied:
+            live.changed("iohealth", "data")  # the open pages (ioHealth's, the start page's tile) ask again
         log.info("session %d: finished, %s items sent, %d applied", session_id, d.get("totalSent"), applied)
         return {"received": applied}
     return await run_in_threadpool(work)

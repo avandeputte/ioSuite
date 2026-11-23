@@ -8,14 +8,14 @@ changes in one request, applied together.
                                   answers {rev, ids, tree, refused}: the tree after them, the ids given to what it
                                   made, and how many changes were not taken (a shared bookmark, by someone who does
                                   not manage them: it comes back as it was)
-    GET  <address>/dav/ext/icon/<id>  the icon of a link's site, as the server keeps it (app/siteicons.py); 404 without one
+    GET  <address>/dav/ext/icon/<id>  the icon of a link's site, as the server keeps it (iostart/siteicons.py); 404 without one
 
-ioStart, the iPhone and iPad app (the repository avandeputte/iostart-apps), speaks the same API: it shows the tree,
+ioStart, the iPhone and iPad app (the repository avandeputte/iosuite-apps), speaks the same API: it shows the tree,
 sends what is changed in it as ops, and draws the links with the icons.
 
-The extension signs in with Nextcloud's sign-in flow (app/ncbookmarks.py: one click, a sync-only app password in the
-Shared ioSuite database) and then HTTP Basic, like the other sync clients; under /dav, so the Cloudflare Worker checks
-the app password as for them. The extension keeps the tree as it last saw it, works out what the browser changed since
+The extension signs in with the sign-in flow for apps (iostart/appsignin.py: one click, a sync-only app password in the
+Shared ioSuite database) and then HTTP Basic; under /dav, so the Cloudflare Worker checks the app password as for the
+other apps' devices. The extension keeps the tree as it last saw it, works out what the browser changed since
 (made, renamed, moved, reordered, deleted), sends that, and makes the browser's bookmarks the tree it gets back: what
 was deleted here goes from every browser at their next sync.
 
@@ -28,7 +28,7 @@ applied creates, then updates, then orders, then deletes. A change to something 
 something changed on the server after `base` (in another browser, or on the start page) is skipped too: it comes back
 to the browser, which is the safe way round.
 
-The tree is the account's (app/bookmarks.py): their own bookmarks and the shared ones, in the same folders; a node the
+The tree is the account's (iostart/bookmarks.py): their own bookmarks and the shared ones, in the same folders; a node the
 account may not change carries "shared": true and "readOnly": true. Someone who is not an admin of the start page can
 add their own links in a shared folder; what they change of the shared bookmarks themselves is refused and goes back.
 """
@@ -39,7 +39,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
 from iostart import __version__, apps as _apps, bookmarks, bookmarksync as sync, siteicons, widgets as _widgets
-from iosuite_shared import users
+from iosuite_shared import live, users
 
 BASE = "/dav/ext"
 router = APIRouter()
@@ -133,6 +133,7 @@ def apply(base: int, ops: list) -> dict:
                 continue
             bookmarks.remove(nid)
             t = bookmarks.Tree()
+    live.changed("iostart", "bookmarks")  # the open start pages draw what the browser changed
     return {**_state(), "ids": ids, "refused": refused}
 
 
@@ -196,8 +197,6 @@ async def post_sync(request: Request):
         raise HTTPException(400, "Unreadable request body")
     if not isinstance(body, dict):
         raise HTTPException(400, "Unreadable request body")
-    if sync.locked_at():  # a Floccus sync is half way: its next request would find the tree changed under it
-        return JSONResponse({"error": "Another sync app is syncing; trying again shortly"}, status_code=423, headers={"Retry-After": "20"})
     try:
         base = int(body.get("base") or 0)
     except (TypeError, ValueError):
@@ -215,8 +214,8 @@ async def post_sync(request: Request):
 #     POST <address>/dav/ext/tasks       {title, due?, listId?, timezone?} → {id, url}   (ioTask)
 #     POST <address>/dav/ext/events      {title, start, end?, allDay, timezone?, calendarId?} → {id, url}   (ioCalendar)
 #
-# These are asked of ioCalendar and ioTask with the app's own sign-in passed on (app/widgets.py), so they need a full
-# app password: the iPhone app's sign-in flow asks for one (`?scope=full`, app/ncbookmarks.py); a sync-only password
+# These are asked of ioCalendar and ioTask with the app's own sign-in passed on (iostart/widgets.py), so they need a full
+# app password: the iPhone app's sign-in flow asks for one (`?scope=full`, iostart/ncbookmarks.py); a sync-only password
 # gets 403 {"detail": {"error", "signInAgain": true}}, which the app shows as "sign in again to turn on widgets and Siri".
 
 

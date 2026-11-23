@@ -66,7 +66,7 @@ body.side-docked #menubtn { display: none; }
 .brand-mark { width: 30px; height: 30px; flex: none; }
 .brand-home { color: inherit; min-width: 0; }
 #nav .navhead a.brand, #nav .navhead a.brand-home { gap: 8px; height: auto; padding: 0; border-radius: 0; }
-/* the suite's app switcher (as ioContact's): the mark opens a menu of the other ioThing apps */
+/* the suite's app switcher (as ioContact's): the mark opens a menu of the other ioSuite apps */
 .suitebtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; margin: 0 -4px; padding: 0; border: 0; border-radius: var(--r-m); background: transparent; cursor: pointer; }
 .suitebtn:hover, .suitebtn:focus-visible { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .suitebtn img { width: 30px; height: 30px; }
@@ -262,8 +262,8 @@ details.ocr pre { white-space: pre-wrap; word-break: break-word; font: inherit; 
 .stabs .pillbtn:hover { color: var(--fg); background: none; }
 .stabs .pillbtn.on { color: var(--accent); background: none; }
 .stabs .pillbtn.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); }
-/* the account panel and the phone's More sheet */
-.acct h4, .sheeth { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 6px; font-size: var(--fs-base); }
+/* the phone's More sheet */
+.sheeth { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 6px; font-size: var(--fs-base); }
 .sheetgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 6px; }
 .sheetgrid a { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border-radius: var(--r-l); background: var(--bg2); color: var(--fg); font-size: var(--fs-m); text-align: center; }
 .sheetgrid a.on { background: color-mix(in srgb, var(--hue) var(--mix), transparent); color: var(--hue); font-weight: 600; }
@@ -273,42 +273,34 @@ details.ocr pre { white-space: pre-wrap; word-break: break-word; font: inherit; 
 .chip { padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--hue, var(--fg)); font-size: var(--fs-m); }
 .chip.on { background: color-mix(in srgb, var(--hue, var(--accent)) var(--mix), transparent); color: var(--hue, var(--accent)); font-weight: 600; }
 .pagein h1 .muted { font-size: var(--fs-m); font-weight: 400; margin-left: 2px; }
-/* a box, as the Settings boxes of every io app draw one (iosuite-shared's .sv-box) */
+/* a box, as the Settings boxes of every io app draw one (iosuite_shared's .sv-box) */
 .sec { border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin: 0 0 16px; }
 .ptitle + .sec { margin-top: 16px; }
 .sec h2 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; margin: 0 0 6px; }
 .sec .intro { margin: 8px 0 10px; color: var(--fg2); max-width: 900px; }
 .sec > p { color: var(--fg2); margin: 8px 0; }
-.srow, .row { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 0; margin: 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
-.sec h2 + .srow, .sec h2 + .row, .sec .intro + .srow, .sec .intro + .row { border-top: 0; }
-.srow > div:first-child { flex: 1; min-width: 240px; }
-.srow b, .row > label { font-weight: 600; color: var(--fg); }
-.srow .small { margin-top: 2px; line-height: 1.4; }
+.row { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 0; margin: 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.sec h2 + .row, .sec .intro + .row { border-top: 0; }
+.row > label { font-weight: 600; color: var(--fg); }
 .row > label { flex: 1; min-width: 160px; }
 .row:not(:has(> label)) { justify-content: flex-start; gap: 8px; }
 .row > :not(label) { flex: none; }
 .row input[type=text], .row input[type=password], .row input[type=email], .row input[type=number], .row select, .field, .sec select, .dialog select {
   border: 1px solid var(--line); border-radius: var(--r-s); padding: 0 10px; height: 36px; background: var(--bg); color: var(--fg); min-width: 0; width: 320px; max-width: 100%; outline: 0; }
 .row input:focus, .sec select:focus { border-color: var(--accent); }
-.utable select, .sec td select { width: auto; height: 30px; padding: 0 6px; }
+.sec td select { width: auto; height: 30px; padding: 0 6px; }
 .row .code { flex: 0 1 auto; }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; }
 .check input, .switch input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
 .switch { display: flex; align-items: center; gap: 10px; margin: 10px 0; cursor: pointer; }
-.eseg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); overflow: hidden; }
-.eseg button { padding: 6px 12px; font-size: var(--fs-s); color: var(--fg2); background: none; border: 0; cursor: pointer; }
-.eseg button + button { border-left: 1px solid var(--line); }
-.eseg button.on { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
-.eseg button:hover { background: var(--bg2); }
 table.grid { width: 100%; border-collapse: collapse; font-size: var(--fs-m); margin-top: 4px; }
 table.grid th, table.grid td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 table.grid th { color: var(--fg2); font-weight: 500; white-space: nowrap; }
 table.grid td .iconbtn { width: 30px; height: 30px; }
-.ucell { display: inline-flex; align-items: center; gap: 8px; }
 table.grid td .row { border: 0; padding: 0; justify-content: flex-start; gap: 6px; }
 .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-s); background: var(--bg2); padding: 2px 6px; border-radius: var(--r-xs); word-break: break-all; }
 pre.log { font: var(--fs-xs)/1.4 ui-monospace, Menlo, monospace; background: var(--bg2); padding: 10px; border-radius: var(--r-s); max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
-.err { color: var(--danger); } .okc { color: var(--ok); } .warnc { color: var(--warn); }
+.err { color: var(--danger); }
 
 /* ---- dialogs, menus, toast */
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -377,7 +369,6 @@ body.locked #main, body.locked #nav, body.locked #topbar { visibility: hidden; }
   #usermenu .tool { width: 40px; height: 40px; }
   .pagein { padding: 8px 16px 40px; margin: 0; }
   .row input[type=text], .row input[type=password], .row select, .sec select { width: 100%; }
-  .srow > div:first-child { min-width: 100%; }
   .stabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .stabs .pillbtn { flex: none; }
   .navmore.on { color: var(--accent) !important; font-weight: 600; }

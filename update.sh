@@ -140,27 +140,14 @@ say "Refreshing the Python packages (the new version's, before the code moves)"
 # them, such as iopix-ai); none recorded: every app's
 G="$(cat EXTRAS 2>/dev/null | tr -d ' \n')"; G="${G:-all}"
 "$VPY" - "$TMP/pyproject.toml" "$G" > "$TMP/requirements.txt" <<'PYEOF' || die "could not read the fetched pyproject.toml"
-import re, sys
+import sys
+import tomllib
 path, groups = sys.argv[1], [g for g in sys.argv[2].split(",") if g]
-try:
-    import tomllib
-except ImportError:  # Python 3.10: a plain reading of the array shape pyproject.toml uses
-    tomllib = None
-deps = []
-if tomllib:
-    with open(path, "rb") as f:
-        proj = tomllib.load(f).get("project", {})
-    deps += proj.get("dependencies", [])
-    for g in groups:
-        deps += proj.get("optional-dependencies", {}).get(g, [])
-else:
-    text = open(path, encoding="utf-8").read()
-    def arr(key):
-        m = re.search(r"^\s*" + re.escape(key) + r'\s*=\s*\[((?:[^\]"]|"[^"]*")*)\]', text, re.M)
-        return re.findall(r'"([^"]+)"', m.group(1)) if m else []
-    deps += arr("dependencies")
-    for g in groups:
-        deps += arr(g)
+with open(path, "rb") as f:
+    proj = tomllib.load(f).get("project", {})
+deps = list(proj.get("dependencies", []))
+for g in groups:
+    deps += proj.get("optional-dependencies", {}).get(g, [])
 print("\n".join(dict.fromkeys(deps)))
 PYEOF
 pipi() { if command -v uv >/dev/null 2>&1; then uv pip install -q -p "$VPY" "$@"; else "$VPY" -m pip install -q --disable-pip-version-check "$@"; fi; }

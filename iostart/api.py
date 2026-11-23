@@ -1,4 +1,4 @@
-"""The REST API (JSON) the start page uses. OpenAPI docs at /api/docs. Who may call a route is declared on it (app/access.py).
+"""The REST API (JSON) the start page uses. OpenAPI docs at /api/docs. Who may call a route is declared on it (iostart/access.py).
 
 Clients authenticate with the web session cookie (the suite's, shared by every io app on the domain), HTTP Basic or
 `Authorization: Bearer <app password>`, as in the other io apps."""
@@ -15,7 +15,7 @@ from iosuite_shared import prefix
 from iosuite_shared.access import json_body
 
 from iostart.auth import auth
-from iostart import access, apps, config, siteicons, bookmarkcheck, bookmarkdav, bookmarkfiles, bookmarks, bookmarksync, homeassistant as ha, ncbookmarks, layout, status as appstatus, rates, timers, trmnl, trmnlpush, trmnlserver, wall, weather, widgets
+from iostart import access, apps, config, siteicons, bookmarkcheck, bookmarkfiles, bookmarks, bookmarksync, homeassistant as ha, layout, status as appstatus, rates, timers, trmnl, trmnlpush, trmnlserver, wall, weather, widgets
 from iostart import search as suitesearch
 
 router = APIRouter()
@@ -49,14 +49,14 @@ async def apps_status(request: Request):
 
 @router.get("/api/me/layout", dependencies=[access.signed_in])
 def my_layout(request: Request, device: str = ""):
-    """The viewer's own start page (see app/layout.py): this device's setup when it has one of its own, else the
+    """The viewer's own start page (see iostart/layout.py): this device's setup when it has one of its own, else the
     account's, else the family's starting point."""
     return layout.get(request.state.user["id"], device or None)
 
 
 @router.put("/api/me/layout", dependencies=[access.signed_in])
 async def my_layout_save(request: Request, device: str = "", name: str = ""):
-    """Body: a layout (app/layout.py: hidden, order, cards, strip, style, sizes, todayOff, units, accent…). Without
+    """Body: a layout (iostart/layout.py: hidden, order, cards, strip, style, sizes, todayOff, units, accent…). Without
     `device` it is the account's, and {} puts it back as it comes. With `device` (the id the browser keeps) and `name`
     ("Kitchen tablet") it is that device's own."""
     u = request.state.user
@@ -166,7 +166,7 @@ async def weather_search(request: Request, q: str = "", key: str = ""):
         raise HTTPException(400, str(e))
 
 
-# ------------------------------------------------------------------ Home Assistant (app/homeassistant.py)
+# ------------------------------------------------------------------ Home Assistant (iostart/homeassistant.py)
 
 def _ha(fn, *a, **kw):
     try:
@@ -406,7 +406,7 @@ def link_icon(lid: int, request: Request):
 
 @router.get("/api/bookmarks/site-icon", dependencies=[access.signed_in])
 def site_icon(site: str, request: Request):
-    """A bookmarked site's own icon, as the server fetched it (app/siteicons.py), for everyone signed in. Cached by the
+    """A bookmarked site's own icon, as the server fetched it (iostart/siteicons.py), for everyone signed in. Cached by the
     browser for good: the address carries a version (?v=etag). Served as the kind of image its bytes are, and as
     nothing a browser would run."""
     ic = siteicons.get(site)
@@ -453,17 +453,17 @@ def export_bookmarks(kind: str, request: Request):
         raise HTTPException(404, "export.html or export.xbel")
     _me(request)
     items = bookmarksync.items()
-    body = bookmarkfiles.to_html(items) if kind == "html" else bookmarkfiles.to_xbel(items, bookmarks.highest_id())
+    body = bookmarkfiles.to_html(items) if kind == "html" else bookmarkfiles.to_xbel(items)
     return Response(body, media_type="text/html; charset=utf-8" if kind == "html" else "application/xml; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="bookmarks.{kind}"'})
 
 
 @router.get("/api/bookmarks/sync", dependencies=[access.signed_in])
 def bookmarks_sync(request: Request):
-    """What to type into a sync app (the Bookmarks page): the addresses, and whether one is syncing right now."""
-    root = auth.base_url(request, "sync")  # sync apps and the extension talk to the sync door (iosuite_shared.doors)
-    return {"server": root, "nextcloud": root + ncbookmarks.BASE, "webdav": root + bookmarkdav.BASE + "/", "files": list(bookmarkdav.NAMES),
-            "syncing": bool(bookmarksync.locked_at()), "user": request.state.user["name"] if request.state.user else "",
+    """What the Bookmarks page says about sync: the address the browser extension and the iPhone app are given, and
+    the version of the extension this server holds."""
+    root = auth.base_url(request, "sync")  # the extension and the app talk to the sync door (iosuite_shared.doors)
+    return {"server": root, "user": request.state.user["name"] if request.state.user else "",
             "extension": _extension_version()}
 
 
@@ -492,7 +492,7 @@ def bookmarks_extension():
                     headers={"Content-Disposition": f'attachment; filename="iostart-bookmarks-{_extension_version() or "extension"}.zip"'})
 
 
-# ------------------------------------------------------------------ one search across the apps (app/search.py)
+# ------------------------------------------------------------------ one search across the apps (iostart/search.py)
 
 @router.get("/api/search", dependencies=[access.signed_in])
 async def search_everywhere(request: Request, q: str = "", tz: str = "", apps: str = "", wait: bool = False):
@@ -506,7 +506,7 @@ async def search_everywhere(request: Request, q: str = "", tz: str = "", apps: s
                                    widgets.TIMEOUT * 3 if wait else suitesearch.DEADLINE)
 
 
-# ------------------------------------------------------------------ what the tiles show (app/widgets.py)
+# ------------------------------------------------------------------ what the tiles show (iostart/widgets.py)
 
 @router.get("/api/widgets/{key}", dependencies=[access.signed_in])
 def widget(key: str, request: Request, tz: str = "", kind: str = "", n: int = 0, q: str = ""):
@@ -596,7 +596,7 @@ def widget_image(key: str, kind: str, item_id: str, request: Request, p: str = "
                     headers={"Cache-Control": "private, max-age=86400"})
 
 
-# ------------------------------------------------------------------ kitchen timers (app/timers.py)
+# ------------------------------------------------------------------ kitchen timers (iostart/timers.py)
 
 def _timer(fn, *a):
     try:
@@ -635,7 +635,7 @@ def timers_dismiss(tid: int):
     return {"ok": True}
 
 
-# ------------------------------------------------------------------ exchange rates for the search box (app/rates.py)
+# ------------------------------------------------------------------ exchange rates for the search box (iostart/rates.py)
 
 @router.get("/api/rates", dependencies=[access.signed_in])
 def rates_get():
@@ -646,7 +646,7 @@ def rates_get():
         raise HTTPException(502, str(e))
 
 
-# ------------------------------------------------------------------ the wall display on a device (app/wall.py)
+# ------------------------------------------------------------------ the wall display on a device (iostart/wall.py)
 
 def _wall(fn, *a, **kw):
     try:
@@ -720,7 +720,7 @@ def wall_pair_approve(code: str, request: Request):
     return _wall(wall.pair_approve, code, request.state.user)
 
 
-# ------------------------------------------------------------------ TRMNL e-ink screens (app/trmnl.py, app/trmnlpush.py)
+# ------------------------------------------------------------------ TRMNL e-ink screens (iostart/trmnl.py, iostart/trmnlpush.py)
 
 def _trmnl_state(request: Request, got: dict) -> dict:
     return {**got, **trmnlserver.state(request.state.user), "server": auth.base_url(request, "sync")}  # what TRMNL reads from: the sync door
@@ -730,7 +730,7 @@ def _trmnl_state(request: Request, got: dict) -> dict:
 def trmnl_settings(request: Request):
     """Settings › TRMNL: the screens this person may put on a TRMNL, which of them the start page pushes and how the
     last push went, their time zone and clock, the address TRMNL reaches the start page at (for the plugin files),
-    their TRMNL devices that ask this server itself (app/trmnlserver.py) and the address such a device is given."""
+    their TRMNL devices that ask this server itself (iostart/trmnlserver.py) and the address such a device is given."""
     return _trmnl_state(request, trmnlpush.state(request.state.user))
 
 
@@ -742,7 +742,7 @@ async def trmnl_save(request: Request):
     return _trmnl_state(request, await run_in_threadpool(trmnlpush.configure, request.state.user, b))
 
 
-# A TRMNL device set to this server (app/trmnlserver.py). It has no account and cannot pass Cloudflare Access: the four
+# A TRMNL device set to this server (iostart/trmnlserver.py). It has no account and cannot pass Cloudflare Access: the four
 # below answer without a sign-in (main.py: is_open), to a device's own key. The paths are TRMNL's firmware's.
 
 def _device(fn, *a):

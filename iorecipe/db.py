@@ -17,7 +17,7 @@ SCHEMA = [
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iorecipe/auth.py)
     # owner_id NULL: a family recipe (everyone sees it); otherwise the private recipe of that account.
     # ingredients, steps and tags are JSON lists of strings; a line of ingredients or steps that ends with a colon
     # ("For the icing:") is a heading. Times are minutes. words: everything a search looks in, in lower case.

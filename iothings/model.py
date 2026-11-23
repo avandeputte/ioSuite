@@ -5,7 +5,7 @@ looks; a member adds things, changes the ones they added and keeps any thing's u
 (and an admin) changes and deletes everything, and keeps the places and labels in order.
 
 A thing (thg_items) has a place (thg_locations, a tree), labels (thg_labels), the people of the family whose it is
-(thg_item_people), purchase, warranty and sale details, its own fields, files (app/files.py: photos, the manual, the receipt), upkeep and a maintenance log (app/upkeep.py).
+(thg_item_people), purchase, warranty and sale details, its own fields, files (iothings/files.py: photos, the manual, the receipt), upkeep and a maintenance log (iothings/upkeep.py).
 """
 import datetime as dt
 import json

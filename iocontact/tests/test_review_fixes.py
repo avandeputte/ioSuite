@@ -96,7 +96,7 @@ def test_apple_omit_year_keeps_a_real_year():
 
 
 def test_app_passwords_are_the_shared_routes_and_only_the_owner_revokes(client):
-    """/api/auth/app-passwords (iosuite-shared): a signed-in account makes and revokes its own; the old admin-only
+    """/api/auth/app-passwords (iosuite_shared): a signed-in account makes and revokes its own; the old admin-only
     DELETE is gone with ioContact's own routes."""
     k, uid, _own = member(client)
     pid = None

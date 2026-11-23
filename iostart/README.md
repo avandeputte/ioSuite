@@ -1,6 +1,6 @@
 # ioStart
 
-*The start page of the ioThing suite: one place with every io app ([ioPix](../iopix/),
+*The start page of ioSuite: one place with every io app ([ioPix](../iopix/),
 [ioHealth](../iohealth/), [ioCalendar](../iocalendar/), [ioTask](../iotask/), [ioRecipe](../iorecipe/), [ioThings](../iothings/), [ioMoney](../iomoney/),
 [ioContact](../iocontact/), [ioNote](../ionote/)).*
 
@@ -200,20 +200,12 @@ what the app will show on the start page later (today's events, the newest photo
     bar is the top-level folder "Bookmarks bar", Firefox's bookmarks menu the folder "Bookmarks menu", Other bookmarks
     everything else at the top, so every browser shows the same. It sends what changed in the browser in one request
     (`/dav/ext`, `iostart/bookmarkext.py`) and makes the browser the tree that comes back, so a delete here or in another
-    browser goes everywhere. One-click sign-in (the same flow as below: an app password of its own, for sync only).
+    browser goes everywhere. One-click sign-in (`iostart/appsignin.py`: an app password of its own, for sync only).
     Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe) (Chrome, Edge, Vivaldi, Brave, Opera); Firefox and builds of your own
     from Settings › Bookmarks or a release. `.github/workflows/extension.yml` packages each version as a release and,
     with an addons.mozilla.org API key in the repository's secrets, has Mozilla sign the Firefox file.
-  - *Nextcloud Bookmarks API* at `<address>/dav/nextcloud` (REST v2: folders, bookmarks, tags, order, hashes, bulk
-    import, the lock, and Nextcloud's sign-in flow for apps). [Floccus](https://floccus.org) (Firefox, Chrome, Edge,
-    Android, iOS): add a *Nextcloud Bookmarks* account with that address and say yes on the page it opens; it gets an
-    app password of its own, for sync only. Other clients written for Nextcloud Bookmarks sign in with the account's
-    name and an app password.
-  - *A bookmarks file over WebDAV* at `<address>/dav/bookmarks/`: `bookmarks.xbel` (XBEL) or `bookmarks.html`
-    (the bookmarks HTML of browsers), for Floccus's WebDAV kind of account and anything else that syncs such a file.
-    Name and app password; no passphrase (an encrypted file cannot be read, so it is refused).
   - App passwords live in the Shared ioSuite database like all others (Settings › Account, Settings › People). A
-    viewer's sync app can read; changing takes an editor or admin. Behind Cloudflare Access, `/dav/*` needs the same
+    viewer's browser can read; changing takes an editor or admin. Behind Cloudflare Access, `/dav/*` needs the same
     bypass as the other apps' CalDAV / CardDAV paths. A bookmark is in one folder (the same address in two folders is
     two bookmarks); bookmarklets and other non-web addresses sync but never show on the start page.
 - **The suite's accounts**: the same sign-in as every io app (the account tiles, one click for an account without a password),

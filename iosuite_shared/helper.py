@@ -170,7 +170,7 @@ def _spawn() -> dict:
     try:
         proc = subprocess.Popen([sys.executable, "-m", "iosuite_shared.helperworker", str(there.fileno())], pass_fds=[there.fileno()],
                                 cwd=str(config.BASE), start_new_session=True,
-                                env={**os.environ, "IOSUITE_HELPER_WORKER": "1", "IOSUITE_LOG_CHILD": "1"})
+                                env={**os.environ, "IOSUITE_HELPER_WORKER": "1", "IOSUITE_LOG_CHILD": "1", "DB_CONNECTIONS": config.child_connections()})
     finally:
         there.close()
     log.info("helper started (pid %d)", proc.pid)

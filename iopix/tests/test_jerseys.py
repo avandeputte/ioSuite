@@ -1,4 +1,4 @@
-"""Jersey numbers (app/ai/jerseys.py): reading them on detected people, learning who wears which, and suggesting
+"""Jersey numbers (iopix/ai/jerseys.py): reading them on detected people, learning who wears which, and suggesting
 the player for people whose face is not named."""
 import sqlite3
 

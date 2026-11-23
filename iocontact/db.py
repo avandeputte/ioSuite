@@ -18,7 +18,7 @@ SCHEMA = [
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite-shared, app/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iocontact/auth.py)
     # owner_id NULL: a shared address book. owner_key stands in for owner_id in the unique key: NULLs never clash in a
     # unique key, so (owner_id, slug) alone would let two shared address books share a slug
     """CREATE TABLE IF NOT EXISTS con_address_books (

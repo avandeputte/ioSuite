@@ -1,5 +1,5 @@
 """The REST API (JSON) the web app uses. OpenAPI docs at /api/docs. Who may call a route is declared on it
-(app/access.py); what an account may see and change is a recipe's business (app/model.py).
+(iorecipe/access.py); what an account may see and change is a recipe's business (iorecipe/model.py).
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`.

@@ -9,7 +9,7 @@ app (main.py) and can also run on its own with `python -m iopix.mcp` (stdio
 transport), sharing the web app's index and thumbnail cache.
 
 The package is split by who may call a tool, not by subject:
-  base.py   the MCPServer instance, the index connection, who is asking (iosuite-shared) and the
+  base.py   the MCPServer instance, the index connection, who is asking (iosuite_shared) and the
             helpers every tool module shares (name resolution, limits, the filter translation)
   read.py   the read-only tools: overview, search, counts, one photo, the lists
   files.py  the operator's diagnostics: health, log, job queue, one file on disk, repairs

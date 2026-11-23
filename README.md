@@ -4,8 +4,8 @@
 
 This repository is ioSuite as **one program**. The thirteen apps are packages of it; a copy of the program runs the
 ones it is told to, and several copies against the same Shared ioSuite database are one suite (ioPix on a server of
-its own, the rest on another, say). It follows [avandeputte/iosuite](https://github.com/avandeputte/iosuite), where
-every app was a program and a service of its own; [`tools/convert/`](tools/convert/) moves such an install here.
+its own, the rest on another, say). It follows [avandeputte/iosuite-old](https://github.com/avandeputte/iosuite-old), where
+every app was a program and a service of its own.
 
 ## Install
 
@@ -121,7 +121,10 @@ reaches it there.
 A page holds one connection (`GET /api/live`, server-sent events) and hears the changes of every app of the suite on
 it, so a task ticked off in ioTask refreshes the start page's Today card, a photo added in ioPix refreshes the strip,
 and an event moved in ioCalendar refreshes a calendar open in another tab. An app needs no code for it: every request
-that changed something says so. The lines go through the Shared ioSuite database (`ios_changes`, a few minutes deep),
+that changed something says so, through the API or from a device that syncs (CalDAV, CardDAV); what arrives another
+way says it in one line (`live.changed`): a tool called over MCP, an upload from the phone, what a job brought in. An
+app's own page keeps itself up to date with `keepFresh` (`iosuite_shared/static/live.js`), which waits while a dialog
+is open or something is being typed. The lines go through the Shared ioSuite database (`ios_changes`, a few minutes deep),
 so a change made on one server reaches a page served by another, and a copy with nobody looking at it asks for
 nothing. A line says only which app's what changed, and when: never what changed, so it is safe for any signed-in
 page, and a line addressed to one person reaches only that person's own pages.
@@ -173,7 +176,6 @@ The tests need a MariaDB of their own (a Docker container they start, or `IOSUIT
 | [`cloudflare/edge-auth/`](cloudflare/edge-auth/) | an optional Cloudflare Worker that checks app passwords before a request reaches the server |
 | [`devices/`](devices/) | firmware for the wall display |
 | [`tools/`](tools/) | checks that run against a live suite (`smoke.py`, `twocopies.py`) and the measurements (`measure.py`); nothing imports them |
-| [`tools/convert/`](tools/convert/) | moves an install of the first ioSuite to this program; run once, apart from the program |
 | [`docs/`](docs/) | the guide and the website |
 
 ## License

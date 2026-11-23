@@ -1,6 +1,6 @@
 """Is each app up? Is each bookmark reachable?
 
-The start page asks every app its /api/status with the viewer's own sign-in (as app/widgets.py does for the tiles'
+The start page asks every app its /api/status with the viewer's own sign-in (as iostart/widgets.py does for the tiles'
 glimpses) and pings each bookmark's address from the server, a few at a time, and remembers the answers for a while:
 a page opened ten times in a minute asks each app once. The tiles and bookmarks show a dot from it.
 """

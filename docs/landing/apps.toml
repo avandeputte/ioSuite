@@ -56,7 +56,7 @@ title = "Weather and Home Assistant"
 text = "AccuWeather (a free key) for the forecast, and Home Assistant entities you can switch from the page."
 [[iostart.features]]
 title = "Bookmarks"
-text = "Groups of links with their status, the ioStart Bookmarks extension for Chrome, Edge, Firefox and the others, an iPhone app, and Floccus."
+text = "Groups of links with their status, the ioStart Bookmarks extension for Chrome, Edge, Firefox and the others, and an iPhone app."
 [[iostart.features]]
 title = "One MCP server for the suite"
 text = "Connect an AI assistant here once and it gets every app's tools, each app still deciding what you may do there."

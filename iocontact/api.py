@@ -1,5 +1,5 @@
 """The REST API (JSON; vCard and jCard by content negotiation). OpenAPI docs at /api/docs. Who may call a route is declared on
-it (app/access.py); what an account may change is an address book's business (app/model.py), checked in the route.
+it (iocontact/access.py); what an account may change is an address book's business (iocontact/model.py), checked in the route.
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`.
@@ -103,7 +103,7 @@ async def body_contact(request: Request) -> dict:
 
 
 # ------------------------------------------------------------------ the account's own fields
-# Sign-in, accounts, sessions, passwords, app passwords and the users admin are iosuite-shared's routes (app/main.py);
+# Sign-in, accounts, sessions, passwords, app passwords and the users admin are iosuite_shared's routes (iocontact/main.py);
 # what is ioContact's own: the face on an account's tile, and which contact an account is ("me").
 
 @router.get("/api/auth/accounts/{uid}/photo", dependencies=[access.public])
@@ -124,7 +124,7 @@ async def account_photo(uid: int, request: Request):
 @router.put("/api/me-contact", dependencies=[access.signed_in])
 async def put_me_contact(request: Request):
     """Which contact is the signed-in account ({contactId}; null: none), for CardDAV apps and the face on its tile.
-    The display name and email are iosuite-shared's (PATCH /api/auth/me, Settings › Account)."""
+    The display name and email are iosuite_shared's (PATCH /api/auth/me, Settings › Account)."""
     u = auth.current_user(request)
     cid = (await json_body(request)).get("contactId")
     if cid:
@@ -654,7 +654,7 @@ def _apple_profile(request: Request, label: str, password: str, calendar: str, l
     """(bytes, file name) of a configuration profile (.mobileconfig) that sets an iPhone, iPad or Mac up in one go: the CardDAV account for the
     contacts and, if asked, the birthday calendar subscription (and the LDAP directory). password: "new" puts a new app
     password (named after label) in the profile; "ask" leaves it out, and the device asks for it while installing. The
-    profile for all the apps that sync (the accounts only) is iosuite-shared's (auth.profile_router in main.py)."""
+    profile for all the apps that sync (the accounts only) is iosuite_shared's (auth.profile_router in main.py)."""
     import uuid
     from urllib.parse import urlsplit
     u = auth.current_user(request)

@@ -1,4 +1,4 @@
-"""The MCP server instance and what every tool module shares: who is asking (iosuite-shared), name resolution, limits."""
+"""The MCP server instance and what every tool module shares: who is asking (iosuite_shared), name resolution, limits."""
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 from mcp.server.mcpserver.exceptions import ToolError

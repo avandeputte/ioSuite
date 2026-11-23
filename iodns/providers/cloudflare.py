@@ -11,7 +11,7 @@ Only the names under the zones listed are compared (empty: every zone the token 
 as the server's setting says; a record that changes keeps what it had. A TTL of 1 is Cloudflare's "automatic".
 
 The CNAMEs of Cloudflare Tunnel public hostnames (<tunnel id>.cfargotunnel.com) belong to the Cloudflare Tunnel entry
-(app/providers/cftunnel.py), which makes and removes them with the hostname: they are left out here unless asked.
+(iodns/providers/cftunnel.py), which makes and removes them with the hostname: they are left out here unless asked.
 """
 from __future__ import annotations
 

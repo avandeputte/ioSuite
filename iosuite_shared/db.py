@@ -4,13 +4,18 @@ Connections come from a small pool (Pool), in autocommit mode: a statement on it
 and a unit of work (tx) begins a transaction, commits or rolls back, and gives the connection back. A PyMySQL
 connection is never used by two threads at once. Rows come back as dicts. The apps use Database (the pool, the
 transaction and q / one / ex / many) for their own databases too.
+
+Every pool of a copy draws on one allowance (Budget): the copy never holds more than DB_CONNECTIONS connections open,
+however many apps it runs and however many requests arrive at once. A request that needs one when all are out waits
+for the next to come back, and a connection another app keeps idle is closed to make room first.
 """
+import collections
 import json
 import logging
-import queue
 import select
 import threading
 import time
+import weakref
 from contextlib import contextmanager
 
 import pymysql
@@ -365,6 +370,121 @@ def connect(database: str | None = ...):
 BROKEN = (pymysql.err.OperationalError, pymysql.err.InterfaceError)  # the connection itself failed: it is closed, not kept
 
 
+class Busy(pymysql.err.OperationalError):
+    """Every connection the copy may hold is in use and none came back in time: answered 503 (Auth.install), since
+    the same request works a moment later."""
+
+
+class Budget:
+    """How many connections this copy may have open to the database server at once, over all of its pools.
+
+    A database server takes a fixed number (151 unless it was told otherwise) and refuses the rest, for every
+    program that uses it. Each app has a pool of its own, so without one allowance for the copy the pools add up:
+    thirteen apps that each keep eight, and as many more as requests arrive at the same moment.
+
+    A pool asks for room before it opens a connection. While the copy is under its limit there is room. At the limit,
+    a connection some other pool keeps idle is closed first; when none is idle either, the thread waits for one to
+    come back (WAIT_S at most, then Busy). One case never waits: a thread that already holds a connection and needs a
+    second (an app's transaction that reads a setting from the Shared ioSuite database). Making it wait could never
+    end if every holder did the same, so it goes over the limit, by one connection per thread at work at most.
+
+    What is open is the set of connections themselves, held weakly: one that was dropped without being given back
+    leaves the count when Python lets go of it, so the count cannot drift upward."""
+
+    WAIT_S = 20.0
+
+    def __init__(self, limit: int = None):
+        self._limit = limit
+        self._open = weakref.WeakSet()
+        self._pending = 0                       # connections being opened right now
+        self._pools = weakref.WeakSet()
+        self._held = threading.local()          # how many connections this thread has in its hands
+        self._room = threading.Condition()
+        self.waited = self.refused = self.over = self.shed = 0   # since the copy started (status())
+
+    @property
+    def limit(self) -> int:
+        return self._limit if self._limit is not None else config.DB_CONNECTIONS
+
+    def join(self, pool) -> None:
+        self._pools.add(pool)
+
+    def reserve(self, pool=None) -> bool:
+        """Room for one more connection: at once, after closing an idle one elsewhere, or after a wait. False when
+        the asking pool got one of its own back meanwhile, which it should use instead."""
+        until = None
+        with self._room:
+            while True:
+                if len(self._open) + self._pending < self.limit:
+                    break
+                if pool is not None and until is not None and pool.idle():
+                    return False
+                if self._shed(pool):
+                    continue
+                if getattr(self._held, "n", 0) > 0:
+                    self.over += 1
+                    break
+                now = time.monotonic()
+                if until is None:
+                    until = now + self.WAIT_S
+                    self.waited += 1
+                if now >= until:
+                    self.refused += 1
+                    raise Busy(1040, f"all {self.limit} database connections of this server are in use (DB_CONNECTIONS in its "
+                                     "config.env); try again in a moment")
+                self._room.wait(min(0.25, until - now))  # also looked at again by itself: a dropped connection tells nobody
+            self._pending += 1
+            return True
+
+    def _shed(self, asking) -> bool:
+        """Close one connection another pool keeps idle. Called with the lock held; a pool's own lock is never held
+        while it asks for room, so the two cannot wait on each other."""
+        for pool in list(self._pools):
+            if pool is asking:
+                continue
+            con = pool.take_idle()
+            if con is not None:
+                self._open.discard(con)
+                _close_socket(con)
+                self.shed += 1
+                return True
+        return False
+
+    def opened(self, con) -> None:
+        with self._room:
+            self._pending = max(0, self._pending - 1)
+            if con is not None:
+                self._open.add(con)
+            else:  # it could not be opened: the room goes to the next
+                self._room.notify()
+
+    def closed(self, con) -> None:
+        with self._room:
+            self._open.discard(con)
+            self._room.notify()
+
+    def returned(self) -> None:
+        """A connection went back into a pool: whoever waits for room may take it from there (it is idle now)."""
+        with self._room:
+            self._room.notify()
+
+    def lent(self, n: int) -> None:
+        self._held.n = max(0, getattr(self._held, "n", 0) + n)
+
+    def trim(self) -> int:
+        """Every pool closes what it has kept unused for a while (Pool.trim); how many were closed."""
+        return sum(pool.trim() for pool in list(self._pools))
+
+    def status(self) -> dict:
+        """For /-/status and the tests: what is open now, the limit, and what the limit has done since the start."""
+        with self._room:
+            return {"open": len(self._open), "limit": self.limit, "waited": self.waited, "refused": self.refused,
+                    "over": self.over, "shed": self.shed}
+
+
+budget = Budget()
+
+
 class Pool:
     """A few open connections, reused: `connect` makes a new one, `size` is how many are kept. A connection that sat
     unused for more than IDLE_S is pinged before it is lent again (and replaced when the server dropped it); one that
@@ -377,42 +497,92 @@ class Pool:
     `tx()` begins and commits its own transaction. Connections with autocommit off work as well (both commit at the end)."""
 
     IDLE_S = 30.0
+    SPARE_S = 120.0   # one kept unused for this long is closed (trim): the copy's allowance is for work, not for waiting
 
     def __init__(self, connect, size: int = 8):
-        self._connect, self._kept = connect, queue.LifoQueue(maxsize=size)
+        self._connect, self._size = connect, size
+        self._kept: collections.deque = collections.deque()   # (connection, when it came back), the newest last
+        self._lock = threading.Lock()
+        budget.join(self)
+
+    def _take(self, newest: bool = True):
+        with self._lock:
+            if not self._kept:
+                return None
+            return self._kept.pop() if newest else self._kept.popleft()
 
     def borrow(self):
-        try:
-            con, at = self._kept.get_nowait()
-        except queue.Empty:
-            return self._connect()
-        try:
-            if time.monotonic() - at >= self.IDLE_S:
-                con.ping(reconnect=False)
-            elif not _open(con):
-                raise pymysql.err.InterfaceError(0, "closed")
-            return con
-        except pymysql.MySQLError:
-            _close(con)
-            return self._connect()
+        con = self._borrow()
+        budget.lent(1)
+        return con
+
+    def _borrow(self):
+        while True:
+            got = self._take()   # the one used last: the others grow old and are closed
+            if got is None:
+                if not budget.reserve(self):
+                    continue     # one came back to this pool while it waited for room
+                con = None
+                try:
+                    con = self._connect()
+                    return con
+                finally:
+                    budget.opened(con)
+            con, at = got
+            try:
+                if time.monotonic() - at >= self.IDLE_S:
+                    con.ping(reconnect=False)
+                elif not _open(con):
+                    raise pymysql.err.InterfaceError(0, "closed")
+                return con
+            except pymysql.MySQLError:
+                _close(con)
 
     def give_back(self, con, broken: bool = False):
+        budget.lent(-1)
         if broken:
             _close(con)
             self.drain()
             return
-        try:
-            self._kept.put_nowait((con, time.monotonic()))
-        except queue.Full:
+        with self._lock:
+            if len(self._kept) < self._size:
+                self._kept.append((con, time.monotonic()))
+                con = None
+        if con is not None:
             _close(con)
+        else:
+            budget.returned()
+
+    def idle(self) -> int:
+        """How many connections the pool keeps and is not using."""
+        with self._lock:
+            return len(self._kept)
+
+    def take_idle(self):
+        """The connection this pool has kept unused the longest, taken out of it (the copy needs the room elsewhere);
+        None when it keeps none."""
+        got = self._take(newest=False)
+        return got[0] if got else None
+
+    def trim(self, older_than_s: float = None) -> int:
+        """Close what has been kept unused for SPARE_S (the copy's housekeeping calls this): after a busy moment an
+        app goes back to the one or two connections its everyday work needs."""
+        cut, n = time.monotonic() - (self.SPARE_S if older_than_s is None else older_than_s), 0
+        while True:
+            with self._lock:
+                if not self._kept or self._kept[0][1] > cut:
+                    return n
+                con = self._kept.popleft()[0]
+            _close(con)
+            n += 1
 
     def drain(self):
         """Close every kept connection (the database changed; shutdown)."""
         while True:
-            try:
-                _close(self._kept.get_nowait()[0])
-            except queue.Empty:
+            got = self._take()
+            if got is None:
                 return
+            _close(got[0])
 
     @contextmanager
     def _lend(self, transaction: bool):
@@ -515,6 +685,12 @@ def _open(con) -> bool:
 
 
 def _close(con):
+    """Close a connection and give its room back to the copy."""
+    _close_socket(con)
+    budget.closed(con)
+
+
+def _close_socket(con):
     try:
         con.close()
     except Exception:  # noqa: BLE001 - already gone

@@ -1,6 +1,6 @@
 # ioTask
 
-*The family's task lists, in the ioThing suite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
+*The family's task lists, in ioSuite (with [ioPix](../iopix/), [ioNote](../ionote/), [ioContact](../iocontact/), [ioCalendar](../iocalendar/), [ioHealth](../iohealth/) and the [ioStart](../iostart/) start page).*
 
 Self-hosted task lists: a web app for the whole family, and the standard protocol reminders apps already speak, so the same lists show up in Apple Reminders on iPhone, iPad and Mac, in Tasks.org or jtx Board on Android, in Thunderbird and anywhere else that syncs to-dos over CalDAV. FastAPI and a single-page vanilla JS app, with everything stored in MariaDB / MySQL, and the suite's shared library (`iosuite_shared`, in [iosuite_shared/](../iosuite_shared/)).
 

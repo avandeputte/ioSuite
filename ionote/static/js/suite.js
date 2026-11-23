@@ -1,4 +1,4 @@
-/** The suite (iosuite-shared's suite_apps): when other ioThing apps are registered, the app mark top left (in the sidebar;
+/** The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar;
  *  in the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark and the name stay the link to
  *  All notes. The same as ioContact's. */
 import { $, h, api } from './core.js';
@@ -26,7 +26,7 @@ function drawBrand() {
   const name = () => h('span.brand-name', h('span.io', 'io'), h('span.nm', 'Note'));
   old.replaceWith(apps.length
     ? h('div.brand',
-      h('button.suitebtn', { type: 'button', title: 'ioThing apps', 'aria-label': 'ioThing apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) }, mark()),
+      h('button.suitebtn', { type: 'button', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) }, mark()),
       h('a.brand-home', { href: '#/notes', title: 'All notes' }, name()))
     : h('a.brand', { href: '#/notes', title: 'All notes' }, mark(), name()));
 }
@@ -56,7 +56,7 @@ function toggleSuite(btn) {
   if (!apps.length) return;
   // the apps, then the admin tools (ioDNS…) in a section of their own: the server sends those to their admins only
   const main = apps.filter((a) => !a.adminTool), tools = apps.filter((a) => a.adminTool);
-  pop = h('div.suitepop', { role: 'menu', 'aria-label': 'ioThing apps' }, ...main.map(appTile),
+  pop = h('div.suitepop', { role: 'menu', 'aria-label': 'ioSuite apps' }, ...main.map(appTile),
     ...(tools.length ? [h('div.suitesec', 'Admin tools'), ...tools.map(appTile)] : []));
   pop.style.setProperty('--cols', String(Math.min(3, Math.max(main.length, tools.length))));
   document.body.append(pop);

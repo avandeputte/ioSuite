@@ -1,8 +1,8 @@
-/* ioBackup web app: one module, no build step, laid out as the other ioThing apps. Pages: the backup jobs (the start
+/* ioBackup web app: one module, no build step, laid out as the other ioSuite apps. Pages: the backup jobs (the start
    page), the backups in each destination (with verify, download, delete and a restore of exactly what you pick),
    activity (every run with its log), servers, destinations and Settings (account, display, and for admins the
    server, for suite admins security and global settings). */
-import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite-shared static/account-panel.js)
+import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -558,7 +558,7 @@ function drawUser() {
   };
   m.append(btn);
 }
-/* The suite (iosuite-shared's suite_apps): when other ioThing apps are registered, the app mark opens a menu of them. */
+/* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark opens a menu of them. */
 async function loadSuite() {
   try { const r = await api('api/auth/suite'); S.suite = (r.items || []).filter((a) => a.app !== r.app && a.url); } catch { S.suite = []; }
   const b = $('#suitebtn');
@@ -583,7 +583,7 @@ function toggleSuite(btn) {
   if (!S.suite.length) return;
   // the apps, then (for their admins only: the server sends them to nobody else) the admin tools, apart
   const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
+  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
   const r = btn.getBoundingClientRect();
@@ -612,7 +612,7 @@ function drawNav() {
   nav.replaceChildren(...[
     h('div', { class: 'navhead' },
       S.suite.length
-        ? h('div', { class: 'brand' }, h('button', { class: 'suitebtn', title: 'ioThing apps', 'aria-label': 'ioThing apps', onclick: (e) => toggleSuite(e.currentTarget) },
+        ? h('div', { class: 'brand' }, h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', onclick: (e) => toggleSuite(e.currentTarget) },
           h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })), h('a', { class: 'brand-name', href: '#/' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Backup')))
         : h('a', { class: 'brand', href: '#/' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }), brandName),
       h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
@@ -768,5 +768,9 @@ async function start() {
   addEventListener('hashchange', onRoute);
   await onRoute();
   loadSuite();
+  // what changed elsewhere shows by itself: a backup that ran, another admin (the suite's one live stream)
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iobackup', () => onRoute(), { when: () => ['jobs', 'backups', 'activity', 'run'].includes(route().view) }))
+    .catch(() => { /* no stream on this server */ });
 }
 start().catch(fail);

@@ -1,4 +1,4 @@
-"""The browser extension's sync API (/dav/ext, app/bookmarkext.py), and the extension's own sync engine
+"""The browser extension's sync API (/dav/ext, iostart/bookmarkext.py), and the extension's own sync engine
 (static/extension/sync.js) run by node against this app: browsers in memory that add, change, move and delete, a server that
 deletes, and every browser ending the same."""
 import base64
@@ -77,12 +77,6 @@ def test_sync_api(client):
     assert _show(r["tree"]) == "Bookmarks bar[F[],A3],C"
     r = anon.post(EXT + "/sync", headers=auth, json={"base": r["rev"], "ops": [{"op": "delete", "id": ids["bar"]}]}).json()
     assert _show(r["tree"]) == "C"
-    # while another sync app holds its lock the extension waits
-    nc = "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2"
-    anon.post(nc + "/lock", headers=auth)
-    assert anon.post(EXT + "/sync", headers=auth, json={"base": 0, "ops": []}).status_code == 423
-    assert anon.get(EXT + "/tree", headers=auth).status_code == 200
-    anon.delete(nc + "/lock", headers=auth)
     assert anon.post(EXT + "/sync", headers=auth, json=[1]).status_code == 400
     assert anon.post(EXT + "/sync", headers=auth, json={"base": 0, "ops": "x"}).status_code == 400
 

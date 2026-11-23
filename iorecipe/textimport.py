@@ -1,5 +1,5 @@
 """A recipe out of plain text: what somebody pasted from a message, a document or a web page, or what was read off a
-photo of a recipe (app/ocr.py). Nothing clever: the title is the first line, "Ingredients" and "Instructions" (and
+photo of a recipe (iorecipe/ocr.py). Nothing clever: the title is the first line, "Ingredients" and "Instructions" (and
 what other languages and cookbooks call them) start their parts, "Serves 4" and "Prep time: 15 min" are picked out,
 and where the text has no such headings the lines that begin with an amount are the ingredients and the rest the
 steps. The result is a draft: the web app opens it in the recipe form, to be read over before it is saved.

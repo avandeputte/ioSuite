@@ -72,7 +72,7 @@ async function signOut() {
   location.reload();
 }
 
-/** The top right, as in every ioThing app: the account's initial in a small amber circle, which opens the avatar menu
+/** The top right, as in every ioSuite app: the account's initial in a small amber circle, which opens the avatar menu
  *  (Settings, sign out); signed out, a person icon that signs in (or creates
  *  the admin account). */
 export function renderUserMenu() {

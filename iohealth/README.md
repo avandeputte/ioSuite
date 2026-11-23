@@ -4,7 +4,7 @@ Copies your Apple Health data, all of it or just the types you pick, into your o
 fitness web app on top of it: dashboards, charts of any metric (stacked or overlaid), workouts with their GPS routes on
 a map, sleep, training load and personal records. Nothing goes through a cloud service: an iPhone app uploads straight
 to your own server, over HTTPS behind your reverse proxy (or plain HTTP on your own network).
-The same app serves the web app. Accounts are the ioThing suite's shared ones (the same as
+The same app serves the web app. Accounts are the suite's shared ones (the same as
 [ioPix](../iopix/), [ioNote](../ionote/) and
 [ioContact](../iocontact/)): every person in the household signs in with their own name
 and sees only their own health data.
@@ -141,7 +141,7 @@ The iPhone app allows plain `http://` only to addresses on the local network; an
 
 ## Users and permissions
 
-**Accounts** are the ioThing suite's shared accounts ([iosuite_shared](../iosuite_shared/): the
+**Accounts** are the suite's shared accounts ([iosuite_shared](../iosuite_shared/): the
 Shared ioSuite database in MariaDB, shared with ioPix, ioNote and ioContact), so one name, password and session serve every app, and
 someone signed in at `photos.example.com` is signed in at `health.example.com` too when the apps share a domain
 (`COOKIE_DOMAIN`). What is ioHealth's own is kept per app: the role an account holds here, its settings and

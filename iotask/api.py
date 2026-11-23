@@ -1,6 +1,6 @@
 """The REST API (JSON; iCalendar by content negotiation) and the settings the web app uses. OpenAPI docs at /api/docs.
-Who may call a route is declared on it (app/access.py); what an account may change is a list's business
-(app/model.py), checked in the route.
+Who may call a route is declared on it (iotask/access.py); what an account may change is a list's business
+(iotask/model.py), checked in the route.
 
 Clients authenticate with the web session cookie, HTTP Basic (name + password or app password) or
 `Authorization: Bearer <app password>`. Tasks are JSON by default; ask for text/calendar with Accept or ?format=ics,
@@ -288,7 +288,7 @@ def counts(request: Request, tz: str | None = None):
 
 
 def _quick(u: dict, text: str, tz: str | None) -> dict:
-    """A line of plain English as task fields (app/quick.py), read as of now in tz."""
+    """A line of plain English as task fields (iotask/quick.py), read as of now in tz."""
     return quick.parse(str(text)[:1000], dt.datetime.now(ical.zone(tz)), [c for c in model.lists_for(u) if model.can_write(u, c)], members.family())
 
 
@@ -629,7 +629,7 @@ def connect_info(request: Request):
 def _apple_profile(request: Request, label: str, password: str) -> tuple:
     """A configuration profile (.mobileconfig) that adds the account to Reminders on an iPhone, iPad or Mac in one go:
     (bytes, file name). password: "new" puts a new app password (named after label) in it; "ask" leaves it out. The
-    profile for all the apps that sync is iosuite-shared's (auth.profile_router in main.py)."""
+    profile for all the apps that sync is iosuite_shared's (auth.profile_router in main.py)."""
     u = request.state.user
     if u.get("passwordless"):
         raise HTTPException(403, "A one-click account cannot have app passwords")

@@ -13,7 +13,7 @@ counts as the later one.
 
 Every note, folder, tag colour and change-log line belongs to one account (user_id: its id in the suite's auth
 database); nobody sees or changes another account's notes. Who is asking is set per request (current_owner, by
-app/main.py from the signed-in user, or the MCP server's account); every function here works on that account's
+ionote/main.py from the signed-in user, or the MCP server's account); every function here works on that account's
 records only. Records made while the install was open, before any account existed, have user_id 0.
 
 The Family space is the exception: a note with family = 1 is everyone's who has a role here. Viewers and members read
@@ -24,7 +24,7 @@ sync, as a deletion (unshared_rev). A change a member's device sends for a famil
 is, with the server's copy, so the device takes that.
 
 Text read from an image (OCR) is done on the device where it can be (Apple's Vision on the Mac and the iPhone)
-and sent along as ocr_text; the server reads it itself (RapidOCR, app/ocr.py) only for notes made in the web app.
+and sent along as ocr_text; the server reads it itself (RapidOCR, ionote/ocr.py) only for notes made in the web app.
 
 A note in the trash (deleted = 1) is kept for 30 days, then purged (deleted = 2): its text, tags, picture and
 attachments go, and only the tombstone stays, so a device that has not synced since still learns it was deleted.

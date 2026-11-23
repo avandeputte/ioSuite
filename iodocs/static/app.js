@@ -2,8 +2,8 @@
    archived, by kind, by person, found by words); one document with its scans, facts, number (hidden until asked),
    reminder and who sees it; adding one from a scan (read on the server: OCR, a passport's machine-readable zone, a
    license's barcode) or typed in; and settings (account, display, and for admins the server, and for suite admins
-   security and global settings), laid out as in the other ioThing apps. */
-import { client, h, passkeyButton, safeUrl, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite-shared static/account-panel.js)
+   security and global settings), laid out as in the other ioSuite apps. */
+import { client, h, passkeyButton, safeUrl, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -197,7 +197,7 @@ function drawUser() {
   };
   m.append(btn);
 }
-/* The suite (iosuite-shared's suite_apps): when other ioThing apps are registered, the app mark top left (in the sidebar; in
+/* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to all the documents. */
 async function loadSuite() {
   try {
@@ -236,7 +236,7 @@ function toggleSuite(btn) {
   if (!S.suite.length) return;
   // the apps, then the admin tools in a section of their own: the server sends those to their admins only
   const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioThing apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
+  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
   const r = btn.getBoundingClientRect();
@@ -276,7 +276,7 @@ function drawNav() {
     h('div', { class: 'navhead' },
       S.suite.length
         ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioThing apps', 'aria-label': 'ioThing apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
+          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
             h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
           h('a', { class: 'brand-name', href: '#/', title: 'All documents' }, brandName()))
         : h('a', { class: 'brand', href: '#/', title: 'All documents' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
@@ -348,16 +348,17 @@ function route() {
 }
 const LIST_VIEWS = ['all', 'expiring', 'archived', 'kind', 'person', 'search'];
 
-async function onRoute() {
+async function onRoute(keep) {
   const r = route();
   const main = $('#main');
+  const top = keep === true ? main.scrollTop : 0;   // drawn again because something changed elsewhere: stay where the page was
   closeMenu();
   try {
     const page = h('div', { class: 'page' });
     if (LIST_VIEWS.includes(r.view)) await drawDocs(page, r);
     else await ({ doc: showDoc, edit: showForm, new: showForm, scan: showScan, settings: showSettings })[r.view](page, r);
     main.replaceChildren(page);
-    main.scrollTop = 0;
+    main.scrollTop = top;
   } catch (e) { main.replaceChildren(h('div', { class: 'page' }, h('div', { class: 'empty' }, icon('folder'), h('p', null, e.message || String(e)), h('p', null, h('a', { class: 'lnk', href: '#/' }, 'All documents'))))); }
   drawNav();
 }
@@ -769,7 +770,7 @@ async function showSettings(page, r) {
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-/** Settings › Account: display name, email and password, then the app passwords: iosuite-shared's panels (the same in every io app). */
+/** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 async function setAccount(el) {
   const ui = await accountUi();
   const pw = h('div');
@@ -788,7 +789,7 @@ async function setDisplay(el) {
 }
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
-    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite-shared. */
+    passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function setSuite(el, r) {
   let ui;
@@ -870,5 +871,10 @@ async function start() {
   try { around(await api('api/summary')); } catch { /* the page says so */ }
   await onRoute();
   loadSuite();
+  // what changed elsewhere shows by itself: another person, an assistant, another tab (the suite's one live stream,
+  // iosuite_shared/static/live.js); a page with a form on it is left alone
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iodocs', async () => { await refreshAround(); await onRoute(true); }, { when: () => [...LIST_VIEWS, 'doc'].includes(route().view) }))
+    .catch(() => { /* no stream on this server */ });
 }
 start().catch(fail);

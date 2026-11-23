@@ -1,7 +1,7 @@
 """Who may call a route, declared on the route itself: `dependencies=[access.admin]` (or member, editor, editor_write,
 signed_in, public). The server's middleware only works out who is asking and whether sign-in is required at all;
 every API route carries one of these markers, and a test fails when one is missing, so a new route can never be
-open to everyone by mistake. The markers come from iosuite-shared (app/auth.py), with iopix's read-only switch.
+open to everyone by mistake. The markers come from iosuite_shared (iopix/auth.py), with iopix's read-only switch.
 
 - public: anyone the sign-in rule lets in (reads for everyone, and routes that decide finer inside)
 - signed_in: an account, a viewer included (its own settings; saved searches, which check for an editor inside)

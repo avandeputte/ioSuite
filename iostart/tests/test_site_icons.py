@@ -1,4 +1,4 @@
-"""A bookmark's icon by default: the site's own, fetched by the server (app/siteicons.py). The sites are mocked."""
+"""A bookmark's icon by default: the site's own, fetched by the server (iostart/siteicons.py). The sites are mocked."""
 import base64
 
 import pytest

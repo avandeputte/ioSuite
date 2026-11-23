@@ -1,4 +1,4 @@
-"""The TRMNL server inside the start page (app/trmnlserver.py): what a device running TRMNL's firmware asks, whose
+"""The TRMNL server inside the start page (iostart/trmnlserver.py): what a device running TRMNL's firmware asks, whose
 screens it gets, and what its owner sets in Settings › TRMNL. The apps are stood in for as in tests/test_trmnl.py."""
 import io
 import os

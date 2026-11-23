@@ -1,4 +1,4 @@
-"""The start page's keys and tokens live in the Shared ioSuite database (app/keys.py)."""
+"""The start page's keys and tokens live in the Shared ioSuite database (iostart/keys.py)."""
 from iosuite_shared import credentials
 
 from iostart import keys, weather

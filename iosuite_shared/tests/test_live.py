@@ -33,6 +33,10 @@ def make_app(app: str = "iotest"):
         from fastapi import HTTPException
         raise HTTPException(409, "no")
 
+    @a.api_route("/dav/calendars/alex/home/{name}", methods=["PUT", "DELETE", "REPORT", "PROPFIND", "POST"], dependencies=[auth.access.public])
+    def synced(name: str):
+        return {"ok": True}
+
     return a
 
 
@@ -62,6 +66,53 @@ def test_signing_in_a_failed_change_and_a_plain_read_say_nothing():
     c.get("/api/events")
     c.post("/api/events/bad")
     assert db.q("SELECT * FROM ios_changes") == []
+
+
+def test_what_a_device_that_syncs_changed_is_heard_and_what_it_read_is_not():
+    """A calendar or a contact saved on a phone arrives outside the API (CalDAV, CardDAV): the pages hear it too.
+    The reads of those protocols are requests with a body as well, and say nothing."""
+    c = signed_in(make_app())
+    for method in ("PROPFIND", "REPORT", "POST", "GET"):
+        assert c.request(method, "/dav/calendars/alex/home/a.ics").status_code in (200, 405)
+    assert db.q("SELECT * FROM ios_changes") == []
+    assert c.put("/dav/calendars/alex/home/a.ics").status_code == 200
+    assert c.delete("/dav/calendars/alex/home/a.ics").status_code == 200
+    assert [(r["app"], r["what"]) for r in db.q("SELECT * FROM ios_changes ORDER BY id")] == [("iotest", "sync")] * 2
+
+
+def test_a_tool_that_changed_something_over_mcp_is_heard():
+    """An app's MCP server (iosuite_shared.mcp.make_server): a tool that changes something says so on the stream
+    once it has, one that only reads or that failed does not."""
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    from iosuite_shared import mcp as shared_mcp
+    server = shared_mcp.make_server("iotest", "ioTest", "1.2.3", "")
+
+    @server.tool(annotations=shared_mcp.READ_ONLY)
+    def look() -> dict:
+        return {"ok": True}
+
+    @server.tool(annotations=shared_mcp.ADDS)
+    def add(title: str) -> dict:
+        if not title:
+            raise ToolError("A title is needed")
+        return {"ok": True}
+
+    async def calls():
+        await server.call_tool("look", {})
+        try:
+            await server.call_tool("add", {"title": ""})
+        except ToolError:
+            pass
+        assert db.q("SELECT * FROM ios_changes") == []
+        await server.call_tool("add", {"title": "Milk"})
+    asyncio.run(calls())
+    for _ in range(50):  # the line is written off the loop's thread
+        rows = db.q("SELECT * FROM ios_changes")
+        if rows:
+            break
+        time.sleep(0.05)
+    assert [(r["app"], r["what"]) for r in rows] == [("iotest", "mcp")]
 
 
 def test_the_stream_carries_every_app_s_changes_and_needs_a_session():

@@ -1,4 +1,4 @@
-"""The job process (app/jobproc.py, app/jobworker.py): offloaded functions run in a second process, their Progress
+"""The job process (iopix/jobproc.py, iopix/jobworker.py): offloaded functions run in a second process, their Progress
 stays in step both ways, a process that is lost or too large is reported and not fatal, and jobs.py retries a lost
 job once and then holds it. Also memwatch's numbers."""
 import os

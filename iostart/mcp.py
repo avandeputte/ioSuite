@@ -24,7 +24,6 @@ import anyio
 import httpx2
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
-from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp.shared.exceptions import MCPError
@@ -53,7 +52,7 @@ def remember_sign_in(request) -> None:
     signed_in_with.set(request.headers.get("authorization"))
 
 
-class SuiteServer(MCPServer):
+class SuiteServer(shared_mcp.AppServer):
     """An MCP server whose tool list is its own tools plus every other app's, for the person asking."""
 
     async def list_tools(self) -> list[Tool]:
@@ -71,7 +70,7 @@ class SuiteServer(MCPServer):
 
 
 INSTRUCTIONS = (
-    "The ioThing suite in one place: the start page (ioStart) and every app of the suite (ioCalendar, ioTask, "
+    "ioSuite in one place: the start page (ioStart) and every app of the suite (ioCalendar, ioTask, "
     "ioRecipe, ioThings, ioNote, ioContact, ioPix...). Each app's tools are named after the app: iocalendar_..., iotask_..., "
     "iorecipe_... and act as you in that app, with your role there, so a job can span apps (read a recipe, then add "
     "its ingredients to a shopping list). suite_apps lists the apps you can use here, how to use each one (its own "

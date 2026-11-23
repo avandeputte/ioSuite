@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (the iosuite-shared library), as ioStart uses them.
+"""The shared the suite's accounts (the iosuite_shared library), as ioStart uses them.
 
 Accounts, passwords, sessions, app passwords and roles live in the Shared ioSuite database (IOSUITE_DB_* in
 config.env), shared with ioPix, ioNote, ioContact, ioCalendar and ioHealth: one sign-in serves every app on the
@@ -6,7 +6,7 @@ domain (COOKIE_DOMAIN). Signed in on the start page, a person is signed in every
 What is ioStart's own stays per app: the role an account holds here (admins set the weather and the home page) and its settings.
 
 ioStart registers itself in the suite's list of apps (the `ios_apps` table of the Shared ioSuite database) like every app, and
-reads the others' addresses from it (app/apps.py).
+reads the others' addresses from it (iostart/apps.py).
 """
 from iosuite_shared.fastapi import Auth
 from iosuite_shared.updates import Updater

@@ -1,6 +1,6 @@
 # ioDNS
 
-*The DNS console of the ioThing suite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
+*The DNS console of ioSuite ([ioStart](../iostart/), [ioCalendar](../iocalendar/),
 [ioContact](../iocontact/), [ioNote](../ionote/), [ioPix](../iopix/), [ioHealth](../iohealth/)).*
 
 One master list of the house's DNS names, kept in sync on every DNS server: two AdGuard Homes, a Pi-hole, the UniFi

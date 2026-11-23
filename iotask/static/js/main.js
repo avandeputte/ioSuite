@@ -93,11 +93,10 @@ export async function start() {
   addEventListener('hashchange', onRoute);
   await onRoute();
   loadSuite();
-  // come back to the tab: show what changed elsewhere (a phone, another person)
-  let away = Date.now();
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { away = Date.now(); return; }
-    if (Date.now() - away > 60000 && !document.querySelector('.dialog-back')) refresh().catch(() => {});
-  });
+  // what changed elsewhere shows by itself: a phone that synced, another person, an assistant, a task ticked off
+  // on the start page (the suite's one live stream, iosuite_shared/static/live.js)
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.keepFresh('iotask', refresh, { when: () => TASK_VIEWS.includes(route().view) || route().view === 'activity' }))
+    .catch(() => { /* no stream on this server: the page shows what changed at its next visit */ });
 }
 start().catch(fail);

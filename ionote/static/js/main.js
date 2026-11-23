@@ -152,18 +152,24 @@ function wire() {
     e.preventDefault(); depth = 0; $('#drop').hidden = true;
     for (const f of [...e.dataTransfer.files]) await (f.type.startsWith('image/') ? pictureNote(f) : fileNote(f));
   });
-  // other devices' changes show up: the list reloads when the server's rev moves on
+  // other devices' changes show up: the list reloads the moment something changed elsewhere (the suite's one live
+  // stream, iosuite_shared/static/live.js), and when the server's rev has moved on at the next look
   let rev = null;
-  setInterval(async () => {
+  const look = async (heard) => {
     if (document.hidden) return;
     try {
       const s = await api('api/status');
       setStatus(`ionote ${s.version || ''}`.trim());
       if (!$('#list')) return;
-      if (rev !== null && s.rev !== undefined && s.rev !== rev && !document.activeElement.closest('.editor')) { lastList = ''; await loadMeta(); renderNav(); await loadList(); markSelected(); }
+      if ((heard === true || rev !== null) && s.rev !== undefined && s.rev !== rev && !document.activeElement.closest('.editor')) { lastList = ''; await loadMeta(); renderNav(); await loadList(); markSelected(); }
       rev = s.rev;
     } catch (e) { setStatus('Cannot reach the server'); }
-  }, 15000);
+  };
+  setInterval(look, 60000);
+  look();
+  import(new URL('api/live.js', document.baseURI).href)
+    .then((live) => live.onChange('ionote:*', () => look(true), { wait: 800 }))
+    .catch(() => { /* no stream on this server: the look every minute shows what changed */ });
 }
 
 async function start() {

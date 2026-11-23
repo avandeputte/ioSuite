@@ -1,7 +1,7 @@
 /* ioStart web app: one module, no build step, as in the other io apps. The start page (the weather, a tile per app,
    the bookmarks in groups) and the settings (account, home page, Home Assistant, bookmarks, server, security, global settings). Each tile keeps a `.more` block under its name, where the app shows a glimpse of
    itself (photos from this day, the rest of today, steps and rings), filled from /api/widgets/<app>. */
-import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite-shared static/account-panel.js)
+import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -243,7 +243,7 @@ async function onRoute() {
 // ------------------------------------------------------------------ the start page
 const greeting = () => { const hr = new Date().getHours(); return hr < 5 ? 'Good night' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening'; };
 
-/* ---- the person's setup (app/layout.py): this device's own when it has one, else the account's, else the family's */
+/* ---- the person's setup (iostart/layout.py): this device's own when it has one, else the account's, else the family's */
 const NO_LAYOUT = () => ({ hidden: [], order: [], cards: [], strip: null, sizes: {}, todayOff: [] });
 /** The id this browser keeps for itself once the person gives the device a setup of its own ('' until then). */
 const deviceId = () => { try { return localStorage.getItem('iostart.device') || ''; } catch { return ''; } };
@@ -476,7 +476,7 @@ function searchBox() {
     rows = [];
     if (!q) return hide();
     const links = (S.bookmarks || []).filter((l) => fold(`${l.name} ${l.description || ''} ${l.href}`).includes(fold(q))).slice(0, 6);
-    // what the apps found, ranked together (app/search.py): the best few from any app first when more than one app
+    // what the apps found, ranked together (iostart/search.py): the best few from any app first when more than one app
     // found something, then each app's own section, the one with the best find first
     const byKey = Object.fromEntries(finders().map((a) => [a.key, a]));
     const hits = (found.q === ql ? found.items : []).filter((x) => byKey[x.app]);
@@ -930,7 +930,7 @@ async function calcCopy(c) {
 
 // ------------------------------------------------------------------ kitchen timers
 /* "timer 10m pasta", "pasta timer 1h30", "egg timer 6 min", "timer 90s": a timer for the whole family, kept by the
-   server (app/timers.py). Every start page and the wall display show the running ones counting down (anyone can add
+   server (iostart/timers.py). Every start page and the wall display show the running ones counting down (anyone can add
    a minute or dismiss one); when one ends, the page that started it and the wall display ring, and whoever started
    it gets a notification on their phone. The page asks the server every 15 seconds, so a timer started on the phone
    shows on the kitchen tablet. */
@@ -1062,7 +1062,7 @@ async function drawBookmarkStatus(el) {
 }
 
 // ------------------------------------------------------------------ customize the page (per account, or per device)
-/* The person's setup (app/layout.py), in a dialog of a few tabs: the page (which devices it is for, the layout, the top
+/* The person's setup (iostart/layout.py), in a dialog of a few tabs: the page (which devices it is for, the layout, the top
    row), the apps (which, in what order, at what size), the cards (which, in what order, what the Today card holds, how
    the bookmarks look), the look (colour, type), the photos (the strip and the wall display) and, for an admin, the
    family (everyone's starting point, a setup given to one person). Arranging on the page itself: arrangeStart. */
@@ -2480,7 +2480,7 @@ async function showSettings(page, r) {
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
-/** Settings › Account and Display: iosuite-shared's panels, the same in every io app. */
+/** Settings › Account and Display: iosuite_shared's panels, the same in every io app. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 async function setAccount(el) {
   await (await accountUi()).mountAccount(el, { toast, syncOnly: 'Bookmark sync only', onSaved: (u) => { Object.assign(S.user, u); drawUser(); } });
@@ -2539,7 +2539,7 @@ async function setTrmnl(el) {
     }));
     if (!d.screens.length) list.replaceChildren(h('p', { class: 'muted' }, 'None of the apps these screens show is in your suite yet.'));
   }
-  // -- a TRMNL that asks the start page itself (app/trmnlserver.py): no TRMNL account, plugin or webhook
+  // -- a TRMNL that asks the start page itself (iostart/trmnlserver.py): no TRMNL account, plugin or webhook
   const LAYOUT = { full: 'One screen', '1Lx1R': 'Two, side by side', '1Tx1B': 'Two, one above the other', '1Lx2R': 'One left, two right',
     '2Lx1R': 'Two left, one right', '2Tx1B': 'Two above, one below', '1Tx2B': 'One above, two below', '2x2': 'Four' };
   const EVERY = (sec) => (sec >= 86400 ? 'day' : sec >= 3600 ? `${sec / 3600} hour${sec > 3600 ? 's' : ''}` : `${sec / 60} minutes`);
@@ -3003,7 +3003,7 @@ async function openAll(name, links) {
 }
 
 /* Tidy up (the broom on the Bookmarks page): the links that no longer work and the same address kept more than once,
-   in a box above the tree. The server asks every address in the background (app/bookmarkcheck.py); the box follows
+   in a box above the tree. The server asks every address in the background (iostart/bookmarkcheck.py); the box follows
    it and lists what it found: nothing answering, a page that is gone, a page that moved for good (its new address
    one click away). Nothing is deleted or changed without a click here. */
 function bmTidy(el, changed) {
@@ -3073,7 +3073,7 @@ function bmTidy(el, changed) {
   load();
 }
 
-/** Settings › Bookmarks: syncing with browsers (the extension, other sync apps), the Bookmarks app on a phone, and
+/** Settings › Bookmarks: syncing with browsers (the extension), the Bookmarks app on a phone, and
  * files in and out. The Bookmarks page itself is only the tree. */
 async function setBookmarkSettings(el) {
   const [tree, sync] = await Promise.all([api('api/bookmarks/tree'), api('api/bookmarks/sync')]);
@@ -3091,13 +3091,10 @@ async function setBookmarkSettings(el) {
       h('p', { class: 'muted' }, 'The ioStart Bookmarks extension keeps a browser\'s own bookmarks the same as these, both ways: the bookmarks bar is the folder "Bookmarks bar" here, Firefox\'s bookmarks menu the folder "Bookmarks menu", and Other bookmarks everything else at the top (in Vivaldi, which keeps one tree: the folder set as its bookmark bar, and the rest of its Bookmarks). What is added, changed or deleted here or in one browser is so in every browser, within a minute. It signs in with one click.'),
       h('div', { class: 'multi' },
         h('a', { class: 'pillbtn primary', href: 'https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe', target: '_blank', rel: 'noopener' }, icon('download', 's'), 'Chrome Web Store (Chrome, Edge, Vivaldi, Brave)'),
-        h('a', { class: 'pillbtn', href: 'https://github.com/avandeputte/iosuite/releases?q=extension', target: '_blank', rel: 'noopener' }, 'For Firefox'),
+        h('a', { class: 'pillbtn', href: 'https://github.com/avandeputte/iosuite-old/releases?q=extension', target: '_blank', rel: 'noopener' }, 'For Firefox'),
         !sync.extension ? null : h('a', { class: 'pillbtn', href: 'api/bookmarks/extension.zip', download: '' }, `.zip ${sync.extension}`)),
       h('p', { class: 'muted small' }, 'Chromium browsers: add it from the Chrome Web Store; it keeps itself up to date. Firefox: open the signed .xpi file of the release. The .zip is for loading it unpacked (chrome://extensions, Developer mode, Load unpacked). Then type the address below in the extension and say yes.'),
-      sync.server ? addr('Address for the extension and the ioStart app', sync.server) : null,
-      !canEdit ? null : h('p', { class: 'muted' }, 'Other sync apps work too. With Floccus (Firefox, Chrome, Edge, Android, iOS): add an account of the kind Nextcloud Bookmarks, give it the first address, and say yes on the page it opens. Apps that sync a bookmarks file over WebDAV take the second address, the file bookmarks.xbel (or bookmarks.html), your name and an app password from Settings › Account; leave any passphrase empty.'),
-      !canEdit ? null : addr('Nextcloud Bookmarks', sync.nextcloud), !canEdit ? null : addr('WebDAV folder', sync.webdav),
-      sync.syncing ? h('p', { class: 'small' }, 'A browser is syncing right now.') : null),
+      sync.server ? addr('Address for the extension and the ioStart app', sync.server) : null),
     standalone() ? null : h('div', { class: 'box' }, h('h2', null, icon('phone'), 'On a phone'),
       h('p', { class: 'muted' }, 'These bookmarks as an app of their own, with an icon on the home screen: on an iPhone or iPad open the address below (Safari, or Vivaldi, Chrome, Edge or Firefox), tap Share, then Add to Home Screen. On Android or a desktop browser, choose Install (or Add to Home screen) in the browser\'s menu.'),
       addr('Bookmarks app', new URL('bookmarks', document.baseURI).href)),
@@ -3192,7 +3189,7 @@ function dragSort(handle, item, o) {
 // ------------------------------------------------------------------ settings › security and global settings (suite admins)
 /* Everything in the Shared ioSuite database, for the whole suite: Security (people and their role in every app, roles,
    app passwords, sign-in at the proxy), Apps, Servers and Keys. The same panel in every io app,
-   served by iosuite-shared at /api/suite-admin/ui.js. */
+   served by iosuite_shared at /api/suite-admin/ui.js. */
 async function setSuite(el, r) {
   let ui;
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'err' }, `The panel did not load: ${e.message}`)); return; }
@@ -3200,7 +3197,7 @@ async function setSuite(el, r) {
 }
 
 // ------------------------------------------------------------------ settings › server (admins)
-/* The server panel every io app shares (iosuite-shared /api/server/ui.js): version and updates,
+/* The server panel every io app shares (iosuite_shared /api/server/ui.js): version and updates,
    the server log and Restart. */
 
 /** Suite admins: one note when a newer version of the suite is out (every app has the same one), with Update now.
@@ -3269,7 +3266,7 @@ async function start() {
   S.status = await api('api/status');
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
-  // sent here to sign in by a sync app's "may it sync?" page (app/ncbookmarks.py): back to it, now signed in
+  // sent here to sign in by a sync app's "may it sync?" page (iostart/appsignin.py): back to it, now signed in
   const flow = new URLSearchParams(location.search).get('flow');
   if (flow && /^[\w-]{20,}$/.test(flow)) { location.replace('dav/nextcloud/index.php/login/v2/flow/' + flow); return; }
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }

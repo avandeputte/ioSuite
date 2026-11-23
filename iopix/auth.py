@@ -1,4 +1,4 @@
-"""The shared ioThing accounts (iosuite-shared), as iopix uses them.
+"""The shared the suite's accounts (iosuite_shared), as iopix uses them.
 
 Accounts, passwords, sessions and roles live in the Shared ioSuite database (IOSUITE_DB_* in config.env), shared
 with ioNote and ioContact: one sign-in serves every app on the domain (COOKIE_DOMAIN). What is iopix's

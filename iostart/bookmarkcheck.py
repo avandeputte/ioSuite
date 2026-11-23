@@ -14,7 +14,7 @@ tree of the person asking (their own bookmarks and the shared ones):
 
   Everything else is fine and not listed: a page that asks to sign in (401, 403), a temporary redirect, a site that
   dislikes being asked by a program. A certificate this server cannot vouch for is fine too (a router or a NAS at
-  home), as it is for the dots on the start page (app/status.py). When more than half of the addresses give no
+  home), as it is for the dots on the start page (iostart/status.py). When more than half of the addresses give no
   answer at all, the trouble is this server's way out to the internet, not the bookmarks: the check says so
   (`offline`), and the page does not offer to delete them all.
 

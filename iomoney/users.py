@@ -1,4 +1,4 @@
-"""Accounts, roles, sessions and app passwords: the shared ioThing accounts (iosuite-shared), seen from ioMoney.
+"""Accounts, roles, sessions and app passwords: the suite's accounts (iosuite_shared), seen from ioMoney.
 
 Roles as in the rest of the suite, read for money: viewer (sees the household's accounts, net worth and portfolio),
 member (also keeps private accounts, holdings and things of their own), editor (changes the household's: categories,

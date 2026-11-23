@@ -3,7 +3,7 @@
 The server asks the bookmarked page for its <link rel="icon"> (and the apple-touch-icon), takes the best of them, and
 falls back to /favicon.ico. What it finds is kept in the database per site (scheme, host and port: the links of one
 site share an icon) and served by the start page itself, so a viewer's browser never asks the bookmarked sites
-anything. A link's own icon (one uploaded for it, or its icon field) always wins; see app/bookmarks.py.
+anything. A link's own icon (one uploaded for it, or its icon field) always wins; see iostart/bookmarks.py.
 
 The fetching happens off the request, a few sites at a time: a listing names the sites it has no answer for, and the
 page asks again a moment later. An icon is looked for again after REFRESH; a site that had none, after RETRY (the one
@@ -39,7 +39,7 @@ UA = "Mozilla/5.0 (compatible; ioStart page; bookmark icon)"
 
 
 def _allowed(ip) -> bool:
-    """Any host but this server itself and the link-local addresses, as for the bookmark pings (app/status.py): the
+    """Any host but this server itself and the link-local addresses, as for the bookmark pings (iostart/status.py): the
     home network is what many bookmarks are for."""
     return outbound.not_this_machine(ip)
 

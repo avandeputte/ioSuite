@@ -205,8 +205,8 @@ def test_a_query_is_one_round_trip_and_a_transaction_is_still_one():
     d.many("INSERT INTO ios_settings (app, name, value) VALUES ('t', %s, %s)", [("c", "3"), ("d", "4")])
     assert d.one("SELECT COUNT(*) AS n FROM ios_settings WHERE app = 't'")["n"] == 4
     # a connection that sat unused is pinged before it is lent again
-    con, _ = d.pool._kept.get_nowait()
-    d.pool._kept.put_nowait((con, 0.0))
+    con, _ = d.pool._kept.pop()
+    d.pool._kept.append((con, 0.0))
     pings = []
     con.ping = lambda reconnect=False: pings.append(1)
     d.q("SELECT 1")

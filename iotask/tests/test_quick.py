@@ -1,4 +1,4 @@
-"""Smart quick add (app/quick.py): what a line of plain English becomes, and what is left alone."""
+"""Smart quick add (iotask/quick.py): what a line of plain English becomes, and what is left alone."""
 import datetime as dt
 from zoneinfo import ZoneInfo
 

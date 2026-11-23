@@ -1,5 +1,5 @@
 """Settings: the switches admins set, the change log, export and import. Sign-in at a proxy is set for the whole suite (Settings › Security, suite admins: iosuite_shared's routers). The status, the version, updates, restart and the server log are iosuite_shared's routers (/api/status,
-/api/server, /api/log), mounted in app/main.py."""
+/api/server, /api/log), mounted in ionote/main.py."""
 import time
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
