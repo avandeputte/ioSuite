@@ -17,7 +17,7 @@ import logging
 import threading
 import time
 
-import httpx
+import httpx2
 
 from iodns import db, model
 
@@ -69,11 +69,11 @@ def _valid(text: str, version: int) -> str | None:
 def _echo(urls: list[str], version: int) -> str | None:
     for u in urls:
         try:
-            r = httpx.get(u, timeout=8, headers={"User-Agent": "iodns", "Accept": "text/plain"})
+            r = httpx2.get(u, timeout=8, headers={"User-Agent": "iodns", "Accept": "text/plain"})
             ip = _valid(r.text, version) if r.status_code == 200 else None
             if ip:
                 return ip
-        except httpx.HTTPError:
+        except httpx2.HTTPError:
             continue
     return None
 

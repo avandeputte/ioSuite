@@ -5,6 +5,7 @@ chunk that is resumed from the offset Google reports, listing, download,
 delete and retention.
 """
 
+import contextlib
 import os
 import tempfile
 import unittest
@@ -22,7 +23,10 @@ class Resp:
     def json(self):
         return self._json
 
-    def iter_content(self, n):
+    def read(self):
+        return self.content
+
+    def iter_bytes(self, n):
         for i in range(0, len(self.content), n):
             yield self.content[i:i + n]
 
@@ -35,7 +39,8 @@ class FakeDrive:
         self.sessions = {}
         self.n = 0
         self.fail_next_put = False
-        self.RequestException = Exception
+        self.HTTPError = Exception
+        self.open = 0  # downloads not yet closed
 
     def _id(self):
         self.n += 1
@@ -54,7 +59,8 @@ class FakeDrive:
             return Resp(200, {}, {"Location": sid})
         raise AssertionError(url)
 
-    def put(self, url, data=None, headers=None, timeout=None):
+    def put(self, url, content=None, headers=None, timeout=None):
+        data = content
         s = self.sessions[url]
         rng = headers["Content-Range"]
         if rng.startswith("bytes */"):
@@ -64,7 +70,7 @@ class FakeDrive:
                 self.fail_next_put = False
                 # pretend half the chunk arrived, then the connection broke
                 s["data"] += data[:len(data) // 2]
-                raise self.RequestException("connection reset")
+                raise self.HTTPError("connection reset")
             start = int(rng.split()[1].split("-")[0])
             assert start == len(s["data"]), (start, len(s["data"]))
             s["data"] += data
@@ -74,7 +80,7 @@ class FakeDrive:
             return Resp(200, {"id": fid})
         return Resp(308, None, {"Range": "bytes=0-%d" % (len(s["data"]) - 1)} if s["data"] else {})
 
-    def get(self, url, headers=None, params=None, timeout=None, stream=False):
+    def get(self, url, headers=None, params=None, timeout=None):
         if url == gdrive.API + "/about":
             return Resp(200, {"user": {"emailAddress": "me@example.com"}})
         if url == gdrive.API + "/files":
@@ -91,6 +97,15 @@ class FakeDrive:
         fid = url.rsplit("/", 1)[1]
         return Resp(200, None, {"Content-Length": str(len(self.files[fid]["data"]))}, self.files[fid]["data"])
 
+    @contextlib.contextmanager
+    def stream(self, method, url, headers=None, params=None, follow_redirects=False, timeout=None):
+        assert method == "GET" and params.get("alt") == "media" and follow_redirects
+        self.open += 1
+        try:
+            yield self.get(url, headers=headers, params=params)
+        finally:
+            self.open -= 1
+
     def delete(self, url, headers=None, params=None, timeout=None):
         self.files.pop(url.rsplit("/", 1)[1], None)
         return Resp(204)
@@ -99,7 +114,7 @@ class FakeDrive:
 class DriveTests(unittest.TestCase):
     def setUp(self):
         self.fake = FakeDrive()
-        p = mock.patch.object(gdrive, "requests", self.fake)
+        p = mock.patch.object(gdrive, "httpx2", self.fake)
         p.start()
         self.addCleanup(p.stop)
         self.sleep = mock.patch.object(gdrive.time, "sleep", lambda s: None)
@@ -140,6 +155,13 @@ class DriveTests(unittest.TestCase):
 
         got = d.fetch(names[1])
         self.assertEqual(Path(got).read_bytes(), originals[names[1]])
+        self.assertEqual(self.fake.open, 0)  # the download's connection was closed
+        # the same file handed on as it comes (the Download button): its length, then its bytes, then the connection closed
+        headers, chunks = d.stream(names[2])
+        self.assertEqual(int(headers["Content-Length"]), len(originals[names[2]]))
+        self.assertEqual(self.fake.open, 1)
+        self.assertEqual(b"".join(chunks), originals[names[2]])
+        self.assertEqual(self.fake.open, 0)
 
         removed = destinations.prune(d, "nightly", 2)
         self.assertEqual(removed, [names[0]])

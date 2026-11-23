@@ -28,7 +28,7 @@ dependencies = [
   "pillow>=10,<13",        # scans and photos made smaller
   "segno>=1.5,<2",         # the QR code a code app reads when two-step sign-in is turned on
   "tzdata",                # time zones on systems without /usr/share/zoneinfo
-  "httpx2<3",              # a request for an app that runs in another copy of the suite is passed across with it (iosuite_shared.doors)
+  "httpx2<3",              # the one HTTP client: a request passed on to another copy of the suite (iosuite_shared.doors), the suite's MCP, ioDNS's providers, ioBackup's Google Drive
 ]
 
 [project.optional-dependencies]
@@ -43,8 +43,8 @@ iothings = []
 iomoney = ["monarchmoneycommunity>=1.7,<2"]
 iodocs = ["zxing-cpp>=2.2,<4"]
 iohealth = ["orjson<4"]
-iodns = ["httpx<1"]
-iobackup = ["requests<3"]
+iodns = []
+iobackup = []
 iopix = ["pillow-heif<2", "orjson<4"]
 # ioPix's AI features, each optional: what Settings › AI offers depends on which are installed
 iopix-search = ["fastembed<1", "huggingface_hub<2", "numpy<3"]
@@ -58,9 +58,9 @@ all = [
   "websockets<16", "python-liquid<4", "uvicorn>=0.29,<1",
   "icalendar>=6,<8", "recurring-ical-events>=3.8,<4", "python-dateutil>=2.8,<3", "holidays>=0.60,<1",
   "pillow-heif<2", "orjson<4", "rapidocr>=2,<4", "onnxruntime<2", "numpy<3",
-  "monarchmoneycommunity>=1.7,<2", "zxing-cpp>=2.2,<4", "httpx<1", "requests<3",
+  "monarchmoneycommunity>=1.7,<2", "zxing-cpp>=2.2,<4",
 ]
-test = ["pytest<10", "httpx<1", "pyflakes<4", "ldap3<3"]
+test = ["pytest<10", "httpx<1", "pyflakes<4", "ldap3<3"]  # httpx: what FastAPI's test client needs
 
 [project.scripts]
 iosuite = "iosuite_shared.cli:main"
