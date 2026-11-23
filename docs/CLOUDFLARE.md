@@ -2,9 +2,8 @@
 
 iosuite.iothing.net is a Cloudflare Worker named `iosuite` that serves the built site as static assets. No code runs
 in it: every request is answered with a file from `site/`. The workflow `docs.yml` builds the site in GitHub
-Actions (it checks the pages against the program's code first) and deploys it with Wrangler. It is held back in
-`.github/held/` until the site is to be published from this repository: move it to `.github/workflows/` to switch it on. Cloudflare's own Git
-integration is not used.
+Actions (it checks the pages against the program's code first) and deploys it with Wrangler, on every change to the
+site on main. Cloudflare's own Git integration is not used.
 
 Everything about the Worker is in [`wrangler.jsonc`](wrangler.jsonc): its name, the `site/` folder, the 404 page and
 the custom domain. So the one-time setup is only the token and the two secrets; the first deploy creates the Worker

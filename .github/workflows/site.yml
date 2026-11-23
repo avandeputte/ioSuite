@@ -1,12 +1,9 @@
 # The website's source (docs/) is built to check it: its claims about the suite against the code, the stack files the
-# Docker Compose builder writes, every link in the built site. Nothing is published from here: the workflow that
-# deploys the site is held back (.github/held/docs.yml).
+# Docker Compose builder writes, every link in the built site. Nothing is published from here: docs.yml builds the
+# same way on main and deploys it; this one is what a pull request gets.
 name: Site
 
 on:
-  push:
-    branches: [main]
-    paths: ["docs/**", "*/app.json", "docker-compose.yml", "proxmox/ct/**", "iosuite_shared/config.py", "README.md", "*/README.md", ".github/workflows/site.yml"]
   pull_request:
     paths: ["docs/**", "*/app.json", "docker-compose.yml", "proxmox/ct/**", "iosuite_shared/config.py", "README.md", "*/README.md", ".github/workflows/site.yml"]
   workflow_dispatch:

@@ -14,6 +14,7 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # a run that hangs is stopped here, not after GitHub's six hours
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -27,6 +28,11 @@ jobs:
         env:
           NO_MKDOCS_2_WARNING: "1"
       - name: Deploy to Cloudflare Workers
-        # only once the Cloudflare secrets are set (docs/CLOUDFLARE.md); wrangler.jsonc says what
-        if: env.CLOUDFLARE_API_TOKEN != ''
-        run: npx --yes wrangler@4 deploy
+        # wrangler.jsonc says what; the two repository secrets say where (docs/CLOUDFLARE.md). Without them the run
+        # fails here, saying so: a site that silently was not published is worse than a red run
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::The site was built but not published: the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (docs/CLOUDFLARE.md)."
+            exit 1
+          fi
+          npx --yes wrangler@4 deploy

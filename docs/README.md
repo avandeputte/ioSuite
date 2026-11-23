@@ -59,10 +59,10 @@ answers call for. All on purpose.
 ## Deploying
 
 The site is a Cloudflare Worker (`iosuite`, in `wrangler.jsonc`) that serves `site/` as static assets, on the custom
-domain `iosuite.iothing.net`. **Nothing in this repository deploys it yet.** `.github/workflows/site.yml` builds the
-site on every change to it, to check it, and publishes nothing. The workflow that deploys is held back in
-`.github/held/docs.yml` until the site is to be published from here; it uses `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` from the repository secrets. By hand:
+domain `iosuite.iothing.net`. `.github/workflows/docs.yml` builds and deploys it on every change to the site on main, with
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the repository secrets (`CLOUDFLARE.md`); without them the
+run fails and says so. `.github/workflows/site.yml` builds the site for a pull request, to check it, and publishes
+nothing. By hand:
 
 ```bash
 sh build.sh && npx wrangler deploy
