@@ -2089,7 +2089,7 @@ function renderHomeCard(el, d) {
   el.replaceChildren(...[title,
     al.length ? h('div', { class: 'alerts' }, al.map((a) => h('a', { class: 'alert', href: haLink(a), target: '_blank', rel: 'noreferrer', title: a.id }, icon('warn', 's'), h('b', null, a.name), h('span', null, a.text)))) : null,
     d.items.length ? h('div', { class: 'hatiles' }, d.items.map(haTile))
-      : h('div', { class: 'muted small' }, S.user.role === 'admin' ? ['No entities picked yet: ', h('a', { class: 'lnk', href: '#/settings/ha' }, 'choose some')] : 'No entities picked yet.')].filter(Boolean));
+      : h('div', { class: 'muted small' }, S.user.role === 'admin' ? ['No entities picked yet: ', h('a', { class: 'lnk', href: '#/settings/weather' }, 'choose some')] : 'No entities picked yet.')].filter(Boolean));
   // without the stream (an old browser), its own minute: a light switched elsewhere shows here soon
   clearTimeout(el.haTimer);
   if (!S.haStream) el.haTimer = setTimeout(() => { if (el.isConnected && !document.hidden) drawHomeCard(el, true); }, 60 * 1000);
@@ -2457,13 +2457,13 @@ async function showPair(page, r) {
 // ------------------------------------------------------------------ settings
 async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
-  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page'], ['ha', 'Home Assistant']] : []),
+  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page']] : []),
     ...(S.user.suiteAdmin ? [['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']] : [])];
   if (!tabs.some(([k]) => k === r.tab)) r.tab = 'account';
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, bookmarks: setBookmarkSettings, trmnl: setTrmnl, weather: setHome, ha: setHomeAssistant, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, bookmarks: setBookmarkSettings, trmnl: setTrmnl, weather: setHome, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
@@ -2691,6 +2691,7 @@ async function setHome(el) {
     h('p', { class: 'muted' }, 'The default for everyone. Each person can change it in Customize.'),
     h('div', { class: 'grid' }, fld('Photo strip under the tiles (ioPix)', strip))));
   await setWeather(el);
+  await setHomeAssistant(el);
 }
 
 async function setWeather(el) {

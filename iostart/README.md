@@ -149,7 +149,7 @@ what the app will show on the start page later (today's events, the newest photo
   states and switches nothing, so a wall tablet that should switch lights signs in as an editor). Sensors ticked "wall" show on the
   wall display; the search box finds any entity by name and toggles the controllable ones; a line at the top of the Home card
   points out what needs attention (an entity in the state the admin named, and built in: a leak, smoke, gas or CO
-  sensor that is on, a problem or safety sensor, a battery at 15% or under). Settings › Home Assistant (admins) takes
+  sensor that is on, a problem or safety sensor, a battery at 15% or under). Settings › Home page (admins) takes
   the address and a long-lived access token; the server makes every call with it, and browsers never see the token
   nor talk to Home Assistant. The server holds one websocket to Home Assistant for state changes and streams the card
   to every open page (server-sent events) when something on the card or one of the alerts changes, so a light switched

@@ -932,7 +932,7 @@ async function showImport(page) {
 async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
-    ...(adm ? [['things', 'Things'], ['server', 'Server']] : []),
+    ...(adm ? [['things', 'Things']] : []),
     ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
