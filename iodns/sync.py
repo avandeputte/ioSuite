@@ -332,22 +332,18 @@ def check_all() -> None:
             status(v["slug"], refresh_sources=False)
 
 
-def start_checks(minutes: int) -> None:
+def start_checks(minutes: int):
+    """One of the copy's jobs (Settings › Servers › Jobs): every view read again and held against its servers."""
     if minutes <= 0:
-        return
-    import logging
-    log = logging.getLogger("iodns")
+        return None
+    from iosuite_shared import chores
+    from iodns import config
+    return chores.start(_check_round, every_s=minutes * 60, first_s=60, app=config.APP, name="check the servers",
+                        title="Read every source again and compare the servers")
 
-    def loop():
-        import time
-        from iodns import sources
-        time.sleep(60)
-        while True:
-            try:
-                sources.refresh()
-                check_all()
-            except Exception:  # a database or a server away: next time
-                log.exception("background check")
-            time.sleep(minutes * 60)
 
-    threading.Thread(target=loop, name="iodns-check", daemon=True).start()
+def _check_round() -> str:
+    from iodns import sources
+    sources.refresh()
+    check_all()
+    return ""

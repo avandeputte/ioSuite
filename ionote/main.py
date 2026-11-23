@@ -38,7 +38,7 @@ async def lifespan(_app):
     users.init()
     suite_demo.at_start(config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
     updater.start_daily()
-    purge = chores.start(notes_mod.housekeeping, every_s=6 * 3600, name="purge of the trash and of what deletions left behind")
+    purge = chores.start(notes_mod.housekeeping, every_s=6 * 3600, name="purge of the trash and of what deletions left behind", app=config.APP)
     c = db.settings()
     log.info("ioNote %s started on %s (%s)", __version__,
              f"MariaDB/MySQL {c['host']}:{c['port']}/{c['database']}",

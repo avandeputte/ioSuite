@@ -252,6 +252,30 @@ SCHEMA = [
         expires_at BIGINT NOT NULL,
         INDEX idx_ios_auth_challenges_expires (expires_at)
     )""",
+    # the apps' jobs (iosuite_shared.jobs): one row per job, kept by the copy that runs it, so that Settings ›
+    # Servers › Jobs shows every app's chores, syncs and reminders wherever they run. run_now is a Run now somebody
+    # pressed: the copy that owns the job takes the flag off and runs it.
+    """CREATE TABLE IF NOT EXISTS ios_jobs (
+        app VARCHAR(32) NOT NULL,
+        name VARCHAR(64) NOT NULL,
+        copy VARCHAR(64) NOT NULL DEFAULT '',
+        title VARCHAR(120) NOT NULL DEFAULT '',
+        every_s INT NOT NULL DEFAULT 0,
+        heavy TINYINT NOT NULL DEFAULT 0,
+        state VARCHAR(16) NOT NULL DEFAULT '',
+        started_at BIGINT NULL,
+        finished_at BIGINT NULL,
+        took_ms INT NULL,
+        message VARCHAR(300) NULL,
+        runs INT NOT NULL DEFAULT 0,
+        failures INT NOT NULL DEFAULT 0,
+        run_now TINYINT NOT NULL DEFAULT 0,
+        requested_by VARCHAR(64) NULL,
+        next_at BIGINT NULL,
+        seen_at BIGINT NOT NULL DEFAULT 0,
+        PRIMARY KEY (app, name),
+        INDEX idx_ios_jobs_run_now (run_now)
+    )""",
 ]
 
 _overrides: dict = {}  # the tests point the library at another database

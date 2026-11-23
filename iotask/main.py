@@ -33,8 +33,8 @@ async def lifespan(app: FastAPI):
     await run_in_threadpool(users.init)
     await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
     updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
-    purge = chores.start(model.purge_deleted, name="purge of old deletion markers")  # once a day: KEEP_DELETED_DAYS
-    notes = chores.start(notify.run, every_s=60, first_s=20, name="notifications")  # tasks falling due, the morning summary
+    purge = chores.start(model.purge_deleted, name="purge of old deletion markers", app=config.APP)  # once a day: KEEP_DELETED_DAYS
+    notes = chores.start(notify.run, every_s=60, first_s=20, name="notifications", app=config.APP)  # tasks falling due, the morning summary
     log.info("ioTask %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield

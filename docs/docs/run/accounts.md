@@ -33,7 +33,7 @@ all of them**, and one sign-in at the suite's address (and across the apps' own 
 ## Where to manage them
 
 In any app, as a suite admin: **Settings › People** (People, Family, Roles, App passwords, Sign-in at the proxy),
-**Settings › Apps** (the apps and all their settings), **Settings › Servers** (updates, the certificate, the log) and
+**Settings › Apps** (the apps and all their settings), **Settings › Servers** (updates, the certificate, the jobs, the log) and
 **Settings › Keys**. It is the same panel in every app.
 Everyone has **Settings › Account** (name, email, password, two-step sign-in and passkeys, their app passwords) and
 **Settings › Display** (the theme, kept with the account).
