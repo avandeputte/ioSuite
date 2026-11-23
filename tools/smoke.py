@@ -101,7 +101,8 @@ def main() -> int:
             if code != 200:
                 notes.append(f"sync port: status {code}")
             code, kind, body, where = ask(f"{sync}{folder}/")
-            if code not in (301, 302, 307, 308) or f":{a.web}" not in where and a.web != 80:
+            # sent on to the pages: their port at the address asked, or the address stored for them (PUBLIC_URL)
+            if code not in (301, 302, 307, 308) or where.startswith(sync):
                 notes.append(f"sync port: the page was not sent to the web port ({code} {where})")
         bad += bool(notes)
         print(f"{key:12} {status.get('version', '?'):8} {'ok' if not notes else '; '.join(notes)}")
