@@ -436,7 +436,10 @@ receipts.py        the receipts kept with a transaction, and what follows a tran
 quotes.py          quotes and exchange rates from Yahoo Finance
 persondata.py      what a person keeps here, for the suite's delete-a-person
 mcp/               the MCP server: money and admin tools
-static/            the web app (index.html, app.js, app.css, icons)
+static/            the web app: index.html, app.css, the icons, and the page's script in js/ (no build step; app.js only
+                   starts it): core.js (helpers, numbers and dates, state), shell.js (the sidebar, the menus), main.js
+                   (the routes, the start), charts.js, and a module per page: overview.js, account.js, transactions.js,
+                   categories.js, recurring.js, rules.js, tidy.js, reconcile.js, portfolio.js, settings.js
 ```
 
 ## License

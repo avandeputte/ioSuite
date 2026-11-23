@@ -356,7 +356,11 @@ auth.py            the shared accounts and the updater (iosuite_shared), as ioSt
 db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
 cli.py             python -m iostart.cli: migrate, check
-static/            the web app: index.html, app.js (one module, no build step), app.css, the icons (each app's tile shows the icon it registered, served by that app)
+static/            the web app: index.html, app.css, the icons (each app's tile shows the icon it registered, served by that app),
+                   and the page's script in js/ (no build step; app.js only starts it): core.js (helpers, state),
+                   shell.js (the account menu), main.js (the routes, the start), home.js (the start page) with
+                   search.js, tiles.js, cards.js, homeassistant.js, timers.js and customize.js, then wall.js,
+                   bookmarks.js, news.js, settings.js and trmnl.js
 tests/             pytest, against a MariaDB of its own
 ```
 
@@ -372,10 +376,10 @@ apps that had not answered within `search.DEADLINE` seconds are in `late`, and t
 
 ### Growing the page
 
-A tile is drawn from `/api/apps` (`iostart/apps.py`, `showHome` in `static/app.js`) and keeps a `.more` block under its
-name, filled from `GET /api/widgets/<app>?tz=<IANA zone>` (`iostart/widgets.py`, `drawWidgets` in `static/app.js`). To give
+A tile is drawn from `/api/apps` (`iostart/apps.py`, `showHome` in `static/js/home.js`) and keeps a `.more` block under its
+name, filled from `GET /api/widgets/<app>?tz=<IANA zone>` (`iostart/widgets.py`, `drawWidgets` in `static/js/tiles.js`). To give
 another app a glimpse: a function in `iostart/widgets.py` that asks the app with `fetch()` (the viewer's credentials go
-along) and returns what the tile needs, and a drawing function in `WIDGETS` in `static/app.js`. Images go through the
+along) and returns what the tile needs, and a drawing function in `WIDGETS` in `static/js/tiles.js`. Images go through the
 start page (its Content-Security-Policy allows only its own origin), as `/api/widgets/iopix/thumb/<id>` does.
 
 ## License

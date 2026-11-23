@@ -50,7 +50,7 @@ SCREENS = {
     "weather": {"name": "Weather", "apps": [], "every": 60, "about": "The weather now, the next hours and the coming days"},
 }
 # The weather's glyphs, in the order markup/weather/shared.liquid has them (the data names one by its place in
-# this list): the start page's own (static/app.js: WX), by AccuWeather's icon number as there (WX_MAP).
+# this list): the start page's own (static/js/core.js: WX), by AccuWeather's icon number as there (WX_MAP).
 WX = ("sun", "moon", "cloud", "partly", "partlyNight", "rain", "storm", "snow", "fog", "wind", "hot")
 WX_MAP = {1: "sun", 2: "sun", 3: "partly", 4: "partly", 5: "partly", 6: "cloud", 7: "cloud", 8: "cloud", 11: "fog", 12: "rain", 13: "rain", 14: "partly",
           15: "storm", 16: "storm", 17: "partly", 18: "rain", 19: "snow", 20: "snow", 21: "snow", 22: "snow", 23: "snow", 24: "snow", 25: "snow", 26: "rain",

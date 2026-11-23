@@ -100,7 +100,7 @@ def flow_page(page: str, request: Request):
         return _page("ioStart", "<h1>This sign-in link is no longer valid</h1><p>Start again from the app that sent you here.</p>")
     u = auth.current_user(request)
     if not u:
-        # the start page, which brings the visitor back here once signed in (static/app.js: ?flow=): one tab, so it
+        # the start page, which brings the visitor back here once signed in (static/js/main.js: ?flow=): one tab, so it
         # also works where there is only one, as in the sign-in sheet of the iPhone app
         return _page("ioStart", '<h1>Sign in to ioStart first</h1><p>Then you are asked whether the app may sync the bookmarks.</p>'
                                 f'<p><a class="btn" href="{prefix.of(request)}/?flow={html.escape(page)}">Sign in</a></p>')

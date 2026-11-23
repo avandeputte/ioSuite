@@ -241,11 +241,11 @@ def test_glyphs():
     # a picture that starts between two pixels (a dense screen): a pixel more, the ink shared between the two at its edges
     off = trmnldraw.glyph(wide, 20, 20, True, (0.5, 0.0))
     assert off.size == (21, 20) and 90 < off.getpixel((0, 10)) < 190 and off.getpixel((10, 10)) == 255 and 90 < off.getpixel((20, 10)) < 190
-    # every glyph of the weather is drawn, each its own, and they are the start page's (static/app.js)
+    # every glyph of the weather is drawn, each its own, and they are the start page's (static/js/core.js)
     m = trmnl.markup("weather")["shared"]
     parts = re.search(r"\{%- capture wx_all -%\}(.*?)\{%- endcapture -%\}", m, re.S).group(1).split("|")
     assert len(parts) == len(trmnl.WX)
-    js = open(os.path.join(os.path.dirname(__file__), "..", "static", "app.js"), encoding="utf-8").read()
+    js = open(os.path.join(os.path.dirname(__file__), "..", "static", "js", "core.js"), encoding="utf-8").read()
     for name, body in zip(trmnl.WX, parts):
         assert f"  {name}: '{body.replace('#000', 'currentColor')}'," in js, name
     drawn = [trmnldraw.glyph(svg(b), 64, 64) for b in parts]
