@@ -114,7 +114,9 @@ A copy runs the background work of all its apps — reminders, syncs, housekeepi
 started twice over itself and two heavy jobs (a scan, an index, a backup) never run at the same moment. Suite admins
 see every job under **Settings › Servers › Jobs**: what it is, which server runs it, when it last ran, how long that
 took, what it said, and **Run now**. With several servers, each job belongs to the one that runs its app and Run now
-reaches it there.
+reaches it there. The looks every few seconds (a kitchen timer that ended, a backup that was asked for, ioPix's index
+and scan) are jobs of this runner too, not threads of their own, and one thread per copy watches for an update or a
+restart that was asked for, whatever the number of apps.
 
 ## One live-refresh connection
 

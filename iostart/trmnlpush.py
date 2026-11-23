@@ -35,7 +35,6 @@ MIN_EVERY = 15     # minutes: the shortest wait between two makes of a screen
 RESEND = 180       # minutes: a screen that did not change is sent again after this long anyway
 TIMEOUT = 15
 _lock = threading.Lock()
-_thread = {"t": None, "stop": None}
 
 
 def _key(uid: int) -> str:
@@ -240,25 +239,11 @@ def tick() -> None:
             log.warning("TRMNL push for user %s: %s", uid, e)
 
 
-def start() -> None:
-    """The loop that pushes, in a thread of its own (main.py, at start; TRMNL_PUSH=0 leaves it off: the tests)."""
-    if not config.TRMNL_PUSH or _thread["t"]:
-        return
-    stop_ev = threading.Event()
-
-    def loop():
-        while not stop_ev.wait(TICK):
-            try:
-                tick()
-            except Exception as e:  # noqa: BLE001  the database away for a moment: next minute
-                log.warning("TRMNL push: %s", e)
-
-    _thread["stop"] = stop_ev
-    _thread["t"] = threading.Thread(target=loop, name="trmnl-push", daemon=True)
-    _thread["t"].start()
-
-
-def halt() -> None:
-    if _thread["stop"]:
-        _thread["stop"].set()
-    _thread["t"] = None
+def job():
+    """The look for screens that are due, as one of the copy's jobs (main.py at start; TRMNL_PUSH=0 leaves it off:
+    the tests)."""
+    from iosuite_shared import chores
+    if not config.TRMNL_PUSH:
+        return None
+    return chores.start(tick, every_s=TICK, first_s=TICK, name="TRMNL push", app=config.APP, quiet=True,
+                        title="Push the screens people send to TRMNL's cloud")

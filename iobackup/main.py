@@ -33,9 +33,10 @@ async def lifespan(app: FastAPI):
     await run_in_threadpool(shared_users.init)
     updater.start_daily()             # the daily "is there a newer version" check, while the setting allows it
     if config.env_flag("BACKGROUND", True):
-        tasks.start()                 # the queue of backups and restores, and the scheduler
+        tasks.start()                 # the queued backups and restores and the scheduler, as two of the copy's jobs
     log.info("ioBackup %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     yield
+    tasks.stop()
 
 
 app = FastAPI(title="ioBackup", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,

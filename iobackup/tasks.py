@@ -1,9 +1,11 @@
 """Runs (backups and restores), the queue that carries them out one at a time, and the scheduler that starts jobs on
 their schedule. Every run and its log are kept in bkp_runs.
 
-Everything runs in one worker thread, in order: two dumps of the same server at once would only compete for its
-disks, and a restore must never overlap a backup of the database it is writing. The worker and the scheduler run in
-the copy that runs the app (the stored setting BACKGROUND=0 turns them off).
+Everything runs one at a time, in order: two dumps of the same server at once would only compete for its disks, and
+a restore must never overlap a backup of the database it is writing. The runs and the scheduler are two of the copy's
+jobs (iosuite_shared.jobs, Settings › Servers › Jobs): the runs as a heavy one, so a backup does not start while
+another heavy job of the copy is at work (ioPix scanning its folders); the stored setting BACKGROUND=0 leaves both
+out.
 """
 from __future__ import annotations
 
@@ -29,6 +31,7 @@ _cancel: dict[int, threading.Event] = {}
 _lines: dict[int, int] = {}
 _unsaved: dict[int, dict] = {}  # how a run ended, while ioBackup's own database could not take it (saved at the next chance)
 _started = False
+_jobs: dict = {"runs": None, "schedule": None}   # the copy's two jobs while the app runs (start())
 
 
 def _now() -> _dt.datetime:
@@ -146,6 +149,8 @@ def enqueue(kind: str, title: str, payload: dict, job_id: int | None = None, tri
         db.ex("DELETE FROM bkp_runs WHERE id <= %s AND status NOT IN ('queued', 'running')", (old["id"],))
     _cancel[rid] = threading.Event()
     _queue.put(rid)
+    if _jobs["runs"] is not None:
+        _jobs["runs"].soon()   # carried out now, not at the job's next look
     return rid
 
 
@@ -249,9 +254,15 @@ def _tell_failed(rid: int, kind: str, e: Exception) -> None:
         log.warning("could not send the notification for run %s", rid, exc_info=True)
 
 
-def _worker() -> None:
+def carry_out() -> str:
+    """The runs that are queued, one after another (the copy's job "runs"); how many were."""
+    n = 0
     while True:
-        rid = _queue.get()
+        try:
+            rid = _queue.get_nowait()
+        except queue.Empty:
+            return f"{n} run{'s' if n != 1 else ''}" if n else ""
+        n += 1
         save_unsaved()
         try:
             execute(rid)
@@ -277,40 +288,61 @@ def due(jobs: list[dict], minutes: list[_dt.datetime]) -> list[dict]:
     return out
 
 
-def _scheduler() -> None:
-    last = _dt.datetime.now().replace(second=0, microsecond=0)
-    while True:
-        time.sleep(15)
-        now = _dt.datetime.now().replace(second=0, microsecond=0)
-        if now <= last:
-            last = min(last, now)  # the clock went back: start again from now, firing nothing
-            continue
-        # every minute since the last look, at most 90 (a host that slept does not fire a day's worth of jobs)
-        minutes, t = [], last + _dt.timedelta(minutes=1)
-        while t <= now and len(minutes) < 90:
-            minutes.append(t)
-            t += _dt.timedelta(minutes=1)
-        last = now
-        save_unsaved()
-        try:
-            pending = pending_jobs()
-            for j in due(model.jobs(), minutes):
-                if j["id"] in pending:
-                    log.info("job %s is still queued or running: this scheduled start is skipped", j["name"])
-                    continue
-                enqueue("backup", "Backup: %s" % j["name"], {"job_id": j["id"]}, job_id=j["id"], trigger="schedule")
-        except Exception:
-            log.exception("the scheduler could not read the jobs")
+_looked: dict = {"at": None}   # the minute the scheduler last looked at
+
+
+def schedule_look() -> str:
+    """The jobs whose schedule fired since the last look, queued (the copy's job "schedule", every 15 seconds);
+    which were."""
+    now = _dt.datetime.now().replace(second=0, microsecond=0)
+    last = _looked["at"]
+    if last is None or now <= last:
+        _looked["at"] = now if last is None else min(last, now)  # the first look, or the clock went back: from now, firing nothing
+        return ""
+    # every minute since the last look, at most 90 (a host that slept does not fire a day's worth of jobs)
+    minutes, t = [], last + _dt.timedelta(minutes=1)
+    while t <= now and len(minutes) < 90:
+        minutes.append(t)
+        t += _dt.timedelta(minutes=1)
+    _looked["at"] = now
+    save_unsaved()
+    started = []
+    try:
+        pending = pending_jobs()
+        for j in due(model.jobs(), minutes):
+            if j["id"] in pending:
+                log.info("job %s is still queued or running: this scheduled start is skipped", j["name"])
+                continue
+            enqueue("backup", "Backup: %s" % j["name"], {"job_id": j["id"]}, job_id=j["id"], trigger="schedule")
+            started.append(j["name"])
+    except Exception:
+        log.exception("the scheduler could not read the jobs")
+    return ", ".join(started)
 
 
 def start() -> None:
-    """At start: what was queued or running when the app stopped did not finish; then the worker and the scheduler."""
+    """At start: what was queued or running when the app stopped did not finish; then the copy's two jobs, the runs
+    and the scheduler."""
     global _started
+    from iosuite_shared import chores
     if _started:
         return
     _started = True
     for r in db.q("SELECT id FROM bkp_runs WHERE status IN ('queued', 'running')"):
         _logger(r["id"])("Interrupted: the app stopped")
         _update(r["id"], status="failed", finished=_now())
-    threading.Thread(target=_worker, name="iobackup-worker", daemon=True).start()
-    threading.Thread(target=_scheduler, name="iobackup-scheduler", daemon=True).start()
+    _looked["at"] = None
+    _jobs["runs"] = chores.start(carry_out, every_s=60, first_s=5, name="runs", app=config.APP, heavy=True, quiet=True,
+                                 title="Carry out the backups and restores that are queued")
+    _jobs["schedule"] = chores.start(schedule_look, every_s=15, first_s=15, name="schedule", app=config.APP, quiet=True,
+                                     title="Queue the backups whose schedule says now")
+
+
+def stop() -> None:
+    """The app shuts down: its jobs leave the copy's runner (a run that is being carried out ends with the process)."""
+    global _started
+    for k, j in _jobs.items():
+        if j is not None:
+            j.cancel()
+        _jobs[k] = None
+    _started = False

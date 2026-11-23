@@ -424,14 +424,11 @@ def prune_variants():
     _prune(("c", "s", "vf"), config.VARIANT_CACHE_MAX_MB)
 
 
-def keep_pruned(stop: threading.Event = None):
-    """Prune the caches that grow with use, at start and every few hours after (a server that runs for months)."""
-    stop = stop or threading.Event()
-    while True:
-        for prune in (prune_previews, prune_variants):
-            try:
-                prune()
-            except Exception as e:  # noqa: BLE001
-                log.warning("cache not pruned: %s", e)
-        if stop.wait(PRUNE_EVERY_S):
-            return
+def prune_caches() -> None:
+    """Prune the caches that grow with use: one of the copy's jobs, at start and every few hours after (a server
+    that runs for months). One cache that cannot be pruned does not keep the other from it."""
+    for prune in (prune_previews, prune_variants):
+        try:
+            prune()
+        except Exception as e:  # noqa: BLE001
+            log.warning("cache not pruned: %s", e)

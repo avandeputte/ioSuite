@@ -18,6 +18,7 @@ def one_copy():
     def reset():
         updates._Copy.members.clear()
         updates._Copy.checked.clear()
+        updates._Copy.watched.clear()
         updates._Copy.progress.update(running=False, error=None, log="", started=None, finished=None)
     reset()
     yield
@@ -83,6 +84,36 @@ def test_request_claim_and_summary(tmp_path, monkeypatch):
     assert s["installed"] == "1.1.0" == s["latest"] and s["status"] == "current" and suiteupdates.request("update") == []
     with pytest.raises(ValueError):
         suiteupdates.request("reboot")
+
+
+def test_a_copy_looks_for_what_was_asked_of_its_apps_with_one_thread_and_one_question(tmp_path, monkeypatch):
+    """Every app of a copy had a thread of its own that asked the database every ten seconds; one does it for all."""
+    for app in ("iocalendar", "ionote", "iotask"):
+        suite.register(app, name=app, version="1.0.0")
+    asked, served = [], []
+    real = db.q
+    monkeypatch.setattr(db, "q", lambda sql, args=(): (asked.append(sql) if "action IS NOT NULL" in sql else None, real(sql, args))[1])
+    us = [updater(tmp_path, monkeypatch, app=app) for app in ("iocalendar", "ionote", "iotask")]
+    for u in us:
+        monkeypatch.setattr(u, "serve", lambda action, u=u: served.append((u.app, action)))
+    threads = {u.watch(every=0.05) for u in us}
+    assert len(threads) == 1 and next(iter(threads)).name == "update-watch"
+    end = time.time() + 5
+    while time.time() < end and len(suiteupdates.overview()) < 3:
+        time.sleep(0.05)
+    assert {a["app"] for a in suiteupdates.overview() if a["watching"]} == {"iocalendar", "ionote", "iotask"}   # each said what is installed
+    asked.clear()
+    assert suiteupdates.request("check", by="alex") == ["iocalendar", "ionote", "iotask"]
+    while time.time() < end and len(served) < 3:
+        time.sleep(0.05)
+    assert sorted(served) == [("iocalendar", "check"), ("ionote", "check"), ("iotask", "check")]
+    assert asked and all(sql.count("%s") == 3 for sql in asked), "one question for the three apps"
+    assert suiteupdates.claims(["iocalendar", "ionote", "iotask"]) == {} and suiteupdates.claims([]) == {}   # taken once
+    before = db.one("SELECT updated_at FROM ios_updates WHERE app = 'ionote'")["updated_at"]
+    db.ex("UPDATE ios_updates SET updated_at = 5")
+    suiteupdates.beats(["iocalendar", "ionote"])
+    assert db.one("SELECT updated_at FROM ios_updates WHERE app = 'ionote'")["updated_at"] >= before
+    assert db.one("SELECT updated_at FROM ios_updates WHERE app = 'iotask'")["updated_at"] == 5
 
 
 def test_an_app_that_stopped_does_not_hold_the_suite_back(tmp_path, monkeypatch):

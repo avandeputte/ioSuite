@@ -140,3 +140,51 @@ def test_rows_of_jobs_nothing_registers_any_more_are_forgotten():
     jobs.forget_old()
     left = {r["name"] for r in db.q("SELECT name FROM ios_jobs")}
     assert left == {"fresh"}
+
+
+def test_a_quiet_job_looks_often_and_writes_its_row_seldom(monkeypatch):
+    """A look every few seconds (a timer that ended, a feed that is due) is not a write to the database at every
+    look: its row is written when it first ran, when it said something or failed, and once a minute otherwise."""
+    async def go():
+        looks, writes = [], []
+        real = jobs._write
+        monkeypatch.setattr(jobs, "_write", lambda sql, args: (writes.append(sql.split()[0]), real(sql, args))[1])
+        job = chores.start(lambda: (looks.append(1), "sent one" if len(looks) == 6 else "")[1], every_s=0.05, first_s=0,
+                           app="iotest", name="timers", quiet=True)
+        try:
+            assert await _until(lambda: len(looks) >= 12), "the job did not go on looking"
+            r = db.one("SELECT * FROM ios_jobs WHERE app = 'iotest' AND name = 'timers'")
+            assert r["state"] == "ok" and r["message"] == "sent one" and r["runs"] == 6   # every look so far counted, in two writes
+            assert writes.count("UPDATE") == 2 and writes.count("INSERT") == 1, writes
+        finally:
+            job.cancel()
+    asyncio.run(go())
+
+
+def test_a_job_asked_to_run_soon_runs_now_and_once_more_when_it_was_running():
+    async def go():
+        ran, hold = [], asyncio.Event()
+        loop = asyncio.get_running_loop()
+
+        def work():
+            ran.append(time.time())
+            if len(ran) == 2:   # the second run takes a moment: soon() arrives while it runs
+                time.sleep(0.3)
+
+        job = chores.start(work, every_s=3600, first_s=3600, app="iotest", name="index")
+        try:
+            await asyncio.sleep(0.2)
+            assert ran == []
+            await loop.run_in_executor(None, job.soon)   # from another thread, as an edit does
+            assert await _until(lambda: len(ran) == 1), "it did not run when asked"
+            job.soon()
+            assert await _until(lambda: len(ran) == 2)
+            job.soon()                                    # while the second run is going
+            assert await _until(lambda: len(ran) == 3), "what was asked during a run was lost"
+            await asyncio.sleep(0.3)
+            assert len(ran) == 3
+        finally:
+            job.cancel()
+            hold.set()
+    asyncio.run(go())
+

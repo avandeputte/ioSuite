@@ -15,8 +15,9 @@ environment. Docker installs are updated by pulling the image, so there the chec
 
 One copy of the program runs several apps, and an update is the copy's: every app keeps its Updater and its row in
 the Shared ioSuite database (iosuite_shared.suiteupdates), so Settings › Servers › Updates and the start
-page's MCP endpoint go on listing the apps, but the apps of one copy ask GitHub once between them and run update.sh
-once (`_Copy`), each writing the same outcome to its own row.
+page's MCP endpoint go on listing the apps, but the apps of one copy ask GitHub once between them, run update.sh
+once and look for what a suite admin asked with one thread and one question to the database (`_Copy`), each writing
+the same outcome to its own row.
 
 The "check for updates daily" switch is one setting for the whole suite in the Shared ioSuite database (update_check).
 """
@@ -64,6 +65,45 @@ class _Copy:
     progress: dict = {"running": False, "error": None, "log": "", "started": None, "finished": None}
     members: list = []   # every Updater of this process
     checked: dict = {}   # (repo, branch) -> (at, what check() found)
+    watched: list = []   # the ones that look for what a suite admin asks: one thread for them all
+    watcher: threading.Thread = None
+    joined = threading.Event()   # an app joined the watch: it says what is installed now, not at the next look
+    watch_lock = threading.Lock()
+
+    @classmethod
+    def watch(cls, updater, every: float = None) -> threading.Thread:
+        with cls.watch_lock:
+            cls.watched = [u for u in cls.watched if u.app != updater.app] + [updater]   # an app started again in this process: its newest
+            if cls.watcher is None or not cls.watcher.is_alive():
+                cls.watcher = threading.Thread(target=cls._look, args=(every,), name="update-watch", daemon=True)
+                cls.watcher.start()
+        cls.joined.set()
+        return cls.watcher
+
+    @classmethod
+    def _look(cls, every: float = None) -> None:
+        greeted, beat = set(), time.time()
+        while True:
+            for u in list(cls.watched):
+                if id(u) not in greeted:
+                    greeted.add(id(u))
+                    try:
+                        u._said_hello()
+                    except Exception:  # noqa: BLE001 - the database away: the row is written at the app's next start
+                        pass
+            cls.joined.wait(every or suiteupdates.WATCH_S)
+            if cls.joined.is_set():
+                cls.joined.clear()
+                continue
+            mine = {u.app: u for u in list(cls.watched)}
+            try:
+                for app, action in suiteupdates.claims(list(mine)).items():
+                    mine[app].serve(action)
+            except Exception:  # noqa: BLE001
+                pass
+            if time.time() - beat >= suiteupdates.BEAT_S:
+                beat = time.time()
+                suiteupdates.beats(list(mine))
 
 
 class Updater:
@@ -199,7 +239,8 @@ class Updater:
         watch for a check or an update a suite admin asks for (watch()).
 
         The daily round is one of the copy's jobs (iosuite_shared.jobs), so it is on Settings › Servers › Jobs with
-        every other; the watch is not, being a few seconds' look at a row rather than a job that runs."""
+        every other; the watch is not, being a few seconds' look at a row rather than a job that runs: one thread
+        and one question for all the apps of the copy (_Copy.watch)."""
         from iosuite_shared import chores
         if watch:
             self.watch()
@@ -227,23 +268,11 @@ class Updater:
 
     # ---- asked from the start page (iosuite_shared.suiteupdates)
     def watch(self, every: float = None) -> threading.Thread:
-        """Say what is installed, then look every few seconds for a check or an update a suite admin asked for and run
-        it: a check asks GitHub even while the daily check is off (an admin asked), an update runs update.sh."""
-        def loop():
-            self._said_hello()
-            beat = time.time()
-            while True:
-                time.sleep(every or suiteupdates.WATCH_S)
-                try:
-                    self.serve(suiteupdates.claim(self.app))
-                except Exception:  # noqa: BLE001
-                    pass
-                if time.time() - beat >= suiteupdates.BEAT_S:
-                    beat = time.time()
-                    suiteupdates.beat(self.app)
-        t = threading.Thread(target=loop, name="update-watch", daemon=True)
-        t.start()
-        return t
+        """Say what is installed, then have the copy look every few seconds for a check, an update or a restart a
+        suite admin asked of this app, and run it: a check asks GitHub even while the daily check is off (an admin
+        asked), an update runs update.sh. One thread looks for all the apps of the copy, with one question to the
+        database, however many apps it runs (_Copy.watch)."""
+        return _Copy.watch(self, every)
 
     def _said_hello(self) -> None:
         """What a fresh start knows: the version, the commit, whether it can update itself; and when the update before

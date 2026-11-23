@@ -3,7 +3,7 @@
 A timer is the family's, not one person's: every start page and the wall display show the running timers counting
 down, with who started them, and anyone can add a minute or dismiss one (the kitchen tablet, the phone of whoever is
 stirring). When a timer ends, the page that started it and the wall display ring; the person who started it gets a
-notification (kind "timers", Settings › Account › Notifications) on their phone, from the loop here, so it arrives
+notification (kind "timers", Settings › Account › Notifications) on their phone, from the job here, so it arrives
 with every page closed.
 
     GET    /api/timers                 {now, items}: the running timers and the ones that ended a moment ago
@@ -14,7 +14,6 @@ with every page closed.
 `now` is the server's clock, so a device whose clock is off still counts down to the same second.
 """
 import logging
-import threading
 import time
 
 from iosuite_shared import push, users
@@ -26,8 +25,9 @@ log = logging.getLogger("iostart.timers")
 MAX_SECONDS = 24 * 3600
 MAX_RUNNING = 20
 KEEP_AFTER_END = 15 * 60  # an ended timer nobody dismissed goes after this
-TICK = 2                  # seconds between the loop's looks (the notification is at most this late)
-_thread = {"t": None, "stop": None}
+TICK = 2                  # seconds between the job's looks (the notification is at most this late)
+IDLE_LOOK = 60            # with no timer running that this process knows of, the database is asked this often
+_next = {"at": 0.0, "n": 0}  # no look at the database before this moment (look()); n: timers started or lengthened
 
 
 class BadTimer(ValueError):
@@ -68,6 +68,7 @@ def start(user: dict, b: dict) -> dict:
     if db.one("SELECT count(*) AS n FROM prt_timers WHERE ends_at > %s", (now,))["n"] >= MAX_RUNNING:
         raise BadTimer(f"{MAX_RUNNING} timers are running already")
     tid = db.ex("INSERT INTO prt_timers (user_id, label, seconds, ends_at) VALUES (%s, %s, %s, %s)", (user["id"], label, s, now + s))
+    _look_again()  # this one may end first
     return _item(db.one("SELECT * FROM prt_timers WHERE id = %s", (tid,)))
 
 
@@ -86,6 +87,7 @@ def more(tid: int, b: dict) -> dict:
         raise BadTimer("A timer runs up to 24 hours")
     total = r["seconds"] + s if r["ends_at"] > now else s
     db.ex("UPDATE prt_timers SET ends_at = %s, seconds = %s, notified = 0 WHERE id = %s", (ends, total, r["id"]))
+    _look_again()
     return _item(_get(tid))
 
 
@@ -97,6 +99,24 @@ def dismiss(tid: int) -> None:
 def _length(s: int) -> str:
     h, m, sec = s // 3600, s % 3600 // 60, s % 60
     return " ".join(p for p in (f"{h} h" if h else "", f"{m} min" if m else "", f"{sec} s" if sec else "") if p)
+
+
+def look() -> int:
+    """tick(), when there can be something to send: the database is asked when the earliest running timer ends, and
+    once a minute otherwise (a timer this process did not start), not every two seconds all day."""
+    now, n = time.time(), _next["n"]
+    if now < _next["at"]:
+        return 0
+    sent = tick(now)
+    r = db.one("SELECT MIN(ends_at) AS t FROM prt_timers WHERE notified = 0")
+    if _next["n"] == n:  # none was started while this looked: that one is looked for at the next turn
+        _next["at"] = min(float(r["t"]) if r and r["t"] is not None else now + IDLE_LOOK, now + IDLE_LOOK)
+    return sent
+
+
+def _look_again() -> None:
+    _next["n"] += 1
+    _next["at"] = 0.0
 
 
 def tick(now: float = None) -> int:
@@ -121,25 +141,11 @@ def person_data(user_id: int, remove: bool) -> int:
     return n
 
 
-def run() -> None:
-    """The loop, in a thread of its own (main.py at start; TIMERS_LOOP=0 leaves it off: the tests)."""
-    if not config.TIMERS_LOOP or _thread["t"]:
-        return
-    stop_ev = threading.Event()
-
-    def loop():
-        while not stop_ev.wait(TICK):
-            try:
-                tick()
-            except Exception as e:  # noqa: BLE001  the database away for a moment: the next look
-                log.warning("timers: %s", e)
-
-    _thread["stop"] = stop_ev
-    _thread["t"] = threading.Thread(target=loop, name="timers", daemon=True)
-    _thread["t"].start()
-
-
-def halt() -> None:
-    if _thread["stop"]:
-        _thread["stop"].set()
-    _thread["t"] = None
+def job():
+    """The look for timers that ended, as one of the copy's jobs (main.py at start; TIMERS_LOOP=0 leaves it off: the
+    tests call tick() themselves)."""
+    from iosuite_shared import chores
+    if not config.TIMERS_LOOP:
+        return None
+    return chores.start(look, every_s=TICK, first_s=TICK, name="timers", app=config.APP, quiet=True,
+                        title="Send the notification of a kitchen timer that ended")

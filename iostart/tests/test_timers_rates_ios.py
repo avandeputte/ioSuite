@@ -1,6 +1,6 @@
 """Kitchen timers (iostart/timers.py), the exchange rates for the search box's conversions (iostart/rates.py), and what the
 iPhone app's widgets and Siri read and add (/dav/ext/today and friends, iostart/bookmarkext.py) with a full app password
-from the sign-in flow (?scope=full, iostart/ncbookmarks.py)."""
+from the sign-in flow (?scope=full, iostart/appsignin.py)."""
 import base64
 import time
 
@@ -58,6 +58,23 @@ def test_an_ended_timer_notifies_who_started_it_once_and_more_time_restarts_it(c
     assert timers.tick(time.time() + 61) == 1 and len(sent) == 2
     # gone a while after it ended, without anyone dismissing it
     assert timers.listing(time.time() + 61 + timers.KEEP_AFTER_END + 5)["items"] == []
+
+
+def test_the_job_asks_the_database_only_when_a_timer_can_have_ended(client, monkeypatch):
+    """look() is what the copy's job runs every two seconds: with no timer running it asks once a minute, with one
+    running when that one ends, and at once when one is started."""
+    sent, asked, tick = [], [], timers.tick
+    monkeypatch.setattr(timers.push, "notify", lambda uid, kind, title, body="", **kw: sent.append(title) or 1)
+    monkeypatch.setattr(timers, "tick", lambda now=None: asked.append(now) or tick(now))
+    timers._look_again()
+    assert timers.look() == 0 and len(asked) == 1
+    assert timers.look() == 0 and len(asked) == 1  # nothing runs: not asked again within the minute
+    assert timers._next["at"] > time.time() + timers.IDLE_LOOK - 5
+    client.post("/api/timers", json={"seconds": 1, "label": "Tea"})
+    assert timers.look() == 0 and len(asked) == 2  # one was started: looked for at once
+    assert timers.look() == 0 and len(asked) == 2  # and not again before it ends
+    time.sleep(1.1)
+    assert timers.look() == 1 and sent == ["⏰ Tea"]
 
 
 def test_timers_are_the_whole_familys(client):

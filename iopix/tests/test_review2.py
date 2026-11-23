@@ -82,23 +82,20 @@ def test_the_cut_down_thumbnails_are_pruned_past_their_cap(monkeypatch, tmp_path
 
 
 def test_the_caches_are_pruned_again_while_the_server_runs(monkeypatch):
-    import threading
+    """The prune is one of the copy's jobs (main.py); one cache that cannot be pruned does not keep the other from it."""
     calls = []
-    stop = threading.Event()
 
     def previews():
         calls.append("p")
-        raise OSError("the share went away")  # one failing pass does not end the loop
+        raise OSError("the share went away")
 
-    def variants():
-        calls.append("v")
-        if len(calls) >= 4:
-            stop.set()
     monkeypatch.setattr(thumbs, "prune_previews", previews)
-    monkeypatch.setattr(thumbs, "prune_variants", variants)
-    monkeypatch.setattr(thumbs, "PRUNE_EVERY_S", 0.01)
-    thumbs.keep_pruned(stop)
+    monkeypatch.setattr(thumbs, "prune_variants", lambda: calls.append("v"))
+    thumbs.prune_caches()
+    thumbs.prune_caches()
     assert calls == ["p", "v", "p", "v"]
+    from iopix import main as appmain
+    assert "thumbs.prune_caches, every_s=thumbs.PRUNE_EVERY_S" in open(appmain.__file__).read()
 
 
 def test_sign_in_at_the_proxy_is_not_set_up_per_app():

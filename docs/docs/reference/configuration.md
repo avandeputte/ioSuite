@@ -167,6 +167,12 @@ heavy (a scan, an index, a backup) wait for each other, so a server never has tw
 the suite runs on several servers, each job belongs to the server that runs its app, and **Run now** reaches it
 there: the screen is the same whether the apps share a server or not.
 
+The looks that happen every few seconds are jobs of the same runner: a kitchen timer that ended, a backup that was
+asked for or is due, ioPix's index and its scan of the photo folders, the feeds, the e-ink screens that are pushed
+to. Such a look that finds nothing to do asks the database for little or nothing, and its line on the screen is
+written once a minute rather than at every look; what is asked for in a page (a backup, a scan) starts at once. A
+server that nobody uses asks the database server about two questions a second, for all of its apps together.
+
 ## Pages that refresh themselves
 
 A page of any app holds **one live-refresh connection** (`GET /api/live`, server-sent events) and hears on it what

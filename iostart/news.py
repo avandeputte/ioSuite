@@ -1,6 +1,6 @@
 """Feeds: the start page's reader (the Feeds page, #/news) and the headlines card.
 
-A feed (prt_feeds) is fetched once for everybody, by the loop here, however many people follow it; its articles are
+A feed (prt_feeds) is fetched once for everybody, by the job here, however many people follow it; its articles are
 prt_feed_items. What is a person's own: which feeds they follow, under which name and in which folder
 (prt_feed_subs), and what they have read and starred (prt_feed_marks). Nobody sees what another person follows, reads
 or stars, an admin included.
@@ -16,7 +16,6 @@ from their own site, when the article is opened.
 """
 import hashlib
 import logging
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -37,13 +36,12 @@ KEEP_DAYS = 45                 # an article the feed no longer lists stays this 
 NEW_UNREAD = 20                # of a feed just followed, the newest count as not read; the rest as read
 MAX_FEEDS = 500                # a person's feeds
 PAGE = 50                      # articles in one answer
-TICK = 60                      # seconds between the loop's looks at what is due
+TICK = 60                      # seconds between the job's looks at what is due
 BATCH = 8                      # feeds fetched in one look
-_thread = {"t": None, "stop": None}
 _opener = outbound.opener(outbound.not_this_machine, redirects=True)  # the home network is fine (a feed of one's own server)
 
 SCHEMA = [
-    # a feed, once for everybody who follows it. next_at: when the loop asks it again; failures: looks in a row that
+    # a feed, once for everybody who follows it. next_at: when the job asks it again; failures: looks in a row that
     # went wrong (error says how the last one did)
     """CREATE TABLE IF NOT EXISTS prt_feeds (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -506,7 +504,7 @@ def opml_out(user_id: int) -> bytes:
 
 
 def opml_in(user_id: int, data: bytes) -> dict:
-    """Follow every feed of an OPML file, in its folders; they are read by the loop over the next minutes. {added,
+    """Follow every feed of an OPML file, in its folders; they are read by the job over the next minutes. {added,
     known: followed already, total}."""
     try:
         feeds = feedread.opml_read(data)
@@ -536,27 +534,13 @@ def person_data(user_id: int, remove: bool) -> int:
     return n
 
 
-# ------------------------------------------------------------------ the loop
+# ------------------------------------------------------------------ the job
 
-def run() -> None:
-    """The loop, in a thread of its own (main.py at start; NEWS_LOOP=0 leaves it off: the tests)."""
-    if not config.NEWS_LOOP or _thread["t"]:
-        return
-    stop_ev = threading.Event()
-
-    def loop():
-        while not stop_ev.wait(TICK):
-            try:
-                tick()
-            except Exception as e:  # noqa: BLE001  the database away for a moment: the next look
-                log.warning("feeds: %s", e)
-
-    _thread["stop"] = stop_ev
-    _thread["t"] = threading.Thread(target=loop, name="feeds", daemon=True)
-    _thread["t"].start()
-
-
-def halt() -> None:
-    if _thread["stop"]:
-        _thread["stop"].set()
-    _thread["t"] = None
+def job():
+    """The look for feeds that are due, as one of the copy's jobs (main.py at start; NEWS_LOOP=0 leaves it off: the
+    tests call tick() themselves)."""
+    from iosuite_shared import chores
+    if not config.NEWS_LOOP:
+        return None
+    return chores.start(tick, every_s=TICK, first_s=TICK, name="feeds", app=config.APP, quiet=True,
+                        title="Read the feeds people follow that are due")

@@ -43,16 +43,15 @@ async def lifespan(app: FastAPI):
     await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
     await run_in_threadpool(bookmarks.claim_unowned)  # bookmarks nobody owns become the first admin's
     await run_in_threadpool(keys.declare)  # the Home Assistant token and AccuWeather key live with the suite's keys and tokens
-    timers.run()  # the "timer done" notifications, every couple of seconds (iostart/timers.py)
-    news.run()  # the feeds people follow, read every half hour (iostart/news.py)
-    trmnlpush.start()  # the screens people asked the start page to push to TRMNL's cloud (Settings › TRMNL), every few minutes
+    # the copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds people
+    # follow (iostart/news.py), the screens pushed to TRMNL's cloud (iostart/trmnlpush.py)
+    looks = [j for j in (timers.job(), news.job(), trmnlpush.job()) if j]
     updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
     log.info("ioStart %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield
-    trmnlpush.halt()
-    news.halt()
-    timers.halt()
+    for j in looks:
+        j.cancel()
 
 
 app = FastAPI(title="ioStart", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,

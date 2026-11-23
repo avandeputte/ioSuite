@@ -5,12 +5,18 @@ front door, so an app's code reads the same as before):
 
     chores.start(notify.run, every_s=60, first_s=20, name="notifications", app=config.APP)
     chores.start(scan.all, every_s=3600, name="file scan", app=config.APP, heavy=True)
+    look = chores.start(timers.tick, every_s=2, name="timers", app=config.APP, quiet=True)
 
 One loop in the copy runs them all, instead of a timer of its own per job, and writes every run into the Shared ioSuite
 database (`ios_jobs`: one row per job, with the copy that runs it, when it last ran, how long it took and what it
 said). Settings › Servers › Jobs shows those rows from every copy of the suite, with **Run now** per job, so the
 screen is the same whether the apps share a copy or sit on different servers: a Run now is a flag on the row, and the
 copy that owns the job picks it up within a few seconds. Nothing calls another copy over the network for this.
+
+A job that is a look every few seconds or every minute (is a timer done, is a feed due, is a backup scheduled for
+this minute) is `quiet=True`: its row is written once a minute, and at once when a look failed or said something,
+not at every look, so the screen has it without the database being written to all day. `job.soon()` has a job run
+now instead of at its next turn (somebody asked for a scan; an edit wants the index brought up to date).
 
 Two jobs of the same name in the same app are one job. A run that is still going when the next one falls due is not
 started again, and `heavy=True` jobs wait for each other, so a scan, an index and a backup never pile up in one copy
@@ -30,6 +36,7 @@ TICK_S = 2.0        # how often the loop looks for a job that is due or asked fo
 HEAVY_AT_ONCE = 1   # heavy jobs that may run together in one copy
 ALIVE_S = 120       # a row not touched for this long: that copy is not running the job now
 KEEP_S = 7 * 86400  # a row of a job nothing registers any more is forgotten after a week
+QUIET_S = 60        # how often the row of a quiet job is written while its looks find nothing to say
 
 
 def copy_name() -> str:
@@ -42,12 +49,24 @@ def copy_name() -> str:
 class Job:
     """One registered job: what to run, how often, and the row it keeps."""
 
-    def __init__(self, app: str, name: str, fn, every_s: float, first_s: float, heavy: bool, title: str):
+    def __init__(self, app: str, name: str, fn, every_s: float, first_s: float, heavy: bool, title: str, quiet: bool = False):
         self.app, self.name, self.fn = app, name, fn
-        self.every_s, self.heavy, self.title = float(every_s), bool(heavy), title or name
+        self.every_s, self.heavy, self.title, self.quiet = float(every_s), bool(heavy), title or name, bool(quiet)
         self.next_at = time.time() + float(first_s)
         self.running = False
         self.cancelled = False
+        self.again = False     # soon() was called while it ran: one more run right after
+        self.wrote_at = 0.0    # when a quiet job's row was last written, and the runs since
+        self.unwritten = 0
+
+    def soon(self) -> None:
+        """Run now rather than at the next turn; from any thread. Asked while it runs, it runs once more right after,
+        so what was changed during the run is seen."""
+        if self.cancelled:
+            return
+        self.again = self.running
+        self.next_at = 0.0
+        _runner.wake()
 
     def cancel(self) -> None:
         """Stop running it (the app is shutting down). The row stays, so the screen still says when it last ran."""
@@ -82,6 +101,16 @@ class Runner:
     def forget(self, job: Job) -> None:
         if self.jobs.get((job.app, job.name)) is job:
             self.jobs.pop((job.app, job.name), None)
+
+    def wake(self) -> None:
+        """Have the loop look now (a job asked to run soon), from whichever thread."""
+        loop, wake = self._loop, self._wake
+        if loop is None or wake is None:
+            return
+        try:
+            loop.call_soon_threadsafe(wake.set)
+        except RuntimeError:  # the loop has closed: nothing runs any more
+            pass
 
     def _ensure(self) -> None:
         """One loop per copy, made by the first job that registers. The loop it belongs to is remembered too: a
@@ -142,21 +171,27 @@ class Runner:
                 await self._once(job, by)
         finally:
             job.running = False
-            job.next_at = time.time() + job.every_s
+            job.next_at = 0.0 if job.again else time.time() + job.every_s
+            job.again = False
             if self._wake is not None:
                 self._wake.set()
 
     async def _once(self, job: Job, by: str | None) -> None:
         started = time.time()
-        _began(job, by)
+        if not job.quiet or by is not None:
+            _began(job, by)
         try:
             out = await run_in_threadpool(job.fn)
-            _ended(job, started, "ok", _said(out))
+            said = _said(out)
+            job.unwritten += 1
+            if not job.quiet or said or by is not None or started - job.wrote_at >= QUIET_S:
+                _ended(job, started, "ok", said)
         except asyncio.CancelledError:
             _ended(job, started, "", "")
             raise
         except Exception as x:  # noqa: BLE001 - a job that fails is a line on the screen, not a stopped app
             log.exception("the job %s of %s failed (it is tried again at its next turn)", job.name, job.app)
+            job.unwritten += 1
             _ended(job, started, "failed", f"{type(x).__name__}: {x}")
 
 
@@ -164,12 +199,13 @@ _runner = Runner()
 
 
 def register(fn, every_s: float = 86400, name: str = None, first_s: float = 5, app: str = "", heavy: bool = False,
-             title: str = "") -> Job:
+             title: str = "", quiet: bool = False) -> Job:
     """Have `fn` run `first_s` seconds from now and then every `every_s` seconds, as this copy's job runner's turn
     comes. `app` is the app it belongs to (""; the copy itself, for the suite's own jobs), `heavy` makes it wait for
-    the copy's other heavy jobs. Returns a handle with .cancel(), to call in the app's shutdown."""
+    the copy's other heavy jobs, `quiet` is for a look every few seconds (its row is written once a minute). Returns
+    a handle with .cancel(), to call in the app's shutdown, and .soon(), to have it run now."""
     name = (name or getattr(fn, "__name__", "job"))[:64]
-    return _runner.add(Job(app or "", name, fn, every_s, first_s, heavy, title or name))
+    return _runner.add(Job(app or "", name, fn, every_s, first_s, heavy, title or name, quiet))
 
 
 def run_now(app: str, name: str, by: str = "") -> bool:
@@ -259,9 +295,11 @@ def _began(job: Job, by: str | None) -> None:
 
 def _ended(job: Job, started: float, state: str, message: str) -> None:
     now = time.time()
-    _write("UPDATE ios_jobs SET state = %s, finished_at = %s, took_ms = %s, message = %s, seen_at = %s, "
-           "runs = runs + 1, failures = failures + %s, next_at = %s WHERE app = %s AND name = %s",
-           (state, int(now), int((now - started) * 1000), message[:300] or None, int(now),
+    runs, job.unwritten, job.wrote_at = max(job.unwritten, 1), 0, now   # a quiet job's looks since its row was last written
+    # when it began, and where, are written here too: a quiet job's row is not written as it begins
+    _write("UPDATE ios_jobs SET state = %s, started_at = %s, finished_at = %s, took_ms = %s, message = %s, seen_at = %s, "
+           "copy = %s, runs = runs + %s, failures = failures + %s, next_at = %s WHERE app = %s AND name = %s",
+           (state, int(started), int(now), int((now - started) * 1000), message[:300] or None, int(now), copy_name(), runs,
             1 if state == "failed" else 0, int(now + job.every_s), job.app, job.name))
 
 
