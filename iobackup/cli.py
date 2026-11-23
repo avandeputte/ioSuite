@@ -9,8 +9,8 @@
 A backup file needs neither the web app nor its database: `python -m iobackup.offline --help` lists, verifies and restores
 one on any machine with Python 3 and the MariaDB client (for when the machine that ran ioBackup is gone).
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iobackup` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iobackup` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 

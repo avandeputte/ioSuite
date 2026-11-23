@@ -4,8 +4,8 @@
   check                        connect to the databases and say what is there
   import-homebox FILE [NAME]   the things in a Homebox CSV export, added as NAME (or the first admin)
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iothings` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iothings` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 from pathlib import Path

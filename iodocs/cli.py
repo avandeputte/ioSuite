@@ -4,8 +4,8 @@
   check                   connect to the databases and say what is there, and what this server can read off a scan
   read FILE               what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iodocs` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iodocs` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import json
 import mimetypes

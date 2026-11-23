@@ -4,8 +4,8 @@
   check                       connect to the databases and say what is there
   import LIST-ID FILE.ics     tasks (VTODOs) from an .ics file into a list
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iotask` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iotask` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 

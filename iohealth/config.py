@@ -1,9 +1,9 @@
-"""Settings: config.env in the app folder (setup.sh writes it; config.env.example lists them all), or the environment,
-which wins (a container's). The names every app of the suite shares come from iosuite_shared.config.standard.
+"""Settings: ioHealth's own are kept in the Shared ioSuite database and read once, as it starts (Settings › Global
+settings › Settings changes them; app.json lists them). The names every app of the suite shares come from
+iosuite_shared.config.standard; the machine's file says only where that database is and where the server listens.
 
-The health data lives in MariaDB/MySQL (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD); the accounts and
-suite-wide settings live in the Shared ioSuite database (IOSUITE_DB_*), which iosuite-shared puts on the same server
-as the health data unless told otherwise, with database and user `iosuite`.
+The health data lives in a database of its own (iohealth, unless DB_NAME names another), beside the Shared ioSuite
+database on the same server and under the same login.
 """
 from pathlib import Path
 
@@ -14,11 +14,11 @@ APP_DIR = Path(__file__).resolve().parent
 _s = shared.settings(APP)  # what is stored for this app in the Shared ioSuite database, read once, now
 env, env_flag, env_int = _s.get, _s.flag, _s.int
 
-# DATA_DIR, STATIC_DIR, LOG_FILE (DATA_DIR/iohealth.log; LOG_FILE= with nothing after it: none), HOST, PORT (8650),
-# PUBLIC_URL, BASE_URL, TLS_CERT_FILE, TLS_KEY_FILE, ADMIN_USER, ADMIN_PASSWORD
+# DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT, PUBLIC_URL, BASE_URL, TLS_CERT_FILE, TLS_KEY_FILE, ADMIN_USER,
+# ADMIN_PASSWORD: the same names in every app (iosuite_shared.config.standard says what each is)
 globals().update(shared.standard(APP, APP_DIR, _s))
 
-# the health data: {host, port, database, user, password} (the DB_* settings)
+# the health data: {host, port, database, user, password}
 _db = shared.own_db(APP, _s)
 DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD = _db["host"], _db["port"], _db["database"], _db["user"], _db["password"]
 

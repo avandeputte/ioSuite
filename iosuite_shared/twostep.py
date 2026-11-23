@@ -1,6 +1,6 @@
 """Two-step sign-in: after the password, a 6-digit code from a code app (TOTP, RFC 6238: SHA-1, 30 seconds), or one
 of the recovery codes made when it was turned on. Off for every account until its owner turns it on in Settings ›
-Account; a suite admin (or `iosuite-shared sign-in-reset NAME`) turns it off for someone who lost their phone.
+Account; a suite admin (or `iosuite sign-in-reset NAME`) turns it off for someone who lost their phone.
 
 While it is on, the account password alone signs in nowhere: the sign-in screen asks for the code, and what cannot
 type one (a calendar app, a script: HTTP Basic, LDAP) needs an app password. A sign-in at the proxy and a passkey

@@ -8,8 +8,8 @@
   ddns [--push]               find the public address now and update the records that follow it
   export                      the master list as JSON, on standard output
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iodns` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iodns` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import json
 import sys

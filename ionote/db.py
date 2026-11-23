@@ -208,7 +208,7 @@ def same_server(c: dict) -> bool:
 
 
 def test(values: dict) -> dict:
-    """Try a MySQL/MariaDB connection (setup.sh, the MCP diagnostics): {ok, version} or {ok: False, error}."""
+    """Try a MySQL/MariaDB connection (the MCP diagnostics): {ok, version} or {ok: False, error}."""
     keys = ("host", "port", "database", "user", "password")
     c = {**settings(), **{k: v for k, v in values.items() if k in keys}}
     if not values.get("password"):  # the saved password, only ever for the server and user it belongs to

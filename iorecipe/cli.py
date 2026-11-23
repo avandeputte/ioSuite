@@ -4,8 +4,8 @@
   check                       connect to the databases and say what is there
   import URL [--private NAME] the recipe on a web page, as a family recipe (or the private one of an account)
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iorecipe` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iorecipe` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 

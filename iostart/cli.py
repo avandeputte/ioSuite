@@ -3,8 +3,8 @@
   migrate                         create or update the tables
   check                           connect to the databases and say what is there
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iostart` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iostart` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 

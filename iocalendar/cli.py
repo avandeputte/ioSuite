@@ -6,8 +6,8 @@
   sync-birthdays                  bring the Birthdays calendar up to date from ioContact
   sync-holidays                   bring the Holidays calendars up to date (Settings › Holidays and birthdays)
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iocalendar` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password.
+Accounts are the suite's: `iosuite admin NAME --app iocalendar` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password.
 """
 import sys
 

@@ -5,8 +5,8 @@
   sync [--full]  copy Monarch Money in now (--full: the past two years of transactions again)
   quotes         ask Yahoo Finance for every quote now
 
-Accounts are the suite's: `iosuite-shared --config . admin NAME --app iomoney` makes an admin (setup.sh does),
-`iosuite-shared --config . password NAME` sets a password. The Monarch sign-in is kept with the suite's keys and
+Accounts are the suite's: `iosuite admin NAME --app iomoney` makes an admin of this app (the installer makes the first
+admin of the suite), `iosuite password NAME` sets a password. The Monarch sign-in is kept with the suite's keys and
 tokens (Settings › Global settings › Keys and tokens).
 """
 import sys
