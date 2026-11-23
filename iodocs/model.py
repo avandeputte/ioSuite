@@ -19,7 +19,7 @@ import datetime as dt
 import json
 import re
 
-from iosuite_shared import family as suite_family, related, users as shared_users
+from iosuite_shared import family as suite_family, related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iodocs import db
@@ -474,6 +474,7 @@ def create(u: dict, data: dict) -> dict:
                     [*cols.values(), u.get("id")])
         _set_people(did, pids)
     rewords(did)
+    stamp.touch("iodocs", "document", did, "added")  # its record of who added and changed it (iosuite_shared.stamp)
     return get(did)
 
 
@@ -488,6 +489,9 @@ def update(u: dict, d: dict, data: dict) -> dict:
         if pids is not None:
             _set_people(d["id"], pids)
     rewords(d["id"])
+    # the names of the fields that changed, never what they hold (a passport's number stays out of the record)
+    stamp.touch("iodocs", "document", d["id"], "changed",
+                ", ".join([k.replace("_", " ") for k in cols if cols[k] != d.get(k)] + (["people"] if pids is not None else [])))
     new = get(d["id"])
     if not can_see(u, new):  # made private to someone else: keep it visible to the one changing it, as theirs
         raise Invalid("You would no longer see this document: add yourself to its people, or keep it visible to editors")
@@ -500,6 +504,7 @@ def delete(u: dict, d: dict) -> None:
         db.ex("UPDATE doc_documents SET renewed_by = NULL WHERE renewed_by = %s", (d["id"],))
         db.ex("DELETE FROM doc_documents WHERE id = %s", (d["id"],))
     related.forget("document", d["id"])  # its links to other items of the suite go too
+    stamp.touch("iodocs", "document", d["id"], "deleted")
 
 
 def renew(u: dict, d: dict, data: dict) -> dict:
@@ -511,6 +516,7 @@ def renew(u: dict, d: dict, data: dict) -> dict:
     base.update({k: v for k, v in (data or {}).items() if k in FIELDS or k == "people"})
     new = create(u, base)
     db.ex("UPDATE doc_documents SET archived = 1, renewed_by = %s WHERE id = %s", (new["id"], d["id"]))
+    stamp.touch("iodocs", "document", d["id"], "changed", "renewed")
     return new
 
 
@@ -582,6 +588,7 @@ def apply_found(u: dict, d: dict, found: dict) -> dict:
         filled.append("Details")
     if sets:
         db.ex(f"UPDATE doc_documents SET {', '.join(k + ' = %s' for k in sets)} WHERE id = %s", [*sets.values(), d["id"]])
+        stamp.touch("iodocs", "document", d["id"], "changed", "read from a scan: " + ", ".join(k.replace("_", " ") for k in sets))
     rewords(d["id"])
     # what a passport or an ID card should have given and did not (most often its issue date: it is only in the printed
     # words, which a scan cannot always be sure of), for the person to type in from the page

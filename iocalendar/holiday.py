@@ -21,6 +21,7 @@ from pathlib import Path
 from icalendar import Event
 
 from iocalendar import config, db, ical, model
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iocalendar.holidays")
@@ -251,6 +252,12 @@ def _event(uid: str, d: dt.date, name: str, where: str):
 
 
 def _fill(it: dict, cal: dict | None, n: int) -> tuple[int, int]:
+    """_fill_(), with each event it changes recorded as changed by public holidays (iosuite_shared.stamp)."""
+    with stamp.as_("auto", "public holidays"):
+        return _fill_(it, cal, n)
+
+
+def _fill_(it: dict, cal: dict | None, n: int) -> tuple[int, int]:
     """One country's calendar (made when missing): (holidays, changes)."""
     found = dates(it["country"], it["region"], it["language"])
     where = _where(it)

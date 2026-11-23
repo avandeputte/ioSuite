@@ -11,7 +11,7 @@ import re
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
-from iosuite_shared import appleprofile, feeds, prefix, users as shared_users
+from iosuite_shared import appleprofile, feeds, prefix, stamp, users as shared_users
 from iosuite_shared.access import json_body
 
 from iocontact import access, calendar, config, csvio, db, enrich, iopix, limits, model, quality, relations as rel, users, vcard
@@ -572,7 +572,8 @@ def import_cards(u: dict, b: dict, cards: list[dict], mode: str = "update") -> d
             continue
         if c.get("iopix") is None:
             c.pop("iopix", None)
-        model.save(b["id"], c, existing["id"] if existing else None, None, ids)
+        with stamp.as_("import", "a vCard or CSV file"):
+            model.save(b["id"], c, existing["id"] if existing else None, None, ids)
         if existing:
             updated += 1
         else:

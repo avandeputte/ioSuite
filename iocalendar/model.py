@@ -13,7 +13,7 @@ import threading
 from collections import OrderedDict
 
 from iocalendar import config, db, ical, members
-from iosuite_shared import related, users as shared_users
+from iosuite_shared import related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 PALETTE = ["#8e44d6", "#0b8a9e", "#1a73e8", "#e0426a", "#1e8e3e", "#e8710a", "#4b53c7", "#e8a100", "#5f6b7a", "#1294b8"]
@@ -205,8 +205,10 @@ def href_for(uid: str) -> str:
     return f"{s}.ics"
 
 
-def save(cid: int, cal, event_id: int | None = None, href: str | None = None, user_id: int | None = None, tzname: str | None = None) -> dict:
-    """Store a calendar object in a calendar: a new event, or the one with event_id (or the tombstone at href)."""
+def save(cid: int, cal, event_id: int | None = None, href: str | None = None, user_id: int | None = None, tzname: str | None = None,
+         record: bool = True) -> dict:
+    """Store a calendar object in a calendar: a new event, or the one with event_id (or the tombstone at href).
+    record: noted in the event's record of who changed it (iosuite_shared.stamp), as whoever the request is from."""
     ix = ical.index(cal, tzname or (calendar(cid) or {}).get("timezone"))
     ics = ical.text(cal)
     etag = ical.etag_of(ics)
@@ -225,6 +227,7 @@ def save(cid: int, cal, event_id: int | None = None, href: str | None = None, us
             else:
                 old = by_href(cid, href)
             event_id = old["id"] if old else None
+        before = get_row(event_id) if event_id else None
         if event_id:
             db.ex(f"UPDATE cal_events SET {', '.join(f'{k} = %s' for k in cols)}, calendar_id = %s WHERE id = %s", (*cols.values(), cid, event_id))
         else:
@@ -234,10 +237,28 @@ def save(cid: int, cal, event_id: int | None = None, href: str | None = None, us
         db.many("INSERT INTO cal_event_people (event_id, position, name, email, contact_id, role) VALUES (%s, %s, %s, %s, %s, %s)",
                 [(event_id, i, (p["name"] or None) and p["name"][:255], (p["email"] or None) and p["email"][:255], p.get("contactId"), p["role"])
                  for i, p in enumerate(ix["people"][:200])])
+    if record:
+        if before and not before["deleted"]:
+            stamp.touch("iocalendar", "event", event_id, "changed", _what_changed(before, cols))
+        else:
+            stamp.touch("iocalendar", "event", event_id, "added")
     return get_row(event_id)
 
 
-def delete(eid: int) -> None:
+_FIELDS = (("title", ("summary",)), ("time", ("dtstart", "dtend", "all_day", "tzid")), ("repeat", ("rrule",)),
+           ("place", ("location",)), ("notes", ("description",)), ("status", ("status",)))
+
+
+def _what_changed(before: dict, cols: dict) -> str:
+    """A few words on what a save changed ("time, place"): what the record of the event says, never its content."""
+    def same(k):
+        a, b = before.get(k), cols.get(k)
+        return (a or None) == (b or None) or str(a) == str(b)
+    words = [w for w, keys in _FIELDS if not all(same(k) for k in keys)]
+    return ", ".join(words)
+
+
+def delete(eid: int, record: bool = True) -> None:
     """A deletion marker: CalDAV clients learn of the deletion from the next sync. Kept for KEEP_DELETED_DAYS (purge_deleted)."""
     with db.tx():
         r = get_row(eid)
@@ -246,6 +267,8 @@ def delete(eid: int) -> None:
         tok = bump(r["calendar_id"])
         db.ex("UPDATE cal_events SET deleted = 1, ics = '', changed_token = %s WHERE id = %s", (tok, eid))
         db.ex("DELETE FROM cal_event_people WHERE event_id = %s", (eid,))
+    if record:
+        stamp.touch("iocalendar", "event", eid, "deleted")
 
 
 PURGED = "purged_token:"  # cal_settings: per calendar, the newest change among the deletion markers that were purged
@@ -285,9 +308,11 @@ def move(eid: int, to_cid: int) -> dict:
         if other:
             raise Invalid("That calendar already has this event")
         cal = parsed(r)
-        delete(eid)
-        new = save(to_cid, cal, None, None, r.get("created_by"))
+        delete(eid, record=False)
+        new = save(to_cid, cal, None, None, r.get("created_by"), record=False)
     related.move("event", eid, new["id"])  # a new id in the new calendar: its links go along
+    stamp.move("iocalendar", "event", eid, new["id"])  # and so does its record of who added and changed it
+    stamp.touch("iocalendar", "event", new["id"], "changed", "calendar")
     return new
 
 
@@ -442,7 +467,8 @@ def import_text(cid: int, text: str, user_id: int | None = None, replace: bool =
         if old and not replace:
             out["skipped"] += 1
             continue
-        save(cid, ical.finish(obj), old["id"] if old else None, None, user_id, tzname)
+        with stamp.as_("import", "an .ics file"):
+            save(cid, ical.finish(obj), old["id"] if old else None, None, user_id, tzname)
         out["updated" if old else "created"] += 1
     return out
 

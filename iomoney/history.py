@@ -6,12 +6,13 @@ changes made to many transactions at once share a batch. A change can be taken b
 kept as a change of its own), one at a time or a whole batch. A transaction from Monarch Money that was changed here
 can go back to Monarch's own: the fields as they were before the first change kept, and the next sync that reaches its
 date is let in again. The rules and the syncs are not people: what they change is not kept here."""
+import contextlib
 import datetime as dt
 import json
 import uuid
 from decimal import Decimal
 
-from iosuite_shared import users as shared_users
+from iosuite_shared import stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iomoney import db, model
@@ -48,6 +49,10 @@ def record(u: dict | None, tid: int, before: dict, after: dict, what: str = "han
     diff = [k for k in after if before.get(k) != after.get(k)]
     if not diff:
         return None
+    # the transaction's record of who changed it, with what (iosuite_shared.stamp): the fields' names, never the amounts
+    with (stamp.as_("auto", "a rule") if what == "rule" else contextlib.nullcontext()):
+        stamp.touch("iomoney", "transaction", tid, "changed",
+                    ", ".join(dict.fromkeys(NAMES.get(k, k) for k in diff if not (k == "category_group" and "category" in diff))))
     return db.ex("INSERT INTO mny_changes (transaction_id, batch, what, by_user, before_json, after_json) VALUES (%s, %s, %s, %s, %s, %s)",
                  (tid, batch, what, (u or {}).get("id"), json.dumps({k: before.get(k) for k in diff}), json.dumps({k: after.get(k) for k in diff})))
 

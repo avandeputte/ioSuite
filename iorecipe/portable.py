@@ -19,6 +19,7 @@ import re
 import zipfile
 from fractions import Fraction
 
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 from iorecipe import db, model, scrape, textimport
@@ -318,7 +319,8 @@ def keep(u: dict, batch: Batch, family: bool) -> dict:
     for n, e in enumerate(batch.recipes):
         title = str((e["data"] or {}).get("title") or "A recipe")[:80]
         try:
-            r = model.create(u, e["data"], family)
+            with stamp.as_("import", "a recipe file"):
+                r = model.create(u, e["data"], family)
         except Invalid as x:
             skipped.append(f"{title}: {x}")
             continue

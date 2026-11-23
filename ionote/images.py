@@ -13,6 +13,7 @@ from PIL import Image, ImageOps
 from iosuite_shared import helper
 
 from ionote import config, db
+from iosuite_shared import stamp
 from ionote.notes import check_uuid, get_note, log_change, display_title, need_write
 
 try:
@@ -73,6 +74,7 @@ def prepare(data: bytes):
     return data, mime, w, h, _thumb(img)
 
 
+@stamp.records("ionote", "note", "picture", item=lambda uid, *a, **k: str(uid).upper())
 def put(uid: str, data: bytes, user: str) -> dict:
     """Store the picture of a note (which must exist) and return the note."""
     uid = check_uuid(uid)
@@ -99,6 +101,7 @@ def put(uid: str, data: bytes, user: str) -> dict:
         return get_note(uid, con)
 
 
+@stamp.records("ionote", "note", "picture removed", item=lambda uid, *a, **k: str(uid).upper())
 def remove(uid: str, user: str) -> dict:
     uid = check_uuid(uid)
     with db.tx() as con:

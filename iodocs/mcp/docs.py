@@ -2,6 +2,8 @@
 reads, a member adds documents and changes their own, editors and admins change every one they see."""
 from typing import Literal, Optional
 
+from iosuite_shared.stamp import with_changes
+
 from iodocs import __version__, config, files, model
 from iodocs.mcp.base import ADDS, DELETES, READ_ONLY, WRITES, clamp, doc_out, find_doc, guard, server, summary, who
 
@@ -79,7 +81,9 @@ def get_document(document: str) -> dict:
     """Everything about one document (its id, or its title when that names one): kind, whose, number, issuer,
     country, dates and expiry, reminder, visibility, own details, notes and its files."""
     u = who()
-    return doc_out(u, find_doc(u, document))
+    d = find_doc(u, document)
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(doc_out(u, d), "iodocs", "document", d["id"])
 
 
 @server.tool(annotations=READ_ONLY)

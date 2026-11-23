@@ -18,7 +18,7 @@ import re
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from iosuite_shared import helper
+from iosuite_shared import helper, stamp
 from iosuite_shared.errors import Invalid
 
 from iodocs import config, db, ocr
@@ -112,6 +112,7 @@ def _cover(doc_id: int) -> None:
     db.ex("UPDATE doc_documents SET cover = %s, updated_at = updated_at WHERE id = %s", (p["id"] if p else 0, doc_id))
 
 
+@stamp.records("iodocs", "document", "file added", item=lambda u, d, *a, **k: d["id"])
 def add(u: dict, d: dict, raw: bytes, hint: str | None, mime: str | None) -> dict:
     need_write(u, d)
     if not raw:
@@ -195,6 +196,7 @@ def read(u: dict, d: dict, fid, apply: bool = True) -> dict:
     return out
 
 
+@stamp.records("iodocs", "document", "file changed", item=lambda u, d, *a, **k: d["id"])
 def change(u: dict, d: dict, fid, data: dict) -> dict:
     """{first?: true to put it first (with a picture: the cover)}"""
     need_write(u, d)
@@ -210,6 +212,7 @@ def change(u: dict, d: dict, fid, data: dict) -> dict:
     return one(d["id"], fid)
 
 
+@stamp.records("iodocs", "document", "file removed", item=lambda u, d, *a, **k: d["id"])
 def remove(u: dict, d: dict, fid) -> None:
     need_write(u, d)
     f = one(d["id"], fid)

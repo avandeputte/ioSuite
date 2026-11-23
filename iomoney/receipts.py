@@ -8,7 +8,7 @@ transaction a new id (a card's hold that posted), the sync carries them over to 
 import mimetypes
 import re
 
-from iosuite_shared import related
+from iosuite_shared import related, stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import config, db, model
@@ -68,6 +68,7 @@ def mark(items: list[dict]) -> list[dict]:
     return items
 
 
+@stamp.records("iomoney", "transaction", "receipt added", item=lambda u, t, *a, **k: t["id"])
 def add(u: dict, t: dict, raw: bytes, name: str | None) -> dict:
     """Keep a receipt with the transaction: the receipt as listed."""
     model._need(model.can_write(u, t))

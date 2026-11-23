@@ -16,7 +16,7 @@ import threading
 from collections import OrderedDict
 
 from iotask import config, db, ical, members, users
-from iosuite_shared import related, users as shared_users
+from iosuite_shared import related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 PALETTE = ["#146b5e", "#1a73e8", "#e0426a", "#8e44d6", "#e8710a", "#0b8a9e", "#1e8e3e", "#4b53c7", "#e8a100", "#5f6b7a"]
@@ -279,6 +279,10 @@ def save(lid: int, cal, task_id: int | None = None, href: str | None = None, use
                     action = "done" if cols["done"] and not was["done"] else "reopened" if was["done"] and not cols["done"] else "changed"
                     detail = detail or ", ".join(w for w in what if w != "status") or None
             _log(lid, action or "added", cols["uid"], cols["summary"], task_id, user_id, was["ics"] if was else None, etag, detail)
+    if not _moving.get() and not (was and was["etag"] == etag):
+        # the task's record of who added and changed it, with what (iosuite_shared.stamp)
+        what = ", ".join(dict.fromkeys(label for col, label in CHANGES if was[col] != cols[col])) if was else ""
+        stamp.touch("iotask", "task", task_id, "changed" if was else "added", what)
     return get_row(task_id)
 
 
@@ -291,6 +295,8 @@ def delete(tid: int, user_id: int | None = None, action: str = "deleted", detail
         tok = bump(r["list_id"])
         db.ex("UPDATE tsk_tasks SET deleted = 1, ics = '', changed_token = %s WHERE id = %s", (tok, tid))
         _log(r["list_id"], action, r["uid"], r["summary"], tid, user_id, r["ics"], None, detail)
+    if not _moving.get():
+        stamp.touch("iotask", "task", tid, "deleted")
 
 
 def delete_with_subtasks(tid: int, user_id: int | None = None) -> int:
@@ -410,10 +416,19 @@ def move(tid: int, to_lid: int, user_id: int | None = None) -> dict:
     """To another list: a deletion in the old one and a new task in the new one (as CalDAV sees it), in one
     transaction. Its subtasks go along, and the links of each to other items of the suite follow (after the commit)."""
     moved = []
-    new = _move(tid, to_lid, user_id, moved)
+    token = _moving.set(True)
+    try:
+        new = _move(tid, to_lid, user_id, moved)
+    finally:
+        _moving.reset(token)
     for old_id, new_id in moved:
         related.move("task", old_id, new_id)  # a new id in the new list: its links go along
+        stamp.move("iotask", "task", old_id, new_id)  # and its record of who added and changed it
+        stamp.touch("iotask", "task", new_id, "changed", "list")
     return new
+
+
+_moving = contextvars.ContextVar("iotask_moving", default=False)  # a move: one "changed (list)" in the record, not a delete and an add
 
 
 def _move(tid: int, to_lid: int, user_id: int | None, moved: list) -> dict:

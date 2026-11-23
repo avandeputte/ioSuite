@@ -13,6 +13,7 @@ import datetime as dt
 import io
 import re
 
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 from iothings import db, model
@@ -108,6 +109,12 @@ def _item_data(row: dict) -> dict:
 
 
 def keep(u: dict, rows: list[dict]) -> dict:
+    """_keep_(), with each thing it adds or changes recorded as an import (iosuite_shared.stamp)."""
+    with stamp.as_("import", "a Homebox CSV file"):
+        return _keep_(u, rows)
+
+
+def _keep_(u: dict, rows: list[dict]) -> dict:
     """Every row a thing: a new one, or the one an earlier import of the same row (HB.import_ref) made, changed.
     {added, changed, skipped: [why], locations, labels}."""
     model.need_add(u)

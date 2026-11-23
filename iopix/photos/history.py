@@ -16,6 +16,7 @@ import shutil
 import time
 from pathlib import Path
 
+from iosuite_shared import stamp
 from iopix import config
 from iopix.data import index, appdb
 from iopix.photos import consistency, edits
@@ -76,6 +77,12 @@ def record(rows: list):
                               r.get("sidecar") or None, r.get("path"), r.get("file_copy") or _file_copy(r.get("path"))) for r in rows])
     except Exception as e:  # the change itself stands; the log entry is what is lost
         log.warning("history: %d entries were not recorded: %s", len(rows), e)
+    # each photo's record of who changed it last, with what and from where (iosuite_shared.stamp), as for every item
+    by_action: dict = {}
+    for r in rows:
+        by_action.setdefault(str(r["action"])[:60], set()).add(int(r["photo_id"]))
+    for action, ids in by_action.items():
+        stamp.touch_many("iopix", "photo", sorted(ids), "changed", action.replace("_", " "))
 
 
 def _fmt(field, v) -> str:

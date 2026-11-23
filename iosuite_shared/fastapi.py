@@ -23,7 +23,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import apppasswords, catalog, config, db, routers, sessions, suite, users
+from iosuite_shared import apppasswords, catalog, config, db, routers, sessions, stamp, suite, users
 from iosuite_shared.access import ACCESS_ROLES, UNCLAIMED, Access, BodyCap, TooLarge, content_type, json_body, public_user
 from iosuite_shared.proxyauth import Forwarded, Proxy, authlog, peer_of, seen
 from iosuite_shared.errors import Invalid
@@ -190,8 +190,11 @@ class Auth:
         if user and user.get("role") == "none":
             request.state.user = None
             request.state.no_role_user = user
+            stamp.begin(request, None, True)
             return None
         request.state.user = self.decorate(user) if user else None
+        # who acts, with what and from where, for the record of what they add and change (iosuite_shared.stamp)
+        stamp.begin(request, user, self.proxy.external(request.headers, peer))
         return None
 
     def _authorization(self, request: Request):

@@ -4,6 +4,8 @@ from typing import Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
+from iosuite_shared.stamp import with_changes
+
 from iocalendar import __version__, config, contacts, holiday, ical, members, model
 from iocalendar.mcp.base import READ_ONLY, calendars, clamp, event_out, find_calendar, find_event, member_ids, occurrence_out, server, when, who
 
@@ -107,7 +109,8 @@ def get_event(event: str, occurrence: Optional[str] = None) -> dict:
     occurrence: a recurrenceId, for what that one occurrence looks like."""
     u = who()
     r, _ = find_event(u, event)
-    return event_out(u, r, occurrence)
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(event_out(u, r, occurrence), "iocalendar", "event", r["id"])
 
 
 @server.tool(annotations=READ_ONLY)

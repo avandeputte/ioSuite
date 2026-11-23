@@ -16,7 +16,7 @@ import time
 import urllib.error
 import urllib.parse
 
-from iosuite_shared import links
+from iosuite_shared import links, stamp
 
 from iocalendar import config, db, ical, model
 
@@ -93,6 +93,12 @@ def birthday_calendar() -> dict | None:
 
 
 def sync_birthdays() -> dict:
+    """_sync_birthdays_(), with each event it changes recorded as changed by birthdays from ioContact (iosuite_shared.stamp)."""
+    with stamp.as_("auto", "birthdays from ioContact"):
+        return _sync_birthdays_()
+
+
+def _sync_birthdays_() -> dict:
     """Bring the Birthdays calendar up to date with ioContact (made when missing; removed when switched off)."""
     with _lock:
         s = settings()

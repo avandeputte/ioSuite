@@ -30,6 +30,7 @@ machine, then at its address inside the network, then at its public one, with th
 token when one is set, and with the viewer's own credentials (the shared session cookie, or the Authorization header
 the request came with), so each app answers with what that person may see there.
 """
+import asyncio
 import json
 import logging
 import re
@@ -41,8 +42,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, Response
+from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import catalog, db, links, suite, users
+from iosuite_shared import catalog, db, links, stamp, suite, users
 from iosuite_shared.access import json_body
 
 log = logging.getLogger("iosuite_shared.related")
@@ -385,5 +387,30 @@ def router(auth) -> APIRouter:
         if not remove(kind, item_id, link_id):
             raise HTTPException(404, "No such link")
         return {"ok": True}
+
+    # who added the item and changed it, with what and from where (iosuite_shared.stamp): to whoever sees the item
+    @r.get("/api/changes/ui.js", include_in_schema=False, dependencies=[access.signed_in])
+    def api_changes_ui():
+        """The line under an item (static/changes-panel.js): "Added by … · changed by …", and its history."""
+        return FileResponse(Path(__file__).with_name("static") / "changes-panel.js", media_type="text/javascript",
+                            headers={"Cache-Control": "no-cache"})
+
+    @r.get("/api/changes/{kind}/{item_id}", dependencies=[access.signed_in])
+    async def api_changes(kind: str, item_id: str, request: Request):
+        """{added, changed, history}: who added the item, who changed it last, and its last changes; 404 to anyone who
+        may not see the item (its own app says, as for its links: this app itself through its own routes), admins
+        included."""
+        kind, item_id = item(kind, item_id)
+        if own(kind):
+            from iosuite_shared import suiteitems
+            local = suiteitems.Local(request, asyncio.get_running_loop())
+            try:
+                await run_in_threadpool(local.get, f"/api/suite/items/{kind}/{urllib.parse.quote(item_id)}")
+            except suiteitems.Unavailable as e:
+                raise HTTPException(404 if e.status in (401, 403, 404) else e.status,
+                                    f"That {KINDS[kind]['label'].lower()} is not there, or you may not see it") from None
+        else:
+            await run_in_threadpool(seen, request, kind, item_id)
+        return await run_in_threadpool(stamp.record, KINDS[kind]["app"], kind, item_id, me(request))
 
     return r

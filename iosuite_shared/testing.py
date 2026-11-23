@@ -153,7 +153,7 @@ def restore_stored() -> None:
 
 
 # ---- what every app's test suite does the same way
-SHARED_TABLES = ("ios_user_roles", "ios_user_data", "ios_app_passwords", "ios_feed_tokens", "ios_sessions", "ios_users", "ios_settings", "ios_apps", "ios_credentials", "ios_updates")
+SHARED_TABLES = ("ios_item_changes", "ios_item_stamps", "ios_user_roles", "ios_user_data", "ios_app_passwords", "ios_feed_tokens", "ios_sessions", "ios_users", "ios_settings", "ios_apps", "ios_credentials", "ios_updates")
 
 
 def clean_shared_tables(auth=None) -> None:

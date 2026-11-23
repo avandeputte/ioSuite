@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
+from iosuite_shared.stamp import with_changes
+
 from iotask import __version__, config, ical, members, model
 from iotask.mcp.base import READ_ONLY, clamp, find_list, find_task, list_names, lists, member_ids, server, task_out, who
 
@@ -88,7 +90,8 @@ def get_task(task: str) -> dict:
     kids = model.subtasks_of(r)
     if kids:
         out["children"] = [task_out(u, k, subs) for k in kids]
-    return out
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(out, "iotask", "task", r["id"])
 
 
 @server.tool(annotations=READ_ONLY)

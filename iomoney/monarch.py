@@ -36,7 +36,7 @@ import re
 import threading
 from decimal import Decimal
 
-from iosuite_shared import credentials
+from iosuite_shared import credentials, stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import categories, config, db, model, receipts
@@ -651,6 +651,17 @@ def progress() -> dict | None:
             "started": _progress["started"].isoformat() if _progress["started"] else None}
 
 
+def _record_new(started: dt.datetime, by: int = None) -> None:
+    """The transactions this sync brought in for the first time: added by Monarch Money (and by the person who started
+    the sync, when someone did), in each one's record of who added and changed it (iosuite_shared.stamp). Those it
+    only refreshed are not: a sync goes over every transaction of the window each time."""
+    from iosuite_shared import users as shared_users
+    who = shared_users.get(by) if by else None
+    new = [r["id"] for r in db.q("SELECT id FROM mny_transactions WHERE source = 'monarch' AND created_at >= %s", (started,))]
+    with stamp.job("Monarch Money", "sync", who):
+        stamp.touch_many("iomoney", "transaction", new, "added")
+
+
 def sync(by: int = None, full: bool = False, only: int = None, years: int = 2) -> dict:
     """Copy Monarch Money in now; what came in, or why it did not. One sync at a time. only: one account's
     transactions of the past years again (the id here; years 0: all Monarch has)."""
@@ -669,6 +680,7 @@ def sync(by: int = None, full: bool = False, only: int = None, years: int = 2) -
         db.ex("UPDATE mny_syncs SET finished_at = NOW(), ok = 1, message = %s, accounts = %s, transactions = %s, holdings = %s "
               "WHERE id = %s", (msg, got["accounts"], got["transactions"], got["holdings"], sid))
         log.info("Monarch sync: %s", msg)
+        _record_new(started, by)
         try:
             from iomoney import quotes
             quotes.refresh()

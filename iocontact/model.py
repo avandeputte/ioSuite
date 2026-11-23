@@ -11,7 +11,7 @@ import time
 import uuid as uuidlib
 from contextvars import ContextVar
 
-from iosuite_shared import related, users as shared_users
+from iosuite_shared import related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iocontact import config, db, iopix, relations as rel, users, vcard
@@ -494,6 +494,8 @@ def save(book_id: int, data: dict, cid: int | None = None, href: str | None = No
         db.ex("DELETE FROM con_contact_tags WHERE contact_id = %s", (cid,))
         db.many("INSERT IGNORE INTO con_contact_tags (contact_id, tag) VALUES (%s, %s)", [(cid, t) for t in c["tags"]])
         _save_relations(cid, c["relations"], resolve_book_ids or [book_id])
+    # the contact's record of who added and changed it, with what (iosuite_shared.stamp)
+    stamp.touch("iocontact", "contact", cid, "changed" if prev else "added")
     return cid
 
 
@@ -598,6 +600,7 @@ def set_fields(cid: int, **cols) -> None:
         tok = _bump(row["address_book_id"])
         db.ex("UPDATE con_contacts SET " + ", ".join(f"{k} = %s" for k in cols) + ", etag = %s, changed_token = %s WHERE id = %s",
               (*cols.values(), _etag(cid), tok, cid))
+    stamp.touch("iocontact", "contact", cid, "changed", ", ".join(k.replace("_", " ") for k in cols))
 
 
 def delete(cid: int) -> None:
@@ -616,6 +619,7 @@ def delete(cid: int) -> None:
         users.forget_me_contact(cid)  # whoever had this card as "me"
         for o in others:
             _touch(o)
+    stamp.touch("iocontact", "contact", cid, "deleted")
 
 
 # What a deletion marker no longer carries: everything about the person. The marker keeps the address (book, href)
@@ -665,6 +669,7 @@ def move(cid: int, new_book: int) -> None:
         tok_old = _bump(row["address_book_id"])
         db.ex("INSERT INTO con_contacts (address_book_id, uid, href, fn, etag, changed_token, deleted) VALUES (%s, %s, %s, '', %s, %s, 1)",
               (row["address_book_id"], row["uid"], row["href"], _etag(cid), tok_old))
+    stamp.touch("iocontact", "contact", cid, "changed", "address book")
 
 
 def all_tags(book_ids: list[int]) -> list[dict]:

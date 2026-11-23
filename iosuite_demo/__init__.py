@@ -136,7 +136,9 @@ def run(app: str, seed, force: bool = False) -> bool:
     give_roles(app, people)
     db.set_setting(SEEDED, str(int(time.time())), app)  # first: a seed that fails half-way is not run again at every start
     t = time.time()
-    seed(people)
+    from iosuite_shared import stamp
+    with stamp.job("the demo data", "auto"):  # what the items' records say added them
+        seed(people)
     log.info("demo data added to %s in %.1f s", app, time.time() - t)
     return True
 

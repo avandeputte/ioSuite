@@ -19,6 +19,7 @@ import re
 from collections import Counter
 from decimal import Decimal, InvalidOperation
 
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import db, model
@@ -419,4 +420,6 @@ def _add(u: dict, a: dict, rows: list[dict]) -> int:
     for i in range(0, len(ids), 500):
         part = ids[i:i + 500]
         transfers.link(f"t.id IN ({db.marks(len(part))})", part)
+    with stamp.as_("import", "a bank file"):  # each one's record of who added it (iosuite_shared.stamp)
+        stamp.touch_many("iomoney", "transaction", ids, "added")
     return len(ids)

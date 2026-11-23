@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 from iocalendar import __version__, db, ical, model
-from iosuite_shared import outbound, users as shared_users
+from iosuite_shared import outbound, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iocalendar.subscriptions")
@@ -119,6 +119,12 @@ def _parse(text: str):
 # ------------------------------------------------------------------ bringing a calendar in line
 
 def apply(cid: int, cal, tzname: str | None = None) -> dict:
+    """_apply_(), with each event it changes recorded as changed by a subscribed calendar (iosuite_shared.stamp)."""
+    with stamp.as_("sync", "a subscribed calendar"):
+        return _apply_(cid, cal, tzname)
+
+
+def _apply_(cid: int, cal, tzname: str | None = None) -> dict:
     """The calendar's events made the same as the outside calendar's: {events, changed, skipped}."""
     have = {r["uid"]: r for r in model.rows(cid, listing=True)}
     seen, changed, skipped = set(), 0, 0
