@@ -179,3 +179,60 @@ jobs:
           .venv/bin/iosuite serve > serve.log 2>&1 &
           IOSUITE_CONFIG="$PWD/copies/pix/config.env" .venv/bin/iosuite serve > serve-pix.log 2>&1 &
           python tools/twocopies.py --web 8080 --other-web 8081 --other-app iopix --login "alex:$ADMIN_PASSWORD" || { tail -60 serve.log serve-pix.log; exit 1; }
+
+  image:
+    # the container image, built as the Image workflow builds it, and the repository's stack file started with it:
+    # MariaDB and one container with every app, then ioPix moved to a container of its own
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -q -t ghcr.io/avandeputte/iosuite2:latest --build-arg COMMIT=${{ github.sha }} .
+      - name: The stack starts (docker-compose.yml)
+        run: |
+          mkdir -p stack/data photos && sudo chown 1000:1000 stack/data photos
+          cat > .env <<EOF
+          SUITE_DB_PASSWORD=a-login-for-the-check
+          DB_ROOT_PASSWORD=a-root-for-the-check
+          ADMIN_USER=alex
+          ADMIN_PASSWORD=a-password-for-the-check
+          DATA=$PWD/stack
+          PHOTOS=$PWD/photos
+          EOF
+          docker compose up -d --wait --wait-timeout 300 || { docker compose ps; docker compose logs --no-log-prefix --tail 80 iosuite; exit 1; }
+          docker compose logs --no-log-prefix iosuite | head -20
+      - name: Every app answers in the container
+        run: python3 tools/smoke.py --web 80 --sync 8443 || { docker compose logs --no-log-prefix --tail 100 iosuite; exit 1; }
+      - name: Two containers, one suite (ioPix in a container of its own)
+        run: |
+          cat > two.yml <<'EOF'
+          services:
+            iosuite:
+              environment:
+                APPS: "iostart,iocalendar,iotask,iocontact,ionote"
+              command: [iosuite, stack, --db-admin=root, --set=suite.PUBLIC_URL=http://127.0.0.1, --, iosuite, serve]
+              healthcheck:
+                interval: 5s
+            iopix:
+              image: ghcr.io/avandeputte/iosuite2:latest
+              restart: unless-stopped
+              depends_on:
+                iosuite:
+                  condition: service_healthy
+              ports: ["8081:80"]
+              volumes:
+                - ${DATA}/data:/data
+                - ${PHOTOS}:/library/photos
+              environment:
+                IOSUITE_DB_HOST: db
+                IOSUITE_DB_PASSWORD: ${SUITE_DB_PASSWORD}
+                DB_ADMIN_PASSWORD: ${DB_ROOT_PASSWORD}
+                INTERNAL_URL: http://iopix
+                APPS: iopix
+                LOG_FILE: /data/iosuite-pix.log
+              command: [iosuite, stack, --db-admin=root, --, iosuite, serve]
+              healthcheck:
+                interval: 5s
+          EOF
+          docker compose -f docker-compose.yml -f two.yml up -d --wait --wait-timeout 300 || { docker compose -f docker-compose.yml -f two.yml ps; docker compose -f docker-compose.yml -f two.yml logs --no-log-prefix --tail 60 iosuite iopix; exit 1; }
+          python3 tools/twocopies.py --web 80 --other-web 8081 --other-app iopix --login "alex:a-password-for-the-check" || { docker compose -f docker-compose.yml -f two.yml logs --no-log-prefix --tail 60 iosuite iopix; exit 1; }
