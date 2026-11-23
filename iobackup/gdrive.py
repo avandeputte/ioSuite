@@ -1,4 +1,4 @@
-"""Google Drive storage, with nothing but `requests` and `openssl`.
+"""Google Drive storage, with nothing but the suite's HTTP library (httpx2) and `openssl`.
 
 Two ways to sign in:
 
@@ -20,7 +20,7 @@ import tempfile
 import threading
 import time
 
-import requests
+import httpx2
 
 DEVICE_URL = "https://oauth2.googleapis.com/device/code"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -55,7 +55,7 @@ def _err(resp):
 # --------------------------------------------------------------------------
 
 def start_device_flow(client_id):
-    r = requests.post(DEVICE_URL, data={"client_id": client_id, "scope": SCOPE_USER}, timeout=20)
+    r = httpx2.post(DEVICE_URL, data={"client_id": client_id, "scope": SCOPE_USER}, timeout=20)
     if r.status_code != 200:
         raise DriveError("Google refused the client ID: %s" % _err(r))
     return r.json()  # device_code, user_code, verification_url, expires_in, interval
@@ -63,7 +63,7 @@ def start_device_flow(client_id):
 
 def poll_device_flow(client_id, client_secret, device_code):
     """One poll. Returns ("pending"|"slow_down"|"ok"|"denied"|"expired", data)."""
-    r = requests.post(TOKEN_URL, data={
+    r = httpx2.post(TOKEN_URL, data={
         "client_id": client_id, "client_secret": client_secret, "device_code": device_code,
         "grant_type": "urn:ietf:params:oauth:grant-type:device_code"}, timeout=20)
     if r.status_code == 200:
@@ -119,13 +119,13 @@ def access_token(dest):
             sa = json.loads(dest.get("sa_json") or "")
         except ValueError:
             raise DriveError("The service account key is not valid JSON")
-        r = requests.post(TOKEN_URL, data={
+        r = httpx2.post(TOKEN_URL, data={
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
             "assertion": _sa_assertion(sa)}, timeout=20)
     else:
         if not dest.get("refresh_token"):
             raise DriveError("This Google Drive destination is not signed in yet")
-        r = requests.post(TOKEN_URL, data={
+        r = httpx2.post(TOKEN_URL, data={
             "client_id": dest.get("client_id"), "client_secret": dest.get("client_secret"),
             "refresh_token": dest["refresh_token"], "grant_type": "refresh_token"}, timeout=20)
     if r.status_code != 200:
@@ -150,7 +150,7 @@ class Drive:
 
     def _get(self, path, **params):
         params.update(COMMON)
-        r = requests.get(API + path, headers=self._h(), params=params, timeout=60)
+        r = httpx2.get(API + path, headers=self._h(), params=params, timeout=60)
         if r.status_code != 200:
             raise DriveError(_err(r))
         return r.json()
@@ -170,7 +170,7 @@ class Drive:
         found = self._get("/files", q=q, fields="files(id,name)", spaces="drive").get("files")
         if found:
             return found[0]["id"]
-        r = requests.post(API + "/files", headers=self._h(), params=COMMON,
+        r = httpx2.post(API + "/files", headers=self._h(), params=COMMON,
                           json={"name": name, "mimeType": FOLDER_MIME}, timeout=30)
         if r.status_code != 200:
             raise DriveError("Could not create the folder: %s" % _err(r))
@@ -200,7 +200,7 @@ class Drive:
         size = os.path.getsize(path)
         meta = {"name": os.path.basename(path), "parents": [folder]}
         params = dict(COMMON, uploadType="resumable")
-        r = requests.post(UPLOAD, headers=dict(self._h(), **{
+        r = httpx2.post(UPLOAD, headers=dict(self._h(), **{
             "X-Upload-Content-Type": "application/x-tar", "X-Upload-Content-Length": str(size)}),
             params=params, json=meta, timeout=60)
         if r.status_code != 200:
@@ -210,7 +210,7 @@ class Drive:
         with open(path, "rb") as f:
             while True:
                 if cancel is not None and cancel.is_set():
-                    requests.delete(session, timeout=10)
+                    httpx2.delete(session, timeout=10)
                     raise DriveError("Cancelled")
                 f.seek(sent)
                 chunk = f.read(CHUNK)
@@ -235,41 +235,51 @@ class Drive:
         """
         for attempt in range(6):
             try:
-                r = requests.put(session, data=chunk, headers={"Content-Range": content_range}, timeout=300)
+                r = httpx2.put(session, content=chunk, headers={"Content-Range": content_range}, timeout=300)
                 if r.status_code in (200, 201, 308):
                     return r
                 if r.status_code < 500 and r.status_code != 429:
                     raise DriveError("Upload failed: %s" % _err(r))
-            except requests.RequestException:
+            except httpx2.HTTPError:
                 pass
             time.sleep(min(2 ** attempt, 30))
             try:
-                q = requests.put(session, headers={"Content-Range": "bytes */%d" % size}, timeout=60)
+                q = httpx2.put(session, headers={"Content-Range": "bytes */%d" % size}, timeout=60)
                 if q.status_code in (200, 201, 308):
                     return q
-            except requests.RequestException:
+            except httpx2.HTTPError:
                 pass
         raise DriveError("Upload failed after several retries")
 
-    def download(self, file_id, dest_path):
-        r = requests.get(API + "/files/%s" % file_id, headers=self._h(),
-                         params=dict(COMMON, alt="media"), stream=True, timeout=300)
+    def stream(self, file_id):
+        """(the answer's headers, the file a megabyte at a time). The connection closes when the file has been read
+        through, or the reading is given up."""
+        opened = httpx2.stream("GET", API + "/files/%s" % file_id, headers=self._h(), params=dict(COMMON, alt="media"),
+                               follow_redirects=True, timeout=300)
+        r = opened.__enter__()
         if r.status_code != 200:
-            raise DriveError("Download failed: %s" % _err(r))
+            try:
+                r.read()
+                raise DriveError("Download failed: %s" % _err(r))
+            finally:
+                opened.__exit__(None, None, None)
+
+        def chunks():
+            try:
+                yield from r.iter_bytes(1 << 20)
+            finally:
+                opened.__exit__(None, None, None)
+        return r.headers, chunks()
+
+    def download(self, file_id, dest_path):
+        _, chunks = self.stream(file_id)
         tmp = dest_path + ".partial"
         with open(tmp, "wb") as f:
-            for chunk in r.iter_content(1 << 20):
+            for chunk in chunks:
                 f.write(chunk)
         os.replace(tmp, dest_path)
 
-    def stream(self, file_id):
-        r = requests.get(API + "/files/%s" % file_id, headers=self._h(),
-                         params=dict(COMMON, alt="media"), stream=True, timeout=300)
-        if r.status_code != 200:
-            raise DriveError("Download failed: %s" % _err(r))
-        return r
-
     def delete(self, file_id):
-        r = requests.delete(API + "/files/%s" % file_id, headers=self._h(), params=COMMON, timeout=60)
+        r = httpx2.delete(API + "/files/%s" % file_id, headers=self._h(), params=COMMON, timeout=60)
         if r.status_code not in (200, 204, 404):
             raise DriveError("Delete failed: %s" % _err(r))

@@ -179,7 +179,15 @@ module per page or part of the page).
 What two or three apps need in the same way is in the shared library too, not in each of them: family members as
 tags on events and tasks (`iosuite_shared.family.Tags`), files kept in an app's database (`stored.py`: ioDocs,
 ioThings, ioMoney's receipts), the server's time zone (`zones.py`), and another app asked on the viewer's behalf
-(`links.App`: the tasks, bills and papers on the calendar, the shopping list, a thing's upkeep).
+(`links.App`: the tasks, bills and papers on the calendar, the shopping list, a thing's upkeep). The map library
+(Leaflet, for ioPix and ioHealth) is there once as well (`iosuite_shared/static/public`), and each app serves it in
+its own `/static`. Outbound HTTP is one client library, `httpx2`.
+
+The pages' scripts and style sheets go out compressed, and a browser that still has one is told so (304) instead of
+being sent it again. The page names `app.js`, `app.css` and `base.css` with a mark of what is in them
+(`static/app.js?v=3f9c01ab7e`, `iosuite_shared/pages.py`), and a file asked for by its own mark is kept by the
+browser and by Cloudflare for good; the modules a script imports by name are asked for each time, so an update never
+pairs one with another from the version before.
 
 ## From a checkout
 

@@ -207,19 +207,18 @@ def _newest() -> int:
 def router(auth):
     """GET /api/live: the one stream a page holds (signed in, on the pages door). Each line is
     {app, what, at} (and `body` when the app sent one), as a server-sent event named "change"."""
-    import pathlib
-
     from fastapi import APIRouter, Request
-    from fastapi.responses import FileResponse, StreamingResponse
+    from fastapi.responses import StreamingResponse
+
+    from iosuite_shared import pages
 
     r = APIRouter()
 
     @r.get("/api/live.js", dependencies=[auth.access.public])
-    def live_js():
+    def live_js(request: Request):
         """The page's side of it (static/live.js): onChange(what, fn), the one connection shared by the whole page:
         import { onChange } from './api/live.js'."""
-        return FileResponse(pathlib.Path(__file__).with_name("static") / "live.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "live.js", "text/javascript")
 
     @r.get("/api/live", dependencies=[auth.access.signed_in])
     async def live(request: Request):

@@ -297,7 +297,7 @@ function vendor(js, css) {
     onerror: () => { delete loaded[js]; fail(new Error(`${js} did not load`)); } })));
 }
 const charts = () => vendor('static/vendor/uPlot.iife.min.js', 'static/vendor/uPlot.min.css');
-const maps = () => vendor('static/vendor/leaflet.js', 'static/vendor/leaflet.css');
+const maps = () => vendor('static/vendor/leaflet/leaflet.js', 'static/vendor/leaflet/leaflet.css');  // the suite's one copy (iosuite_shared/static/public)
 const NEEDS = { settings: [], records: [], map: [maps], workout: [charts, maps] };  // every other page: the charts
 
 export async function render(keep) {

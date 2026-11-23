@@ -129,5 +129,5 @@ def create(auth, updater, version: str, config, *, description: str, prepare=(),
     if server is not None:
         shared_mcp.mount(app, server)  # MCP over streamable HTTP at /mcp, ahead of everything else
     if page:
-        pages.mount(app, config.STATIC_DIR, version, service_worker=service_worker)  # /, the manifest and /static
+        pages.mount(app, config.STATIC_DIR, service_worker=service_worker)  # /, the manifest and /static
     return app

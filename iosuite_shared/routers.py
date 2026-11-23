@@ -3,13 +3,12 @@ passwords), /api/suite-admin (suite admins), /api/server (maintenance)
 and /api/status. Each takes the app's Auth; Auth.router() and friends call them."""
 import json
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import admin as suite_admin, apppasswords, estate, family, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
+from iosuite_shared import admin as suite_admin, apppasswords, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
 from iosuite_shared.access import UNCLAIMED, json_body, public_user
 from iosuite_shared.proxyauth import authlog, peer_of
 
@@ -153,24 +152,21 @@ def auth_router(self) -> APIRouter:
         return {"user": public_user(nu)}
 
     @r.get("/api/auth/ui.js", dependencies=[access.public])
-    def api_account_ui():
+    def api_account_ui(request: Request):
         """The account panels (static/account-panel.js): Settings › Account, the theme switch and the app passwords,
         the same in every app: ui = await import(new URL('api/auth/ui.js', document.baseURI).href)."""
-        return FileResponse(Path(__file__).with_name("static") / "account-panel.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "account-panel.js", "text/javascript")
 
     @r.get("/api/auth/frame.js", dependencies=[access.public])
-    def api_frame():
+    def api_frame(request: Request):
         """The frame the apps' pages share (static/frame.js): icons, the note at the foot of the page, dialogs, the
         menu of the suite's apps, the sidebar, the theme: import { ... } from '../api/auth/frame.js'."""
-        return FileResponse(Path(__file__).with_name("static") / "frame.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "frame.js", "text/javascript")
 
     @r.get("/api/auth/base.css", dependencies=[access.public])
-    def api_base_css():
+    def api_base_css(request: Request):
         """The look the single-page io apps share (static/base.css), linked before each one's own static/app.css."""
-        return FileResponse(Path(__file__).with_name("static") / "base.css", media_type="text/css",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "base.css", "text/css")
 
     @r.post("/api/auth/settings", dependencies=[access.signed_in])
     async def api_my_settings(request: Request):
@@ -343,11 +339,10 @@ def auth_router(self) -> APIRouter:
 
     # ---- notifications (iosuite_shared.push): Settings › Account › Notifications, the same in every app
     @r.get("/api/auth/push/sw.js", dependencies=[access.public])
-    def api_push_worker():
+    def api_push_worker(request: Request):
         """The service worker that shows the notifications: push only (no caching, no fetch handler), registered with
         this folder as its scope so it never stands between the app and its pages."""
-        return FileResponse(Path(__file__).with_name("static") / "push-sw.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "push-sw.js", "text/javascript")
 
     @r.get("/api/auth/push", dependencies=[access.signed_in])
     def api_push(request: Request):
@@ -470,11 +465,10 @@ def admin_router(self) -> APIRouter:
         return auth.current_user(request)
 
     @r.get("/ui.js", dependencies=[access.suite_admin])
-    def api_ui():
+    def api_ui(request: Request):
         """The panel itself (static/suite-admin.js), one ES module every app mounts in its Settings › People, Apps, Servers and Keys tabs:
         ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); ui.mount(el, {sub, toast})."""
-        return FileResponse(Path(__file__).with_name("static") / "suite-admin.js", media_type="text/javascript",
-                            headers={"Cache-Control": "no-cache"})
+        return pages.send(request, pages.SHARED / "suite-admin.js", "text/javascript")
 
     @r.get("", dependencies=[access.suite_admin])
     def api_overview(request: Request):

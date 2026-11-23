@@ -66,7 +66,6 @@ export async function postpone(ids, day) {
 
 export async function drawTasks(page, r) {
   const [items, title, color, list] = await fetchTasks(r);
-  const smart = r.view !== 'list';
   const head = h('div', { class: 'pagehead tasks-head', style: color ? { '--c': color } : null },
     h('h1', null, title), h('span', { class: 'count' }, items.filter((t) => !t.done).length || ''), h('span', { class: 'grow' }),
     S.who.size ? h('button', { class: 'pillbtn noic', title: 'Show everyone’s tasks again', onclick: () => toggleWho(null) },

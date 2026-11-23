@@ -27,15 +27,6 @@ function dialog(title, body, buttons, wide) {
   return frame.dialog(title, body, buttons, wide ? 'wide' : '', { wait: true, focus: 'input:not([type=checkbox]),select,textarea' });
 }
 
-const ago = (iso) => {
-  if (!iso) return 'never';
-  const s = (Date.now() - new Date(iso.endsWith('Z') || /[+-]\d\d:\d\d$/.test(iso) ? iso : iso + 'Z')) / 1000;
-  if (s < 90) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  return new Date(iso).toLocaleString();
-};
-
 // ------------------------------------------------------------------ state
 const S = { status: {}, user: null, suite: [], settings: {}, servers: [], destinations: [], jobs: [], busy: false, now: null, backupDir: '', suiteServer: {} };
 const canEdit = () => S.user && ['editor', 'admin'].includes(S.user.role);

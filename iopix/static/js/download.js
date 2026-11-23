@@ -1,9 +1,8 @@
 /** Zip downloads. */
-import { $, PREF, api, fill, fmtBytes, h, icon, nf, send, store } from './core.js';
+import { PREF, fill, fmtBytes, h, icon, nf, send, store } from './core.js';
 import { toast } from './state.js';
 import { chipList } from './search.js';
 import { modal } from './actions.js';
-import { details } from './lightbox.js';
 
 export async function downloadDialog(p, selected) {
   p = new URLSearchParams(p);
@@ -19,7 +18,7 @@ export async function downloadDialog(p, selected) {
   const nogps = h('input', { type: 'checkbox', checked: store.get(PREF.expNoGps, '0') === '1', onchange: () => store.set(PREF.expNoGps, nogps.checked ? '1' : '0') });
   const flat = h('input', { type: 'checkbox', checked: store.get(PREF.expFlat, '0') === '1', onchange: () => store.set(PREF.expFlat, flat.checked ? '1' : '0') });
   const body = h('div', null, h('p', null, 'Working out the download…'));
-  const back = modal('Download', body,
+  modal('Download', body,
     h('div', { class: 'expopts' },
       h('label', null, h('span', { class: 'muted' }, 'Size'), sel[PREF.expSize]), h('label', null, h('span', { class: 'muted' }, 'Format'), sel[PREF.expFmt]),
       h('label', null, h('span', { class: 'muted' }, 'File names'), sel[PREF.expName])),

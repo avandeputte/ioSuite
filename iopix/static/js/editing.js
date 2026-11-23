@@ -1,6 +1,6 @@
 /** Metadata editing dialogs: rating, titles, captions, tags, dates, locations and templates. */
-import { $, UTC, accuracyChoices, api, date, dfTimeLocal, fill, fmtDist, fmtWhen, fromHeight, h, heightUnit, icon, nf, norm, plural, post, send, toHeight } from './core.js';
-import { S, go, hashFor, photosWith, pollSoon, toast, toastError } from './state.js';
+import { $, accuracyChoices, api, date, dfTimeLocal, fill, fmtDist, fmtWhen, fromHeight, h, heightUnit, icon, nf, norm, plural, post, send, toHeight } from './core.js';
+import { S, hashFor, photosWith, pollSoon, toast, toastError } from './state.js';
 import { G, setBadges } from './grid.js';
 import { confirmDialog, modal } from './actions.js';
 import { placeTagsDialog } from './admin.js';
@@ -193,7 +193,7 @@ export function tagDialog(ids) {
 }
 export function editDialog(ids) {
   const save = (ch) => editPhotos(ids, ch);
-  const back = modal(`Edit ${plural(ids.length, 'photo')}`,
+  modal(`Edit ${plural(ids.length, 'photo')}`,
     h('p', null, S.NO_DK ? 'Each change is saved straight away, and to the XMP sidecar files beside the photos.' : 'Each change is saved straight away to the XMP sidecar files. digiKam’s database is not touched.'),
     editControls({}, save),
     ...(() => {  // title and caption for every selected photo, applied on demand (not on each keystroke)

@@ -1,7 +1,6 @@
 /** The search box with its suggestions, the filter chips and the breadcrumbs. */
 import { $, MONTHS, h, icon, nf, norm } from './core.js';
 import { S, ST, applyFilter, faceUrl, filterParams, go, hashFor, loadConcepts, photosWith, savedSearchFor, ualbumById } from './state.js';
-import { people } from './pages.js';
 import { REJECTS, toggleFilters } from './filters.js';
 
 export function chipList(p) {

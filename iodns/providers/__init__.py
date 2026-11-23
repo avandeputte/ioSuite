@@ -20,7 +20,7 @@ import ipaddress
 import re
 from dataclasses import dataclass, field
 
-import httpx
+import httpx2
 
 DNS_TYPES = ("A", "AAAA", "CNAME")  # what a DNS server holds
 TYPES = DNS_TYPES + ("TUNNEL",)     # what the master list holds: TUNNEL is a Cloudflare Tunnel public hostname
@@ -144,19 +144,19 @@ class Provider:
         self.url = str(server.get("url") or "").rstrip("/")
         self.options = server.get("options") or {}
         self.secret = secret or ""
-        self._http: httpx.Client | None = None
+        self._http: httpx2.Client | None = None
 
     @property
-    def http(self) -> httpx.Client:
+    def http(self) -> httpx2.Client:
         if self._http is None:
-            self._http = httpx.Client(timeout=TIMEOUT, verify=bool(self.options.get("verifyTls", False)), follow_redirects=False)
+            self._http = httpx2.Client(timeout=TIMEOUT, verify=bool(self.options.get("verifyTls", False)), follow_redirects=False)
         return self._http
 
-    def request(self, method: str, path: str, **kw) -> httpx.Response:
+    def request(self, method: str, path: str, **kw) -> httpx2.Response:
         url = path if path.startswith("http") else self.url + path
         try:
             r = self.http.request(method, url, **kw)
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             raise ProviderError(f"{self.server.get('name') or self.url}: {e.__class__.__name__}: {e}") from None
         if r.status_code >= 400:
             text = r.text.strip().replace("\n", " ")[:300]

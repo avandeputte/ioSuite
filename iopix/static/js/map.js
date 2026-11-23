@@ -1,5 +1,5 @@
 /** The map page (Leaflet, loaded on demand). */
-import { $, PREF, TOAST_LONG, accuracyChoices, api, date, dfDay, dfTime, errorBox, fill, fmtDist, h, icon, main, nf, plural, store } from './core.js';
+import { PREF, TOAST_LONG, accuracyChoices, api, date, dfDay, dfTime, errorBox, fill, fmtDist, h, icon, main, nf, plural, store } from './core.js';
 import { S, applyFilter, filterParams, go, toast, toastError } from './state.js';
 import { modal } from './actions.js';
 import { editPhotos } from './editing.js';
@@ -11,7 +11,8 @@ export const M = { data: null, map: null, token: 0 };
 export function loadLeaflet(cluster) {
   const css = (href) => document.head.append(h('link', { rel: 'stylesheet', href }));
   const js = (src) => new Promise((ok, fail) => document.head.append(h('script', { src, onload: ok, onerror: () => fail(new Error('offline')) })));
-  // Leaflet and its cluster plugin ship with the app (static/vendor): no third party, and the page's Content Security
+  // Leaflet (the suite's one copy: iosuite_shared/static/public) and its cluster plugin ship with the app (static/vendor):
+  // no third party, and the page's Content Security
   // Policy stays 'self'. Leaflet finds its marker and layer-switch images next to its stylesheet.
   S.leafletP ||= (css('static/vendor/leaflet/leaflet.css'), js('static/vendor/leaflet/leaflet.js')).catch((e) => { S.leafletP = null; throw e; });  // failed once is not failed for the session
   if (!cluster) return S.leafletP;

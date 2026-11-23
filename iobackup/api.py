@@ -271,11 +271,11 @@ def download_backup(did: int, name: str):
     safe_name(name)
     if dest["type"] == "local":
         return FileResponse(d.fetch(name), media_type="application/x-tar", filename=name)
-    r = d.stream(name)
+    got, chunks = d.stream(name)
     headers = {"Content-Disposition": f'attachment; filename="{name}"'}
-    if r.headers.get("Content-Length"):
-        headers["Content-Length"] = r.headers["Content-Length"]
-    return StreamingResponse(r.iter_content(1 << 20), media_type="application/x-tar", headers=headers)
+    if got.get("Content-Length") and not got.get("Content-Encoding"):
+        headers["Content-Length"] = got["Content-Length"]
+    return StreamingResponse(chunks, media_type="application/x-tar", headers=headers)
 
 
 @router.get("/destinations/{did}/backups/{name}/files.zip", dependencies=[access.admin])
