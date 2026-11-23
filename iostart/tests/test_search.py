@@ -38,7 +38,7 @@ def test_ranked_together_across_apps(client, monkeypatch):
         "iotask": {"items": [item("task", 5, "Call Ann", done=True), item("task", 6, "Call Ann back")], "more": False},
         "iorecipe": {"items": [], "more": False},
     }, asked)
-    d = client.get("/api/search?q=ann").json()
+    d = client.get("/api/search?q=ann&apps=iocontact,ionote,iotask,iorecipe").json()
     assert [(x["app"], x["title"]) for x in d["items"]] == [
         ("iocontact", "Ann"), ("iocontact", "Annabel Lee"), ("ionote", "Ann birthday ideas"),
         ("iotask", "Call Ann back"), ("ionote", "Insurance")]  # the finished task is left out
@@ -56,7 +56,7 @@ def test_only_the_apps_asked_for_and_never_one_the_viewer_may_not_use(client, mo
     assert [x["app"] for x in d["items"]] == ["ionote"] and [k for k, *_ in asked] == ["ionote"]
     monkeypatch.setattr(apps, "may_see", lambda user, entry: entry["app"] != "ionote")
     asked.clear()
-    d = client.get("/api/search?q=ann").json()
+    d = client.get("/api/search?q=ann&apps=iocontact,ionote").json()
     assert [x["app"] for x in d["items"]] == ["iocontact"] and [k for k, *_ in asked] == ["iocontact"]
 
 
@@ -65,7 +65,7 @@ def test_an_app_that_refuses_or_is_down_leaves_the_others(client, monkeypatch):
     _answers(monkeypatch, {"iocontact": widgets.Unavailable(403, "ioContact does not let this account in"),
                            "ionote": widgets.Unavailable(502, "ioNote is not reachable"),
                            "iotask": {"items": [item("task", 6, "Call Ann")]}}, [])
-    d = client.get("/api/search?q=ann").json()
+    d = client.get("/api/search?q=ann&apps=iocontact,ionote,iotask").json()
     assert [x["title"] for x in d["items"]] == ["Call Ann"]
     assert d["apps"]["iocontact"]["status"] == 403 and d["apps"]["ionote"]["status"] == 502
 
@@ -79,7 +79,7 @@ def test_a_slow_app_is_late_and_asked_again_on_its_own(client, monkeypatch):
         return {"items": [item("note", 1, "Ann")]}
     _answers(monkeypatch, {"iocontact": {"items": [item("contact", 3, "Ann")]}, "ionote": slow}, [])
     monkeypatch.setattr(search, "DEADLINE", 0.2)
-    d = client.get("/api/search?q=ann").json()
+    d = client.get("/api/search?q=ann&apps=iocontact,ionote").json()
     assert [x["app"] for x in d["items"]] == ["iocontact"] and d["late"] == ["ionote"]
     gate.set()
     d = client.get("/api/search?q=ann&apps=ionote&wait=1").json()
@@ -102,4 +102,4 @@ def test_score():
     assert s("Ann", pos=1) < s("Ann")  # the app's own order counts
     assert s("Call Ann", key="iotask", when="2026-11-24") > s("Call Ann", key="iotask", when="2027-01-01")
     sm = lambda title: search.score("ann sm", {"title": title}, "iocontact", 0, today)  # noqa: E731
-    assert sm("Ann Smith") == sm("Smithers, Ann") > sm("Annsmall")  # every word starts a word of the title
+    assert sm("Ann B. Smith") == sm("Smithers, Ann") > sm("Annsmall")  # every word starts a word of the title
