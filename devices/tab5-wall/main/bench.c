@@ -20,7 +20,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[1500];
+static char result[1800];
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -133,6 +133,39 @@ static void from_here(int percent)
     ui_unlock();
 }
 
+static void note(const char *line)
+{
+    ESP_LOGI(TAG, "%s", line);
+    size_t used = strlen(result);
+    snprintf(result + used, sizeof result - used, "%s%s", used ? "\n" : "", line);
+}
+
+/* how fast the memory the screen is drawn in is by itself: a screen of pixels copied within the PSRAM, as a photo is
+ * copied under the wall's text and a panel's picture into a frame. A frame cannot be drawn faster than this. */
+static void memory(void)
+{
+    size_t n = (size_t)WALL_W * WALL_H * 2;
+    uint8_t *a = heap_caps_malloc(n, MALLOC_CAP_SPIRAM), *b = heap_caps_malloc(n, MALLOC_CAP_SPIRAM);
+    if (a && b) {
+        memset(a, 0x55, n);
+        memset(b, 0, n);
+        int64_t t0 = esp_timer_get_time();
+        for (int i = 0; i < 4; i++) memcpy(i & 1 ? a : b, i & 1 ? b : a, n);
+        unsigned copy = (unsigned)((esp_timer_get_time() - t0) / 4);
+        t0 = esp_timer_get_time();
+        for (int i = 0; i < 4; i++) memset(a, i, n);
+        unsigned fill = (unsigned)((esp_timer_get_time() - t0) / 4);
+        volatile uint8_t seen = a[n / 2] ^ b[n / 3];   /* read: the copies and fills are not left out as unused */
+        (void)seen;
+        char line[120];
+        snprintf(line, sizeof line, "A screen of pixels in memory: copied in %u.%u ms, filled in %u.%u", copy / 1000, copy % 1000 / 100,
+                 fill / 1000, fill % 1000 / 100);
+        note(line);
+    }
+    heap_caps_free(a);
+    heap_caps_free(b);
+}
+
 static void say(const char *what)
 {
     ui_frames_t f;
@@ -149,9 +182,7 @@ static void say(const char *what)
                  what, (unsigned)f.n, (unsigned)((uint64_t)f.px * 100 / f.n / (WALL_W * WALL_H)), all / 1000, all % 1000 / 100,
                  drawing / 1000, drawing % 1000 / 100, sending / 1000, sending % 1000 / 100, (unsigned)((f.worst + 500) / 1000));
     }
-    ESP_LOGI(TAG, "%s", line);
-    size_t used = strlen(result);
-    snprintf(result + used, sizeof result - used, "%s%s", used ? "\n" : "", line);
+    note(line);
 }
 
 static void run(void *arg)
@@ -164,8 +195,12 @@ static void run(void *arg)
         return;
     }
     result[0] = 0;
-    ESP_LOGI(TAG, "%s %s, %d x %d, %s, internal memory free: %u", BOARD_NAME, wall_version(), WALL_W, WALL_H,
-             S.flip ? "turned around" : "as mounted", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    char head[160];
+    snprintf(head, sizeof head, "%s %s, %s, memory free: %u K inside, %u K outside", BOARD_NAME, wall_version(),
+             S.flip ? "turned around" : "as mounted", (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+    note(head);
+    memory();
 
     ui_lock();
     if (!finger) {
