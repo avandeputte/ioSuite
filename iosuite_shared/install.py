@@ -484,8 +484,8 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
         die("this machine has no ioSuite yet: set the main copy up first (iosuite install), then add a second one")
     file = base / "copies" / a.copy / "config.env" if a.copy else base / "config.env"
     cfg = read_env(file)
-    new = not cfg.get("IOSUITE_DB_PASSWORD") and not os.environ.get("IOSUITE_DB_HOST")  # in a container the environment is the file
     main_cfg = read_env(base / "config.env") if a.copy else cfg
+    new = not a.copy and not cfg.get("IOSUITE_DB_PASSWORD")  # a second copy is of the same suite: the main copy's database
 
     # ---- which apps
     here = [] if not file.exists() else apps_of(cfg)
@@ -540,6 +540,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     if a.host is not None:
         changes["HOST"] = a.host or None
     if a.copy:  # its own log beside the main one (the data folder is shared: each app has a folder of its own in it)
+        changes.update({k: v for k, v in main_cfg.items() if k.startswith("IOSUITE_DB_") or k in ("TLS_CERT_FILE", "TLS_KEY_FILE")})
         data = Path(main_cfg.get("DATA_DIR") or base / "data")
         changes.setdefault("DATA_DIR", str(data))
         changes["LOG_FILE"] = cfg.get("LOG_FILE") or str(data / f"iosuite-{a.copy}.log")
@@ -547,10 +548,8 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     # ---- the database
     db_admin, db_admin_password, made_password = a.db_admin, os.environ.get("DB_ADMIN_PASSWORD") or "", False
     if new:
-        src = main_cfg if a.copy else {}
         say("The database")
-        server = a.db or (f"{src['IOSUITE_DB_HOST']}:{src.get('IOSUITE_DB_PORT', '3306')}" if src.get("IOSUITE_DB_HOST") else None) \
-            or asker.text("MariaDB / MySQL server (host or host:port)", "127.0.0.1:3306")
+        server = a.db or asker.text("MariaDB / MySQL server (host or host:port)", "127.0.0.1:3306")
         dbhost, _, dbport = server.partition(":")
         dbport = dbport or "3306"
         if is_local(dbhost) and not listening(dbhost, dbport) and os.geteuid() == 0 and shutil.which("apt-get"):
@@ -559,13 +558,13 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
                 apt_install(["mariadb-server"], run, log)
                 run(["systemctl", "enable", "-q", "--now", "mariadb"])
                 db_admin = db_admin or "root"
-        name = a.db_name or src.get("IOSUITE_DB_NAME") or asker.text("The Shared ioSuite database", "iosuite")
-        user = a.db_user or src.get("IOSUITE_DB_USER") or asker.text("The suite's login", "iosuite")
-        if db_admin is None and not src and not asker.quiet:
+        name = a.db_name or asker.text("The Shared ioSuite database", "iosuite")
+        user = a.db_user or asker.text("The suite's login", "iosuite")
+        if db_admin is None and not asker.quiet:
             db_admin = asker.text("A MariaDB administrator who may create the databases and the login (root; empty: they exist already)", "") or None
         if db_admin and not db_admin_password and not (is_local(dbhost) and db_admin == "root" and os.geteuid() == 0):
             db_admin_password = asker.password(f"Password of {db_admin}")
-        password = os.environ.get("IOSUITE_DB_PASSWORD") or src.get("IOSUITE_DB_PASSWORD") or ""
+        password = os.environ.get("IOSUITE_DB_PASSWORD") or ""
         if not password and db_admin:
             password, made_password = secrets.token_urlsafe(18), True
         if not password:
@@ -603,7 +602,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     if not users.init():
         die(f"the Shared ioSuite database cannot be reached ({config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}): {db.error}\n"
             f"  create it and the login first, or run this again with --db-admin USER; the answers so far are kept in {file}")
-    if new and not a.copy and not users.any_users():
+    if new and not users.any_users():
         say("The first admin")
         name = a.admin if a.admin is not None else asker.text("Admin user name (empty: made in the browser on the first visit)", "")
         if name:
@@ -617,7 +616,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
             else:
                 log("  no password given: the admin is made in the browser on the first visit")
     address = a.address if a.address is not None else (asker.text("The suite's address behind your reverse proxy, e.g. https://home.example.com (empty: the address it is reached at)", "")
-                                                       if new and not a.copy else None)
+                                                       if new else None)
     if address is not None:
         from iosuite_shared import admin
         try:
