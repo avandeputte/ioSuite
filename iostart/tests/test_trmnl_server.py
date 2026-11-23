@@ -289,11 +289,11 @@ def test_deleting_a_person_takes_their_devices(client, paired):
 
 def test_the_address_for_a_device(monkeypatch):
     from iosuite_shared import suite
-    monkeypatch.setattr(suite, "local_url", lambda app=None, **k: "http://192.168.1.20:8630")
+    monkeypatch.setattr(suite, "local_url", lambda app=None, door="web", **k: "http://192.168.1.20:8630")
     assert trmnlserver.address() == "http://192.168.1.20:8630"
-    monkeypatch.setattr(suite, "local_url", lambda app=None, **k: "http://127.0.0.1:8630")
+    monkeypatch.setattr(suite, "local_url", lambda app=None, door="web", **k: "http://127.0.0.1:8630")
     assert trmnlserver.address() is None  # on this machine only: a device cannot reach it
-    monkeypatch.setattr(suite, "local_url", lambda app=None, **k: None)
+    monkeypatch.setattr(suite, "local_url", lambda app=None, door="web", **k: None)
     assert trmnlserver.address() is None
 
 

@@ -6,6 +6,10 @@
   "color": "#1c5a5e",
   "folder": "notes",
   "order": 30,
+  "system": [
+    "libheif1",
+    "libglib2.0-0"
+  ],
   "keepsOwn": [
     "workflow"
   ],

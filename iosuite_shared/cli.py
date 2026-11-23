@@ -11,6 +11,7 @@
     iosuite demo [--off]                          fill the suite with demo data (iosuite_shared.demo)
     iosuite provision                             make the databases and the one login (iosuite_shared.provision)
     iosuite stack                                 a container's first start (iosuite_shared.stack)
+    iosuite install                               set this machine up, or change the apps it runs (iosuite_shared.install)
 
 Everything reads the machine's file (config.env in the program folder; --config names another one, or a folder that
 holds it), which says how to reach the Shared ioSuite database. `set` and `settings` are the Settings screen
@@ -54,10 +55,11 @@ def _parser():
     e.add_argument("--account-id", default=None, help="store the Cloudflare account id in the Shared ioSuite database")
     e.add_argument("--namespace-id", default=None, help="store the KV namespace id")
     e.add_argument("--token-file", default=None, help="store the API token read from this file ('-': standard input)")
-    from iosuite_shared import demo, provision, stack
+    from iosuite_shared import demo, install, provision, stack
     demo.add_parser(sub)
     provision.add_parser(sub)
     stack.add_parser(sub)
+    install.add_parser(sub)
     return p
 
 
@@ -145,6 +147,9 @@ def main(argv=None):
     if a.cmd == "demo":
         from iosuite_shared import demo
         return demo.main(a)
+    if a.cmd == "install":  # may be what makes the database
+        from iosuite_shared import install
+        return install.main(a)
 
     from iosuite_shared import db, users
     if not users.init():

@@ -7,7 +7,7 @@ import time
 import pytest
 
 from iocalendar import db, ical, model
-from iosuite_shared.updates import SecretPaths
+from iosuite_shared.logs import SecretPaths
 from iocalendar.tests.test_api import mk, occ
 from iocalendar.tests.test_review_fixes import ICS
 

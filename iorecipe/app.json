@@ -6,6 +6,12 @@
   "color": "#4a7c23",
   "folder": "recipes",
   "order": 60,
+  "system": [
+    "tesseract-ocr"
+  ],
+  "extras": [
+    "iorecipe-ai"
+  ],
   "compose": {
     "name": "recipes",
     "what": "recipes"

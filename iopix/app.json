@@ -6,6 +6,20 @@
   "color": "#3b4a8c",
   "folder": "pix",
   "order": 20,
+  "system": [
+    "libimage-exiftool-perl",
+    "ffmpeg",
+    "libjpeg-turbo-progs",
+    "libheif1",
+    "libglib2.0-0",
+    "mariadb-client"
+  ],
+  "extras": [
+    "iopix-ai",
+    "iopix-captions",
+    "iopix-speech"
+  ],
+  "apart": true,
   "heavy": true,
   "compose": {
     "name": "photos",

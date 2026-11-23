@@ -6,6 +6,9 @@
   "color": "#2a6f97",
   "folder": "things",
   "order": 70,
+  "system": [
+    "fonts-dejavu-core"
+  ],
   "compose": {
     "name": "things",
     "what": "inventory"

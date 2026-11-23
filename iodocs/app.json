@@ -6,6 +6,11 @@
   "color": "#a03a6a",
   "folder": "docs",
   "order": 85,
+  "system": [
+    "tesseract-ocr",
+    "tesseract-ocr-eng",
+    "poppler-utils"
+  ],
   "compose": {
     "name": "docs",
     "what": "papers"
