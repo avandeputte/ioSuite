@@ -35,9 +35,9 @@ async def lifespan(app: FastAPI):
     updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
     contacts.start_sync()   # the Birthdays calendar from ioContact, every few hours
     holiday.start_sync()    # the Holidays calendar, every day
-    purge = chores.start(model.purge_deleted, name="purge of old deletion markers")  # once a day: KEEP_DELETED_DAYS
-    notes = chores.start(notify.tick, every_s=60, first_s=20, name="notifications")  # the events' reminders
-    outside = chores.start(subscribe.tick, every_s=300, first_s=30, name="outside calendars")  # each fetched again when its time comes
+    purge = chores.start(model.purge_deleted, name="purge of old deletion markers", app=config.APP)  # once a day: KEEP_DELETED_DAYS
+    notes = chores.start(notify.tick, every_s=60, first_s=20, name="notifications", app=config.APP)  # the events' reminders
+    outside = chores.start(subscribe.tick, every_s=300, first_s=30, name="outside calendars", app=config.APP)  # each fetched again when its time comes
     log.info("ioCalendar %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
         yield

@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
     await run_in_threadpool(monarch.declare)  # the Monarch sign-in, kept with the suite's keys and tokens
     updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
-    work = chores.start(background, every_s=300, first_s=30, name="Monarch sync and quotes") if config.SYNC else None
+    work = chores.start(background, every_s=300, first_s=30, name="Monarch sync and quotes", app=config.APP) if config.SYNC else None
     log.info("ioMoney %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
     try:
         async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process

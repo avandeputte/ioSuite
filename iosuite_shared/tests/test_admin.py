@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import time
 
 import pytest
 from fastapi import FastAPI
@@ -213,3 +214,28 @@ def test_the_panel_checks_what_it_is_given_for_an_account():
     assert "kid" not in [a["name"] for a in TestClient(app).get("/api/auth/accounts").json()["accounts"]]
     assert c.patch(f"/api/suite-admin/users/{kid['id']}", json={"email": ""}).status_code == 200
     assert users.get(kid["id"])["email"] == ""
+
+
+def test_the_jobs_screen_lists_every_app_s_background_work_and_runs_one_now():
+    """Settings › Servers › Jobs: the rows of iosuite_shared.jobs, and Run now, which is a flag the copy that owns the
+    job picks up (so the screen is the same when that app runs on another server)."""
+    from iosuite_shared import db as shared_db, jobs
+    app = make_app()
+    users.create("alex", "secret123", suite_admin=True)
+    c = signed_in(app, "alex", "secret123")
+    assert c.get("/api/suite-admin/jobs").json() == {"items": [], "failed": 0, "running": 0, "copies": []}
+    shared_db.ex("INSERT INTO ios_jobs (app, name, copy, title, every_s, state, finished_at, took_ms, message, runs, "
+                 "failures, seen_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                 ("iocalendar", "notifications", "attic", "The events' reminders", 60, "failed",
+                  int(time.time()), 1200, "ValueError: no", 7, 2, int(time.time())))
+    d = c.get("/api/suite-admin/jobs").json()
+    assert d["failed"] == 1 and d["copies"] == ["attic"]
+    one = d["items"][0]
+    assert (one["app"], one["title"], one["every"], one["state"]) == ("iocalendar", "The events' reminders", 60, "failed")
+    assert one["message"] == "ValueError: no" and one["failures"] == 2 and one["tookMs"] == 1200 and one["serving"]
+    assert c.post("/api/suite-admin/jobs", json={"app": "iocalendar", "name": "notifications"}).status_code == 200
+    assert shared_db.one("SELECT run_now FROM ios_jobs")["run_now"] == 1
+    assert c.post("/api/suite-admin/jobs", json={"app": "iocalendar", "name": "nothing"}).status_code == 400
+    users.create("ann", "secret123", "admin", "iostart")
+    assert signed_in(app, "ann", "secret123").get("/api/suite-admin/jobs").status_code == 403
+    assert jobs.rows()

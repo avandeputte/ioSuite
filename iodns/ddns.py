@@ -164,17 +164,18 @@ def _run(by: str | None, force_push: bool) -> dict:
     return {**now, "changed": changed, "pushed": pushed}
 
 
-def start() -> None:
-    def loop():
-        time.sleep(20)
-        while True:
-            minutes = 5
-            try:
-                minutes = settings()["minutes"]
-                if minutes and settings()["records"]:
-                    run()
-            except Exception:
-                log.exception("dynamic DNS")
-            time.sleep(max(1, minutes or 5) * 60)
+def start():
+    """One of the copy's jobs (Settings › Servers › Jobs): the address is looked up again every few minutes, as the
+    setting says."""
+    from iosuite_shared import chores
+    from iodns import config
+    return chores.start(_round, every_s=max(1, settings().get("minutes") or 5) * 60, first_s=20, app=config.APP,
+                        name="dynamic DNS", title="Follow this house's address and push it to the servers")
 
-    threading.Thread(target=loop, name="iodns-ddns", daemon=True).start()
+
+def _round() -> str:
+    s = settings()
+    if not (s["minutes"] and s["records"]):
+        return "off" if not s["minutes"] else "no names follow the address"
+    got = run()
+    return f"{got.get('ip') or ''} {('changed' if got.get('changed') else 'unchanged')}".strip()
