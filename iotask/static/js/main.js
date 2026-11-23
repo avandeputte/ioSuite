@@ -1,4 +1,4 @@
-import { $, S, api, closeDialogs, closeMenu, fail, h, icon, listOf, loadLists, openMenu } from './core.js';
+import { $, S, api, closeDialogs, closeMenu, fail, h, icon, listOf, loadLists, menuOpen } from './core.js';
 import { SMART, applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn } from './shell.js';
 import { showActivity, showImport } from './activity.js';
 import { drawTasks } from './lists.js';
@@ -81,7 +81,7 @@ export async function start() {
     }, 250);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (openMenu) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
+    if (e.key === 'Escape') { if (menuOpen()) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.querySelector('.signin, .dialog-back')) return;
     const k = e.key;
     if (k === '/') { e.preventDefault(); $('#q').focus(); }

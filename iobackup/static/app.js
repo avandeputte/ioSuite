@@ -2,24 +2,16 @@
    page), the backups in each destination (with verify, download, delete and a restore of exactly what you pick),
    activity (every run with its log), servers, destinations and Settings (account, display, and for admins the
    server, for suite admins security and global settings). */
-import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, toast, toggleSuite } from '../api/auth/frame.js';
+const store = frame.storeFor('iobackup');  // what this browser remembers for the app
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
 const $ = (s, el = document) => el.querySelector(s);
-const ICONS = {
+addIcons({
   dns: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
-  history: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
-  menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
-  menuOpen: 'M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z',
-  pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
-  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
-  person: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
-  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
-  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
-  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
-  logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
-  theme: 'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',
   more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
   play: 'M8 5v14l11-7z',
   backup: 'M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z',
@@ -28,37 +20,13 @@ const ICONS = {
   restore: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18z',
   back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
   job: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z',
-};
-const icon = (n, cls = '') => { const s = document.createElement('span'); s.className = 'ic ' + cls; s.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ICONS[n] || ''}"/></svg>`; return s; };
+});
 
-let toastTimer;
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
-}
-const fail = (e) => toast(e.message || String(e));
 
 function dialog(title, body, buttons, wide) {
-  return new Promise((resolve) => {
-    const back = h('div', { class: 'dialog-back' });
-    const close = (v) => { back.remove(); resolve(v); };
-    back.addEventListener('click', (e) => { if (e.target === back) close(null); });
-    const btns = (buttons || [{ label: 'OK', value: true, primary: true }]).map((b) =>
-      h('button', { class: `pillbtn noic ${b.primary ? 'primary' : ''} ${b.danger ? 'danger' : ''}`, onclick: async () => {
-        if (typeof b.value !== 'function') { close(b.value); return; }
-        try { const v = await b.value(); if (v !== undefined) close(v); } catch (e) { fail(e); }
-      } }, b.label));
-    back.append(h('div', { class: `dialog ${wide ? 'wide' : ''}`, role: 'dialog' }, h('h2', null, title), body, h('div', { class: 'btns' }, btns)));
-    document.body.append(back);
-    const f = back.querySelector('input:not([type=checkbox]),select,textarea'); if (f) f.focus();
-  });
+  return frame.dialog(title, body, buttons, wide ? 'wide' : '', { wait: true, focus: 'input:not([type=checkbox]),select,textarea' });
 }
-const confirmDialog = (title, text, ok = 'OK', danger = false) => dialog(title, typeof text === 'string' ? h('p', null, text) : text, [{ label: 'Cancel', value: false }, { label: ok, value: true, primary: !danger, danger }]);
-const closeDialogs = () => document.querySelectorAll('.dialog-back').forEach((d) => d.remove());
 
-const hue = (s) => { let x = 0; for (const c of s || '') x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
-const initials = (fn) => { const p = (fn || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
-const fld = (l, e, hint) => h('label', { class: 'field' }, h('span', null, l), e, hint ? h('small', { class: 'muted' }, hint) : null);
 const ago = (iso) => {
   if (!iso) return 'never';
   const s = (Date.now() - new Date(iso.endsWith('Z') || /[+-]\d\d:\d\d$/.test(iso) ? iso : iso + 'Z')) / 1000;
@@ -537,71 +505,16 @@ async function showRun(page, r) {
 
 // ------------------------------------------------------------------ chrome
 function drawUser() {
-  const m = $('#usermenu'); m.replaceChildren();
-  if (!S.user) return;
-  const btn = h('button', { class: 'avatarbtn', title: S.user.displayName, style: { background: `hsl(${hue(S.user.name)} 45% 45%)` } }, initials(S.user.displayName));
-  let menu = null;
-  const closeMenu = () => { if (menu) { menu.remove(); menu = null; document.removeEventListener('click', outside); } };
-  const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== btn) closeMenu(); };
-  btn.onclick = () => {
-    if (menu) return closeMenu();
-    let theme = 'system'; try { theme = localStorage.getItem('iobackup.theme') || 'system'; } catch { /* */ }
-    menu = h('div', { class: 'menu' },
-      h('div', { class: 'who' }, h('b', null, S.user.displayName), h('div', { class: 'muted small' }, `${S.user.name} · ${S.user.role}`)),
-      h('a', { class: 'mi', href: '#/settings/account', onclick: closeMenu }, icon('person', 's'), 'Account'),
-      h('button', { class: 'mi', onclick: () => { const n = { system: 'light', light: 'dark', dark: 'system' }[theme]; applyTheme(n); closeMenu(); toast(`Appearance: ${n}`); } },
-        icon('theme', 's'), `Appearance: ${theme}`),
-      h('a', { class: 'mi', href: '#/settings', onclick: closeMenu }, icon('settings', 's'), 'Settings'),
-      h('button', { class: 'mi', onclick: async () => { const r = await api('api/auth/logout', { method: 'POST' }); if (r && r.cloudflareLogout) location.href = r.cloudflareLogout; else location.reload(); } }, icon('logout', 's'), 'Sign out'));
-    m.append(menu);
-    setTimeout(() => document.addEventListener('click', outside), 0);
-  };
-  m.append(btn);
+  frame.userMenu($('#usermenu'), S.user, api, (close) => [
+    frame.menuLink('#/settings/account', 'person', 'Account', close),
+    frame.themeEntry(store, applyTheme, close)]);
 }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark opens a menu of them. */
-async function loadSuite() {
-  try { const r = await api('api/auth/suite'); S.suite = (r.items || []).filter((a) => a.app !== r.app && a.url); } catch { S.suite = []; }
-  const b = $('#suitebtn');
-  if (b) { b.hidden = !S.suite.length; b.onclick = () => toggleSuite(b); }
-  drawNav();
-}
-let suitePop = null;
-function closeSuite() {
-  if (!suitePop) return;
-  suitePop.remove(); suitePop = null;
-  document.removeEventListener('click', suiteOutside, true);
-}
-function suiteOutside(e) { if (suitePop && !suitePop.contains(e.target) && !e.target.closest('.suitebtn')) closeSuite(); }
-function appTile(a) {
-  const mark = (a.name || a.app).replace(/^io(?=[A-Z])/, '').slice(0, 1).toUpperCase();
-  const fallback = () => h('span', { class: 'appic fb', style: { background: a.color || 'var(--brand)' } }, mark);
-  const ic = a.icon ? h('img', { class: 'appic', src: a.icon, alt: '', onerror: (e) => e.currentTarget.replaceWith(fallback()) }) : fallback();
-  return h('a', { class: 'apptile', href: a.url, role: 'menuitem', title: a.description || a.name, onclick: closeSuite }, ic, h('span', { class: 'appnm' }, a.name || a.app));
-}
-function toggleSuite(btn) {
-  if (suitePop) { closeSuite(); return; }
-  if (!S.suite.length) return;
-  // the apps, then (for their admins only: the server sends them to nobody else) the admin tools, apart
-  const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
-    ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
-  document.body.append(suitePop);
-  const r = btn.getBoundingClientRect();
-  suitePop.style.top = `${Math.round(r.bottom + 6)}px`;
-  suitePop.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - suitePop.offsetWidth - 8)))}px`;
-  setTimeout(() => document.addEventListener('click', suiteOutside, true), 0);
-}
-function applyTheme(choice) {
-  try { if (choice) localStorage.setItem('iobackup.theme', choice); } catch { /* private mode */ }
-  let t = choice; try { t = t || localStorage.getItem('iobackup.theme'); } catch { /* */ }
-  t = t || 'system';
-  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-  if (choice && S.user) saveSettings({ theme: choice });
-}
+async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
+function applyTheme(choice) { frame.applyTheme(store, choice); if (choice && S.user) saveSettings({ theme: choice }); }
 
 /* The sidebar: jobs, backups, activity, servers, destinations, Settings. Docked beside the page on a wide screen,
    sliding over it otherwise, a bottom bar on a phone. */
-const DOCK_MIN = 1100;
 function drawNav() {
   const nav = $('#nav'); if (!S.user) return;
   const r = route();
@@ -628,24 +541,8 @@ function drawNav() {
   applySidebar();
   $('.navmore')?.classList.toggle('on', ['servers', 'destinations', 'settings'].includes(r.view));
 }
-function sideDockedPref() { try { return localStorage.getItem('iobackup.sidebar') !== '0'; } catch { return true; } }
-function applySidebar() {
-  const body = document.body, btn = $('#sidebtn');
-  const docked = innerWidth >= DOCK_MIN && sideDockedPref();
-  body.classList.toggle('side-docked', docked);
-  if (docked) closeNav();
-  if (!btn) return;
-  const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : innerWidth >= DOCK_MIN ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
-  btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
-}
-function sidebarButton() {
-  if (document.body.classList.contains('side-docked')) { try { localStorage.setItem('iobackup.sidebar', '0'); } catch { /* */ } }
-  else if (innerWidth >= DOCK_MIN) { try { localStorage.setItem('iobackup.sidebar', '1'); } catch { /* */ } }
-  else { closeNav(); return; }
-  applySidebar();
-}
-function openNav() { document.body.classList.add('side-open'); $('#navscrim').hidden = false; }
-function closeNav() { document.body.classList.remove('side-open'); $('#navscrim').hidden = true; }
+function applySidebar() { frame.applySidebar(store); }
+function sidebarButton() { frame.sidebarButton(store); }
 function moreSheet() {
   const tile = (href, ic, label, hueV) => h('a', { href, style: { '--hue': hueV } }, h('span', { class: 'sic' }, icon(ic)), h('span', null, label));
   const grid = h('div', { class: 'sheetgrid' }, tile('#/servers', 'dns', 'Servers', 'var(--c-indigo)'), tile('#/destinations', 'folder', 'Destinations', 'var(--c-teal)'),
@@ -693,7 +590,6 @@ async function showSettings(page, r) {
   const body = h('div'); page.append(body);
   await ({ account: setAccount, display: setDisplay, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
-const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 async function setAccount(el) {
   const ui = await accountUi();
   const pw = h('div');
@@ -706,46 +602,9 @@ async function setDisplay(el) {
   let t = 'system'; try { t = localStorage.getItem('iobackup.theme') || 'system'; } catch { /* */ }
   el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || t, (x) => { S.settings.theme = x; applyTheme(x); })));
 }
-async function setSuite(el, r) {
-  let ui;
-  try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
+function setSuite(el, r) { return frame.suitePanel(el, r); }
 // ------------------------------------------------------------------ sign-in
-function showSignIn() {
-  if (document.querySelector('.signin')) return;
-  const first = !S.status.usersExist;
-  const name = h('input', { class: 't', placeholder: 'User name', autocomplete: 'username', autocapitalize: 'none' });
-  const pw = h('input', { class: 't', type: 'password', placeholder: first ? 'Password (8 or more)' : 'Password', autocomplete: first ? 'new-password' : 'current-password' });
-  const err = h('div', { class: 'err' });
-  const form = h('div', { class: 'signin-form' }, name, pw);
-  const tiles = h('div', { class: 'accounts' });
-  const btn = h('button', { class: 'pillbtn primary noic', type: 'submit' }, first ? 'Create the admin account' : 'Sign in');
-  const login = async (n, p) => {
-    err.textContent = '';
-    try { if (first) await api('api/auth/setup', { method: 'POST', json: { name: n, password: p } }); else await signIn({ name: n, password: p }); location.reload(); } catch (x) { err.textContent = x.message; }
-  };
-  const submit = (e) => { e.preventDefault(); login(name.value.trim(), pw.value); };
-  document.body.append(h('div', { class: 'signin' }, h('form', { class: 'dialog', onsubmit: submit },
-    h('div', { class: 'brand' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }), h('span', { class: 'brand-name', style: { display: 'inline' } }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Backup'))),
-    first ? h('p', { class: 'muted' }, 'Welcome. Make the first account: it is the admin. (Already use another io app? Sign in there first: the apps share their accounts.)') : h('h2', null, 'Sign in'),
-    tiles, form, err, h('div', { class: 'btns' }, btn), first ? null : passkeyButton(() => location.reload()))));
-  if (first) { name.focus(); return; }
-  const pick = (t) => tiles.querySelectorAll('.account').forEach((x) => x.classList.toggle('on', x === t));
-  api('api/auth/accounts').then((d) => {
-    if (!d.accounts.length) { name.focus(); return; }
-    form.hidden = true; btn.hidden = true;
-    tiles.append(...d.accounts.map((a) => {
-      const t = h('button', { type: 'button', class: 'account', onclick: () => {
-        pick(t);
-        if (a.passwordless) { login(a.name, ''); return; }
-        name.value = a.name; name.hidden = true; form.hidden = false; btn.hidden = false; pw.value = ''; pw.focus();
-      } }, h('span', { class: 'av big', style: { '--h': hue(a.displayName || a.name) } }, initials(a.displayName || a.name)), h('span', { class: 'nm' }, a.displayName || a.name), a.passwordless ? null : h('span', { class: 'muted small' }, 'password'));
-      return t;
-    }), h('button', { type: 'button', class: 'account', onclick: (e) => { pick(e.currentTarget); name.value = ''; name.hidden = false; form.hidden = false; btn.hidden = false; name.focus(); } },
-      h('span', { class: 'av big other' }, '…'), h('span', { class: 'nm' }, 'Other')));
-  }).catch(() => name.focus());
-}
+function showSignIn() { frame.signInScreen({ api, name: 'Backup', first: !S.status.usersExist }); }
 
 // ------------------------------------------------------------------ start
 async function start() {

@@ -3,17 +3,14 @@
    category and month; the portfolio with its quotes; the house and the cars with their loans; and settings (account,
    display, and for admins Money and Server, and for suite admins security and global settings), laid out as in the
    other ioSuite apps. */
-import { client, h, passkeyButton, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, icon, menuOpen, openNav, popMenu, put, toast, toggleSuite } from '../api/auth/frame.js';
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 // ------------------------------------------------------------------ helpers
 const $ = (s, el = document) => el.querySelector(s);
-/** replaceChildren that leaves out null and false (as h() does) and flattens lists. */
-const fill = (el, ...kids) => el.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false));
-/** append with the same manners. */
-const put = (el, ...kids) => el.append(...kids.flat(9).filter((k) => k != null && k !== false));
-const ICONS = {
+addIcons({
   dashboard: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
-  receipt: 'M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z',
   pie: 'M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03 0v8.99H22c-.47-4.74-4.24-8.52-8.97-8.99zm0 11.01V22c4.74-.47 8.5-4.25 8.97-8.99h-8.97z',
   trend: 'M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z',
   car: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
@@ -25,98 +22,23 @@ const ICONS = {
   gem: 'M12 2 2 9l10 13L22 9 12 2zm0 3.2L18.6 9H5.4L12 5.2z',
   sync: 'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
   warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
-  list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
-  menuOpen: 'M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z',
-  pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
-  menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
-  search: 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
-  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
-  link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
-  upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
-  download: 'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
-  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
-  edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
-  delete: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
-  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
-  logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
-  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
-  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
-  theme: 'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',
-  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
   lock: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
-  prev: 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z',
-  next: 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
-  minus: 'M19 13H5v-2h14v2z',
   play: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z',
   repeat: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z',
   eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
-  copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
   tidy: 'M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM10 17H5v-2h5v2zm0-4H5v-2h5v2zm0-4H5V7h5v2zm4.82 6L12 12.16l1.41-1.41 1.41 1.42L17.99 9l1.42 1.42L14.82 15z',
   label: 'M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z',
-  history: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
   undo: 'M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z',
   store: 'M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z',
   bookmark: 'M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z',
   scale: 'M13 7.83c.85-.3 1.53-.98 1.83-1.83H18l-3 7c0 1.66 1.57 3 3.5 3s3.5-1.34 3.5-3l-3-7h2V4h-6.17c-.41-1.17-1.52-2-2.83-2s-2.42.83-2.83 2H3v2h2l-3 7c0 1.66 1.57 3 3.5 3S9 14.66 9 13L6 6h3.17c.3.85.98 1.53 1.83 1.83V19H2v2h20v-2h-9V7.83zM20.37 13h-3.74l1.87-4.36L20.37 13zm-13 0H3.63L5.5 8.64 7.37 13zM12 6c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z',
   doneAll: 'M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z',
   phone: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z',
-};
-const icon = (n, cls = '') => { const s = document.createElement('span'); s.className = 'ic ' + cls; s.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ICONS[n] || ''}"/></svg>`; return s; };
+});
 
-let toastTimer;
-/** A note at the foot of the page; act: [label, what it does], a way back shown beside it for a while (Undo). */
-function toast(msg, act) {
-  const t = $('#toast');
-  t.replaceChildren(msg, ...(act ? [h('button', { class: 'undo', onclick: () => { t.hidden = true; act[1](); } }, act[0])] : []));
-  t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, act ? 9000 : 3500);
-}
-const fail = (e) => toast(e.message || String(e));
 
-function dialog(title, body, buttons, cls = '') {
-  return new Promise((resolve) => {
-    const back = h('div', { class: 'dialog-back' });
-    const close = (v) => { back.remove(); resolve(v); };
-    back.addEventListener('click', (e) => { if (e.target === back) close(null); });
-    const btns = (buttons || [{ label: 'OK', value: true, primary: true }]).map((b) =>
-      h('button', { class: `pillbtn noic ${b.primary ? 'primary' : ''} ${b.danger ? 'danger' : ''}`, onclick: () => close(typeof b.value === 'function' ? b.value() : b.value) }, b.label));
-    back.append(h('div', { class: `dialog ${cls}`, role: 'dialog' }, h('h2', null, title), body, h('div', { class: 'btns' }, btns)));
-    document.body.append(back);
-    const f = back.querySelector('input,select,textarea'); if (f) f.focus();
-  });
-}
-const confirmDialog = (title, text, ok = 'OK', danger = false) => dialog(title, h('p', null, text), [{ label: 'Cancel', value: false }, { label: ok, value: true, primary: !danger, danger }]);
-function closeDialogs() { document.querySelectorAll('.dialog-back').forEach((d) => d.remove()); }
-
-/** A menu that drops from a button: items are [icon, label, what it does (a function, or an address)]; a second click
-    on the button, a click elsewhere, Escape or scrolling puts it away. */
-let openMenu = null;
-function closeMenu() {
-  if (!openMenu) return;
-  openMenu.el.remove(); document.removeEventListener('click', openMenu.outside); openMenu = null;
-}
-function popMenu(btn, items) {
-  const mine = openMenu && openMenu.btn === btn;
-  closeMenu();
-  if (mine) return;
-  const el = h('div', { class: 'menu pop', role: 'menu' }, items.filter(Boolean).map(([ic, label, act]) => (typeof act === 'string'
-    ? h('a', { class: 'mi', role: 'menuitem', href: act, onclick: closeMenu }, icon(ic, 's'), label)
-    : h('button', { class: 'mi', role: 'menuitem', onclick: () => { closeMenu(); act(); } }, icon(ic, 's'), label))));
-  document.body.append(el);
-  const r = btn.getBoundingClientRect();
-  el.style.left = `${Math.round(Math.max(8, Math.min(r.right - el.offsetWidth, innerWidth - el.offsetWidth - 8)))}px`;
-  el.style.top = `${Math.round(r.bottom + 4 + el.offsetHeight > innerHeight - 8 ? Math.max(8, r.top - el.offsetHeight - 4) : r.bottom + 4)}px`;
-  const outside = (e) => { if (!el.contains(e.target) && !btn.contains(e.target)) closeMenu(); };
-  openMenu = { el, btn, outside };
-  setTimeout(() => document.addEventListener('click', outside), 0);
-  $('#main').addEventListener('scroll', closeMenu, { once: true });
-}
-
-const hue = (s) => { let x = 0; for (const c of s || '') x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
-const initials = (fn) => { const p = (fn || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
-
-const store = { get: (k) => { try { return localStorage.getItem(`iomoney.${k}`); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(`iomoney.${k}`, v); } catch { /* private mode */ } } };
+const store = frame.storeFor('iomoney');
 
 // ------------------------------------------------------------------ state
 const S = { status: {}, user: null, suite: [], settings: {}, sum: null, accounts: [], cats: [], searches: [], tags: null };
@@ -254,7 +176,6 @@ function bar(label, value, max, { href, hueVar, cur, sub } = {}) {
 /* The sidebar, as in the other io apps: the name on top, the pages (overview, transactions, spending, portfolio,
    house and cars), the accounts by kind, Settings at the foot. It docks beside the page on a wide screen unless its
    button put it away (remembered); otherwise it slides over the page. Phones get a bottom bar instead. */
-const DOCK_MIN = 1100;
 const VIEWS = { overview: ['Overview', 'dashboard', '--c-amber'], transactions: ['Transactions', 'receipt', '--c-blue'],
   spending: ['Spending', 'pie', '--c-rose'], portfolio: ['Portfolio', 'trend', '--c-indigo'], assets: ['Assets', 'home', '--c-orange'],
   recurring: ['Recurring', 'repeat', '--c-green'], tidy: ['Tidy up', 'tidy', '--c-purple'], rules: ['Rules', 'tune', '--c-teal'] };
@@ -2460,99 +2381,17 @@ async function setMoney(el) {
 }
 
 // ------------------------------------------------------------------ chrome
-function drawUser() {
-  const m = $('#usermenu'); m.replaceChildren();
-  if (!S.user) return;
-  const btn = h('button', { class: 'avatarbtn', title: S.user.displayName, style: { background: `hsl(${hue(S.user.name)} 45% 45%)` } }, initials(S.user.displayName));
-  let menu = null;
-  const closeMenu = () => { if (menu) { menu.remove(); menu = null; document.removeEventListener('click', outside); } };
-  const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== btn) closeMenu(); };
-  btn.onclick = () => {
-    if (menu) return closeMenu();
-    menu = h('div', { class: 'menu' },
-      h('div', { class: 'who' }, h('b', null, S.user.displayName), h('div', { class: 'muted small' }, `${S.user.name} · ${S.user.role}`)),
-      h('a', { class: 'mi', href: '#/settings', onclick: closeMenu }, icon('settings', 's'), 'Settings'),
-      h('button', { class: 'mi', onclick: async () => { const r = await api('api/auth/logout', { method: 'POST' }); if (r && r.cloudflareLogout) location.href = r.cloudflareLogout; else location.reload(); } }, icon('logout', 's'), 'Sign out'));
-    put(m, menu);
-    setTimeout(() => document.addEventListener('click', outside), 0);
-  };
-  put(m, btn);
-}
+function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to the overview. */
-async function loadSuite() {
-  try {
-    const r = await api('api/auth/suite');
-    S.suite = (r.items || []).filter((a) => a.url); suiteSelf = r.app;  // in the suite's one order, this app too
-    if (!S.suite.some((a) => a.app !== r.app)) S.suite = [];  // only this app: no menu
-  } catch { S.suite = []; }
-  const b = $('#suitebtn');
-  if (b) { b.hidden = !S.suite.length; b.onclick = () => toggleSuite(b); }
-  if (!S.suite.length) closeSuite();
-  drawNav();
-}
-let suiteSelf = null;  // this app's key, marked in the menu
-let suitePop = null;
-function closeSuite() {
-  if (!suitePop) return;
-  suitePop.remove(); suitePop = null;
-  document.removeEventListener('click', suiteOutside, true);
-  document.removeEventListener('keydown', suiteKey);
-  removeEventListener('resize', closeSuite);
-}
-function suiteOutside(e) { if (suitePop && !suitePop.contains(e.target) && !e.target.closest('.suitebtn')) closeSuite(); }
-function suiteKey(e) { if (e.key === 'Escape') closeSuite(); }
-function appTile(a) {
-  const mark = (a.name || a.app).replace(/^io(?=[A-Z])/, '').slice(0, 1).toUpperCase();
-  const fallback = () => h('span', { class: 'appic fb', style: { background: a.color || 'var(--brand)' } }, mark);
-  const ic = a.icon ? h('img', { class: 'appic', src: a.icon, alt: '', onerror: (e) => e.currentTarget.replaceWith(fallback()) }) : fallback();
-  const el = h('a', { class: 'apptile', href: a.url, role: 'menuitem', title: a.description || a.name, onclick: closeSuite },
-    ic, h('span', { class: 'appnm' }, a.name || a.app));
-  el.classList.toggle('tool', !!a.adminTool);  // admin tools: a smaller icon
-  if (a.app === suiteSelf) { el.classList.add('cur'); el.setAttribute('aria-current', 'page'); }
-  return el;
-}
-function toggleSuite(btn) {
-  if (suitePop) { closeSuite(); return; }
-  if (!S.suite.length) return;
-  // the apps, then the admin tools in a section of their own: the server sends those to their admins only
-  const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
-    ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
-  put(document.body, suitePop);
-  const r = btn.getBoundingClientRect();
-  suitePop.style.top = `${Math.round(r.bottom + 6)}px`;
-  suitePop.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - suitePop.offsetWidth - 8)))}px`;
-  setTimeout(() => { document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey); addEventListener('resize', closeSuite); }, 0);
-}
-/** The theme: the account's (Settings › Display), remembered in this browser too so the sign-in page has it. */
-function applyTheme(choice) {
-  if (choice) store.set('theme', choice);
-  const t = choice || store.get('theme') || 'system';
-  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-}
+async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
+function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 /* The sidebar docks beside the page on a wide screen unless its button put it away (remembered); otherwise it slides
    over the page. */
-function applySidebar() {
-  const body = document.body, btn = $('#sidebtn');
-  const docked = innerWidth >= DOCK_MIN && store.get('sidebar') !== '0';
-  body.classList.toggle('side-docked', docked);
-  if (docked) closeNav();
-  if (!btn) return;
-  const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : innerWidth >= DOCK_MIN ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
-  btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
-}
-function sidebarButton() {
-  if (document.body.classList.contains('side-docked')) store.set('sidebar', '0');
-  else if (innerWidth >= DOCK_MIN) store.set('sidebar', '1');
-  else { closeNav(); return; }
-  applySidebar();
-}
-function openNav() { document.body.classList.add('side-open'); $('#navscrim').hidden = false; }
-function closeNav() { document.body.classList.remove('side-open'); $('#navscrim').hidden = true; }
+function applySidebar() { frame.applySidebar(store); }
+function sidebarButton() { frame.sidebarButton(store); }
 
-const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 /** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 async function setAccount(el) {
   const ui = await accountUi();
@@ -2571,49 +2410,10 @@ async function setDisplay(el) {
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
-async function setSuite(el, r) {
-  let ui;
-  try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { put(el, h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
+function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 // ------------------------------------------------------------------ sign-in
-function showSignIn() {
-  // as in the other io apps: a tile per account; one click for a passwordless account, a password for the others
-  if (document.querySelector('.signin')) return;
-  const first = !S.status.usersExist;
-  const name = h('input', { class: 't', placeholder: 'User name', autocomplete: 'username', autocapitalize: 'none' });
-  const pw = h('input', { class: 't', type: 'password', placeholder: first ? 'Password (8 or more)' : 'Password', autocomplete: first ? 'new-password' : 'current-password' });
-  const err = h('div', { class: 'err' });
-  const form = h('div', { class: 'signin-form' }, name, pw);
-  const tiles = h('div', { class: 'accounts' });
-  const btn = h('button', { class: 'pillbtn primary noic', type: 'submit' }, first ? 'Create the admin account' : 'Sign in');
-  const login = async (n, p) => {
-    err.textContent = '';
-    try { if (first) await api('api/auth/setup', { method: 'POST', json: { name: n, password: p } }); else await signIn({ name: n, password: p }); location.reload(); } catch (x) { err.textContent = x.message; }
-  };
-  const submit = (e) => { e.preventDefault(); login(name.value.trim(), pw.value); };
-  put(document.body, h('div', { class: 'signin' }, h('form', { class: 'dialog', onsubmit: submit },
-    h('div', { class: 'brand' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }), h('span', { class: 'brand-name', style: { display: 'inline' } }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Money'))),
-    first ? h('p', { class: 'muted' }, 'Welcome. Make the first account: it is the admin, who gives the rest of the household a role in Settings. (Already use another io app? Sign in there first, or use the same name and password here once the apps share their accounts.)') : h('h2', null, 'Sign in'),
-    tiles, form, err, h('div', { class: 'btns' }, btn), first ? null : passkeyButton(() => location.reload()))));
-  if (first) { name.focus(); return; }
-  const pick = (t) => tiles.querySelectorAll('.account').forEach((x) => x.classList.toggle('on', x === t));
-  api('api/auth/accounts').then((d) => {
-    if (!d.accounts.length) { name.focus(); return; }
-    form.hidden = true; btn.hidden = true;
-    put(tiles, ...d.accounts.map((a) => {
-      const t = h('button', { type: 'button', class: 'account', title: a.passwordless ? `Sign in as ${a.name}` : `${a.name} (password)`, onclick: () => {
-        pick(t);
-        if (a.passwordless) { login(a.name, ''); return; }
-        name.value = a.name; name.hidden = true; form.hidden = false; btn.hidden = false; pw.value = ''; pw.focus();
-      } }, h('span', { class: 'av big', style: { '--h': hue(a.displayName || a.name) } }, initials(a.displayName || a.name)), h('span', { class: 'nm' }, a.displayName || a.name), a.passwordless ? null : h('span', { class: 'muted small' }, 'password'));
-      return t;
-    }), h('button', { type: 'button', class: 'account', title: 'Type a user name', onclick: (e) => {
-      pick(e.currentTarget); name.value = ''; name.hidden = false; form.hidden = false; btn.hidden = false; name.focus();
-    } }, h('span', { class: 'av big other' }, '…'), h('span', { class: 'nm' }, 'Other')));
-  }).catch(() => name.focus());
-}
+function showSignIn() { frame.signInScreen({ api, name: 'Money', first: !S.status.usersExist }); }
 
 
 // ------------------------------------------------------------------ start
@@ -2648,7 +2448,7 @@ async function start() {
     }, 300);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (openMenu) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
+    if (e.key === 'Escape') { if (menuOpen()) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.querySelector('.signin, .dialog-back')) return;
     if (e.key === '/') { e.preventDefault(); q.focus(); }
   });

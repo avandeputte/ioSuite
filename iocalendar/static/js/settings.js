@@ -3,6 +3,9 @@ import { applyTheme, colorPicker, drawNav, drawUser, newCalendar } from './shell
 import { TIMED_REMINDERS, zones } from './edit.js';
 import { onRoute } from './main.js';
 import { profileScope as scopeSelect } from '../../api/auth/ui.js';
+import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+import { accountUi, fld } from '../../api/auth/frame.js';
+export { accountUi };
 
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
@@ -14,10 +17,8 @@ export async function showSettings(page, r) {
   const body = h('div'); page.append(body);
   await ({ account: setAccount, display: setDisplay, devices: setDevices, calendars: setCalendars, holidays: setHolidays, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
-const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 export const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
-export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 /** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 export async function setAccount(el) {
   const ui = await accountUi();
@@ -159,11 +160,7 @@ function subscriptionBox(c, sub, manage) {
 /** Settings › People, Apps, Servers and Keys (suite admins): everything the suite keeps in the Shared ioSuite
     database. The same panel in every io app, served by iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
-export async function setSuite(el, r) {
-  let ui;
-  try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
+export function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 /** Settings › Holidays and birthdays, for admins: the Birthdays calendar ioContact fills (the suite connects the two by
     itself, so there is nothing else to set). */

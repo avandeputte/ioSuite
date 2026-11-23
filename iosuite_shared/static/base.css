@@ -1,11 +1,11 @@
-/* The look the single-page io apps share (ioBackup, ioCalendar, ioContact, ioDNS, ioThings, ioRecipe, ioTask): the reset, icons
-   and buttons, the top bar and the suite menu, the sidebar, page headings, form fields, tables, boxes, dialogs and the
-   sign-in screen. Served by iosuite_shared at <app>/api/auth/base.css and linked before the app's own static/app.css,
-   which keeps its colours (the --tokens these rules use), its layout and everything of its own.
+/* The look the io apps with a sidebar share (ioBackup, ioCalendar, ioContact, ioDNS, ioDocs, ioMoney, ioRecipe, ioTask,
+   ioThings): the reset, icons and buttons, the top bar and the suite menu, the sidebar, page headings, form fields,
+   tables, boxes, dialogs and the sign-in screen. Served by iosuite_shared at <app>/api/auth/base.css and linked
+   before the app's own static/app.css, which keeps its colours (the --tokens these rules use), its layout and
+   everything of its own.
 
-   Only rules that were the same in all six apps and that no rule of an app's own (before them in its app.css, with
-   the same specificity and a property in common) could override are here, so loading them first changes nothing;
-   the shared rules that could be overridden that way stay in each app.css, where they were. */
+   A rule is here when it was the same in every one of these apps. It is loaded before the app's own rules, so an
+   app that needs something else says so in its app.css and wins. */
 
 /* ---- reset and text */
 * { box-sizing: border-box; }
@@ -106,3 +106,57 @@ pre.log { background: var(--bg2); border: 1px solid var(--line); border-radius: 
 .signin [hidden] { display: none !important; }
 .av.big img { position: absolute; inset: 0; }
 label.check input { margin-top: 3px; accent-color: var(--brand); }
+
+/* ---- what else every one of these apps said in the same words (moved here from each app.css) */
+.suitepop { position: fixed; z-index: 60; display: grid; grid-template-columns: repeat(var(--cols, 3), 92px); gap: 4px; padding: 8px; max-width: calc(100vw - 16px);
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: var(--shadow); }
+.apptile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; border-radius: var(--r-m); color: var(--fg); text-align: center; min-width: 0; }
+.appic { width: 44px; height: 44px; border-radius: 12px; object-fit: contain; }
+.appnm { font-size: var(--fs-s); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navhead { display: flex; align-items: center; justify-content: space-between; flex: none; height: var(--topbar); padding-left: 8px; margin-bottom: 8px; }
+.navgap { flex: none; height: 14px; }
+.navfoot { margin-top: auto; padding: 14px 0 12px; display: flex; flex-direction: column; gap: 2px; }
+.sheetgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sheetgrid .sic { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--hue); background: color-mix(in srgb, var(--hue) var(--mix), transparent); }
+.page { padding: 20px 28px 60px; max-width: 1100px; }
+.pagehead { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.empty { padding: 48px 24px; text-align: center; color: var(--fg2); }
+.empty .ic { width: 56px; height: 56px; opacity: .5; }
+.av { width: 40px; height: 40px; border-radius: 50%; flex: none; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #fff;
+  background: hsl(var(--h, 270) 45% 52%); overflow: hidden; font-size: 15px; user-select: none; }
+.av.m { width: 56px; height: 56px; font-size: 20px; }
+.av.s { width: 28px; height: 28px; font-size: 11px; }
+.notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-pill); background: var(--bg2);
+  margin: 0 6px 6px 0; font-size: var(--fs-m); white-space: nowrap; max-width: 100%; }
+.chip.rel { height: 36px; padding: 0 12px 0 4px; }
+a.chip:hover { background: var(--accent-bg); color: var(--accent); }
+.form { padding: 24px 32px 80px; max-width: 900px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.box { border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 20px; margin-bottom: 16px; min-width: min-content; }
+.box h2 .ic { color: var(--brand); }
+.copy { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs button.on { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.menu { position: absolute; right: 0; top: 44px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: var(--shadow); min-width: 220px; padding: 6px; z-index: 50; }
+.menu .mi { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-s); width: 100%; text-align: left; }
+.menu .mi:hover { background: var(--bg2); }
+.menu .who { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.dialog-back { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dialog { background: var(--bg); border-radius: var(--r-l); padding: 20px 22px; width: 100%; max-width: 460px; box-shadow: var(--shadow); max-height: 90vh; overflow: auto; }
+.signin { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg2); z-index: 80; padding: 16px; }
+.signin .dialog { max-width: 380px; }
+.signin .brand { width: auto; justify-content: center; margin-bottom: 12px; }
+.signin-form { display: grid; gap: 10px; margin-top: 10px; }
+.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin: 6px 0 4px; }
+.account { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border-radius: var(--r-m); background: var(--bg2); color: var(--fg); cursor: pointer; border: 0; font: inherit; }
+.account:hover, .account.on { background: var(--bg3); }
+.account .nm { font-size: var(--fs-m); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.av.big { width: 48px; height: 48px; font-size: 18px; position: relative; overflow: hidden; }
+.av.other { background: var(--bg3); color: var(--fg2); }
+.err { color: var(--danger); font-size: var(--fs-m); min-height: 18px; margin-top: 6px; }
+.back { display: none; }
+label.check { display: inline-flex; align-items: flex-start; gap: 6px; cursor: pointer; }
+.warn { color: var(--warn); }
+.dialog.wide { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
