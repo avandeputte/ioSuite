@@ -1,0 +1,64 @@
+# The suite's one container image, ghcr.io/avandeputte/iosuite2: every app is in it, and a container runs the ones it
+# is told to (APPS). A pull request builds it to see that it builds; main's image is built and pushed once the version
+# is set (version.yml starts this workflow, because a commit made by a workflow starts none by itself), tagged latest
+# and v<version>. The image with ioPix's AI packages is the same one built with EXTRAS=all,iopix-ai: tags ai and
+# v<version>-ai.
+name: Image
+
+on:
+  pull_request:
+    paths: ["Dockerfile", ".dockerignore", "pyproject.toml", ".github/workflows/image.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/avandeputte/iosuite2
+
+jobs:
+  image:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {extras: "all", suffix: "", latest: "latest", platforms: "linux/amd64,linux/arm64"}
+          - {extras: "all,iopix-ai", suffix: "-ai", latest: "ai", platforms: "linux/amd64"}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=$(sed -n 's/^__version__ = "\([^"]*\)".*/\1/p' iosuite_shared/__init__.py)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130  # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ matrix.latest }},enable={{is_default_branch}}
+            type=raw,value=v${{ steps.version.outputs.version }}${{ matrix.suffix }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=,suffix=${{ matrix.suffix }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: .
+          platforms: ${{ matrix.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            EXTRAS=${{ matrix.extras }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=iosuite${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=iosuite${{ matrix.suffix }}

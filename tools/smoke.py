@@ -27,10 +27,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 OPENER = urllib.request.build_opener(NoRedirect)
 
 
-def ask(url: str, timeout: float = 15):
+def ask(url: str, timeout: float = 15, cookie: str = None):
     """(status, content type, body, Location) of a GET; status 0 when nothing answers."""
+    headers = {"User-Agent": "iosuite-smoke", **({"Cookie": cookie} if cookie else {})}
     try:
-        with OPENER.open(urllib.request.Request(url, headers={"User-Agent": "iosuite-smoke"}), timeout=timeout) as r:
+        with OPENER.open(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
             return r.status, r.headers.get("Content-Type", ""), r.read(), ""
     except urllib.error.HTTPError as e:
         return e.code, e.headers.get("Content-Type", ""), e.read(), e.headers.get("Location", "")

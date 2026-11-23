@@ -8,3 +8,9 @@ config.env
 node_modules/
 *.log
 .DS_Store
+/copies/
+/COMMIT
+/FILES
+/EXTRAS
+/SERVICES
+/.update-stage/

@@ -1,0 +1,139 @@
+# What is checked on every push to main and on every pull request: the code parses, every app's tests and the shared
+# library's pass against a MariaDB service, and the whole program, installed the way a server installs it and started
+# with every app in one copy, answers for each of them on the right port.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Python
+        run: |
+          python -m pip install -q pyflakes
+          python -m pyflakes iosuite_shared iosuite_demo io*/ tools
+          python -m compileall -q iosuite_shared iosuite_demo io*/ tools
+      - name: Every app's manifest
+        run: |
+          python -m pip install -q -e .
+          python -c "from iosuite_shared import catalog; print(len(catalog.APPS), 'apps:', ', '.join(a['key'] for a in catalog.APPS))"
+      - name: JavaScript
+        run: |
+          # the web apps' files are ES modules: parsed as modules (a plain --check can miss errors); the libraries of others are left alone
+          for f in $(find . -path './io*/static/*' -name '*.js' -not -path '*/vendor/*' -not -name '*.min.js'); do
+            node --input-type=module --check < "$f" || { echo "::error file=$f::does not parse"; exit 1; }
+          done
+          node -e 'JSON.parse(require("fs").readFileSync("iostart/static/extension/manifest.json"))'
+      - name: Shell
+        run: |
+          sh -n update.sh
+          bash -n install.sh
+          for f in $(find . -name '*.sh' -not -path './.venv/*' -not -name update.sh); do bash -n "$f"; done
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [iosuite_shared, iostart, iocalendar, iotask, iocontact, ionote, iorecipe, iothings, iomoney, iodocs, iohealth, iodns, iobackup, iopix]
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      IOSUITE_TEST_DB: 127.0.0.1:3306:root:root  # scratch databases on the service (iosuite_shared.testing)
+      PART: ${{ matrix.part }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Packages
+        run: |
+          # the app's own packages only, as on a machine that runs this app alone; the shared library's tests load every app's manifest, no app
+          if [ "$PART" = iosuite_shared ]; then extras=test; else extras="$PART,test"; fi
+          python -m pip install -q -e ".[$extras]"
+          # what the app's manifest says it needs of the system (exiftool, tesseract, …)
+          pkgs="$([ -f "$PART/app.json" ] && python -c "import json,sys; print(' '.join(json.load(open(sys.argv[1])).get('system', [])))" "$PART/app.json" || true)"
+          if [ -n "$pkgs" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $pkgs >/dev/null; fi
+      - name: Tests
+        run: |
+          more=""
+          if [ "$PART" = iopix ]; then
+            python -m pip install -q numpy  # the search-model switch test builds vectors
+            more="--ignore=iopix/tests/ui"   # the browser tests: the job below
+          fi
+          python -m pytest -q -p no:cacheprovider "$PART/tests" $more
+      - name: ioBackup's round trip of every kind of object (backup, drop, restore, compare)
+        if: matrix.part == 'iobackup'
+        env:
+          IOBACKUP_TEST_DB_HOST: 127.0.0.1
+          IOBACKUP_TEST_DB_USER: root
+          IOBACKUP_TEST_DB_PASSWORD: root
+        run: bash iobackup/tests/integration.sh
+      - name: ioStart's bookmark extension against a real server
+        if: matrix.part == 'iostart'
+        run: for f in iostart/static/extension/*.js iostart/tests/extension/*.js; do node --check "$f"; done
+
+  one-copy:
+    # installed as a server installs it (the program's environment, `iosuite install`, the databases made with a
+    # MariaDB administrator), then every app in one copy, asked from outside
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        env:
+          DB_ADMIN_PASSWORD: root
+          ADMIN_PASSWORD: a-password-for-the-check
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -q -e .
+          .venv/bin/iosuite install --yes --apps all --db 127.0.0.1 --db-admin root --client-host % --admin alex --no-service --port 8080 --sync-port 8443 --mcp-port 8444
+          .venv/bin/iosuite install --list
+      - name: Every app answers in one copy
+        run: |
+          .venv/bin/iosuite serve > serve.log 2>&1 &
+          python tools/smoke.py --web 8080 --sync 8443 || { tail -100 serve.log; exit 1; }
+      - name: Two apps taken out, then put back
+        run: |
+          .venv/bin/iosuite install --yes --remove iodns,iobackup --no-service
+          .venv/bin/iosuite install --list | tee list.txt
+          if grep -q "ioDNS" list.txt; then echo "::error::ioDNS is still in the list"; exit 1; fi
+          .venv/bin/iosuite install --yes --add iodns,iobackup --no-service
+          .venv/bin/iosuite install --list | grep -q "ioDNS"
