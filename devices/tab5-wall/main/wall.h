@@ -297,15 +297,26 @@ void kit_show(lv_obj_t *o, bool on);
 lv_obj_t *kit_button(lv_obj_t *p, const char *text, lv_event_cb_t cb, void *ud, bool primary);
 lv_obj_t *kit_textarea(lv_obj_t *p, const char *placeholder, bool password);
 lv_obj_t *kit_keyboard(lv_obj_t *p, lv_obj_t *ta, lv_event_cb_t on_ready, void *ud);
-/** A card over the screen with a title and a close button; returns its body, a column that scrolls when what is put
- *  in it is longer than the card (the card is the body's parent). */
+/** A card over the screen with a title and a close button; returns the column its rows are put in, which scrolls
+ *  in the card when it is longer. What it shows is kept as a picture and the picture is what a scroll moves (ui.c). */
 lv_obj_t *kit_panel(const char *title, int w, int h);
+lv_obj_t *kit_panel_card(void);   /* the open panel's card, to place it; NULL when none is open */
+/** false: a panel's rows are drawn at every frame, as LVGL does by itself, and no picture of them is kept. For
+ *  comparing: the simulator checks every frame of one against the other, the board's own measuring times both. */
+void kit_panel_keep(bool on);
 void kit_close_panel(void);
 bool kit_panel_open(void);
 /** What the open panel is drawn on, the whole screen wide (a keyboard under its card goes here); NULL when none is. */
 lv_obj_t *kit_panel_layer(void);
-/** How long the large redraws took since the last reset, for Settings: "12 large redraws · 31 ms each · …". */
-void ui_frames_reset(void);
+/** How long the redraws took since the last reset: how many, and added up over them the time of each (µs), how much
+ *  of it went to sending what was drawn to the panel (the rest is drawing), the pixels sent, and the slowest one. */
+typedef struct {
+    uint32_t n, all, sending, px, worst;
+} ui_frames_t;
+/** Counts from here the frames that send from_px pixels or more; 0: the large ones, a quarter of the screen. */
+void ui_frames_reset(uint32_t from_px);
+void ui_frames_get(ui_frames_t *out);
+/** For Settings: "12 large redraws · 31 ms each (22 drawing, 9 sending) · the slowest 80 ms". */
 void ui_frames_text(char *out, size_t n);
 
 /* time and text, as the person reads them */
@@ -361,6 +372,15 @@ void ota_check_now(bool install);
 ota_state_t ota_state(void);
 const char *ota_text(void);
 const char *wall_version(void);
+
+/* ------------------------------------------------------------------ bench.c */
+
+/** Measures the screen on the board: scrolls Settings, drags, swipes and changes the photo by itself, after_ms from
+ *  now and on a task of its own, and says in the log and in bench_result() what the frames of each took. */
+void bench_start(int after_ms);
+bool bench_running(void);
+const char *bench_result(void);   /* a line per scene; "" before the first run */
+bool bench_fresh(void);           /* a run has ended since this was last asked */
 
 /* ------------------------------------------------------------------ boot.c */
 

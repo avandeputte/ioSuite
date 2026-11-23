@@ -26,7 +26,9 @@ Firmware that puts the start page's wall (`#/wall`) on its own screen, on USB po
   while USB power fills it). Settings › Power shows the readings as they are. The Waveshare board has nothing that
   measures its battery.
 - **How quick it draws** is on the device: Settings › Screen counts the large redraws (a scroll, a panel, a
-  photo) since Settings was opened and says how long they took, each and the slowest.
+  photo) since Settings was opened and says how long they took, each and the slowest, and how much of that was
+  drawing and how much sending what was drawn to the panel. **Measure** there scrolls Settings, drags a slider,
+  swipes to a view and changes the photo by itself for half a minute and then lists what the frames of each took.
 - **Updates itself** at 3 AM from the release `wall-latest` (Settings turns that off). A firmware that does not
   run for a minute is rolled back.
 
@@ -87,6 +89,7 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/ui.c`, `ui_wall.c`, `ui_setup.c`, `ui_panels.c` | the screens (LVGL), laid out for 1280 × 720; `P()` brings each size to the board's screen |
 | `main/alarm.c` | timers, alarms, the sound |
 | `main/power.c` | the battery's level (the Tab5's INA226) |
+| `main/bench.c` | the screen measured on the board: Settings › Screen › Measure, and by itself on a pull request's build |
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
 | `main/fonts/` | Inter (SIL Open Font License, `OFL.txt`) |
@@ -104,6 +107,12 @@ added or changed:
 - **A panel is part of the screen it opens over** (`kit_panel`), not of LVGL's top layer: nothing on the top layer
   ever counts as covering, so a panel there had the photo and the whole wall drawn again under it at every frame of
   a scroll. What scrolls in a panel is a plain rectangle in the card's colour: round corners cover nothing.
+- **A panel's rows are drawn once and kept as a picture** (`kit_panel` in `ui.c`), as wide and as tall as all of
+  them. A frame of a scroll is then a copy of the part in view and the drawing of the strip that comes into view, not
+  every text, slider and button a few pixels further up. A row that changes (a switch, a text, the cursor) is drawn
+  again where it is: LVGL says which area is no longer right. Only the rows in view are kept right, and a picture
+  there is no memory for is done without (the log says so). `kit_panel_keep(false)` draws every row each time, as
+  before, to compare.
 - **One layer behind the wall's text.** A photo's shades (darker where the text is, as dark as the photo is bright)
   are worked into its pixels once, when it is decoded (`wall_shade_photo`), on the photos' task. The sky and its two
   see-through shades are drawn only while no photo fills the screen.
@@ -121,4 +130,13 @@ added or changed:
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were
 filled, copied and blended in them (`./run.sh 7b` for the Waveshare's size, `MAIN=… ./run.sh` for another copy of
 `main/`, to compare). The pictures of what it passed are in `tools/sim/out/`. It counts work, not time: how long a
-frame takes on the board is what Settings › Screen says.
+frame takes on the board is what Settings › Screen says. Its clock stands still at one day, so two runs draw the
+same. `./run.sh 7b check` goes through the script and a few hundred touches more on every panel twice, with a panel's
+rows kept as a picture and with every row drawn, and fails when a frame of the one is not, pixel for pixel, that of
+the other: run it after a change to a panel or to `kit_panel`. `SIM_LOG=1` shows the firmware's own log lines.
+
+On the board, `main/bench.c` does the same touches with a finger that is not there and times every frame: Settings ›
+Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). It
+scrolls Settings three times over: as it is, with every row drawn each time, and with the screen turned around. A pull
+request's build (version `pr…`) runs it by itself half a minute after it starts, so a board on a cable is measured
+by restarting it and reading its log.

@@ -5,6 +5,7 @@
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "lvgl_private.h"   /* a panel draws its content into a picture of its own (kit_panel) */
 #include "wall.h"
 
 extern const uint8_t inter_regular_start[] asm("_binary_Inter_Regular_ttf_start");
@@ -259,6 +260,7 @@ static void on_any_press(lv_event_t *e)
 }
 
 static void on_frame(lv_event_t *e);
+static void on_keep_display(lv_event_t *e);
 
 void ui_start(lv_display_t *disp)
 {
@@ -267,9 +269,13 @@ void ui_start(lv_display_t *disp)
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     lv_indev_t *in = bsp_display_get_input_dev();
     if (in) lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_START, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_FLUSH_START, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_READY, NULL);
+    static const lv_event_code_t timed[] = {LV_EVENT_REFR_START, LV_EVENT_FLUSH_START, LV_EVENT_FLUSH_FINISH,
+                                            LV_EVENT_FLUSH_WAIT_START, LV_EVENT_FLUSH_WAIT_FINISH, LV_EVENT_REFR_READY};
+    for (size_t i = 0; i < sizeof timed / sizeof *timed; i++) lv_display_add_event_cb(disp, on_frame, timed[i], NULL);
+    /* a panel's picture of its content (kit_panel) is brought up to date as a frame begins, within its time */
+    lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_INVALIDATE_AREA, NULL);
+    lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_REFR_START, NULL);
+    lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_REFR_READY, NULL);
     lv_timer_create(tick, 1000, NULL);
     ui_apply_brightness();
     if (S.server[0] && S.token[0]) {
@@ -369,7 +375,217 @@ lv_obj_t *kit_keyboard(lv_obj_t *p, lv_obj_t *ta, lv_event_cb_t on_ready, void *
     return kb;
 }
 
-static lv_obj_t *panel;
+static lv_obj_t *panel, *panel_card;
+
+/* ---- what scrolls in a panel is kept as drawn
+ *
+ * Drawing a panel's rows (text, sliders, round buttons) is what a frame of a scroll was made of: the same rows, a few
+ * pixels further up, drawn anew every time. So the rows are drawn once, into a picture of their own that is as wide
+ * and as tall as all of them, and the screen gets the picture: a copy of the part in view. A scroll then draws the
+ * strip that comes into view and no more; a switch that moves, a line that says something else or a blinking cursor
+ * is drawn again where it is (LVGL says which area of the screen is no longer right: LV_EVENT_INVALIDATE_AREA).
+ *
+ * Only the rows in view are kept right: LVGL reports nothing about what changes out of sight, so what comes back
+ * into view is always drawn. The body draws the picture itself and says it covers its area; while LVGL then goes
+ * through the body's children, the rows are marked hidden behind its back so that they are not drawn a second time
+ * (to touches, to the layout and to the scroll bar they are there as ever: adding the flag the proper way would
+ * upset all three). */
+#define KEEP_MAX (12 * 1024 * 1024)   /* no picture larger than this (bytes): the rows are then drawn as before */
+
+static bool keeps = true;
+
+static struct {
+    lv_obj_t *body, *content;
+    lv_color_t ground;
+    lv_draw_buf_t *buf;       /* the rows as drawn; NULL: not kept */
+    int32_t no_w, no_h;       /* a size there was no memory for: not asked for again at every frame */
+    int32_t y0, y1;           /* the rows of it that are as the content is now (y1 not among them) */
+    lv_area_t dirty[8];       /* parts of them to draw again, in the content's own coordinates */
+    int ndirty;
+    bool scrolled;            /* the body's next invalidation is its own scroll: nothing in it changed */
+    bool ready;               /* the picture is right for the frame now drawn */
+    bool hidden;              /* the content is marked hidden while the body's children are gone through */
+} keep;
+
+/* draws part of the content (in its own coordinates) into the picture */
+static void keep_draw(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+{
+    lv_obj_t *c = keep.content;
+    lv_area_t a = {x1 + c->coords.x1, y1 + c->coords.y1, x2 + c->coords.x1, y2 + c->coords.y1};
+    lv_layer_t layer;
+    lv_layer_init(&layer);
+    layer.draw_buf = keep.buf;
+    layer.buf_area = c->coords;
+    layer.color_format = LV_COLOR_FORMAT_RGB565;
+    layer._clip_area = a;
+    layer.phy_clip_area = a;
+    lv_display_t *disp = lv_obj_get_display(c), *was = lv_refr_get_disp_refreshing();
+    lv_layer_t *head = disp->layer_head;
+    disp->layer_head = &layer;
+    lv_refr_set_disp_refreshing(disp);
+    lv_draw_fill_dsc_t fill;
+    lv_draw_fill_dsc_init(&fill);
+    fill.color = keep.ground;
+    lv_draw_fill(&layer, &fill, &a);
+    lv_obj_redraw(&layer, c);
+    while (layer.draw_task_head) {
+        lv_draw_dispatch_wait_for_request();
+        lv_draw_dispatch();
+    }
+    disp->layer_head = head;
+    lv_refr_set_disp_refreshing(was);
+}
+
+static void keep_drop(void)
+{
+    if (keep.buf) {
+        lv_image_cache_drop(keep.buf);
+        lv_draw_buf_destroy(keep.buf);
+        keep.buf = NULL;
+    }
+    keep.y0 = keep.y1 = keep.ndirty = 0;
+}
+
+/* before a frame: the picture is brought to what the content is now, where it is in view */
+static void keep_ready(void)
+{
+    lv_obj_t *c = keep.content;
+    if (!keeps) return;
+    lv_obj_update_layout(c);
+    int32_t w = lv_obj_get_width(c), h = lv_obj_get_height(c);
+    keep.scrolled = false;   /* a scroll whose invalidation never came is not waited for any longer */
+    if (!keep.buf ? (w != keep.no_w || h != keep.no_h) : (keep.buf->header.w != w || keep.buf->header.h != h)) {
+        keep_drop();
+        if (w > 0 && h > 0 && (int64_t)w * h * 2 <= KEEP_MAX) keep.buf = lv_draw_buf_create(w, h, LV_COLOR_FORMAT_RGB565, 0);
+        keep.no_w = keep.buf ? 0 : w;
+        keep.no_h = keep.buf ? 0 : h;
+        if (keep.buf) ESP_LOGI(TAG_WALL, "a panel's rows are kept as a picture of %d x %d", (int)w, (int)h);
+        else if (w > 0 && h > 0) ESP_LOGW(TAG_WALL, "no picture of %d x %d for a panel's rows: they are drawn each time", (int)w, (int)h);
+    }
+    lv_area_t seen;
+    if (!keep.buf || !lv_area_intersect(&seen, &keep.body->coords, &c->coords)) {
+        keep.y0 = keep.y1 = keep.ndirty = 0;
+        return;
+    }
+    int32_t v0 = seen.y1 - c->coords.y1, v1 = seen.y2 - c->coords.y1 + 1;
+    if (keep.y0 >= keep.y1 || v0 >= keep.y1 || v1 <= keep.y0) {
+        keep_draw(0, v0, w - 1, v1 - 1);
+    } else {
+        if (v0 < keep.y0) keep_draw(0, v0, w - 1, keep.y0 - 1);
+        if (v1 > keep.y1) keep_draw(0, keep.y1, w - 1, v1 - 1);
+        int32_t k0 = LV_MAX(v0, keep.y0), k1 = LV_MIN(v1, keep.y1);
+        for (int i = 0; i < keep.ndirty; i++) {
+            lv_area_t *d = &keep.dirty[i];
+            int32_t d0 = LV_MAX(d->y1, k0), d1 = LV_MIN(d->y2, k1 - 1);
+            if (d0 <= d1) keep_draw(d->x1, d0, d->x2, d1);
+        }
+    }
+    keep.y0 = v0;
+    keep.y1 = v1;
+    keep.ndirty = 0;
+    keep.ready = true;
+}
+
+static void on_keep_display(lv_event_t *e)
+{
+    if (!keep.body || !keeps) return;
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_INVALIDATE_AREA: {
+        const lv_area_t *a = lv_event_get_param(e);
+        lv_area_t seen, d;
+        if (!keep.buf || !a || !lv_area_intersect(&seen, &keep.body->coords, &keep.content->coords)) break;
+        if (keep.scrolled && lv_area_is_in(&seen, a, 0)) {
+            keep.scrolled = false;
+            break;
+        }
+        if (!lv_area_intersect(&d, a, &seen)) break;
+        lv_area_move(&d, -keep.content->coords.x1, -keep.content->coords.y1);
+        int n = 0;   /* the same area is often reported several times over, or within a larger one */
+        for (int i = 0; i < keep.ndirty; i++) {
+            if (lv_area_is_in(&d, &keep.dirty[i], 0)) return;
+            if (!lv_area_is_in(&keep.dirty[i], &d, 0)) keep.dirty[n++] = keep.dirty[i];
+        }
+        keep.ndirty = n;
+        if (keep.ndirty == (int)(sizeof keep.dirty / sizeof *keep.dirty)) {   /* no room: one area around them all */
+            for (int i = 1; i < keep.ndirty; i++) lv_area_join(&keep.dirty[0], &keep.dirty[0], &keep.dirty[i]);
+            keep.ndirty = 1;
+        }
+        keep.dirty[keep.ndirty++] = d;
+        break;
+    }
+    case LV_EVENT_REFR_START:
+        keep_ready();
+        break;
+    case LV_EVENT_REFR_READY:
+        keep.ready = false;
+        break;
+    default:
+        break;
+    }
+}
+
+void kit_panel_keep(bool on)
+{
+    keeps = on;
+    keep.y0 = keep.y1 = keep.ndirty = 0;   /* what changed while it was off was not followed */
+    if (keep.body) lv_obj_invalidate(keep.body);
+}
+
+static void on_keep_body(lv_event_t *e)
+{
+    lv_obj_t *body = lv_event_get_target(e);
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_SCROLL:
+        keep.scrolled = true;
+        break;
+    case LV_EVENT_COVER_CHECK: {
+        /* every pixel of the body is drawn below, the picture or the ground */
+        lv_cover_check_info_t *info = lv_event_get_param(e);
+        if (info->res != LV_COVER_RES_MASKED) info->res = LV_COVER_RES_COVER;
+        break;
+    }
+    case LV_EVENT_DRAW_MAIN: {
+        lv_layer_t *layer = lv_event_get_layer(e);
+        lv_obj_t *c = keep.content;
+        lv_draw_fill_dsc_t fill;
+        lv_draw_fill_dsc_init(&fill);
+        fill.color = keep.ground;
+        if (!keep.ready) {   /* not kept: the ground, and the rows draw themselves on it */
+            lv_draw_fill(layer, &fill, &body->coords);
+            break;
+        }
+        lv_area_t a = body->coords;
+        if (c->coords.y1 > a.y1) {   /* pulled down past its top */
+            a.y2 = LV_MIN(a.y2, c->coords.y1 - 1);
+            lv_draw_fill(layer, &fill, &a);
+        }
+        a = body->coords;
+        if (c->coords.y2 < a.y2) {   /* shorter than the body, or pulled up past its end */
+            a.y1 = LV_MAX(a.y1, c->coords.y2 + 1);
+            lv_draw_fill(layer, &fill, &a);
+        }
+        lv_draw_image_dsc_t img;
+        lv_draw_image_dsc_init(&img);
+        img.src = keep.buf;
+        lv_draw_image(layer, &img, &c->coords);
+        c->flags |= LV_OBJ_FLAG_HIDDEN;   /* until the children have been gone through: just below */
+        keep.hidden = true;
+        break;
+    }
+    case LV_EVENT_DRAW_POST_BEGIN:
+        if (keep.hidden) {
+            keep.content->flags &= ~LV_OBJ_FLAG_HIDDEN;
+            keep.hidden = false;
+        }
+        break;
+    case LV_EVENT_DELETE:
+        keep_drop();
+        memset(&keep, 0, sizeof keep);
+        break;
+    default:
+        break;
+    }
+}
 
 static void on_panel_close(lv_event_t *e)
 {
@@ -380,7 +596,7 @@ void kit_close_panel(void)
 {
     if (panel) {
         lv_obj_delete(panel);
-        panel = NULL;
+        panel = panel_card = NULL;
     }
 }
 
@@ -394,11 +610,16 @@ lv_obj_t *kit_panel_layer(void)
     return panel;
 }
 
+lv_obj_t *kit_panel_card(void)
+{
+    return panel_card;
+}
+
 /* A panel is drawn on the screen it opens over, as its last part, and not on LVGL's top layer. LVGL looks for the
  * topmost thing that covers what changed and draws from there up, but only among the screen's own parts: a panel on
  * the top layer had the photo, its shades and the whole wall drawn again under it at every frame of a scroll, a
- * slider or a key. For the same reason what scrolls is a plain rectangle inside the card, filled with the card's
- * colour: the card's round corners cover nothing in LVGL's eyes. */
+ * slider or a key. For the same reason what scrolls is a plain rectangle inside the card, in the card's colour: the
+ * card's round corners cover nothing in LVGL's eyes. */
 lv_obj_t *kit_panel(const char *title, int w, int h)
 {
     const lv_color_t ground = lv_color_hex(0x16181c);
@@ -412,7 +633,7 @@ lv_obj_t *kit_panel(const char *title, int w, int h)
     lv_obj_set_style_bg_opa(panel, LV_OPA_60, 0);
     lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);  /* a tap beside the card closes it */
     lv_obj_add_event_cb(panel, on_panel_close, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_t *card = lv_obj_create(panel);
+    lv_obj_t *card = panel_card = lv_obj_create(panel);
     lv_obj_remove_style_all(card);
     lv_obj_set_size(card, w, h);
     lv_obj_center(card);
@@ -446,51 +667,78 @@ lv_obj_t *kit_panel(const char *title, int w, int h)
     lv_obj_t *xl = kit_label(x, font_symbols(28), lv_color_white(), LV_SYMBOL_CLOSE);
     lv_obj_center(xl);
     lv_obj_add_event_cb(x, on_panel_close, LV_EVENT_CLICKED, NULL);
-    /* the body: what the panel shows, a column that scrolls when it is longer than the card; it reaches nearly to the
-     * card's right edge, so its scroll bar is in the margin */
+    /* the body: the window on what the panel shows, which scrolls in it when it is longer than the card. The body
+     * reaches nearly to the card's right edge, so its scroll bar is in the margin. It has no ground of its own: it
+     * draws the picture kept of its content (above). */
     lv_obj_t *body = lv_obj_create(card);
     lv_obj_set_width(body, lv_pct(100));
     lv_obj_set_flex_grow(body, 1);
-    lv_obj_set_style_bg_color(body, ground, 0);
-    lv_obj_set_style_bg_opa(body, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(body, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(body, 0, 0);
     lv_obj_set_style_radius(body, 0, 0);
     lv_obj_set_style_pad_all(body, 0, 0);
-    lv_obj_set_style_pad_right(body, P(22), 0);
-    lv_obj_set_style_pad_bottom(body, P(20), 0);
-    lv_obj_set_style_pad_row(body, P(16), 0);
-    lv_obj_set_flex_flow(body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_scroll_dir(body, LV_DIR_VER);
-    return body;
+    /* the scroll bar looks the same whether the body is being scrolled or not: the theme lights it up while it is,
+     * step by step, and every step of that has LVGL call the whole body changed */
+    lv_obj_remove_style(body, NULL, LV_PART_SCROLLBAR | LV_STATE_SCROLLED);
+    lv_obj_t *c = lv_obj_create(body);
+    lv_obj_remove_style_all(c);
+    lv_obj_set_size(c, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_remove_flag(c, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_right(c, P(22), 0);
+    lv_obj_set_style_pad_bottom(c, P(20), 0);
+    lv_obj_set_style_pad_row(c, P(16), 0);
+    lv_obj_set_flex_flow(c, LV_FLEX_FLOW_COLUMN);
+    memset(&keep, 0, sizeof keep);
+    keep.body = body;
+    keep.content = c;
+    keep.ground = ground;
+    lv_obj_add_event_cb(body, on_keep_body, LV_EVENT_ALL, NULL);
+    return c;
 }
 
 /* ------------------------------------------------------------------ how long the screen takes to draw */
 
+/* A frame is drawn by LVGL (into its own buffer, in the PSRAM), then sent: turned by the pixel processor where the
+ * screen is turned, and handed to the copy into the panel's frame. The two are told apart here, since which of them
+ * a slow frame is made of decides what would make it fast. */
 static struct {
-    int64_t started;         /* when the frame began (µs) */
+    int64_t started, mark;   /* when the frame began, and the sending or waiting now going on (µs) */
     uint32_t px;             /* what the frame sent to the panel so far */
-    uint32_t n, sum, worst;  /* the large frames since the last reset */
-} frames;
+    uint32_t sending;        /* µs of the frame spent sending, waits for the frame before included */
+    uint32_t from;           /* frames that sent this many pixels or more are counted */
+    ui_frames_t sum;         /* those since the last reset: times in µs, added up */
+} frames = {.from = WALL_W * WALL_H / 4};
 
 static void on_frame(lv_event_t *e)
 {
+    int64_t now = esp_timer_get_time();
     switch (lv_event_get_code(e)) {
     case LV_EVENT_REFR_START:
-        frames.started = esp_timer_get_time();
-        frames.px = 0;
+        frames.started = now;
+        frames.px = frames.sending = 0;
         break;
     case LV_EVENT_FLUSH_START: {
         const lv_area_t *a = lv_event_get_param(e);
         if (a) frames.px += (uint32_t)lv_area_get_size(a);
+        frames.mark = now;
         break;
     }
+    case LV_EVENT_FLUSH_WAIT_START:
+        frames.mark = now;
+        break;
+    case LV_EVENT_FLUSH_FINISH:
+    case LV_EVENT_FLUSH_WAIT_FINISH:
+        frames.sending += (uint32_t)(now - frames.mark);
+        break;
     case LV_EVENT_REFR_READY:
-        /* a frame that drew a quarter of the screen or more: a scroll, a panel, a photo; not the clock's minute */
-        if (frames.px >= (uint32_t)(WALL_W * WALL_H / 4)) {
-            uint32_t ms = (uint32_t)((esp_timer_get_time() - frames.started + 500) / 1000);
-            frames.n++;
-            frames.sum += ms;
-            if (ms > frames.worst) frames.worst = ms;
+        if (frames.px && frames.px >= frames.from) {
+            uint32_t us = (uint32_t)(now - frames.started);
+            frames.sum.n++;
+            frames.sum.all += us;
+            frames.sum.sending += frames.sending;
+            frames.sum.px += frames.px;
+            if (us > frames.sum.worst) frames.sum.worst = us;
         }
         break;
     default:
@@ -498,14 +746,26 @@ static void on_frame(lv_event_t *e)
     }
 }
 
-void ui_frames_reset(void)
+void ui_frames_reset(uint32_t from_px)
 {
-    frames.n = frames.sum = frames.worst = 0;
+    memset(&frames.sum, 0, sizeof frames.sum);
+    /* by default a quarter of the screen or more: a scroll, a panel, a photo; not the clock's minute */
+    frames.from = from_px ? from_px : (uint32_t)(WALL_W * WALL_H / 4);
+}
+
+void ui_frames_get(ui_frames_t *out)
+{
+    *out = frames.sum;
 }
 
 void ui_frames_text(char *out, size_t n)
 {
-    if (!frames.n) strlcpy(out, "Nothing large drawn yet", n);
-    else snprintf(out, n, "%u large redraws · %u ms each · the slowest %u ms", (unsigned)frames.n,
-                  (unsigned)(frames.sum / frames.n), (unsigned)frames.worst);
+    const ui_frames_t *f = &frames.sum;
+    if (!f->n) {
+        strlcpy(out, "Nothing large drawn yet", n);
+        return;
+    }
+    unsigned all = (f->all / f->n + 500) / 1000, sending = (f->sending / f->n + 500) / 1000;
+    snprintf(out, n, "%u large redraws · %u ms each (%u drawing, %u sending) · the slowest %u ms", (unsigned)f->n, all,
+             all > sending ? all - sending : 0, sending, (unsigned)((f->worst + 500) / 1000));
 }
