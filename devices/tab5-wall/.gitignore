@@ -1,0 +1,9 @@
+build/
+out/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+build-*/
+sdkconfig.7b
+sdkconfig.7b.old
