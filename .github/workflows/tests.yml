@@ -181,9 +181,11 @@ jobs:
           python tools/twocopies.py --web 8080 --other-web 8081 --other-app iopix --login "alex:$ADMIN_PASSWORD" || { tail -60 serve.log serve-pix.log; exit 1; }
 
   move:
-    # tools/convert, which moves an install of the first ioSuite to this program: its own tests, then a rehearsal. An
-    # install of the first ioSuite is made from its code (the version this program was ported from) and filled with
-    # its demo data, convert.py --apply moves it, and what every app lists is held to what it listed before
+    # tools/convert, which moves an install of the first ioSuite to this program: its own tests, then two rehearsals.
+    # An install of the first ioSuite is made from its code (the version this program was ported from) and filled
+    # with its demo data, convert.py --apply moves it, and what every app lists is held to what it listed before:
+    # once without services, once as root with the old apps as systemd services, the way a server is moved (a move
+    # that fails first and must put the old services back, the move, and going back)
     runs-on: ubuntu-latest
     services:
       mariadb:
@@ -198,14 +200,14 @@ jobs:
       FIRST: 42cc107e82dad474e2619954c02cac1dd29e327e  # ioSuite 3.44.0 (tools/convert/convert.py, PORTED_FROM)
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Packages
         run: |
-          python -m pip install -q -e ".[all,test]"
-          pkgs="$(python -c "import glob,json; print(' '.join(sorted({p for f in glob.glob('io*/app.json') for p in json.load(open(f)).get('system', [])})))")"
-          if [ -n "$pkgs" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $pkgs >/dev/null; fi
+          # the machine's own Python, in an environment: what a server has, and what a service can start
+          pkgs="$(python3 -c "import glob,json; print(' '.join(sorted({p for f in glob.glob('io*/app.json') for p in json.load(open(f)).get('system', [])})))")"
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends python3-venv $pkgs >/dev/null
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install -q -e ".[all,test]"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: The converter's tests
         run: python -m pytest -q -p no:cacheprovider tools/convert
       - name: The first ioSuite's code
@@ -216,13 +218,18 @@ jobs:
           if GIT_TERMINAL_PROMPT=0 git fetch -q --depth 1 origin "$FIRST" && git checkout -q FETCH_HEAD; then
             echo "there=1" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::The first repository cannot be read from here, so the rehearsal of the move was left out"
+            echo "::notice::The first repository cannot be read from here, so the rehearsals of the move were left out"
           fi
       - name: A rehearsal of the move
         if: steps.first.outputs.there == '1'
         run: |
           python tools/convert/rehearse.py --old "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/rehearse" || {
             tail -n 40 "$RUNNER_TEMP"/rehearse/*.log "$RUNNER_TEMP"/rehearse/old/*/run.log; exit 1; }
+      - name: The same with services, as a server is moved (a move that fails, the move, going back)
+        if: steps.first.outputs.there == '1'
+        run: |
+          sudo env "PATH=$PATH" "IOSUITE_TEST_DB=$IOSUITE_TEST_DB" python tools/convert/rehearse.py --service --old "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/rehearse-service" || {
+            sudo tail -n 60 "$RUNNER_TEMP"/rehearse-service/*.log; sudo journalctl -u iosuite -u iostart -n 60 --no-pager; exit 1; }
 
   image:
     # the container image, built as the Image workflow builds it, and the repository's stack file started with it:

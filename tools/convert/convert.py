@@ -32,6 +32,7 @@ going back is stopping one service and starting the old ones (the last lines it 
     --device-address URL  an address of its own for phones and devices (https://sync.example.com) instead of each
                           app's old address; --mcp-address URL the same for MCP clients
     --port N, --sync-port N, --mcp-port N, --host ADDR, --user USER, --no-service     passed to `iosuite install`
+    --wait SECONDS        how long the apps get to answer before the old services are started again (120)
 
 Not part of the program: nothing imports it, and it is run once.
 """
@@ -710,7 +711,7 @@ def apply(p: dict, a, base: Path, run=subprocess.run, log=print, systemd: bool =
         afterwards(p, log, (config.PORT, config.SYNC_PORT, config.MCP_PORT))
         return 0
     say("Does every app answer?")
-    silent = check(p, config.PORT, config.HOST, log=log)
+    silent = check(p, config.PORT, config.HOST, wait=int(getattr(a, "wait", None) or 120), log=log)
     if silent:
         back(f"{', '.join(catalog.name_of(k) for k in silent)} did not answer within two minutes (journalctl -u {install.unit_name()} -n 80 says why).")
     log(f"  yes: {', '.join(catalog.name_of(k) for k in p['apps'])}")
@@ -748,6 +749,7 @@ def main(argv=None) -> int:
     ap.add_argument("--mcp-port", default=None)
     ap.add_argument("--user", default=None)
     ap.add_argument("--no-service", action="store_true")
+    ap.add_argument("--wait", default=None, metavar="SECONDS")
     a = ap.parse_args(argv)
     base = Path(config.BASE)
     dirs = a.dirs or [d for d in ("/opt", str(Path.home() / "iosuite")) if Path(d).is_dir()]

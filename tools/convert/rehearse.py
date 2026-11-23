@@ -18,7 +18,14 @@ What it does:
      the settings and the keys the old files held;
   5. starts an old app again: going back still works.
 
-Not part of the program: nothing imports it. The checks on GitHub run it (.github/workflows/tests.yml).
+With --service, as root on a scratch machine with systemd (never one that runs ioSuite: it makes and removes the
+services <app> and iosuite), the move is made the way a server makes it: the old apps run as services, the program
+is laid out as install.sh --fetch lays it out (an environment of its own, the packages installed by the move), a
+first move is made to fail (an address the machine does not have) and must leave the old services running and the
+data where it was, the second stops the old services, makes the service iosuite and switches the old ones off, and
+going back is the two commands the converter prints.
+
+Not part of the program: nothing imports it. The checks on GitHub run it both ways (.github/workflows/tests.yml).
 """
 from __future__ import annotations
 
@@ -55,6 +62,25 @@ OWN = {
     "iobackup": ["BACKGROUND=0"], "iodns": ["BACKGROUND=0"],
     "iopix": ["DB_TYPE=mysql", "DIGIKAM_DB_TYPE=none", "DIGIKAM_CHECK=none", "GOOGLE_MAPS_API_KEY=old-maps-key", "AUTO_MODELS=0", "PREWARM=0"],
 }
+UNIT = """[Unit]
+Description={name} (a rehearsal of the move)
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile={folder}/config.env
+Environment=PYTHONPATH={folder}/shared
+WorkingDirectory={folder}
+ExecStart={python} -m app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+"""
+UNITS = Path("/etc/systemd/system")
+NOWHERE = "203.0.113.9"  # an address no machine has (TEST-NET-3): a program told to listen there does not come up
 bad: list = []
 
 
@@ -127,12 +153,18 @@ def stop(proc) -> None:
         proc.kill()
 
 
+def systemctl(*args) -> subprocess.CompletedProcess:
+    return subprocess.run(["systemctl", *args], capture_output=True, text=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--old", required=True, help="a checkout of the first repository (avandeputte/iosuite)")
     ap.add_argument("--work", default=None, help="the scratch folder (kept); by default a temporary one, removed")
     ap.add_argument("--apps", default="", help="only these apps (default: every app)")
     ap.add_argument("--keep", action="store_true", help="leave the rh_ databases and logins")
+    ap.add_argument("--service", action="store_true", help="as root on a scratch machine with systemd: the old apps as services, a move that fails, the move, going back")
+    ap.add_argument("--environment", action="store_true", help="the program in a Python environment of its own, as install.sh --fetch makes it (with --service always)")
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
     from iosuite_shared import catalog, install
@@ -140,6 +172,12 @@ def main() -> int:
     apps = [k for k in catalog.install_order() if (not a.apps or k in a.apps.split(",")) and (src / k / "config.env.example").is_file()]
     if not apps or not (src / "shared" / "iosuite_shared").is_dir():
         raise SystemExit(f"{src} is not a checkout of the first ioSuite (no <app>/config.env.example, or no shared/)")
+    svc, own = a.service, a.service or a.environment
+    if svc and (os.geteuid() != 0 or not shutil.which("systemctl") or not Path("/run/systemd/system").exists()):
+        raise SystemExit("--service takes root on a machine with systemd")
+    there = [n for n in ("iosuite", *apps) if (UNITS / f"{n}.service").exists()]
+    if svc and there:
+        raise SystemExit(f"this machine has the service(s) {', '.join(there)}: --service is for a scratch machine, it makes and removes them")
     host, port, user, password = (os.environ.get("IOSUITE_TEST_DB") or "127.0.0.1:3306:root:").split(":", 3)
     admin = install.admin_connect(user, password)(host, port)
     work = Path(a.work or tempfile.mkdtemp(prefix="iosuite-rehearse-")).resolve()
@@ -229,6 +267,15 @@ def main() -> int:
                   f"signed in: {bool(cookie)}, {[(p, v[0], v[1]) for p, v in before[k].items()]}; see {old / k / 'run.log'}")
         if bad:
             return 1
+        if svc:  # the old apps as the services their installer made, running: the move has them to stop
+            for k in apps:
+                (UNITS / f"{k}.service").write_text(UNIT.format(name=catalog.name_of(k), folder=old / k / "app", python=sys.executable))
+            systemctl("daemon-reload")
+            systemctl("enable", "-q", "--now", *apps)
+            up = [k for k in apps if wait(f"http://127.0.0.1:{ports[k]}/api/status", 120)]
+            check("the old apps run as services", up == apps, f"not {', '.join(k for k in apps if k not in up)}; journalctl -u <app>")
+            if bad:
+                return 1
 
         # ---- 3. the move
         print(f"== convert.py --apply, into {new}", flush=True)
@@ -238,16 +285,46 @@ def main() -> int:
                              "COMMIT", "FILES", "EXTRAS", "SERVICES") or item.name.endswith(".egg-info"):
                 continue
             (shutil.copytree if item.is_dir() else shutil.copy2)(item, new / item.name, **({"ignore": shutil.ignore_patterns("__pycache__")} if item.is_dir() else {}))
-        (new / "EXTRAS").write_text(install.extras_for(apps) + "\n")  # the packages are this Python's already: `iosuite install` installs none
-        env = {**os.environ, "PYTHONPATH": str(new), "IOSUITE_CONFIG": str(new / "config.env"), "DB_ADMIN_PASSWORD": password}
-        for k in ("APPS", "HOST", "PORT", "SYNC_PORT", "MCP_PORT", "DATA_DIR", "LOG_FILE", "INTERNAL_URL"):
+        env = {**os.environ, "DB_ADMIN_PASSWORD": password}
+        for k in ("APPS", "HOST", "PORT", "SYNC_PORT", "MCP_PORT", "DATA_DIR", "LOG_FILE", "INTERNAL_URL", "PYTHONPATH", "IOSUITE_CONFIG"):
             env.pop(k, None)
-        cmd = [sys.executable, str(new / "tools" / "convert" / "convert.py"), "--from", str(old), "--apply", "--no-service", "--db-admin", user,
-               "--client-host", "%", "--port", str(PORTS[0]), "--sync-port", str(PORTS[1]), "--mcp-port", str(PORTS[2])]
-        if a.apps:
-            cmd += ["--apps", ",".join(apps)]
-        done = subprocess.run(cmd, env=env, cwd=new, capture_output=True, text=True)
-        (work / "convert.log").write_text(done.stdout + done.stderr)
+        if own:  # as install.sh --fetch leaves it: an environment of its own with the suite's own packages; the move installs the apps'
+            python = str(new / ".venv" / "bin" / "python")
+            made = subprocess.run([sys.executable, "-m", "venv", str(new / ".venv")], capture_output=True, text=True)
+            if made.returncode == 0:
+                made = subprocess.run([python, "-m", "pip", "install", "-q", "--disable-pip-version-check", "-e", str(new)], capture_output=True, text=True)
+            check("the program's own environment is made", made.returncode == 0, (made.stdout + made.stderr)[-2000:])
+            if bad:
+                return 1
+        else:    # this Python holds the packages already (`iosuite install` then installs none), and runs the folder's code
+            python = sys.executable
+            (new / "EXTRAS").write_text(install.extras_for(apps) + "\n")
+            env.update(PYTHONPATH=str(new), IOSUITE_CONFIG=str(new / "config.env"))
+
+        def convert(log_name: str, *more) -> subprocess.CompletedProcess:
+            cmd = [python, str(new / "tools" / "convert" / "convert.py"), "--from", str(old), "--apply", "--db-admin", user, "--client-host", "%",
+                   "--port", str(PORTS[0]), "--sync-port", str(PORTS[1]), "--mcp-port", str(PORTS[2]), *more]
+            if a.apps:
+                cmd += ["--apps", ",".join(apps)]
+            done = subprocess.run(cmd, env=env, cwd=work if own else new, capture_output=True, text=True)
+            (work / log_name).write_text(done.stdout + done.stderr)
+            return done
+
+        if svc:  # a move that cannot come up: the old services must run again, and a data folder that was moved must be back
+            held = [k for k in apps if (old / k / "app" / "data").is_dir() and any((old / k / "app" / "data").iterdir())]
+            done = convert("convert-fails.log", "--host", NOWHERE, "--wait", "20", "--data", "move")
+            said = done.stdout + done.stderr
+            check("a move that cannot come up stops, and says the old services run again", done.returncode != 0 and "The old service(s) run again" in said, said[-3000:])
+            check("the old services run again", all(systemctl("is-active", "-q", k).returncode == 0 for k in apps)
+                  and wait(f"http://127.0.0.1:{ports[apps[0]]}/api/status", 120), systemctl("is-active", *apps).stdout)
+            check("the service iosuite is not left behind", systemctl("is-active", "-q", "iosuite").returncode != 0 and systemctl("is-enabled", "-q", "iosuite").returncode != 0)
+            check("a data folder that was moved is back", all((old / k / "app" / "data").is_dir() and any((old / k / "app" / "data").iterdir()) for k in held),
+                  f"{', '.join(held) or 'no app had one'}")
+            if bad:
+                return 1
+            done = convert("convert.log", "--host", "127.0.0.1")
+        else:
+            done = convert("convert.log", "--no-service")
         check("convert.py --apply finishes", done.returncode == 0, (done.stdout + done.stderr)[-3000:])
         if bad:
             return 1
@@ -255,9 +332,16 @@ def main() -> int:
         # ---- 4. the one program
         print("== the one program", flush=True)
         root = f"http://127.0.0.1:{PORTS[0]}"
-        serve = subprocess.Popen([sys.executable, "-m", "iosuite_shared.cli", "serve"], cwd=new, env=env, stdout=open(work / "serve.log", "w"), stderr=subprocess.STDOUT)
-        procs.append(serve)
-        check("it starts", wait(root + "/-/status", 180, serve), f"see {work / 'serve.log'}")
+        if svc:
+            serve = None
+            check("the service iosuite runs, and the old services are stopped and switched off",
+                  systemctl("is-active", "-q", "iosuite").returncode == 0
+                  and not any(systemctl("is-active", "-q", k).returncode == 0 or systemctl("is-enabled", "-q", k).returncode == 0 for k in apps),
+                  systemctl("is-active", "iosuite", *apps).stdout.replace("\n", " "))
+        else:
+            serve = subprocess.Popen([python, "-m", "iosuite_shared.cli", "serve"], cwd=new, env=env, stdout=open(work / "serve.log", "w"), stderr=subprocess.STDOUT)
+            procs.append(serve)
+        check("it starts", wait(root + "/-/status", 180, serve), f"see {work / 'serve.log'}" if serve else "journalctl -u iosuite")
         cookie = sign_in(root) if not bad else None
         check("the demo family signs in", bool(cookie))
         for k in apps if cookie else []:
@@ -285,22 +369,34 @@ def main() -> int:
             check("an address that was the app's folder at the suite's is not stored as its own", ("iotask", "PUBLIC_URL") not in stored)
         if "iopix" in apps:
             check("the maps key of the old file is in Keys and tokens", keys.get(("iopix", "google_maps_key")) == "old-maps-key")
-        stop(serve)
-        procs.remove(serve)
-
         # ---- 5. going back
         k = apps[0]
-        proc = old_app(k)
-        procs.append(proc)
         root = f"http://127.0.0.1:{ports[k]}"
+        if svc:  # the two commands the converter's last lines give
+            said = (work / "convert.log").read_text()
+            check("the converter says how to go back", f"systemctl disable --now iosuite && systemctl enable --now {' '.join(apps)}" in said, said[-1500:])
+            systemctl("disable", "-q", "--now", "iosuite")
+            systemctl("enable", "-q", "--now", *apps)
+            proc = None
+        else:
+            stop(serve)
+            procs.remove(serve)
+            proc = old_app(k)
+            procs.append(proc)
         up = wait(root + "/api/status", 120, proc)
         cookie = sign_in(root) if up else None
         check(f"the old {catalog.name_of(k)} starts again afterwards, and lists the same", bool(cookie) and take(root, cookie, ASK[k]) == before[k])
-        stop(proc)
-        procs.remove(proc)
+        if proc:
+            stop(proc)
+            procs.remove(proc)
     finally:
         for proc in procs:
             stop(proc)
+        if svc:  # the services this made, and their files
+            systemctl("disable", "-q", "--now", "iosuite", *apps)
+            for n in ("iosuite", *apps):
+                (UNITS / f"{n}.service").unlink(missing_ok=True)
+            systemctl("daemon-reload")
         if not a.keep:
             drop()
         if not a.work and not bad:

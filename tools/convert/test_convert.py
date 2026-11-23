@@ -200,7 +200,7 @@ class Fake:
         for k, v in options.items():
             setattr(a, k, v)
         return convert.apply(p, a, self.base, run=self.run, log=lambda *x: None, systemd=options.get("systemd", True),
-                             check=lambda p, port, host, log=print: self.silent, port_open=lambda host, port: False)
+                             check=lambda p, port, host, wait=120, log=print: self.silent, port_open=lambda host, port: False)
 
 
 def test_the_old_services_are_stopped_then_switched_off_once_every_app_answers(tmp_path, monkeypatch):

@@ -118,6 +118,7 @@ tokens. The old `config.env` files are no longer read.
 | `--host ADDR` | the address the program listens on, when not the old apps' |
 | `--user USER` | the account the service runs as. By default the one the old services ran as |
 | `--no-service` | make no service and stop none: stop the old apps yourself first, and start the program yourself |
+| `--wait SECONDS` | how long the apps get to answer before the old services are started again (120) |
 
 A folder the old file named itself (`DATA_DIR`, ioPix's `PHOTOS_ROOT`, ioBackup's `BACKUP_DIR`) always stays where it
 is. The photos are never copied.

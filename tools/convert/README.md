@@ -62,4 +62,10 @@ python -m pytest tools/convert
 IOSUITE_TEST_DB=127.0.0.1:3306:root:PASSWORD python tools/convert/rehearse.py --old /path/to/a/checkout/of/the/first/ioSuite
 ```
 
-The checks on GitHub run both on every change (`.github/workflows/tests.yml`, the job `move`).
+With `--service`, as root on a scratch machine with systemd, the rehearsal is made the way a server is moved: the old
+apps run as services, a first move is made to fail and must put them back, the second makes the service `iosuite` and
+switches the old ones off, and going back is the two commands the converter prints. Never on a machine that runs
+ioSuite: it makes and removes the services.
+
+The checks on GitHub run the tests and both rehearsals on every change (`.github/workflows/tests.yml`, the job
+`move`).
