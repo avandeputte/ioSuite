@@ -2,16 +2,21 @@
 
 The Mac and iPhone apps read the text themselves with Apple's Vision framework and send it as ocrText, so the
 server only does this for pictures added in the browser. One background thread works through a queue; the
-text lands in notes.ocr_text, which MariaDB's full-text index covers.
+text lands in notes.ocr_text, which MariaDB's full-text index covers. The reading itself (_read: the model, a few
+hundred MB once loaded, and onnxruntime) runs in the suite's helper process (iosuite_shared.helper), so the model
+leaves memory when there is nothing to read and a crash in it never takes the copy down.
 """
 import io
 import logging
 import queue
 import threading
 
+from iosuite_shared import helper
+
 from ionote import images, notes
 
 log = logging.getLogger("ionote.ocr")
+TIMEOUT = 300  # seconds one picture may take (the model is loaded on the first)
 _q = queue.Queue()
 _queued = set()  # ids waiting in _q: a note queued twice is read once
 _qlock = threading.Lock()
@@ -53,14 +58,14 @@ def _work():
                 from ionote import attachments
                 got = attachments.raw_for_ocr(item[1])
                 if got:
-                    text = _read(got[0])
+                    text = helper.call(_read, got[0], timeout=TIMEOUT)
                     if text:
                         attachments.set_text(item[1], text, got[1])
                         log.info("read %d characters of text in attachment %s", len(text), item[1])
             else:
                 got = images.get(item)
                 if got:
-                    text = _read(got[0])
+                    text = helper.call(_read, got[0], timeout=TIMEOUT)
                     if text:
                         notes.set_ocr_text(item, text, got[2])
                         log.info("read %d characters of text in the picture of %s", len(text), item)

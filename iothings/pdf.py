@@ -13,7 +13,8 @@ The PDF's outline (the bookmarks of a PDF reader) has each place and each thing.
 Photos are made smaller (PHOTO_SIDE) so a few hundred things stay a file one can mail or copy; receipts keep more of
 their size (PAPER_SIDE), so the small print stays readable. PDFs go in as they are.
 
-Making it takes a while (every photo is read from the database), so it is made in the background: start() begins it,
+Making it takes a while (every photo is read from the database), so it is made in the background, in the suite's helper
+process (iosuite_shared.helper: the memory it takes goes back when it is done, and a crash fails the PDF only): start() begins it,
 progress() says how far it got and, when done, file() gives the PDF. One at a time; the last one made is kept (in a
 temporary folder) until the next one, or until the app restarts.
 
@@ -34,6 +35,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
 
+from iosuite_shared import helper
 from iosuite_shared.errors import Invalid
 
 from iothings import db, files, model
@@ -41,6 +43,7 @@ from iothings import db, files, model
 log = logging.getLogger("iothings")
 
 PHOTO_SIDE = 1400
+BUILD_TIMEOUT = 3600  # seconds the whole PDF may take (a few thousand things with their photos)
 PAPER_SIDE = 2200
 FONTS = [(f"{d}/DejaVuSans.ttf", f"{d}/DejaVuSans-Bold.ttf") for d in
          ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF", "/usr/local/share/fonts")] + [
@@ -53,7 +56,14 @@ NAMES = {"photo": "Photo", "manual": "Manual", "receipt": "Receipt", "warranty":
 
 _lock = threading.Lock()
 _job: dict = {"state": "idle"}
-_dir = tempfile.mkdtemp(prefix="iothings-pdf-")
+_dir = None  # the temporary folder the PDF is made in (made the first time; not in the helper, which is given the path)
+
+
+def _folder() -> str:
+    global _dir
+    if _dir is None:
+        _dir = tempfile.mkdtemp(prefix="iothings-pdf-")
+    return _dir
 
 
 # ---- money and dates in words
@@ -358,7 +368,7 @@ def build(archived: bool = False, out_path: str | None = None, step=None) -> dic
             log.warning("PDF export: %s: %s", name, e)
             missing.append(f"{name}: could not be put in")
     writer.add_metadata({"/Title": "Home inventory", "/Creator": "ioThings"})
-    path = out_path or os.path.join(_dir, "inventory.pdf")
+    path = out_path or os.path.join(_folder(), "inventory.pdf")
     with open(path, "wb") as fh:
         writer.write(fh)
     return {"path": path, "things": len(things), "pages": len(writer.pages), "files": nfiles, "missing": missing}
@@ -387,6 +397,11 @@ def start(u: dict, archived: bool = False, background: bool = True) -> dict:
     return progress()
 
 
+def _build_there(archived: bool, out_path: str) -> dict:
+    """build(), in the helper: how far it got goes back to the copy as messages."""
+    return build(archived, out_path, lambda done, total: helper.emit((done, total)))
+
+
 def _step(done: int, total: int) -> None:
     with _lock:
         _job.update(done=done, total=total)
@@ -394,9 +409,11 @@ def _step(done: int, total: int) -> None:
 
 def _run(archived: bool) -> None:
     try:
-        tmp = os.path.join(_dir, "inventory.part.pdf")
-        r = build(archived, tmp, _step)
-        final = os.path.join(_dir, "inventory.pdf")
+        tmp = os.path.join(_folder(), "inventory.part.pdf")
+        # made in the helper (iosuite_shared.helper): every photo decoded and the whole PDF held in memory is the
+        # helper's, given back when it ends; a crash or a memory stop there fails this PDF, never the copy
+        r = helper.call(_build_there, archived, tmp, timeout=BUILD_TIMEOUT, on_message=lambda m: _step(*m))
+        final = os.path.join(_folder(), "inventory.pdf")
         os.replace(tmp, final)
         with _lock:
             _job.update(state="done", path=final, things=r["things"], pages=r["pages"], files=r["files"], missing=r["missing"][:300],

@@ -57,6 +57,12 @@ python -m iocalendar               # one app alone
 
 Each app keeps its own database; every database is reached with the one login of the Shared ioSuite database.
 
+The work most likely to crash or to eat memory (reading text off scans and photos, a license's barcode, decoding
+pictures people upload, making the ioThings inventory PDF and the estate PDF) runs in a helper process beside the
+copy (`iosuite_shared/helper.py`). If it crashes, that one upload or PDF fails and the copy carries on; the helper ends
+when it has nothing to do, so the memory it took goes back. Each copy has its own and never asks another server's.
+`HELPER=off` in the machine's file does the work inside the copy instead.
+
 ## Three ports
 
 A copy listens on three ports, so a firewall or a reverse proxy can treat each kind of traffic on its own:
