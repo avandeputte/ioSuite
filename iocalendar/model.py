@@ -12,6 +12,8 @@ import re
 import threading
 from collections import OrderedDict
 
+import pymysql
+
 from iocalendar import config, db, ical, members
 from iosuite_shared import related, users as shared_users
 from iosuite_shared.errors import Invalid
@@ -63,7 +65,12 @@ def ensure_personal(u: dict) -> None:
         return
     if not db.one("SELECT id FROM cal_calendars WHERE owner_id = %s AND kind = 'events' LIMIT 1", (u["id"],)):
         who = u.get("displayName") or u.get("display_name") or u.get("name")
-        create_calendar(u["id"], "Personal", f"{who}'s private calendar", "#0b8a9e")
+        try:
+            create_calendar(u["id"], "Personal", f"{who}'s private calendar", "#0b8a9e")
+        except pymysql.err.IntegrityError:
+            # two first requests at the same moment (the start page's tile and its search, say): the other one made it
+            if not db.one("SELECT id FROM cal_calendars WHERE owner_id = %s AND kind = 'events' LIMIT 1", (u["id"],)):
+                raise
 
 
 def calendars_for(u: dict | None) -> list[dict]:
