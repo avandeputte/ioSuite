@@ -42,6 +42,16 @@ static const lv_font_t *symbols_for(int px)
 
 const lv_font_t *font_symbols(int px) { return symbols_for(P(px)); }
 
+/* A symbol (LV_SYMBOL_…: Unicode's private use area) is not in Inter: sent straight on to the font behind it. Asked of
+ * the TrueType font it is looked up in the font file, not found and logged, every time it is measured or drawn. */
+static bool (*ttf_glyph_dsc)(const lv_font_t *, lv_font_glyph_dsc_t *, uint32_t, uint32_t);
+
+static bool glyph_dsc(const lv_font_t *f, lv_font_glyph_dsc_t *out, uint32_t letter, uint32_t next)
+{
+    if (letter >= 0xE000 && letter <= 0xF8FF) return false;
+    return ttf_glyph_dsc(f, out, letter, next);
+}
+
 static const lv_font_t *font_of(int kind, int px)
 {
     px = P(px);
@@ -57,6 +67,8 @@ static const lv_font_t *font_of(int kind, int px)
         return symbols_for(px);
     }
     f->fallback = symbols_for(px);
+    ttf_glyph_dsc = f->get_glyph_dsc;   /* the same for every font Tiny TTF makes */
+    f->get_glyph_dsc = glyph_dsc;
     if (nfonts < (int)(sizeof fonts / sizeof fonts[0])) {
         fonts[nfonts++] = (font_slot_t){kind, px, f};
     }
@@ -74,16 +86,21 @@ lv_color_t color_hex(uint32_t rgb) { return lv_color_hex(rgb); }
 static const char *WEEKDAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 static const char *MONTHS[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 
+void fmt_clock(char *out, size_t n, int hour, int minute)
+{
+    if (S.clock24) {
+        snprintf(out, n, "%d:%02d", hour, minute);
+    } else {
+        int h = hour % 12;
+        snprintf(out, n, "%d:%02d %s", h ? h : 12, minute, hour < 12 ? "AM" : "PM");
+    }
+}
+
 void fmt_time(char *out, size_t n, time_t t)
 {
     struct tm tm;
     localtime_r(&t, &tm);
-    if (S.clock24) {
-        snprintf(out, n, "%d:%02d", tm.tm_hour, tm.tm_min);
-    } else {
-        int h = tm.tm_hour % 12;
-        snprintf(out, n, "%d:%02d %s", h ? h : 12, tm.tm_min, tm.tm_hour < 12 ? "AM" : "PM");
-    }
+    fmt_clock(out, n, tm.tm_hour, tm.tm_min);
 }
 
 void fmt_hour(char *out, size_t n, time_t t)
@@ -241,6 +258,8 @@ static void on_any_press(lv_event_t *e)
     }
 }
 
+static void on_frame(lv_event_t *e);
+
 void ui_start(lv_display_t *disp)
 {
     DISP = disp;
@@ -248,6 +267,9 @@ void ui_start(lv_display_t *disp)
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     lv_indev_t *in = bsp_display_get_input_dev();
     if (in) lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
+    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_START, NULL);
+    lv_display_add_event_cb(disp, on_frame, LV_EVENT_FLUSH_START, NULL);
+    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_READY, NULL);
     lv_timer_create(tick, 1000, NULL);
     ui_apply_brightness();
     if (S.server[0] && S.token[0]) {
@@ -266,6 +288,18 @@ lv_obj_t *kit_label(lv_obj_t *p, const lv_font_t *f, lv_color_t c, const char *t
     lv_obj_set_style_text_color(l, c, 0);
     lv_label_set_text(l, t ? t : "");
     return l;
+}
+
+void kit_set_text(lv_obj_t *l, const char *t)
+{
+    if (strcmp(lv_label_get_text(l), t)) lv_label_set_text(l, t);
+}
+
+void kit_show(lv_obj_t *o, bool on)
+{
+    if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN) == !on) return;
+    if (on) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
 }
 
 lv_obj_t *kit_button(lv_obj_t *p, const char *text, lv_event_cb_t cb, void *ud, bool primary)
@@ -301,12 +335,30 @@ lv_obj_t *kit_textarea(lv_obj_t *p, const char *placeholder, bool password)
     return ta;
 }
 
+/* the key under the finger, lighter: the keyboard's own look for it is taken out (kit_keyboard) */
+static void on_key_draw(lv_event_t *e)
+{
+    lv_draw_task_t *t = lv_event_get_draw_task(e);
+    lv_draw_fill_dsc_t *fill = lv_draw_task_get_fill_dsc(t);
+    if (!fill || fill->base.part != LV_PART_ITEMS) return;
+    lv_obj_t *kb = lv_event_get_target(e);
+    if (lv_obj_has_state(kb, LV_STATE_PRESSED) && fill->base.id1 == lv_buttonmatrix_get_selected_button(kb)) {
+        fill->color = lv_color_hex(0x565a64);
+    }
+}
+
 lv_obj_t *kit_keyboard(lv_obj_t *p, lv_obj_t *ta, lv_event_cb_t on_ready, void *ud)
 {
     lv_obj_t *kb = lv_keyboard_create(p);
     lv_obj_set_size(kb, WALL_W, P(330));
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
-    /* the built-in font: every key is drawn again at each press, and this one needs no rasterizing */
+    /* A key pressed or let go draws that key and not all of them. LVGL draws a whole widget again when its pressed
+     * state has a look of its own, and the theme gives the keys one; without it the keyboard draws only the key
+     * (which it does by itself), and the key's pressed colour is put in as it is drawn. */
+    lv_obj_remove_style(kb, NULL, LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(kb, on_key_draw, LV_EVENT_DRAW_TASK_ADDED, NULL);
+    /* the built-in font: it needs no rasterizing */
     lv_obj_set_style_text_font(kb, font_symbols(28), 0);
     lv_obj_set_style_text_font(kb, font_symbols(28), LV_PART_ITEMS);
     lv_obj_set_style_bg_color(kb, lv_color_hex(0x111215), 0);
@@ -337,32 +389,53 @@ bool kit_panel_open(void)
     return panel != NULL;
 }
 
+lv_obj_t *kit_panel_layer(void)
+{
+    return panel;
+}
+
+/* A panel is drawn on the screen it opens over, as its last part, and not on LVGL's top layer. LVGL looks for the
+ * topmost thing that covers what changed and draws from there up, but only among the screen's own parts: a panel on
+ * the top layer had the photo, its shades and the whole wall drawn again under it at every frame of a scroll, a
+ * slider or a key. For the same reason what scrolls is a plain rectangle inside the card, filled with the card's
+ * colour: the card's round corners cover nothing in LVGL's eyes. */
 lv_obj_t *kit_panel(const char *title, int w, int h)
 {
+    const lv_color_t ground = lv_color_hex(0x16181c);
     kit_close_panel();
-    panel = lv_obj_create(lv_layer_top());
+    panel = lv_obj_create(lv_screen_active());
     lv_obj_remove_style_all(panel);
     lv_obj_set_size(panel, WALL_W, WALL_H);
+    lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(panel, LV_OBJ_FLAG_GESTURE_BUBBLE);   /* a swipe in a panel is not a swipe on the wall under it */
     lv_obj_set_style_bg_color(panel, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(panel, LV_OPA_60, 0);
     lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);  /* a tap beside the card closes it */
     lv_obj_add_event_cb(panel, on_panel_close, LV_EVENT_SHORT_CLICKED, NULL);
     lv_obj_t *card = lv_obj_create(panel);
+    lv_obj_remove_style_all(card);
     lv_obj_set_size(card, w, h);
     lv_obj_center(card);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x16181c), 0);
+    lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);   /* a tap on the card itself does not close it */
+    lv_obj_set_style_bg_color(card, ground, 0);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(card, 0, 0);
     lv_obj_set_style_radius(card, P(28), 0);
-    lv_obj_set_style_pad_all(card, P(30), 0);
+    /* the body under the title reaches nearly to the card's right and bottom edges, and stays just inside the round
+     * of its corners: its own are square */
+    lv_obj_set_style_pad_left(card, P(30), 0);
+    lv_obj_set_style_pad_top(card, P(30), 0);
+    lv_obj_set_style_pad_right(card, P(8), 0);
+    lv_obj_set_style_pad_bottom(card, P(10), 0);
     lv_obj_set_style_pad_row(card, P(16), 0);
     lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
     lv_obj_t *top = lv_obj_create(card);
     lv_obj_remove_style_all(top);
-    lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_size(top, w - 2 * P(30), LV_SIZE_CONTENT);
+    lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_t *t = kit_label(top, font_bold(36), lv_color_white(), title);
     lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(t, w - P(160));
+    lv_obj_set_size(t, w - P(160), lv_font_get_line_height(font_bold(36)));
     lv_obj_align(t, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_t *x = lv_button_create(top);
     lv_obj_set_size(x, P(64), P(64));
@@ -373,5 +446,66 @@ lv_obj_t *kit_panel(const char *title, int w, int h)
     lv_obj_t *xl = kit_label(x, font_symbols(28), lv_color_white(), LV_SYMBOL_CLOSE);
     lv_obj_center(xl);
     lv_obj_add_event_cb(x, on_panel_close, LV_EVENT_CLICKED, NULL);
-    return card;
+    /* the body: what the panel shows, a column that scrolls when it is longer than the card; it reaches nearly to the
+     * card's right edge, so its scroll bar is in the margin */
+    lv_obj_t *body = lv_obj_create(card);
+    lv_obj_set_width(body, lv_pct(100));
+    lv_obj_set_flex_grow(body, 1);
+    lv_obj_set_style_bg_color(body, ground, 0);
+    lv_obj_set_style_bg_opa(body, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(body, 0, 0);
+    lv_obj_set_style_radius(body, 0, 0);
+    lv_obj_set_style_pad_all(body, 0, 0);
+    lv_obj_set_style_pad_right(body, P(22), 0);
+    lv_obj_set_style_pad_bottom(body, P(20), 0);
+    lv_obj_set_style_pad_row(body, P(16), 0);
+    lv_obj_set_flex_flow(body, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_scroll_dir(body, LV_DIR_VER);
+    return body;
+}
+
+/* ------------------------------------------------------------------ how long the screen takes to draw */
+
+static struct {
+    int64_t started;         /* when the frame began (µs) */
+    uint32_t px;             /* what the frame sent to the panel so far */
+    uint32_t n, sum, worst;  /* the large frames since the last reset */
+} frames;
+
+static void on_frame(lv_event_t *e)
+{
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_REFR_START:
+        frames.started = esp_timer_get_time();
+        frames.px = 0;
+        break;
+    case LV_EVENT_FLUSH_START: {
+        const lv_area_t *a = lv_event_get_param(e);
+        if (a) frames.px += (uint32_t)lv_area_get_size(a);
+        break;
+    }
+    case LV_EVENT_REFR_READY:
+        /* a frame that drew a quarter of the screen or more: a scroll, a panel, a photo; not the clock's minute */
+        if (frames.px >= (uint32_t)(WALL_W * WALL_H / 4)) {
+            uint32_t ms = (uint32_t)((esp_timer_get_time() - frames.started + 500) / 1000);
+            frames.n++;
+            frames.sum += ms;
+            if (ms > frames.worst) frames.worst = ms;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void ui_frames_reset(void)
+{
+    frames.n = frames.sum = frames.worst = 0;
+}
+
+void ui_frames_text(char *out, size_t n)
+{
+    if (!frames.n) strlcpy(out, "Nothing large drawn yet", n);
+    else snprintf(out, n, "%u large redraws · %u ms each · the slowest %u ms", (unsigned)frames.n,
+                  (unsigned)(frames.sum / frames.n), (unsigned)frames.worst);
 }

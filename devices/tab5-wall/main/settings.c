@@ -2,6 +2,8 @@
  * (pre-release: it starts afresh, set up again on the device). */
 #include <string.h>
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "wall.h"
@@ -55,25 +57,60 @@ void settings_load(void)
     nvs_close(h);
 }
 
-void settings_save(void)
+/* Writing to the flash takes a few milliseconds, and many more when NVS has to clear a page first; the screens call
+ * settings_save from a touch, holding the screen's lock. So the write is done by a task of its own: the screen goes
+ * on at once, and what a switch, a slider let go and a row of chips set one after another goes out in as few writes
+ * as it takes. */
+static TaskHandle_t saver;
+static volatile bool cfg_due, views_due;
+
+static void write_now(void)
 {
     nvs_handle_t h;
     if (nvs_open("wall", NVS_READWRITE, &h) != ESP_OK) {
         ESP_LOGE(TAG_WALL, "settings not saved: NVS");
         return;
     }
-    nvs_set_blob(h, "cfg", &S, sizeof S);
+    if (cfg_due) {
+        cfg_due = false;   /* before the copy: a change made while it is written is written after it */
+        static wall_settings_t copy;
+        copy = S;
+        nvs_set_blob(h, "cfg", &copy, sizeof copy);
+    }
+    if (views_due) {
+        views_due = false;
+        nvs_set_u32(h, "views_off", VIEWS_OFF);
+    }
     nvs_commit(h);
     nvs_close(h);
 }
 
+static void save_loop(void *arg)
+{
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        while (cfg_due || views_due) write_now();
+    }
+}
+
+/* once the settings are read: the task that writes them (before it, a save is written where it is called) */
+void settings_start(void)
+{
+    xTaskCreate(save_loop, "settings", 6144, NULL, 2, &saver);
+}
+
+void settings_save(void)
+{
+    cfg_due = true;
+    if (saver) xTaskNotifyGive(saver);
+    else write_now();
+}
+
 void settings_save_views(void)
 {
-    nvs_handle_t h;
-    if (nvs_open("wall", NVS_READWRITE, &h) != ESP_OK) return;
-    nvs_set_u32(h, "views_off", VIEWS_OFF);
-    nvs_commit(h);
-    nvs_close(h);
+    views_due = true;
+    if (saver) xTaskNotifyGive(saver);
+    else write_now();
 }
 
 void settings_forget_sign_in(void)

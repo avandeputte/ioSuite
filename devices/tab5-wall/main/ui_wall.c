@@ -7,6 +7,7 @@
  * Touch: a swipe to the left or the right goes to the views beside the wall (ui_views.c); an event opens its details; a task's circle ticks it off; a Home Assistant tile switches it; a tap on the
  * photo shows the next one and the bar (add, timers, alarms, favorite, settings). */
 #include <string.h>
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -22,6 +23,7 @@
 static lv_obj_t *scr;
 static lv_obj_t *sky, *img[2], *dim, *shade_top, *shade_bottom;
 static int img_top = -1;
+static bool photo_covers;   /* a photo fills the screen and has faded in: nothing under it is drawn */
 static lv_obj_t *top_left, *clock_lbl, *ampm_lbl, *date_lbl, *chips;
 static lv_obj_t *wx_box, *wx_icon, *wx_temp, *wx_text, *wx_rain, *wx_days;
 static lv_obj_t *agenda, *agenda_list, *tab_today, *tab_week;
@@ -31,6 +33,8 @@ static lv_timer_t *bar_timer;
 static bool week_view;
 static bool viewing;   /* a view (ui_views.c) is over the wall */
 static int shown_min = -1, shown_mday = -1;
+static wall_feed_t *drawn;     /* the feed as the wall's parts were last drawn from it */
+static bool draw_all = true;   /* draw every part at the next ui_wall_feed_changed, whatever the feed says */
 
 /* ------------------------------------------------------------------ small parts */
 
@@ -77,12 +81,6 @@ static void one_line(lv_obj_t *l, const lv_font_t *f)
     lv_obj_set_height(l, lv_font_get_line_height(f));
 }
 
-static void shadow_text(lv_obj_t *l)
-{
-    /* the shades behind the text keep it readable on a bright photo (shades_for); nothing more to do per label */
-    (void)l;
-}
-
 /* an icon drawn from px wide at want wide (both as on the Tab5's screen) */
 static void icon_fit(lv_obj_t *i, int px, int want)
 {
@@ -117,6 +115,20 @@ static lv_color_t muted(lv_color_t c, int how)
     return lv_color_mix(lv_color_make(g, g, g), c, (uint8_t)how);
 }
 
+/* What is behind the wall's text. A photo that fills the screen is alone there: the shades that keep white text
+ * readable on it are in its own pixels (wall_shade_photo), and neither the sky, the shades nor the screen's own black
+ * are drawn under it. Else the sky with the two shades over it, or black. LVGL draws everything under what changed,
+ * at every change: one layer here instead of five is what every redraw of the wall costs less. */
+static void backdrop(void)
+{
+    bool plain = !photo_covers && strcmp(FEED->bg, "black");
+    kit_show(sky, plain);
+    kit_show(shade_top, plain);
+    kit_show(shade_bottom, plain);
+    lv_opa_t want = photo_covers ? LV_OPA_TRANSP : LV_OPA_COVER;
+    if (lv_obj_get_style_bg_opa(scr, 0) != want) lv_obj_set_style_bg_opa(scr, want, 0);
+}
+
 static void paint_sky(void)
 {
     time_t now = time(NULL);
@@ -134,26 +146,32 @@ static void paint_sky(void)
     if (k == ICON_CLOUD || k == ICON_FOG || k == ICON_PARTLY_DAY || k == ICON_PARTLY_NIGHT) { a = muted(a, 110); b = muted(b, 110); }
     else if (k == ICON_RAIN || k == ICON_THUNDER || k == ICON_SLEET) { a = lv_color_darken(muted(a, 80), 40); b = lv_color_darken(muted(b, 80), 50); }
     else if (k == ICON_SNOW) { a = muted(a, 70); b = lv_color_lighten(muted(b, 70), 40); }
-    bool black = !strcmp(FEED->bg, "black");
-    lv_obj_set_style_bg_color(sky, black ? lv_color_black() : a, 0);
-    lv_obj_set_style_bg_grad_color(sky, black ? lv_color_black() : b, 0);
+    /* the same colours again are not set again: a style set draws the whole sky anew */
+    static lv_color_t was_a, was_b;
+    static bool painted;
+    if (!painted || !lv_color_eq(a, was_a) || !lv_color_eq(b, was_b)) {
+        lv_obj_set_style_bg_color(sky, a, 0);
+        lv_obj_set_style_bg_grad_color(sky, b, 0);
+        was_a = a;
+        was_b = b;
+        painted = true;
+    }
+    backdrop();
 }
 
 /* ------------------------------------------------------------------ the bar (a tap on the photo) */
 
 static void bar_hide(lv_timer_t *t)
 {
-    lv_obj_add_flag(bar, LV_OBJ_FLAG_HIDDEN);
+    kit_show(bar, false);
+    if (bar_timer && !t) lv_timer_delete(bar_timer);
     bar_timer = NULL;
 }
 
 static void bar_show(void)
 {
-    lv_obj_remove_flag(bar, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(bar);
-    bool photo = feed_current_photo() && FEED->can_fav;
-    if (photo) lv_obj_remove_flag(fav_btn, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(fav_btn, LV_OBJ_FLAG_HIDDEN);
+    kit_show(bar, true);
+    kit_show(fav_btn, feed_current_photo() && FEED->can_fav);
     lv_obj_set_style_text_color(lv_obj_get_child(fav_btn, 0), feed_photo_is_favorite() ? lv_color_hex(0xff6b81) : TEXT, 0);
     if (bar_timer) lv_timer_delete(bar_timer);
     bar_timer = lv_timer_create(bar_hide, 7000, NULL);
@@ -250,7 +268,7 @@ static void on_swipe(lv_event_t *e)
     lv_dir_t d = lv_indev_get_gesture_dir(in);
     if (d != LV_DIR_LEFT && d != LV_DIR_RIGHT) return;
     lv_indev_wait_release(in);
-    if (!lv_obj_has_flag(bar, LV_OBJ_FLAG_HIDDEN)) lv_obj_add_flag(bar, LV_OBJ_FLAG_HIDDEN);
+    bar_hide(NULL);
     ui_views_swipe(d == LV_DIR_LEFT ? 1 : -1);
 }
 
@@ -296,7 +314,6 @@ static void event_row(lv_obj_t *parent, const wall_event_t *ev, bool show_when)
     one_line(t, font_text(28));
     lv_obj_set_flex_grow(t, 1);
     lv_obj_set_style_min_width(t, P(80), 0);
-    shadow_text(t);
 }
 
 static void head(lv_obj_t *parent, const char *text)
@@ -467,14 +484,9 @@ static void on_task(lv_event_t *e)
 static void draw_tasks(void)
 {
     lv_obj_clean(tasks_box);
-    if (!FEED->has_tasks) {
-        lv_obj_add_flag(tasks_box, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-    lv_obj_remove_flag(tasks_box, LV_OBJ_FLAG_HIDDEN);
+    kit_show(tasks_box, FEED->has_tasks);
+    if (!FEED->has_tasks) return;
     char h[48];
-    int open = 0;
-    for (int i = 0; i < FEED->ntasks; i++) open += !FEED->tasks[i].done;
     if (FEED->overdue) snprintf(h, sizeof h, "TASKS TODAY · %d LATE", FEED->overdue);
     else strlcpy(h, "TASKS TODAY", sizeof h);
     head(tasks_box, h);
@@ -513,7 +525,6 @@ static void draw_tasks(void)
         snprintf(m, sizeof m, "+%d more", more);
         muted_line(tasks_box, m);
     }
-    (void)open;
 }
 
 /* ------------------------------------------------------------------ Home Assistant */
@@ -563,11 +574,9 @@ static void on_ha(lv_event_t *e)
 static void draw_ha(void)
 {
     lv_obj_clean(ha_box);
-    if (!FEED->has_home || (!FEED->nha && !FEED->nalerts)) {
-        lv_obj_add_flag(ha_box, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-    lv_obj_remove_flag(ha_box, LV_OBJ_FLAG_HIDDEN);
+    bool any = FEED->has_home && (FEED->nha || FEED->nalerts);
+    kit_show(ha_box, any);
+    if (!any) return;
     for (int i = 0; i < FEED->nalerts; i++) {
         lv_obj_t *l = label(ha_box, font_bold(26), lv_color_hex(0xffb4a8), "");
         lv_label_set_text_fmt(l, LV_SYMBOL_WARNING "  %s", FEED->alerts[i]);
@@ -599,12 +608,11 @@ static void draw_ha(void)
 
 static void draw_weather(void)
 {
+    /* whether the weather's own box shows is parts_show's: it is hidden under a view as well */
     if (!FEED->has_weather) {
-        lv_obj_add_flag(wx_box, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(hours_box, LV_OBJ_FLAG_HIDDEN);
+        kit_show(hours_box, false);
         return;
     }
-    lv_obj_remove_flag(wx_box, LV_OBJ_FLAG_HIDDEN);
     icon_kind_t k = icon_for_accuweather(FEED->wicon, FEED->wday);
     lv_image_set_src(wx_icon, icons_big[k]);
     icon_fit(wx_icon, 112, 112);
@@ -619,8 +627,7 @@ static void draw_weather(void)
     else if (FEED->rain_mode == 2) { fmt_hour(at, sizeof at, FEED->rain_until); snprintf(rain, sizeof rain, "%s until %s", FEED->rain_what, at); }
     else if (FEED->rain_mode == 3) snprintf(rain, sizeof rain, "%s for hours", FEED->rain_what);
     lv_label_set_text(wx_rain, rain);
-    if (rain[0]) lv_obj_remove_flag(wx_rain, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(wx_rain, LV_OBJ_FLAG_HIDDEN);
+    kit_show(wx_rain, rain[0]);
 
     lv_obj_clean(wx_days);
     for (int i = 1; i < FEED->nwdays && i < 5; i++) {
@@ -645,11 +652,8 @@ static void draw_weather(void)
     }
 
     lv_obj_clean(hours_box);
-    if (!FEED->nhours) {
-        lv_obj_add_flag(hours_box, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-    lv_obj_remove_flag(hours_box, LV_OBJ_FLAG_HIDDEN);
+    kit_show(hours_box, FEED->nhours > 0);
+    if (!FEED->nhours) return;
     /* a low strip: the hour, a small icon, the temperature; the chance of rain only in an hour that has one */
     for (int i = 0; i < FEED->nhours && i < 8; i++) {
         const wall_hour_t *hh = &FEED->hours[i];
@@ -679,65 +683,110 @@ static void draw_weather(void)
 static void open_timers(lv_event_t *e) { ui_open_timers(); }
 static void open_alarms(lv_event_t *e) { ui_open_alarms(); }
 
+static lv_obj_t *timer_chip[TIMERS];   /* what is left of each running timer */
+static char chips_drawn[200];          /* which chips there are and what they say, but for the timers' seconds */
+
+static lv_obj_t *chip(lv_opa_t opa, lv_event_cb_t on_tap)
+{
+    lv_obj_t *c = row(chips, 8);
+    lv_obj_set_style_pad_hor(c, P(14), 0);
+    lv_obj_set_style_pad_ver(c, P(4), 0);
+    lv_obj_set_style_radius(c, P(24), 0);
+    lv_obj_set_style_bg_color(c, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(c, opa, 0);
+    if (on_tap) {
+        lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(c, on_tap, LV_EVENT_CLICKED, NULL);
+    }
+    return c;
+}
+
+/* what is left of a timer: seconds, and how many digits that takes ("9:59" 3, "59:59" 4, "1:59:59" 5) */
+static int timer_left(int i, int *digits)
+{
+    int64_t left = (TIMER[i].ends_ms - esp_timer_get_time() / 1000 + 999) / 1000;
+    if (left < 0) left = 0;
+    *digits = left >= 3600 ? 5 : left >= 600 ? 4 : 3;
+    return (int)left;
+}
+
+/* how wide a count-down of so many digits is at its widest (the digits of this font are not all as wide) */
+static int countdown_width(const lv_font_t *f, int digits)
+{
+    int d = 0;
+    for (char c = '0'; c <= '9'; c++) {
+        int w = lv_font_get_glyph_width(f, c, 0);
+        if (w > d) d = w;
+    }
+    return digits * d + (digits > 4 ? 2 : 1) * lv_font_get_glyph_width(f, ':', 0) + P(4);
+}
+
+/* The chips beside the date: the timers running, the battery, the next alarm. Made again only when there are others
+ * or one says something else. A running timer's seconds are one label's text, in a label as wide as its widest
+ * time: a label that grows or shrinks by a pixel has the clock, the date and the chips laid out and drawn again. */
 static void draw_chips(void)
 {
-    lv_obj_clean(chips);
-    int64_t now = esp_timer_get_time() / 1000;
+    char sig[sizeof chips_drawn] = "", part[48], alarm_txt[40] = "";
+    int pct = 0, digits;
+    bool battery = power_on_battery(&pct), charging = battery && power_charging();
+    time_t next = alarm_next();
     for (int i = 0; i < TIMERS; i++) {
         if (!TIMER[i].on) continue;
-        int64_t left = (TIMER[i].ends_ms - now + 999) / 1000;
-        if (left < 0) left = 0;
-        lv_obj_t *c = row(chips, 8);
-        lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_set_style_pad_hor(c, P(14), 0);
-        lv_obj_set_style_pad_ver(c, P(4), 0);
-        lv_obj_set_style_radius(c, P(24), 0);
-        lv_obj_set_style_bg_color(c, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(c, LV_OPA_50, 0);
-        lv_obj_add_event_cb(c, open_timers, LV_EVENT_CLICKED, NULL);
-        label(c, font_symbols(20), SUNNY, LV_SYMBOL_LOOP);
-        lv_obj_t *l = label(c, font_bold(26), TEXT, "");
-        if (left >= 3600) lv_label_set_text_fmt(l, "%d:%02d:%02d", (int)(left / 3600), (int)(left / 60 % 60), (int)(left % 60));
-        else lv_label_set_text_fmt(l, "%d:%02d", (int)(left / 60), (int)(left % 60));
-        if (TIMER[i].label[0]) label(c, font_text(22), DIM, TIMER[i].label);
+        timer_left(i, &digits);
+        snprintf(part, sizeof part, "t%d %d %s|", i, digits, TIMER[i].label);
+        strlcat(sig, part, sizeof sig);
     }
-    int pct;
-    if (power_on_battery(&pct)) {
-        /* running on the battery: how full it is; red when it is nearly empty */
-        lv_obj_t *c = row(chips, 8);
-        lv_obj_set_style_pad_hor(c, P(14), 0);
-        lv_obj_set_style_pad_ver(c, P(4), 0);
-        lv_obj_set_style_radius(c, P(24), 0);
-        lv_obj_set_style_bg_color(c, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(c, LV_OPA_40, 0);
-        lv_color_t col = pct <= 15 ? lv_color_hex(0xff6b5e) : TEXT;
-        if (power_charging()) label(c, font_symbols(20), col, LV_SYMBOL_CHARGE);
-        label(c, font_symbols(20), col, pct > 80 ? LV_SYMBOL_BATTERY_FULL : pct > 55 ? LV_SYMBOL_BATTERY_3 : pct > 30 ? LV_SYMBOL_BATTERY_2 : pct > 10 ? LV_SYMBOL_BATTERY_1 : LV_SYMBOL_BATTERY_EMPTY);
-        lv_label_set_text_fmt(label(c, font_text(22), col, ""), "%d%%", pct);
+    if (battery) {
+        snprintf(part, sizeof part, "b%d %d|", pct, charging);
+        strlcat(sig, part, sizeof sig);
     }
-    time_t next = alarm_next();
     if (next) {
-        lv_obj_t *c = row(chips, 8);
-        lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_set_style_pad_hor(c, P(14), 0);
-        lv_obj_set_style_pad_ver(c, P(4), 0);
-        lv_obj_set_style_radius(c, P(24), 0);
-        lv_obj_set_style_bg_color(c, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(c, LV_OPA_40, 0);
-        lv_obj_add_event_cb(c, open_alarms, LV_EVENT_CLICKED, NULL);
-        label(c, font_symbols(20), TEXT, LV_SYMBOL_BELL);
         char at[16];
         fmt_time(at, sizeof at, next);
-        time_t t = time(NULL);
-        char txt[40];
-        if (next - t < 86400) snprintf(txt, sizeof txt, "%s", at);
+        if (next - time(NULL) < 86400) strlcpy(alarm_txt, at, sizeof alarm_txt);
         else {
             struct tm tm;
             localtime_r(&next, &tm);
             static const char *W[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-            snprintf(txt, sizeof txt, "%s %s", W[tm.tm_wday], at);
+            snprintf(alarm_txt, sizeof alarm_txt, "%s %s", W[tm.tm_wday], at);
         }
-        label(c, font_text(22), TEXT, txt);
+        snprintf(part, sizeof part, "a%s|", alarm_txt);
+        strlcat(sig, part, sizeof sig);
+    }
+    if (strcmp(sig, chips_drawn)) {
+        strlcpy(chips_drawn, sig, sizeof chips_drawn);
+        lv_obj_clean(chips);
+        for (int i = 0; i < TIMERS; i++) {
+            timer_chip[i] = NULL;
+            if (!TIMER[i].on) continue;
+            lv_obj_t *c = chip(LV_OPA_50, open_timers);
+            label(c, font_symbols(20), SUNNY, LV_SYMBOL_LOOP);
+            timer_chip[i] = label(c, font_bold(26), TEXT, "");
+            timer_left(i, &digits);
+            lv_obj_set_width(timer_chip[i], countdown_width(font_bold(26), digits));
+            if (TIMER[i].label[0]) label(c, font_text(22), DIM, TIMER[i].label);
+        }
+        if (battery) {
+            /* running on the battery: how full it is; red when it is nearly empty */
+            lv_obj_t *c = chip(LV_OPA_40, NULL);
+            lv_color_t col = pct <= 15 ? lv_color_hex(0xff6b5e) : TEXT;
+            if (charging) label(c, font_symbols(20), col, LV_SYMBOL_CHARGE);
+            label(c, font_symbols(20), col, pct > 80 ? LV_SYMBOL_BATTERY_FULL : pct > 55 ? LV_SYMBOL_BATTERY_3 : pct > 30 ? LV_SYMBOL_BATTERY_2 : pct > 10 ? LV_SYMBOL_BATTERY_1 : LV_SYMBOL_BATTERY_EMPTY);
+            lv_label_set_text_fmt(label(c, font_text(22), col, ""), "%d%%", pct);
+        }
+        if (next) {
+            lv_obj_t *c = chip(LV_OPA_40, open_alarms);
+            label(c, font_symbols(20), TEXT, LV_SYMBOL_BELL);
+            label(c, font_text(22), TEXT, alarm_txt);
+        }
+    }
+    for (int i = 0; i < TIMERS; i++) {
+        if (!TIMER[i].on || !timer_chip[i]) continue;
+        int left = timer_left(i, &digits);
+        char t[16];
+        if (left >= 3600) snprintf(t, sizeof t, "%d:%02d:%02d", left / 3600, left / 60 % 60, left % 60);
+        else snprintf(t, sizeof t, "%d:%02d", left / 60, left % 60);
+        kit_set_text(timer_chip[i], t);
     }
 }
 
@@ -750,30 +799,33 @@ void ui_wall_tick(void)
     localtime_r(&now, &t);
     if (t.tm_min != shown_min) {
         shown_min = t.tm_min;
-        if (!clock_is_set()) {
-            lv_label_set_text(clock_lbl, "--:--");
-            lv_label_set_text(ampm_lbl, "");
-        } else if (S.clock24) {
-            lv_label_set_text_fmt(clock_lbl, "%d:%02d", t.tm_hour, t.tm_min);
-            lv_label_set_text(ampm_lbl, "");
-        } else {
+        char c[12] = "--:--";
+        const char *ampm = "";
+        if (clock_is_set() && S.clock24) {
+            snprintf(c, sizeof c, "%d:%02d", t.tm_hour, t.tm_min);
+        } else if (clock_is_set()) {
             int h = t.tm_hour % 12;
-            lv_label_set_text_fmt(clock_lbl, "%d:%02d", h ? h : 12, t.tm_min);
-            lv_label_set_text(ampm_lbl, t.tm_hour < 12 ? "AM" : "PM");
+            snprintf(c, sizeof c, "%d:%02d", h ? h : 12, t.tm_min);
+            ampm = t.tm_hour < 12 ? "AM" : "PM";
         }
+        kit_set_text(clock_lbl, c);
+        kit_set_text(ampm_lbl, ampm);
         if (t.tm_mday != shown_mday && clock_is_set()) {
+            bool next_day = shown_mday >= 0;
             shown_mday = t.tm_mday;
             static const char *W[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
             static const char *M[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
             lv_label_set_text_fmt(date_lbl, "%s, %s %d", W[t.tm_wday], M[t.tm_mon], t.tm_mday);
+            if (next_day) {
+                /* "Tomorrow" is another day now: every part again, and the rest of this tick with them */
+                draw_all = true;
+                ui_wall_feed_changed();
+                return;
+            }
         }
         if (t.tm_min % 10 == 0) paint_sky();
     }
-    bool any = alarm_next() != 0 || power_on_battery(NULL);
-    for (int i = 0; i < TIMERS; i++) any |= TIMER[i].on;
-    static bool had;
-    if (any || had) draw_chips();
-    had = any;
+    draw_chips();
     /* the status: old news, or no network */
     char st[140] = "";
     if (net_state() != NET_UP) snprintf(st, sizeof st, LV_SYMBOL_WIFI "  %s", net_why()[0] ? net_why() : "No Wi-Fi yet");
@@ -782,15 +834,22 @@ void ui_wall_tick(void)
         fmt_time(at, sizeof at, FEED->fetched);
         snprintf(st, sizeof st, LV_SYMBOL_WARNING "  %s (as of %s)", FEED->why, at);
     }
-    if (st[0]) {
-        lv_label_set_text(status_pill, st);
-        lv_obj_remove_flag(status_pill, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(status_pill, LV_OBJ_FLAG_HIDDEN);
+    static char said[sizeof st];   /* the label's own text is cut with "…" when it is long: not to compare with */
+    if (strcmp(st, said)) {
+        strlcpy(said, st, sizeof said);
+        if (st[0]) lv_label_set_text(status_pill, st);
     }
+    kit_show(status_pill, st[0]);
 }
 
 /* ------------------------------------------------------------------ the photo */
+
+#define SHADE_TOP_H P(320)       /* behind the clock and the weather */
+#define SHADE_BOTTOM_H P(500)    /* behind the agenda and the tasks, from a little above the agenda */
+#define SHADE_BOTTOM_FULL 90     /* of 255 of its height: at its darkest from the agenda's third row down */
+#define SHADE_TOP_PLAIN 140      /* how dark the two are over the sky, and at least over a photo */
+#define SHADE_BOTTOM_PLAIN 190
+#define VIEW_DIM 190             /* under a view: what is behind it far back */
 
 static void fade_cb(void *o, int32_t v)
 {
@@ -799,44 +858,11 @@ static void fade_cb(void *o, int32_t v)
 
 static void fade_done(lv_anim_t *a)
 {
-    int other = img_top == 0 ? 1 : 0;
-    lv_obj_add_flag(img[other], LV_OBJ_FLAG_HIDDEN);
-}
-
-/* The shades over the photo, as dark as the photo is bright: white text on a dark photo needs little, on snow, sand
- * or a white sky a lot. Three of them: one over the whole photo (none on a dark one), one behind the clock and the
- * weather, one behind the agenda and the tasks. */
-enum { SH_ALL, SH_TOP, SH_BOTTOM, SH_N };
-static const int SH_PLAIN[SH_N] = {0, 140, 190};   /* no photo: the sky, or black */
-static const int SH_VIEW[SH_N] = {205, 0, 0};      /* under a view: the photo far back, evenly */
-static int sh_now[SH_N] = {0, 140, 190}, sh_from[SH_N], sh_to[SH_N];
-
-static void shades_set(const int v[SH_N])
-{
-    lv_obj_set_style_bg_opa(dim, (lv_opa_t)v[SH_ALL], 0);
-    lv_obj_set_style_bg_main_opa(shade_top, (lv_opa_t)v[SH_TOP], 0);
-    lv_obj_set_style_bg_grad_opa(shade_bottom, (lv_opa_t)v[SH_BOTTOM], 0);
-    memcpy(sh_now, v, sizeof sh_now);
-}
-
-static void shades_cb(void *o, int32_t t)
-{
-    int v[SH_N];
-    for (int i = 0; i < SH_N; i++) v[i] = sh_from[i] + (sh_to[i] - sh_from[i]) * t / 256;
-    shades_set(v);
-}
-
-static void shades_go(const int to[SH_N])
-{
-    memcpy(sh_from, sh_now, sizeof sh_from);
-    memcpy(sh_to, to, sizeof sh_to);
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, dim);
-    lv_anim_set_exec_cb(&a, shades_cb);
-    lv_anim_set_values(&a, 0, 256);
-    lv_anim_set_duration(&a, 900);
-    lv_anim_start(&a);
+    if (img_top < 0) return;
+    kit_show(img[img_top == 0 ? 1 : 0], false);
+    const lv_image_dsc_t *im = lv_image_get_src(img[img_top]);
+    photo_covers = im && im->header.w >= WALL_W && im->header.h >= WALL_H;
+    backdrop();
 }
 
 /* How bright rows y0 to y1 of a photo (RGB565) are, 0 to 255: its mean brightness, pulled up by the share of it
@@ -864,44 +890,67 @@ static int brightness(const lv_image_dsc_t *im, int y0, int y1)
 
 static int between(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static void shades_for(const lv_image_dsc_t *im)
+/* The shades of a photo, in the photo itself: as dark as the photo is bright, since white text on a dark photo needs
+ * little and on snow, sand or a white sky a lot. Three of them, as over the sky: one over the whole photo (none on a
+ * dark one), one behind the clock and the weather, one behind the agenda and the tasks. They were three see-through
+ * layers the size of the screen, blended over the photo at every redraw of anything on the wall; darkening the
+ * pixels once, on the photos' task, draws the same picture for nothing. No LVGL in here: it runs without the lock. */
+void wall_shade_photo(lv_image_dsc_t *im)
 {
-    if (viewing) {
-        shades_go(SH_VIEW);
-        return;
-    }
-    if (!im) {
-        shades_go(SH_PLAIN);
-        return;
-    }
-    int h = im->header.h;
+    int w = im->header.w, h = im->header.h;
     int all = brightness(im, 0, h), top = brightness(im, 0, h * 45 / 100), bottom = brightness(im, h * 38 / 100, h);
-    int to[SH_N] = {
-        between((all - 70) * 9 / 10, 0, 110),
-        between(140 + (top - 70) * 8 / 10, 140, 225),
-        between(190 + (bottom - 70) * 5 / 10, 190, 240),
-    };
-    shades_go(to);
+    int a_all = between((all - 70) * 9 / 10, 0, 110);
+    int a_top = between(SHADE_TOP_PLAIN + (top - 70) * 8 / 10, SHADE_TOP_PLAIN, 225);
+    int a_bottom = between(SHADE_BOTTOM_PLAIN + (bottom - 70) * 5 / 10, SHADE_BOTTOM_PLAIN, 240);
+    int full = SHADE_BOTTOM_H * SHADE_BOTTOM_FULL / 255;
+    for (int y = 0; y < h; y++) {
+        int at = y < SHADE_TOP_H ? a_top * (SHADE_TOP_H - y) / SHADE_TOP_H : 0;
+        int r = y - (WALL_H - SHADE_BOTTOM_H);
+        int ab = r <= 0 ? 0 : r >= full ? a_bottom : a_bottom * r / full;
+        /* what is left of the light, of 256 */
+        uint32_t k = (uint32_t)((255 - a_all) * (255 - at) * (255 - ab)) / (255 * 255 * 255 / 256);
+        if (k >= 256) continue;
+        /* each pixel cut down to a whole step of its colour, with nothing spread to its neighbours to hide the
+         * steps: LVGL blends a see-through thing (a panel's shade, the bar, a view's) over a run of pixels of one
+         * colour several times faster than over pixels that all differ, and a darkened photo has long runs */
+        uint16_t *p = (uint16_t *)(im->data + (size_t)y * im->header.stride);
+        for (int x = 0; x < w; x++) {
+            uint32_t c = p[x];
+            p[x] = (uint16_t)((((c >> 11) * k >> 8) << 11) | ((((c >> 5) & 63) * k >> 8) << 5) | ((c & 31) * k >> 8));
+        }
+    }
 }
 
 void ui_wall_photo(const lv_image_dsc_t *im, const char *cap)
 {
     if (!scr) return;
+    /* a fade still under way ends here: its photo is the one under the new one, whole */
+    lv_anim_delete(img[0], fade_cb);
+    lv_anim_delete(img[1], fade_cb);
     if (!im) {
-        shades_for(NULL);
-        lv_obj_add_flag(img[0], LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(img[1], LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(caption, "");
+        kit_show(img[0], false);
+        kit_show(img[1], false);
+        kit_set_text(caption, "");
         img_top = -1;
+        photo_covers = false;
+        backdrop();
         return;
     }
+    if (img_top >= 0) lv_obj_set_style_opa(img[img_top], LV_OPA_COVER, 0);
     int next = img_top == 0 ? 1 : 0;
     lv_image_set_src(img[next], im);
     lv_obj_set_style_opa(img[next], LV_OPA_TRANSP, 0);
-    lv_obj_remove_flag(img[next], LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_to_index(img[next], 2);  /* above the other photo, under the shades */
+    kit_show(img[next], true);
+    lv_obj_move_to_index(img[next], lv_obj_get_index(dim) - 1);  /* above the other photo, under what darkens for a view */
     img_top = next;
-    shades_for(im);
+    kit_set_text(caption, cap ? cap : "");
+    /* behind a panel, the bar or a view the photo is there at once: a fade is the whole screen drawn again some
+     * twenty times, just when a touch is on its way (a tap on the photo asks for the next one and shows the bar) */
+    if (viewing || kit_panel_open() || !lv_obj_has_flag(bar, LV_OBJ_FLAG_HIDDEN)) {
+        lv_obj_set_style_opa(img[next], LV_OPA_COVER, 0);
+        fade_done(NULL);
+        return;
+    }
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, img[next]);
@@ -910,35 +959,67 @@ void ui_wall_photo(const lv_image_dsc_t *im, const char *cap)
     lv_anim_set_duration(&a, 900);
     lv_anim_set_completed_cb(&a, fade_done);
     lv_anim_start(&a);
-    lv_label_set_text(caption, cap ? cap : "");
 }
 
 /* ------------------------------------------------------------------ the whole */
+
+/* which of the wall's own parts show: none under a view, and the weather and the right column only when the feed has
+ * something for them */
+static void parts_show(void)
+{
+    bool none = !FEED->has_tasks && !(FEED->has_home && (FEED->nha || FEED->nalerts)) && !FEED->nhours;
+    kit_show(top_left, !viewing);
+    kit_show(agenda, !viewing);
+    kit_show(caption, !viewing);
+    kit_show(wx_box, !viewing && FEED->has_weather);
+    kit_show(right, !viewing && !none);
+}
 
 void ui_wall_viewing(bool on)
 {
     if (!scr) return;
     viewing = on;
-    lv_obj_t *parts[] = {top_left, wx_box, agenda, right, caption};
-    for (size_t i = 0; i < sizeof parts / sizeof parts[0]; i++) {
-        if (on) lv_obj_add_flag(parts[i], LV_OBJ_FLAG_HIDDEN);
-        else lv_obj_remove_flag(parts[i], LV_OBJ_FLAG_HIDDEN);
-    }
-    shades_for(img_top >= 0 ? lv_image_get_src(img[img_top]) : NULL);
-    if (!on) ui_wall_feed_changed();
+    kit_show(dim, on);
+    parts_show();
+    if (!on) ui_wall_feed_changed();   /* what the feed brought meanwhile */
 }
 
+/* whether the feed says something else from one of its fields up to another than when the wall was last drawn; what
+ * it says now is then what was drawn */
+static bool other(size_t from, size_t to)
+{
+    if (!drawn) return true;
+    bool same = !memcmp((const char *)drawn + from, (const char *)FEED + from, to - from);
+    if (!same) memcpy((char *)drawn + from, (const char *)FEED + from, to - from);
+    return draw_all || !same;
+}
+
+#define AT(field) offsetof(wall_feed_t, field)
+
+/* The feed every minute mostly says what it said the minute before: only the parts of the wall whose own share of it
+ * is another one are made again. A part made again is laid out and drawn again, and LVGL draws the photo under it
+ * too; all of them made every minute was a redraw of the whole screen every minute, whatever was on it. */
 void ui_wall_feed_changed(void)
 {
-    if (!scr) return;
+    if (!scr || viewing) return;   /* under a view the wall's parts do not show: ui_wall_viewing(false) comes here */
+    if (!drawn) drawn = heap_caps_calloc(1, sizeof *drawn, MALLOC_CAP_SPIRAM);
+    bool weather = other(AT(has_weather), AT(has_home));
+    bool home = other(AT(has_home), AT(bdays));
+    bool days = other(AT(bdays), AT(has_tasks));
+    bool tasks = other(AT(has_tasks), AT(photos));
+    /* the agenda also says why there is none */
+    if (!drawn || drawn->ok != FEED->ok || (!FEED->ok && strcmp(drawn->why, FEED->why))) days = true;
+    if (drawn) {
+        drawn->ok = FEED->ok;
+        strlcpy(drawn->why, FEED->why, sizeof drawn->why);
+    }
+    draw_all = false;
     paint_sky();
-    draw_weather();
-    draw_agenda();
-    draw_tasks();
-    draw_ha();
-    bool none = !FEED->has_tasks && !(FEED->has_home && (FEED->nha || FEED->nalerts)) && !FEED->nhours;
-    if (none || viewing) lv_obj_add_flag(right, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_remove_flag(right, LV_OBJ_FLAG_HIDDEN);
+    if (weather) draw_weather();
+    if (days) draw_agenda();
+    if (tasks) draw_tasks();
+    if (home) draw_ha();
+    parts_show();
     ui_wall_tick();
 }
 
@@ -950,10 +1031,30 @@ static void build(void)
     lv_obj_add_event_cb(scr, on_background, LV_EVENT_SHORT_CLICKED, NULL);
     lv_obj_add_event_cb(scr, on_swipe, LV_EVENT_GESTURE, NULL);
 
+    /* what is behind the text, from the back: the sky and its two shades, the photos, what darkens them for a view
+     * (backdrop says which of them show) */
     sky = box(scr);
     lv_obj_set_size(sky, WALL_W, WALL_H);
     lv_obj_set_style_bg_opa(sky, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_grad_dir(sky, LV_GRAD_DIR_VER, 0);
+    shade_top = box(scr);
+    lv_obj_set_size(shade_top, WALL_W, SHADE_TOP_H);
+    lv_obj_set_style_bg_color(shade_top, lv_color_black(), 0);
+    lv_obj_set_style_bg_grad_color(shade_top, lv_color_black(), 0);
+    lv_obj_set_style_bg_grad_dir(shade_top, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_bg_opa(shade_top, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_main_opa(shade_top, SHADE_TOP_PLAIN, 0);
+    lv_obj_set_style_bg_grad_opa(shade_top, 0, 0);
+    shade_bottom = box(scr);
+    lv_obj_set_size(shade_bottom, WALL_W, SHADE_BOTTOM_H);
+    lv_obj_align(shade_bottom, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(shade_bottom, lv_color_black(), 0);
+    lv_obj_set_style_bg_grad_color(shade_bottom, lv_color_black(), 0);
+    lv_obj_set_style_bg_grad_dir(shade_bottom, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_bg_opa(shade_bottom, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_main_opa(shade_bottom, 0, 0);
+    lv_obj_set_style_bg_grad_opa(shade_bottom, SHADE_BOTTOM_PLAIN, 0);
+    lv_obj_set_style_bg_grad_stop(shade_bottom, SHADE_BOTTOM_FULL, 0);
     for (int i = 0; i < 2; i++) {
         img[i] = lv_image_create(scr);
         lv_obj_set_size(img[i], WALL_W, WALL_H);
@@ -963,26 +1064,8 @@ static void build(void)
     dim = box(scr);
     lv_obj_set_size(dim, WALL_W, WALL_H);
     lv_obj_set_style_bg_color(dim, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(dim, LV_OPA_TRANSP, 0);
-    shade_top = box(scr);
-    lv_obj_set_size(shade_top, WALL_W, P(320));
-    lv_obj_set_style_bg_color(shade_top, lv_color_black(), 0);
-    lv_obj_set_style_bg_grad_color(shade_top, lv_color_black(), 0);
-    lv_obj_set_style_bg_grad_dir(shade_top, LV_GRAD_DIR_VER, 0);
-    lv_obj_set_style_bg_opa(shade_top, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_main_opa(shade_top, 140, 0);
-    lv_obj_set_style_bg_grad_opa(shade_top, 0, 0);
-    shade_bottom = box(scr);
-    lv_obj_set_size(shade_bottom, WALL_W, P(500));   /* from a little above the agenda */
-    lv_obj_align(shade_bottom, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_bg_color(shade_bottom, lv_color_black(), 0);
-    lv_obj_set_style_bg_grad_color(shade_bottom, lv_color_black(), 0);
-    lv_obj_set_style_bg_grad_dir(shade_bottom, LV_GRAD_DIR_VER, 0);
-    lv_obj_set_style_bg_opa(shade_bottom, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_main_opa(shade_bottom, 0, 0);
-    lv_obj_set_style_bg_grad_opa(shade_bottom, 190, 0);
-    lv_obj_set_style_bg_grad_stop(shade_bottom, 90, 0);   /* at its darkest from the agenda's third row down */
-    shades_set(SH_PLAIN);
+    lv_obj_set_style_bg_opa(dim, VIEW_DIM, 0);
+    lv_obj_add_flag(dim, LV_OBJ_FLAG_HIDDEN);
 
     /* the clock, the date, the chips: top left */
     lv_obj_t *tl = top_left = column(scr, 0);
@@ -1077,7 +1160,8 @@ void ui_show_wall(void)
     if (!scr) build();
     ui_views_reset();
     shown_min = shown_mday = -1;
-    lv_screen_load(scr);
+    draw_all = true;   /* another person's feed, or another clock: nothing of what is drawn holds */
+    if (lv_screen_active() != scr) lv_screen_load(scr);
     ui_wall_feed_changed();
     feed_refresh();
 }

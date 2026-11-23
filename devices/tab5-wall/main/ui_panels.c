@@ -283,11 +283,7 @@ static void draw_add_options(void)
 
 static void on_add_closed(lv_event_t *e)
 {
-    if (add_kb) {
-        lv_obj_delete(add_kb);
-        add_kb = NULL;
-    }
-    add_ta = add_status = add_days = add_times = add_kinds = NULL;
+    add_ta = add_kb = add_status = add_days = add_times = add_kinds = NULL;   /* the keyboard goes with the panel */
 }
 
 void ui_open_add(void)
@@ -296,9 +292,10 @@ void ui_open_add(void)
         ui_toast("Adding needs ioTask or ioCalendar on the start page");
         return;
     }
-    lv_obj_t *c = kit_panel("Add", P(1220), P(400));
-    lv_obj_align(c, LV_ALIGN_TOP_MID, 0, P(6));
-    lv_obj_add_event_cb(lv_obj_get_parent(c), on_add_closed, LV_EVENT_DELETE, NULL);
+    lv_obj_t *c = kit_panel("Add", P(1220), P(412));
+    lv_obj_align(lv_obj_get_parent(c), LV_ALIGN_TOP_MID, 0, P(4));   /* the card, above the keyboard */
+    lv_obj_set_style_pad_row(c, P(12), 0);
+    lv_obj_add_event_cb(c, on_add_closed, LV_EVENT_DELETE, NULL);
     add_event_kind = !FEED->can_add_task;
     add_day = add_event_kind ? 0 : -1;
     add_minutes = -1;
@@ -308,16 +305,11 @@ void ui_open_add(void)
     if (FEED->can_add_event) chip(top, "An event", on_add_kind, (void *)1, add_event_kind);
     add_times = lv_dropdown_create(top);
     char opts[1400] = "All day";
-    for (int m = 6 * 60; m < 24 * 60; m += 30) {
-        char t[16];
-        time_t now = time(NULL);
-        struct tm tm;
-        localtime_r(&now, &tm);
-        tm.tm_hour = m / 60;
-        tm.tm_min = m % 60;
-        fmt_time(t, sizeof t, mktime(&tm));
-        strlcat(opts, "\n", sizeof opts);
-        strlcat(opts, t, sizeof opts);
+    size_t at = strlen(opts);
+    for (int m = 6 * 60; m < 24 * 60 && at + 12 < sizeof opts; m += 30) {
+        opts[at++] = '\n';
+        fmt_clock(opts + at, sizeof opts - at, m / 60, m % 60);
+        at += strlen(opts + at);
     }
     lv_dropdown_set_options(add_times, opts);
     lv_obj_set_width(add_times, P(220));
@@ -328,15 +320,24 @@ void ui_open_add(void)
     add_days = hrow(c, 10);
     add_status = kit_label(c, font_text(26), DIM, "");
     draw_add_options();
-    add_kb = kit_keyboard(lv_layer_top(), add_ta, on_add_go, NULL);
+    add_kb = kit_keyboard(kit_panel_layer(), add_ta, on_add_go, NULL);
     lv_obj_set_height(add_kb, P(300));
 }
 
 /* ------------------------------------------------------------------ timers */
 
 static lv_obj_t *timer_list;
+static lv_obj_t *timer_left[TIMERS];   /* the time left of each timer listed; NULL: not listed */
 
 static void draw_timer_list(void);
+
+static void timer_text(char *out, size_t n, int i)
+{
+    int64_t left = (TIMER[i].ends_ms - esp_timer_get_time() / 1000 + 999) / 1000;
+    if (left < 0) left = 0;
+    if (left >= 3600) snprintf(out, n, "%d:%02d:%02d", (int)(left / 3600), (int)(left / 60 % 60), (int)(left % 60));
+    else snprintf(out, n, "%d:%02d", (int)(left / 60), (int)(left % 60));
+}
 
 static void on_timer_preset(lv_event_t *e)
 {
@@ -355,18 +356,16 @@ static void draw_timer_list(void)
 {
     if (!timer_list) return;
     lv_obj_clean(timer_list);
-    int64_t now = esp_timer_get_time() / 1000;
     bool any = false;
     for (int i = 0; i < TIMERS; i++) {
+        timer_left[i] = NULL;
         if (!TIMER[i].on) continue;
         any = true;
         lv_obj_t *r = hrow(timer_list, 16);
-        int64_t left = (TIMER[i].ends_ms - now + 999) / 1000;
-        if (left < 0) left = 0;
-        lv_obj_t *l = kit_label(r, font_bold(40), TEXT, "");
-        if (left >= 3600) lv_label_set_text_fmt(l, "%d:%02d:%02d", (int)(left / 3600), (int)(left / 60 % 60), (int)(left % 60));
-        else lv_label_set_text_fmt(l, "%d:%02d", (int)(left / 60), (int)(left % 60));
-        lv_obj_set_width(l, P(220));
+        char t[16];
+        timer_text(t, sizeof t, i);
+        lv_obj_t *l = timer_left[i] = kit_label(r, font_bold(40), TEXT, t);
+        lv_obj_set_size(l, P(220), lv_font_get_line_height(font_bold(40)));   /* a size of its own: a new second moves nothing else */
         kit_label(r, font_text(26), DIM, "");
         kit_button(r, "Cancel", on_timer_cancel, (void *)(intptr_t)i, false);
     }
@@ -382,7 +381,19 @@ static void timers_tick(lv_timer_t *t)
         timer_refresh = NULL;
         return;
     }
-    draw_timer_list();
+    /* the same timers as listed: only their times; one that ended: the list anew */
+    for (int i = 0; i < TIMERS; i++) {
+        if (TIMER[i].on != (timer_left[i] != NULL)) {
+            draw_timer_list();
+            return;
+        }
+    }
+    for (int i = 0; i < TIMERS; i++) {
+        if (!timer_left[i]) continue;
+        char at[16];
+        timer_text(at, sizeof at, i);
+        kit_set_text(timer_left[i], at);
+    }
 }
 
 static void on_timers_closed(lv_event_t *e)
@@ -427,7 +438,7 @@ static void on_alarm_time(lv_event_t *e)
     S.alarms[i].minute = (sel % 12) * 5;
     S.alarms[i].on = true;
     settings_save();
-    ui_open_alarms();  /* the switch shows it on */
+    lv_obj_add_state(lv_obj_get_child(lv_obj_get_parent(lv_event_get_target(e)), 0), LV_STATE_CHECKED);  /* its switch shows it on */
 }
 
 static void on_alarm_day(lv_event_t *e)
@@ -438,6 +449,7 @@ static void on_alarm_day(lv_event_t *e)
     settings_save();
     lv_obj_t *b = lv_event_get_target(e);
     lv_obj_set_style_bg_color(b, S.alarms[i].days & (1 << d) ? ACCENT : lv_color_hex(0x2a2c31), 0);
+    lv_label_set_text(lv_obj_get_child(lv_obj_get_parent(b), -1), S.alarms[i].days ? "" : "once");
 }
 
 void ui_open_alarms(void)
@@ -445,18 +457,11 @@ void ui_open_alarms(void)
     lv_obj_t *c = kit_panel("Alarms", P(1180), P(660));
     lv_obj_set_scroll_dir(c, LV_DIR_VER);
     static char opts[24 * 12 * 12];
-    opts[0] = 0;
-    for (int m = 0; m < 24 * 60; m += 5) {
-        char t[16];
-        time_t now = time(NULL);
-        struct tm tm;
-        localtime_r(&now, &tm);
-        tm.tm_hour = m / 60;
-        tm.tm_min = m % 60;
-        tm.tm_isdst = -1;
-        fmt_time(t, sizeof t, mktime(&tm));
-        if (m) strlcat(opts, "\n", sizeof opts);
-        strlcat(opts, t, sizeof opts);
+    size_t at = 0;
+    for (int m = 0; m < 24 * 60 && at + 12 < sizeof opts; m += 5) {
+        if (m) opts[at++] = '\n';
+        fmt_clock(opts + at, sizeof opts - at, m / 60, m % 60);
+        at += strlen(opts + at);
     }
     static const char *D = "SMTWTFS";
     for (int i = 0; i < ALARMS; i++) {
@@ -538,7 +543,7 @@ void ui_ringing(bool on, const char *what)
 
 /* ------------------------------------------------------------------ settings */
 
-static lv_obj_t *ota_lbl;
+static lv_obj_t *ota_lbl, *frames_lbl;
 static lv_timer_t *ota_timer;
 
 static void on_clock24(lv_event_t *e)
@@ -604,7 +609,11 @@ static void ota_tick(lv_timer_t *t)
         ota_timer = NULL;
         return;
     }
-    lv_label_set_text(ota_lbl, ota_text());
+    /* only what changed: a text set again is laid out and drawn again, and the column with it */
+    kit_set_text(ota_lbl, ota_text());
+    char took[120];
+    ui_frames_text(took, sizeof took);
+    kit_set_text(frames_lbl, took);
 }
 
 static void on_check(lv_event_t *e)
@@ -614,7 +623,7 @@ static void on_check(lv_event_t *e)
 
 static void on_settings_closed(lv_event_t *e)
 {
-    ota_lbl = NULL;
+    ota_lbl = frames_lbl = NULL;
 }
 
 /* a view's chip: lit while it is swiped to */
@@ -659,8 +668,8 @@ static lv_obj_t *toggle(lv_obj_t *r, bool on, lv_event_cb_t cb)
 void ui_show_settings(void)
 {
     lv_obj_t *c = kit_panel("Settings", P(1180), P(680));
-    lv_obj_add_event_cb(lv_obj_get_parent(c), on_settings_closed, LV_EVENT_DELETE, NULL);
-    lv_obj_set_scroll_dir(c, LV_DIR_VER);
+    lv_obj_add_event_cb(c, on_settings_closed, LV_EVENT_DELETE, NULL);
+    ui_frames_reset();   /* the Screen line counts from here: opening this, and what is scrolled in it */
     char t[200];
 
     lv_obj_t *r = setting(c, "Signed in");
@@ -725,6 +734,12 @@ void ui_show_settings(void)
     r = setting(c, "Power");
     power_text(t, sizeof t);
     kit_label(r, font_text(26), DIM, t);
+
+    /* how long the screen takes to draw, measured here: the one way to know on a board nobody has a probe on */
+    r = setting(c, "Screen");
+    ui_frames_text(t, sizeof t);
+    frames_lbl = kit_label(r, font_text(26), DIM, t);
+    lv_obj_set_size(frames_lbl, P(760), lv_font_get_line_height(font_text(26)));
 
     r = setting(c, "Firmware");
     snprintf(t, sizeof t, "Version %s", wall_version());

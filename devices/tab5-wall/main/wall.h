@@ -64,6 +64,9 @@ typedef struct {
 
 extern wall_settings_t S;
 void settings_load(void);
+/** After settings_load: the task that writes what settings_save and settings_save_views hand it. */
+void settings_start(void);
+/** Kept across restarts from here on; the write itself is done by a task of its own, a moment later. */
 void settings_save(void);
 void settings_forget_sign_in(void);
 void settings_reset(void);
@@ -220,7 +223,8 @@ typedef struct {
     bool can_add_task, can_add_event, can_fav, can_home;
 } wall_feed_t;
 
-/** The feed the screens show (read it holding the UI lock); never NULL once feed_init ran. */
+/** The feed the screens show (read it holding the UI lock); never NULL once feed_init ran, and always the same
+ *  memory: a new feed is copied into it, so what the wall's rows point at stays where it is. */
 extern wall_feed_t *FEED;
 /** Before any screen: an empty feed and the task behind feed_run. */
 void feed_init(void);
@@ -253,7 +257,10 @@ const lv_font_t *font_symbols(int px);
 void ui_show_setup(void);        /* Wi-Fi, address, sign-in */
 void ui_show_setup_why(const char *why); /* the same, saying on the address screen why the display is back there */
 void ui_show_wall(void);
-void ui_wall_feed_changed(void); /* FEED was replaced */
+void ui_wall_feed_changed(void); /* FEED has other things in it: the parts of the wall that show them are drawn again */
+/** A photo just decoded, before the wall has it: darkened where the wall's text is, as much as it is bright there.
+ *  Plain work on its pixels, for the photos' task and not the screen's. */
+void wall_shade_photo(lv_image_dsc_t *img);
 void ui_wall_photo(const lv_image_dsc_t *img, const char *caption); /* a new photo to fade in; NULL: none */
 void ui_wall_tick(void);         /* every second: the clock, timers */
 void ui_wall_viewing(bool on);   /* a view is over the wall: its own parts go, the photo darkens */
@@ -283,16 +290,27 @@ bool ui_screen_dark(void);      /* the night has turned the backlight off */
 
 /* the parts screens are made of (ui.c) */
 lv_obj_t *kit_label(lv_obj_t *p, const lv_font_t *f, lv_color_t c, const char *t);
+/** A label's text, set only when it is another one: LVGL lays a label out and draws it again at every set. */
+void kit_set_text(lv_obj_t *l, const char *t);
+/** Shown or hidden, touched only when it is the other: LVGL draws again whatever is shown, shown already or not. */
+void kit_show(lv_obj_t *o, bool on);
 lv_obj_t *kit_button(lv_obj_t *p, const char *text, lv_event_cb_t cb, void *ud, bool primary);
 lv_obj_t *kit_textarea(lv_obj_t *p, const char *placeholder, bool password);
 lv_obj_t *kit_keyboard(lv_obj_t *p, lv_obj_t *ta, lv_event_cb_t on_ready, void *ud);
-/** A card over the wall (on the top layer) with a title and a close button; returns the card, a flex column. */
+/** A card over the screen with a title and a close button; returns its body, a column that scrolls when what is put
+ *  in it is longer than the card (the card is the body's parent). */
 lv_obj_t *kit_panel(const char *title, int w, int h);
 void kit_close_panel(void);
 bool kit_panel_open(void);
+/** What the open panel is drawn on, the whole screen wide (a keyboard under its card goes here); NULL when none is. */
+lv_obj_t *kit_panel_layer(void);
+/** How long the large redraws took since the last reset, for Settings: "12 large redraws · 31 ms each · …". */
+void ui_frames_reset(void);
+void ui_frames_text(char *out, size_t n);
 
 /* time and text, as the person reads them */
 void fmt_time(char *out, size_t n, time_t t);           /* "6:00 PM" / "18:00" */
+void fmt_clock(char *out, size_t n, int hour, int minute); /* the same from an hour and a minute */
 void fmt_hour(char *out, size_t n, time_t t);           /* "6 PM" / "18" */
 void fmt_event_when(char *out, size_t n, const wall_event_t *e);
 void fmt_day_head(char *out, size_t n, const char *date);  /* "Tomorrow", "Friday", "Fri 28 Nov" */

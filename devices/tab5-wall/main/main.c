@@ -10,6 +10,7 @@ void app_main(void)
 {
     boot_begin();
     settings_load();
+    settings_start();
     if (S.posix[0]) clock_set_zone(S.posix);   /* the clock in local time before the network is up */
 
     boot_step(BOOT_SCREEN);

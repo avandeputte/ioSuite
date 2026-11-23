@@ -10,7 +10,7 @@ idf_component_register(
     INCLUDE_DIRS "."
     EMBED_FILES "fonts/Inter-Regular.ttf" "fonts/Inter-SemiBold.ttf" "fonts/InterDisplay-Light.ttf"
     REQUIRES ${BOARD_PACKAGE} esp_wifi esp_wifi_remote esp_netif esp_event nvs_flash esp_http_client esp_https_ota
-             app_update esp_app_format json esp_driver_jpeg esp_timer mbedtls lwip esp_hw_support
+             app_update esp_app_format json esp_driver_jpeg esp_timer mbedtls lwip esp_hw_support esp_mm
 )
 # text is cut to fit its buffer on purpose throughout (a long title, a long address)
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-format-truncation)

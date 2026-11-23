@@ -1,11 +1,12 @@
 /* The start page's wall feed, every minute (sooner after a change made here), and its photos, one every so often
  * (the person's choice on the start page: Customize › Wall display), cut by the start page to the screen's size and decoded
  * here by the P4's JPEG engine into one of two frame buffers in PSRAM, so the one on screen is never written while
- * it fades. A third task runs the taps' HTTP calls (feed_run), so the screen never waits on the network. */
+ * it fades; darkened there too where the wall's text is (wall_shade_photo), before the screen sees it. A third task runs the taps' HTTP calls (feed_run), so the screen never waits on the network. */
 #include <string.h>
 #include <sys/time.h>
 #include "cJSON.h"
 #include "driver/jpeg_decode.h"
+#include "esp_cache.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -311,7 +312,7 @@ static void fetch_once(void)
         if (FEED->ok) {
             strlcpy(FEED->why, f->why, sizeof FEED->why);
         } else {
-            *FEED = *f;
+            memcpy(FEED, f, sizeof *FEED);
         }
         ui_wall_feed_changed();
         ui_unlock();
@@ -330,12 +331,13 @@ static void fetch_once(void)
             if (FEED->tasks[j].done && !strcmp(FEED->tasks[j].id, f->tasks[i].id)) f->tasks[i].done = true;
         }
     }
-    wall_feed_t *old = FEED;
-    bool photos_changed = old->nphotos != f->nphotos || strcmp(old->bg, f->bg);
-    FEED = f;
+    bool photos_changed = FEED->nphotos != f->nphotos || strcmp(FEED->bg, f->bg);
+    /* into the feed the screens read, not in its place: the wall's rows point at its events, tasks and switches, and
+     * the wall makes again only the rows of what changed (ui_wall_feed_changed) */
+    memcpy(FEED, f, sizeof *FEED);
     ui_wall_feed_changed();
     ui_unlock();
-    heap_caps_free(old);
+    heap_caps_free(f);
     if (photos_changed && photo_task) {
         xTaskNotifyGive(photo_task);
     }
@@ -481,6 +483,10 @@ static bool show_photo(const wall_photo_t *p)
         .data_size = w * info.height * 2,
         .data = frame[next],
     };
+    wall_shade_photo(&dsc[next]);  /* here, on this task: the screen's does not wait for it */
+    /* what that wrote is in the processor's cache for a while; out to the memory now, so that nothing of it is left
+     * to land on the next photo the JPEG engine puts into this frame behind the cache's back */
+    esp_cache_msync(frame[next], frame_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
     char cap[40] = "";
     if (p->ago == 1) strlcpy(cap, "1 year ago today", sizeof cap);
     else if (p->ago > 1) snprintf(cap, sizeof cap, "%d years ago today", p->ago);
