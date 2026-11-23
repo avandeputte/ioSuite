@@ -116,7 +116,9 @@ note and its change log that long (the trash shows 30 days); after that an empty
 Three more places hold what is not a plain setting, all in the same database:
 
 - **Settings › People**: people, roles, app passwords, sign-in at the proxy and the addresses of your reverse proxies.
-- **Settings › Apps › The apps**: each app's default role and whether it requires sign-in.
+- **Settings › Apps › The apps**: each app's default role, whether it requires sign-in, whether an assistant may
+  use it, the three addresses it answers at, and **Its settings**, which opens the screens that app alone has
+  (ioPix's models, ioCalendar's holidays, ioMoney's rules).
 - **Settings › Keys**: the keys for services outside the suite. They can be written, never read back.
 - **Settings › Servers › Certificate**: [the suite's own certificate](../run/https.md), for HTTPS without a reverse proxy.
 

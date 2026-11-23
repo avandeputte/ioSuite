@@ -15,6 +15,8 @@ import secrets
 import threading
 from collections import OrderedDict
 
+import pymysql
+
 from iotask import config, db, ical, members, users
 from iosuite_shared import related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
@@ -58,7 +60,12 @@ def ensure_personal(u: dict) -> None:
         return
     if not db.one("SELECT id FROM tsk_lists WHERE owner_id = %s LIMIT 1", (u["id"],)):
         who = u.get("displayName") or u.get("display_name") or u.get("name")
-        create_list(u["id"], "Personal", f"{who}'s private list", "#1a73e8")
+        try:
+            create_list(u["id"], "Personal", f"{who}'s private list", "#1a73e8")
+        except pymysql.err.IntegrityError:
+            # two first requests at the same moment (the start page's Today card and its search, say): the other one made it
+            if not db.one("SELECT id FROM tsk_lists WHERE owner_id = %s LIMIT 1", (u["id"],)):
+                raise
 
 
 def lists_for(u: dict | None, tzname: str | None = None) -> list[dict]:

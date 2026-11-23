@@ -334,3 +334,39 @@ def test_subscription_links_are_kept_hashed_shown_once_and_stopped_one_by_one(cl
     from iosuite_shared import feeds as shared_feeds
     other = shared_feeds.create(1, "iocontact", "x")
     assert client.get(f"/ics/{other}/all.ics").status_code == 404
+
+
+def test_two_first_requests_at_once_make_one_personal_calendar(client, monkeypatch):
+    """The first time someone uses ioCalendar their Personal calendar is made. Two requests can be that first one at
+    the same moment (the start page's tile and its search): the one that loses carries on with the other's calendar."""
+    import threading
+
+    from iosuite_shared import users
+
+    from iocalendar import db, model
+    bea = users.create("bea", "secret123", "member", "iocalendar")
+    both, real, errors = threading.Barrier(2, timeout=5), db.ex, []
+
+    def ex(sql, args=None):
+        if sql.startswith("INSERT INTO cal_calendars"):
+            try:
+                both.wait()   # each has looked, and found the name free, before either writes
+            except threading.BrokenBarrierError:
+                pass
+        return real(sql, args)
+
+    monkeypatch.setattr(db, "ex", ex)
+
+    def first_use():
+        try:
+            model.ensure_personal(bea)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=first_use) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert errors == []
+    assert db.one("SELECT count(*) AS n FROM cal_calendars WHERE owner_id = %s", (bea["id"],))["n"] == 1

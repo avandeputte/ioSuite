@@ -135,7 +135,9 @@ def test_lines_a_page_no_longer_needs_are_forgotten():
 def test_the_page_s_side_of_it_is_served_and_parses():
     import shutil
     import subprocess
-    r = TestClient(make_app(), base_url="http://test.example.com", client=LAN).get("/api/live.js")
+    app = make_app()
+    signed_in(app)   # an account exists, so nothing but the open paths answers a visitor
+    r = TestClient(app, base_url="http://test.example.com", client=LAN).get("/api/live.js")   # signed out: the script is no secret
     assert r.status_code == 200 and "javascript" in r.headers["content-type"]
     assert "export function onChange" in r.text
     node = shutil.which("node")

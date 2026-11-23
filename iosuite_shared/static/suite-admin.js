@@ -220,7 +220,7 @@ export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Role
 export const TABS = {
   people: { label: 'People', subs: ['people', 'family', 'roles', 'passwords', 'signin'],
     intro: 'Who can sign in to the io apps, who is in the family, and with which role. Changes apply to every app.' },
-  apps: { label: 'Apps', subs: ['apps', 'settings'], intro: 'The apps of the suite: where each answers, who may use it, whether an AI assistant may, and every setting they read as they start.' },
+  apps: { label: 'Apps', subs: ['apps', 'settings'], intro: 'The apps of the suite: where each answers, who may use it, whether an AI assistant may, and every setting they read as they start. Its settings opens what an app alone has.' },
   servers: { label: 'Servers', subs: ['updates', 'certificate', 'jobs', 'logs'],
     intro: 'The servers the suite runs on: their version and updates, the certificate they answer HTTPS with, the background jobs they run, and their log.' },
   keys: { label: 'Keys', subs: ['keys'], intro: 'The keys and tokens the apps use to reach other services. They are stored once, for the whole suite, and never shown again.' },
@@ -685,7 +685,10 @@ function apps(el, ctx) {
             h('div', { class: 'sa-muted sa-small' }, a.registered ? `${a.app} · seen ${sinceText(a.lastSeen)}` : `${a.app} · not registered (only in the data)`)),
           h('td', { class: 'sa-small' }, a.version || '–'), h('td', null, dr), h('td', null, rl), h('td', null, mcpBox(a, o)),
           h('td', { class: 'sa-small' }, `${a.roles} role${a.roles === 1 ? '' : 's'}, ${a.appPasswords} app password${a.appPasswords === 1 ? '' : 's'}`),
-          h('td', { style: { textAlign: 'right' } }, h('button', { class: 'sa-btn danger', onclick: () => forgetApp(ctx, a) }, 'Forget')));
+          h('td', { style: { textAlign: 'right', whiteSpace: 'nowrap' } },
+            // the app's own screens (what it alone has: ioPix's models, ioCalendar's holidays), from this one place
+            a.url && a.app !== o.app ? h('a', { class: 'sa-btn', href: `${a.url}/#/settings`, target: '_blank', rel: 'noopener' }, 'Its settings') : null,
+            ' ', h('button', { class: 'sa-btn danger', onclick: () => forgetApp(ctx, a) }, 'Forget')));
       }))));
   const one = h('div');
   el.append(one);

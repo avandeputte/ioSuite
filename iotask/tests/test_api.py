@@ -215,3 +215,39 @@ def test_a_shared_list_never_takes_the_address_of_a_private_one(client):
     again = model.create_list(ann, "Trips")
     slugs = {r["id"]: r["slug"] for r in db.q("SELECT id, slug FROM tsk_lists WHERE id IN (%s, %s, %s)", (mine, shared, again))}
     assert slugs[mine] == "trips" and len(set(slugs.values())) == 3, slugs
+
+
+def test_two_first_requests_at_once_make_one_personal_list(client, monkeypatch):
+    """The first time someone uses ioTask their Personal list is made. Two requests can be that first one at the same
+    moment (the start page's Today card and its search): the one that loses carries on with the other's list."""
+    import threading
+
+    from iosuite_shared import users
+
+    from iotask import db, model
+    bea = users.create("bea", "secret123", "member", "iotask")
+    both, real, errors = threading.Barrier(2, timeout=5), db.ex, []
+
+    def ex(sql, args=None):
+        if sql.startswith("INSERT INTO tsk_lists"):
+            try:
+                both.wait()   # each has looked, and found the name free, before either writes
+            except threading.BrokenBarrierError:
+                pass
+        return real(sql, args)
+
+    monkeypatch.setattr(db, "ex", ex)
+
+    def first_use():
+        try:
+            model.ensure_personal(bea)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=first_use) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert errors == []
+    assert db.one("SELECT count(*) AS n FROM tsk_lists WHERE owner_id = %s", (bea["id"],))["n"] == 1

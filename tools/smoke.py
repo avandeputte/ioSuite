@@ -96,6 +96,10 @@ def main() -> int:
             status = {}
         if code != 200 or not status:
             notes.append(f"status {code}")
+        # the one live-refresh stream: its browser side is served by every app (iosuite_shared.live)
+        code, kind, body, _ = ask(f"{web}{folder}/api/live.js")
+        if code != 200 or "javascript" not in kind or b"onChange" not in body:
+            notes.append(f"live.js {code} {kind}")
         if a.sync:
             code, kind, body, where = ask(f"{sync}{folder}/api/status")
             if code != 200:

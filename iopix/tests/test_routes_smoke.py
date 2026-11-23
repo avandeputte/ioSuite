@@ -6,6 +6,7 @@ import pytest
 from fastapi.routing import APIRoute
 
 SKIP = ("/api/backup/", "/api/log/download", "/api/zip", "/orig/", "/mcp")  # downloads and network calls
+NEVER_ENDS = ("/api/live",)  # the live-refresh stream: an answer that goes on for as long as the page is open
 
 
 def _routes():
@@ -16,7 +17,7 @@ def _routes():
         for r in routes:
             if hasattr(r, "original_router"):  # FastAPI's wrapper around an included router
                 walk(r.original_router.routes)
-            elif isinstance(r, APIRoute) and "GET" in r.methods and not any(r.path.startswith(s) for s in SKIP):
+            elif isinstance(r, APIRoute) and "GET" in r.methods and not any(r.path.startswith(s) for s in SKIP) and r.path not in NEVER_ENDS:
                 out.append(r.path)
     walk(app.routes)
     return sorted(set(out))
