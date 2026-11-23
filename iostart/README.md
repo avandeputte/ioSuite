@@ -23,7 +23,10 @@ what the app will show on the start page later (today's events, the newest photo
   for you (ioContact's people, ioCalendar's coming events, ioTask's open tasks, ioRecipe's recipes, ioThings' things, ioDocs' documents, your ioNote notes,
   ioMoney's payees and transactions ("plumber", or an amount: "$280"), ioPix's people, albums, folders and places; each asked
   with your own sign-in, so you see what you may see there), and a row per app that searches itself (each opens on
-  its own results). Arrows
+  its own results). The apps are asked all at once and what they find is ranked together: when more than one app
+  found something, **Best matches** comes first (the closest titles, whichever app they are from), then each app's
+  section, the one with the best find first. An app in the same copy of the program is asked inside it, one on another
+  server over the network; an app slow to answer joins the list where it ranks when it does. Arrows
   pick a row, Enter opens it. When nothing of the suite matches, Enter searches the web (DuckDuckGo, or the engine
   picked in Customize the page); a prefix picks a site (`g` Google, `w` Wikipedia, `yt` YouTube, `m` Maps, `gh`
   GitHub…, also as `!g`), and an address typed in full (`github.com`) opens.
@@ -324,7 +327,7 @@ Covered: status and sign-in, the tiles and where they point (this host, the forw
 the environment), hiding an app, the weather (AccuWeather mocked: set-up, the place search, the server's copy and its
 age, a stale reading when AccuWeather is down), Home Assistant (its API mocked: set-up, the card's entities and
 their wording, the allowlist for switching, the search, the alerts), the tiles' glimpses (the apps' answers mocked: On this day and
-Rediscover, the rest of today and what's next, steps and rings, the week's bills, an app that refuses or is down), the search box's finds in ioMoney, ioDocs and ioPix, the ioDocs tile, a task and a note from the search box, the bookmarks (groups, links, order, moves, the homepage import; Tidy up's check against a server made in the test, and its duplicates) and
+Rediscover, the rest of today and what's next, steps and rings, the week's bills, an app that refuses or is down), the search box's finds in ioMoney, ioDocs and ioPix, one search ranked across the apps (a slow app late, a refused one left out), the ioDocs tile, a task and a note from the search box, the bookmarks (groups, links, order, moves, the homepage import; Tidy up's check against a server made in the test, and its duplicates) and
 what a viewer may not change. CI runs them against MariaDB.
 
 ## Layout
@@ -339,6 +342,7 @@ api.py             the REST API: the apps and their settings (sign-in, accounts,
 apps.py            the suite's apps as they registered (iosuite_shared.suite) and the order of their tiles
 status.py          is each app up (its /api/status) and does it have an update; is each bookmark reachable
 layout.py          each account's own layout: hidden tiles and cards, the tiles' order, the photo strip
+search.py          one search: every app asked at once as the viewer, the finds ranked together
 widgets.py         what the tiles and cards show, what the search box finds and adds: ioPix, ioCalendar, ioTask, ioHealth, ioMoney, ioDocs, ioNote and ioContact asked over their APIs with the viewer's sign-in
 bookmarkcheck.py      Tidy up: the bookmarks whose address no longer answers, is gone or moved, and the same address kept twice
 weather.py         AccuWeather: the settings, the place search, the cached conditions and forecast
@@ -358,6 +362,16 @@ __main__.py        python -m iostart: the server (HOST, PORT)
 static/            the web app: index.html, app.js (one module, no build step), app.css, the icons (each app's tile shows the icon it registered, served by that app)
 tests/             pytest, against a MariaDB of its own
 ```
+
+### One search
+
+The search box asks `GET /api/search?q=&tz=&apps=` once (`iostart/search.py`). It asks every app with a search
+(app.json `start.find`) that the viewer may use, at the same time, at its `/api/suite/search` with the viewer's own
+sign-in (`widgets.fetch`, so `iosuite_shared.links.as_viewer`: inside the copy when the app runs there, else over the
+network), and scores every item the same way (`search.score`: how the title matches, the app's own order, soon, then
+the app's place in the box). It answers `{items, apps, late}`: items best first, each with its `app` and `score`; the
+apps that had not answered within `search.DEADLINE` seconds are in `late`, and the page asks each of those again with
+`apps=<key>&wait=1`. Finished tasks and events that are over are left out.
 
 ### Growing the page
 

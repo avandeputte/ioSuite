@@ -21,7 +21,8 @@ every app works without it. It earns its place once you run two or more apps.
   link is behind), ioDocs' documents to renew; each person sees only what that app shows them.
 - **The week ahead**: a Birthdays card (ioContact) and a This week card (ioCalendar).
 - **A search box** (⌘K / Ctrl-K) across the apps and bookmarks (people, events, tasks, recipes, notes, things,
-  payees and transactions, the people, albums and places of your photos), the web as a fallback, and **Quick add**:
+  payees and transactions, the people, albums and places of your photos), asked all at once and ranked together with
+  the best matches first, the web as a fallback, and **Quick add**:
   "dinner fri 19:00" makes an event, "t buy milk sat" a task, "n the gate code is 4411" a note.
 - **Tidy up** on the Bookmarks page: finds the links that no longer work, the ones that moved (the new address is one
   click away) and the same address kept twice.
