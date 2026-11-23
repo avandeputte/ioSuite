@@ -2,11 +2,11 @@
 
    Three panes on a wide screen (your feeds, the articles, the one being read), one at a time on a phone. The page
    keeps its place in the address (#/news/f/12, #/news/d/Tech, #/news/starred, #/news/a/<article>) without redrawing
-   itself for it. app.js hands over its helpers (setup), so this file needs nothing of its own. */
-let h, api, icon, dialog, confirmDialog, toast, fail, S;
-export function setup(env) { ({ h, api, icon, dialog, confirmDialog, toast, fail, S } = env); }
+   itself for it. */
+import { confirmDialog, dialog, fail, fld, icon, toast } from '../../api/auth/frame.js';
+import { h } from '../../api/auth/ui.js';
+import { api, S } from './core.js';
 
-const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 /** "5 min", "3 h", "2 d", "12 Nov": how long ago, short. */
 function ago(at) {
   const s = Date.now() / 1000 - at;

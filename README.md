@@ -171,7 +171,10 @@ Each app's page is a page of its own, and what the pages all did in the same wor
 sheet the suite serves beside them: `iosuite_shared/static/frame.js` (the icons most of them draw, the note at the
 foot of the page, dialogs, the menus, the menu of the suite's apps, the account's menu, the sign-in screen, the
 sidebar, the theme), `account-panel.js` (`h()`, the client, Settings › Account) and `base.css`. A page imports
-them from its own app (`api/auth/frame.js`), so it works the same on whichever server the app runs.
+them from its own app (`api/auth/frame.js`), so it works the same on whichever server the app runs. A page's own
+script has no build step: `static/app.js` starts it, and where it is more than one file the modules are in
+`static/js/` by subject (`core.js`: the helpers and the page's state; `main.js`: the routes and the start; then a
+module per page or part of the page).
 
 What two or three apps need in the same way is in the shared library too, not in each of them: family members as
 tags on events and tasks (`iosuite_shared.family.Tags`), files kept in an app's database (`stored.py`: ioDocs,

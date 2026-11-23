@@ -6,7 +6,7 @@ from iosuite_shared.errors import Invalid
 from iomoney import db, model
 
 MAX_SEARCHES = 40
-# the filters as the Transactions page names them in its address (static/app.js showTransactions)
+# the filters as the Transactions page names them in its address (static/js/transactions.js showTransactions)
 KEYS = ("q", "account", "category", "month", "flow", "rec", "rcp", "amt", "hid", "tag", "rev")
 
 
