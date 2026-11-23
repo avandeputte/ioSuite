@@ -29,6 +29,7 @@ from iosuite_shared.proxyauth import Forwarded, Proxy, authlog, peer_of, seen
 from iosuite_shared.errors import Invalid
 
 STATUS_PATH = routers.STATUS_PATH
+LIVE_JS_PATH = "/api/live.js"  # the page's side of the live-refresh stream: a script that says nothing of the install
 MCP_PATH = "/mcp"  # where every app serves its MCP server (iosuite_shared.mcp.PATH)
 __all__ = ["Auth", "Access", "ACCESS_ROLES", "BodyCap", "TooLarge", "content_type", "json_body", "public_user", "peer_of", "STATUS_PATH"]
 
@@ -272,13 +273,15 @@ class Auth:
 
     def middleware(self, open_paths=(), open_prefixes=("/api/auth/",), is_open=None, before=None, after=None, api_prefix="/api/"):
         """A complete auth middleware: resolve, the require-sign-in rule (open_paths / open_prefixes, or whatever
-        `is_open(request)` says, stay reachable; /api/auth/ and /api/status always are), the cross-site check on writes
+        `is_open(request)` says, stay reachable; /api/auth/, /api/status and the live-refresh script always are), the cross-site check on writes
         (the API, and /dav when signed in by the cookie),
         and the cookie afterwards. `before(request)` runs once the user is known and may return a response (the app's own gates:
         MCP tokens...); `after(request, response)` runs at the end."""
         auth = self
         open_prefixes = tuple(open_prefixes) + ("/api/auth/",)
-        open_paths = tuple(open_paths) + (STATUS_PATH,)  # the status answers everyone, as the sign-in routes do
+        # the status answers everyone, as the sign-in routes do; so does the script of the live-refresh stream (the
+        # stream itself, /api/live, is for the signed in)
+        open_paths = tuple(open_paths) + (STATUS_PATH, LIVE_JS_PATH)
 
         async def guard(request: Request, call_next):
             path = request.url.path
