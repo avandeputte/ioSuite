@@ -17,6 +17,22 @@ def sent(monkeypatch):
     return out
 
 
+def test_a_finished_sync_starts_the_notifications(client, admin, started_by_a_sync, monkeypatch):
+    """The app hands a finished sync to the notifications (iohealth.main), in a thread of their own, with the account."""
+    import threading
+
+    from iohealth import upload as sync
+    assert notify.after_sync_quietly in started_by_a_sync
+    who = []
+    monkeypatch.setattr(sync, "on_user_sync", [who.append])
+    t = datetime.now(timezone.utc).replace(second=0, microsecond=0) - timedelta(hours=1)
+    upload(client, app_password(client), sample("a", "step_count", t, 100))
+    for th in threading.enumerate():
+        if th.name == "after-sync":
+            th.join(10)
+    assert who == [admin["id"]]
+
+
 def test_goal_reached(client, admin, sent):
     from cryptography.hazmat.primitives.asymmetric import ec
     now = datetime.now(timezone.utc).replace(second=0, microsecond=0)

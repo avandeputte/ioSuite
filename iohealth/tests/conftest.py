@@ -52,6 +52,18 @@ def clean(_client):
     yield
 
 
+@pytest.fixture(autouse=True)
+def started_by_a_sync(app, monkeypatch):
+    """A finished sync starts the notifications ("goal reached", "outside your usual") in a thread of its own, at the
+    time it then is. A test that uploads and next asks for a notification itself, at a time it chose, raced that thread
+    for the one notification of the day, and lost now and then once the server's clock was past the morning time. So
+    no test has that thread: each asks itself. What a sync would have started is handed to the test that checks it."""
+    from iohealth import upload
+    wired = list(upload.on_user_sync)
+    monkeypatch.setattr(upload, "on_user_sync", [])
+    return wired
+
+
 @pytest.fixture
 def client(_client):
     _client.cookies.clear()
