@@ -512,7 +512,7 @@ static void draw_clock(void)
     shown_min = t.tm_min;
     char at[16] = "";
     if (clock_is_set()) fmt_time(at, sizeof at, now);
-    lv_label_set_text(clock_lbl, at);
+    kit_set_text(clock_lbl, at);
 }
 
 static void draw(void)
@@ -538,6 +538,9 @@ static void fetch(void *arg)
     snprintf(path, sizeof path, "/api/trmnl/%s?clock=%d%s%s", KINDS[k].key, S.clock24 ? 24 : 12, S.tz[0] ? "&tz=" : "", S.tz);
     api_resp_t r = api_request("GET", path, NULL, 32 * 1024, NULL);
     cJSON *j = r.status == 200 ? cJSON_Parse(r.body) : NULL;
+    /* when the start page made it: not shown here, and without it an answer that says nothing new is the same as the
+     * one before */
+    if (j) cJSON_DeleteItemFromObject(j, "updated");
     char w[96] = "";
     if (!j) {
         if (r.status == 200) strlcpy(w, "The start page's answer could not be read", sizeof w);
@@ -548,14 +551,19 @@ static void fetch(void *arg)
     api_free(&r);
     ui_lock();
     cJSON *old = NULL;
-    if (j) {
+    /* the same answer as the last one, as most are: what is on screen is not drawn again */
+    bool same = j && data[k] && cJSON_Compare(j, data[k], true);
+    if (same) {
+        old = j;
+        got_at[k] = time(NULL);
+    } else if (j) {
         old = data[k];
         data[k] = j;
         got_at[k] = time(NULL);
     }
     strlcpy(why[k], w, sizeof why[k]);
     /* what is on screen stays when the start page does not answer for a moment */
-    if (cur == k && (j || !data[k])) draw();
+    if (cur == k && !same && (j || !data[k])) draw();
     ui_unlock();
     if (old) cJSON_Delete(old);
 }
@@ -565,11 +573,11 @@ static void show(int k)
     bool was = cur >= 0;
     cur = k;
     if (k < 0) {
-        lv_obj_add_flag(layer, LV_OBJ_FLAG_HIDDEN);
+        kit_show(layer, false);
         if (was) ui_wall_viewing(false);
         return;
     }
-    lv_obj_remove_flag(layer, LV_OBJ_FLAG_HIDDEN);
+    kit_show(layer, true);
     if (!was) ui_wall_viewing(true);
     draw();
     if (!data[k] || time(NULL) - got_at[k] > 20) feed_run(fetch, (void *)(intptr_t)k);

@@ -25,6 +25,8 @@ Firmware that puts the start page's wall (`#/wall`) on its own screen, on USB po
 - **On its battery** (Tab5): how full it is, beside the date, while the battery is in use (with a charge mark
   while USB power fills it). Settings › Power shows the readings as they are. The Waveshare board has nothing that
   measures its battery.
+- **How quick it draws** is on the device: Settings › Screen counts the large redraws (a scroll, a panel, a
+  photo) since Settings was opened and says how long they took, each and the slowest.
 - **Updates itself** at 3 AM from the release `wall-latest` (Settings turns that off). A firmware that does not
   run for a minute is rolled back.
 
@@ -88,5 +90,35 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
 | `main/fonts/` | Inter (SIL Open Font License, `OFL.txt`) |
+| `tools/sim/` | the screens on a PC: what each touch costs to draw, and pictures of every screen |
 
 The server side is in the start page: `iostart/app/wall.py`.
+
+## What keeps it quick
+
+The screen is drawn in software, a whole area at a time, and turned by the P4's pixel processor on its way to the
+panel; what a touch costs is how many pixels are drawn for it. LVGL draws, for every area that changed, the topmost
+thing that covers the area and all that is above it. What follows from that, and is worth keeping when a screen is
+added or changed:
+
+- **A panel is part of the screen it opens over** (`kit_panel`), not of LVGL's top layer: nothing on the top layer
+  ever counts as covering, so a panel there had the photo and the whole wall drawn again under it at every frame of
+  a scroll. What scrolls in a panel is a plain rectangle in the card's colour: round corners cover nothing.
+- **One layer behind the wall's text.** A photo's shades (darker where the text is, as dark as the photo is bright)
+  are worked into its pixels once, when it is decoded (`wall_shade_photo`), on the photos' task. The sky and its two
+  see-through shades are drawn only while no photo fills the screen.
+- **Only what changed is made again.** The feed comes every minute and mostly says the same: the wall compares each
+  part's share of it with what it drew (`ui_wall_feed_changed`) and leaves the rest alone, and a view does the same
+  with its answer. A text or a colour set to what it already is still draws the thing again in LVGL, as does showing
+  what is shown: `kit_set_text` and `kit_show` look first.
+- **A text that changes every second has a width of its own** (a running timer): a label that grows by a pixel lays
+  out and draws everything around it.
+- **A key pressed draws that key**, not the keyboard (`kit_keyboard`).
+- **Nothing slow on the screen's task:** settings are written to the flash by a task of their own, the network and
+  the photos have theirs.
+
+`tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
+with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were
+filled, copied and blended in them (`./run.sh 7b` for the Waveshare's size, `MAIN=… ./run.sh` for another copy of
+`main/`, to compare). The pictures of what it passed are in `tools/sim/out/`. It counts work, not time: how long a
+frame takes on the board is what Settings › Screen says.
