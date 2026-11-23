@@ -1,0 +1,62 @@
+{
+  "key": "iocalendar",
+  "name": "ioCalendar",
+  "description": "Calendar",
+  "tag": "The family calendar",
+  "color": "#963522",
+  "folder": "calendar",
+  "sync": [
+    "/dav",
+    "/.well-known/",
+    "/ics/"
+  ],
+  "order": 40,
+  "compose": {
+    "name": "calendar",
+    "what": "calendar"
+  },
+  "start": {
+    "rank": 30,
+    "tile": true,
+    "find": {
+      "head": "Calendar",
+      "rank": 20
+    },
+    "searchUrl": "#/search/{q}"
+  },
+  "items": [
+    {
+      "kind": "event",
+      "label": "Event",
+      "plural": "Events",
+      "href": "#/event/{id}"
+    }
+  ],
+  "notifications": [
+    {
+      "kind": "events",
+      "label": "Event reminders",
+      "hint": "The reminders set on events"
+    }
+  ],
+  "settings": [
+    {
+      "name": "HOLIDAYS_COUNTRY",
+      "label": "Public holidays: countries",
+      "type": "text",
+      "hint": "Until Settings › Holidays and birthdays is chosen: a two-letter country code or several (BE,NL); off: none. Empty: the time zone's."
+    },
+    {
+      "name": "HOLIDAYS_REGION",
+      "label": "Public holidays: region",
+      "type": "text",
+      "hint": "A state or province code of the first country."
+    },
+    {
+      "name": "HOLIDAYS_LANGUAGE",
+      "label": "Public holidays: language",
+      "type": "text",
+      "hint": "The language of the holidays' names."
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+"""What a person keeps on the start page, counted or removed when their account is deleted (iosuite_shared.persondata):
+their own bookmarks (with what is in their own folders), their choices of shared bookmarks for their start page,
+their home page layout, the copies of their bookmarks file a browser synced with (/dav/bookmarks), the TRMNL screens
+the start page pushes for them (their webhook addresses and app password, kept with the keys and tokens) and their
+TRMNL devices (each with its key) the kitchen timers they started, and the feeds they follow with what they read and starred. Shared bookmarks stay, whoever added them: they are everyone's."""
+from iostart import db
+
+FILES = ("bookmarkfile", "bookmarkfile-base", "bookmarkfile-temp")  # bookmarkdav._key: "<what>:<user id>:<file name>"
+
+
+def of(user_id: int, remove: bool) -> list:
+    own = db.one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE owner = %s AND shared = 0", (user_id,))["n"]
+    starts = db.one("SELECT count(*) AS n FROM prt_bookmark_starts WHERE user_id = %s", (user_id,))["n"]
+    layout = db.one("SELECT count(*) AS n FROM prt_settings WHERE name LIKE %s", (f"user:{int(user_id)}:%",))["n"]
+    shared = db.one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE owner = %s AND shared = 1", (user_id,))["n"]
+    files = [f"{what}:{int(user_id)}:%" for what in FILES]
+    synced = db.one("SELECT count(*) AS n FROM prt_settings WHERE name LIKE %s", (files[0],))["n"]
+    from iostart import trmnlpush, trmnlserver
+    pushed = len(trmnlpush.hooks(user_id))
+    devices = len(trmnlserver.devices_of(user_id))
+    from iostart import timers
+    running = timers.person_data(user_id, remove)
+    from iostart import news
+    feeds = news.person_data(user_id, remove)
+    if remove:
+        trmnlserver.forget_person(user_id)  # their TRMNL devices and each one's key
+        trmnlpush.stop(user_id)  # the TRMNL webhook addresses and the app password they were read with (keys and tokens)
+        with db.tx():
+            # children first is not needed: a folder of theirs only holds their own (ON DELETE CASCADE does the rest)
+            db.ex("DELETE FROM prt_bookmark_nodes WHERE owner = %s AND shared = 0", (user_id,))
+            db.ex("DELETE FROM prt_bookmark_starts WHERE user_id = %s", (user_id,))
+            db.ex("DELETE FROM prt_settings WHERE name LIKE %s", (f"user:{int(user_id)}:%",))
+            for like in files:
+                db.ex("DELETE FROM prt_settings WHERE name LIKE %s", (like,))
+    return [{"what": "own bookmarks and folders", "one": "own bookmark or folder", "count": own},
+            {"what": "start page choices", "one": "start page choice", "count": starts},
+            {"what": "home page layout", "count": layout},
+            {"what": "synced bookmarks files", "one": "synced bookmarks file", "count": synced},
+            {"what": "TRMNL screens pushed", "one": "TRMNL screen pushed", "count": pushed},
+            {"what": "TRMNL devices", "one": "TRMNL device", "count": devices},
+            {"what": "kitchen timers", "one": "kitchen timer", "count": running},
+            {"what": "feeds followed", "one": "feed followed", "count": feeds},
+            {"what": "shared bookmarks they added", "one": "shared bookmark they added", "count": shared, "kept": True}]

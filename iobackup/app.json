@@ -1,0 +1,43 @@
+{
+  "key": "iobackup",
+  "name": "ioBackup",
+  "description": "Database backups",
+  "tag": "Database backups",
+  "color": "#8a4b0f",
+  "folder": "backup",
+  "order": 120,
+  "adminTool": true,
+  "compose": {
+    "name": "backup",
+    "what": "backups"
+  },
+  "notifications": [
+    {
+      "kind": "backups",
+      "label": "Failed backups",
+      "hint": "When a backup does not finish",
+      "admin": true
+    }
+  ],
+  "settings": [
+    {
+      "name": "BACKUP_DIR",
+      "label": "Suggested backup folder",
+      "type": "text",
+      "default": "/var/backups/iobackup",
+      "hint": "The folder a new local destination suggests."
+    },
+    {
+      "name": "WORK_DIR",
+      "label": "Work folder",
+      "type": "text",
+      "hint": "Where a backup is put together before it is stored (room for two compressed backups). Empty: in the data folder."
+    },
+    {
+      "name": "CACHE_DIR",
+      "label": "Cache folder",
+      "type": "text",
+      "hint": "Where a backup read from Google Drive is kept while it is restored. Empty: in the data folder."
+    }
+  ]
+}

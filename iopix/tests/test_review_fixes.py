@@ -1,0 +1,170 @@
+"""Fixes from the code review: writes that must never wipe a photo's rows, duplicate files that keep their own
+identity, and values that must not be mistaken for timestamps."""
+import sqlite3
+
+import pytest
+
+from helpers import login
+
+from iopix.digikam import dkdb
+from iopix.digikam.dbsync import SyncError
+
+
+def test_a_failed_metadata_read_changes_nothing(client, lib, monkeypatch):
+    """exiftool giving nothing back (a dropped mount, a timeout) must not rewrite the photo's rows from an empty record."""
+    from iopix.photos import metaedit, scanner
+    pid = lib["with_tags"][0] if lib.get("with_tags") else lib["ids"][0]
+    con = sqlite3.connect(lib["db"])
+    try:
+        before = con.execute("SELECT count(*) FROM ImageTags WHERE imageid = ?", (pid,)).fetchone()[0]
+        comments = con.execute("SELECT count(*) FROM ImageComments WHERE imageid = ?", (pid,)).fetchone()[0]
+    finally:
+        con.close()
+    real_exif = scanner._exif
+    monkeypatch.setattr(scanner, "_exif", lambda paths: {})
+    with pytest.raises(SyncError):
+        metaedit.reread(pid, require_digikam_closed=False)
+    monkeypatch.setattr(scanner, "_exif", real_exif)
+    con = sqlite3.connect(lib["db"])
+    try:
+        assert con.execute("SELECT count(*) FROM ImageTags WHERE imageid = ?", (pid,)).fetchone()[0] == before
+        assert con.execute("SELECT count(*) FROM ImageComments WHERE imageid = ?", (pid,)).fetchone()[0] == comments
+    finally:
+        con.close()
+
+    def boom(*a, **k):
+        raise OSError("exiftool: no such file")
+    monkeypatch.setattr("subprocess.run", boom)
+    with pytest.raises(SyncError):
+        scanner.read(["/nowhere/x.jpg"])
+
+
+def test_a_reread_keeps_digikams_internal_tags(client, lib):
+    """digiKam's own tags (Scanned for Faces, version chains) are not in any file; a reread must not drop them."""
+    from iopix.photos import metaedit
+    pid = lib["ids"][0]
+    con = sqlite3.connect(lib["db"])
+    try:
+        root = con.execute("SELECT id FROM Tags WHERE name = '_Digikam_Internal_Tags_' AND pid = 0").fetchone()
+        if not root:
+            pytest.skip("the scratch library has no internal tags root")
+        tid = con.execute("SELECT id FROM Tags WHERE pid = ? AND name = 'Scanned for Faces'", (root[0],)).fetchone()
+        if not tid:
+            con.execute("INSERT INTO Tags (pid, name) VALUES (?, 'Scanned for Faces')", (root[0],)); tid = (con.execute("SELECT last_insert_rowid()").fetchone()[0],)
+        con.execute("INSERT OR IGNORE INTO ImageTags (imageid, tagid) VALUES (?, ?)", (pid, tid[0]))
+        con.commit()
+    finally:
+        con.close()
+    metaedit.reread(pid, require_digikam_closed=False)
+    con = sqlite3.connect(lib["db"])
+    try:
+        assert con.execute("SELECT 1 FROM ImageTags WHERE imageid = ? AND tagid = ?", (pid, tid[0])).fetchone(), "the internal tag survived the reread"
+    finally:
+        con.close()
+
+
+def test_identical_copies_keep_their_own_identity(client):
+    """Two byte-identical files are two photos: neither takes the other's viewer id on a rebuild."""
+    from iopix.data import index, state
+    con = state.connect()
+    try:
+        con.execute("DELETE FROM pix_photo_identity WHERE dk_id IN (900101, 900102, 900103)"); con.commit()
+    finally:
+        con.close()
+    images = [(900101, 0, "a.jpg", 1234, "samehash"), (900102, 0, "copy of a.jpg", 1234, "samehash")]
+    paths = {900101: "/lib/a.jpg", 900102: "/lib/copy of a.jpg"}
+    assert index.sync_photo_ids(images, paths) == {}
+    con = state.connect()
+    try:
+        first = dict(con.execute("SELECT dk_id, id FROM pix_photo_identity WHERE dk_id IN (900101, 900102)").fetchall())
+    finally:
+        con.close()
+    assert set(first) == {900101, 900102} and first[900101] != first[900102]
+    for _ in range(3):  # the same build again and again: nothing moves
+        assert index.sync_photo_ids(images, paths) == {}
+    con = state.connect()
+    try:
+        again = dict(con.execute("SELECT dk_id, id FROM pix_photo_identity WHERE dk_id IN (900101, 900102)").fetchall())
+    finally:
+        con.close()
+    assert again == first
+    # digiKam renumbers the first one (its old number gone): its row follows, the copy's stays
+    images2 = [(900103, 0, "a.jpg", 1234, "samehash"), (900102, 0, "copy of a.jpg", 1234, "samehash")]
+    paths2 = {900103: "/lib/a.jpg", 900102: "/lib/copy of a.jpg"}
+    assert index.sync_photo_ids(images2, paths2) == {900101: 900103}
+    con = state.connect()
+    try:
+        after = dict(con.execute("SELECT dk_id, id FROM pix_photo_identity WHERE dk_id IN (900102, 900103)").fetchall())
+        con.execute("DELETE FROM pix_photo_identity WHERE dk_id IN (900101, 900102, 900103)"); con.commit()
+    finally:
+        con.close()
+    assert after[900103] == first[900101] and after[900102] == first[900102]
+
+
+def test_only_whole_timestamps_are_timestamps():
+    assert dkdb.looks_like_datetime("2024-01-01T10:00:00") and dkdb.looks_like_datetime("2024-01-01T10:00:00.123")
+    assert not dkdb.looks_like_datetime("2024-01-01T10:00:00 New Year party")
+    assert not dkdb.looks_like_datetime("2024-01-01T10:00:00.000 x")
+
+
+def test_sidecar_naming_follows_digikam(tmp_path, monkeypatch):
+    from iopix.photos import edits
+    photo = tmp_path / "IMG_1.jpg"; photo.write_bytes(b"x")
+    monkeypatch.delenv("SIDECAR_COMPAT", raising=False)
+    assert edits.sidecar_path(str(photo)) == str(photo) + ".xmp", "digiKam's default name for a new sidecar"
+    (tmp_path / "IMG_1.xmp").write_text("<x/>")
+    assert edits.sidecar_path(str(photo)) == str(tmp_path / "IMG_1.xmp"), "the compatible name when only that one exists"
+    (tmp_path / "IMG_1.cr2").write_bytes(b"y")
+    assert edits.sidecar_path(str(photo)) == str(photo) + ".xmp", "IMG_1.xmp would be shared with IMG_1.cr2: not this photo's"
+    (tmp_path / "IMG_1.jpg.xmp").write_text("<x/>")
+    assert edits.sidecar_path(str(photo)) == str(photo) + ".xmp", "the default name wins when both exist"
+    photo2 = tmp_path / "IMG_2.jpg"; photo2.write_bytes(b"x")
+    monkeypatch.setattr(edits.config, "SIDECAR_COMPAT", True)
+    assert edits.sidecar_path(str(photo2)) == str(tmp_path / "IMG_2.xmp"), "new sidecars in the compatible style when asked"
+
+
+def test_only_people_with_a_face_box_are_protected_by_the_sync(client, lib):
+    """A person tagged without a face box (a video, or a tag-only person) syncs like any keyword; one with a box stays."""
+    from iopix.photos import consistency
+    con = sqlite3.connect(lib["db"])
+    try:
+        boxed = con.execute("SELECT imageid, tagid FROM ImageTagProperties WHERE property = 'tagRegion' LIMIT 1").fetchone()
+        if not boxed:
+            pytest.skip("no named face in the scratch library")
+        pid, tid = boxed
+        path = con.execute("SELECT name FROM Tags WHERE id = ?", (tid,)).fetchone()[0]
+        with_box = {r[0] for r in con.execute("SELECT DISTINCT imageid FROM ImageTagProperties")}
+        other = next(i for i in lib["ids"] if i != pid and i not in with_box)  # a photo with no face box at all
+        con.execute("INSERT OR IGNORE INTO ImageTags (imageid, tagid) VALUES (?, ?)", (other, tid)); con.commit()  # the same person, no box
+    finally:
+        con.close()
+    b = consistency._boxed_people([pid, other])
+    assert any(p.endswith(path) for p in b.get(pid, ())), "the person with the box is protected on that photo"
+    assert not b.get(other), "the same person without a box is an ordinary tag on the other photo"
+    con = sqlite3.connect(lib["db"]); con.execute("DELETE FROM ImageTags WHERE imageid = ? AND tagid = ?", (other, tid)); con.commit(); con.close()
+
+
+def test_a_renumbered_photo_keeps_its_row_when_a_copy_appears_in_the_same_build():
+    """digiKam renumbers a photo while a byte-identical copy appears elsewhere (one build sees both): the photo at its
+    own path keeps its viewer id, whichever number comes first; the copy is a new photo."""
+    from iopix.data import index, state
+
+    def forget():
+        con = state.connect()
+        try:
+            con.execute("DELETE FROM pix_photo_identity WHERE dk_id IN (900111, 900112, 900115) OR hash = 'samehash2'"); con.commit()
+        finally:
+            con.close()
+    forget()
+    try:
+        assert index.sync_photo_ids([(900111, 0, "a.jpg", 99, "samehash2")], {900111: "/lib/a.jpg"}) == {}
+        images = [(900112, 0, "a.jpg", 99, "samehash2"), (900115, 0, "a.jpg", 99, "samehash2")]  # the copy first
+        assert index.sync_photo_ids(images, {900112: "/lib/copy/a.jpg", 900115: "/lib/a.jpg"}) == {900111: 900115}
+        con = state.connect()
+        try:
+            rows = dict(con.execute("SELECT dk_id, path FROM pix_photo_identity WHERE hash = 'samehash2'").fetchall())
+        finally:
+            con.close()
+        assert rows == {900115: "/lib/a.jpg", 900112: "/lib/copy/a.jpg"}
+    finally:
+        forget()

@@ -1,0 +1,56 @@
+{
+  "key": "iorecipe",
+  "name": "ioRecipe",
+  "description": "Recipes",
+  "tag": "The family's recipes",
+  "color": "#4a7c23",
+  "folder": "recipes",
+  "order": 60,
+  "compose": {
+    "name": "recipes",
+    "what": "recipes"
+  },
+  "start": {
+    "find": {
+      "head": "Recipes",
+      "rank": 40
+    },
+    "searchUrl": "#/search/{q}"
+  },
+  "items": [
+    {
+      "kind": "recipe",
+      "label": "Recipe",
+      "plural": "Recipes",
+      "href": "#/recipe/{id}"
+    }
+  ],
+  "settings": [
+    {
+      "name": "OCR_LANGUAGES",
+      "label": "Reading photos of recipes: languages",
+      "type": "text",
+      "hint": "The languages Tesseract tries, as its codes with + between (eng+nld+fra). Empty: every language installed."
+    },
+    {
+      "name": "AI",
+      "label": "Read web pages without recipe data with AI",
+      "type": "switch",
+      "default": "1",
+      "hint": "A small model that runs on this server, inside the app."
+    },
+    {
+      "name": "AI_MODEL",
+      "label": "AI model",
+      "type": "text",
+      "hint": "Another model than the one the app fetches: a GGUF file on the server, or the address of one."
+    },
+    {
+      "name": "AI_TIMEOUT",
+      "label": "AI: seconds one page may take",
+      "type": "number",
+      "default": "300",
+      "hint": ""
+    }
+  ]
+}

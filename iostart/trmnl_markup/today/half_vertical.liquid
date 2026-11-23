@@ -1,0 +1,37 @@
+<div class="layout layout--col layout--top layout--stretch-x gap lg:gap--large">
+  <div class="flex flex--row flex--between w--full">
+    <div class="flex flex--col flex--left">
+      <span class="value value--small lg:value--base">{{ weekday }}</span>
+      <span class="label lg:label--large">{{ date }}</span>
+    </div>
+    {%- if weather %}
+    <div class="flex flex--col flex--right">
+      <span class="value value--small lg:value--base">{{ weather.temp }}</span>
+      <span class="label label--small lg:label--base" data-clamp="1">{{ weather.text }}</span>
+    </div>
+    {%- endif %}
+  </div>
+  <div class="columns" data-overflow="true" data-overflow-max-cols="1" data-overflow-counter="true">
+    <div class="column">
+      {%- for g in list %}
+      <span class="label label--underline group-header" data-group-header="true">{{ g.label }}</span>
+      {%- for r in g.rows %}
+      <div class="item">
+        <div class="meta">{% if r.ink != blank %}<div class="bg--{{ r.ink }} w--full h--full {{ inks_only }}"></div>{% endif %}</div>
+        <div class="content">
+          <span class="title title--small lg:title--base lg:text--bold" data-clamp="1">{{ r.title }}</span>
+          <span class="label label--small lg:label--base{% if r.late %} label--error {{ on_grays }}{% endif %}" data-clamp="1">{{ r.when }}{% if r.note != "" %} {{ r.note }}{% endif %}</span>
+        </div>
+      </div>
+      {%- endfor %}
+      {%- if g.rows.size == 0 %}<div class="item"><div class="content"><span class="description lg:description--xlarge">{{ none }}</span></div></div>{% endif %}
+      {%- if g.more > 0 %}<div class="item"><div class="meta"></div><div class="content"><span class="label label--small label--gray lg:label--base">and {{ g.more }} more today</span></div></div>{% endif %}
+      {%- endfor %}
+    </div>
+  </div>
+</div>
+<div class="title_bar">
+  <img class="image" src="{{ iosuite_icon }}">
+  <span class="title">Today</span>
+  <span class="instance">{{ updated }}</span>
+</div>

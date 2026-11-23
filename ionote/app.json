@@ -1,0 +1,59 @@
+{
+  "key": "ionote",
+  "name": "ioNote",
+  "description": "Notes",
+  "tag": "Notes, clipboard snippets and screenshots",
+  "color": "#1c5a5e",
+  "folder": "notes",
+  "order": 30,
+  "keepsOwn": [
+    "workflow"
+  ],
+  "compose": {
+    "name": "notes",
+    "what": "notes"
+  },
+  "install": {
+    "data": true
+  },
+  "start": {
+    "rank": 70,
+    "find": {
+      "head": "Notes",
+      "rank": 50
+    },
+    "searchUrl": "#/notes?q={q}"
+  },
+  "items": [
+    {
+      "kind": "note",
+      "label": "Note",
+      "plural": "Notes",
+      "href": "#/note/{id}",
+      "id": "uuid"
+    }
+  ],
+  "settings": [
+    {
+      "name": "MAX_IMAGE_MB",
+      "label": "Largest image (MB)",
+      "type": "number",
+      "default": "15",
+      "hint": "MariaDB's max_allowed_packet (16 MB by default) must be larger."
+    },
+    {
+      "name": "THUMB_SIZE",
+      "label": "Thumbnail size (pixels)",
+      "type": "number",
+      "default": "480",
+      "hint": ""
+    },
+    {
+      "name": "THUMB_QUALITY",
+      "label": "Thumbnail quality",
+      "type": "number",
+      "default": "80",
+      "hint": "JPEG quality, 1 to 95."
+    }
+  ]
+}

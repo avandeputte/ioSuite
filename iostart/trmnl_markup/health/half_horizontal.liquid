@@ -1,0 +1,28 @@
+<div class="layout layout--row layout--top layout--stretch-x">
+  {%- if missing %}<div class="flex flex--col flex--center w--full"><span class="description">{{ missing }}</span></div>{% endif %}
+  {%- unless missing %}
+  <div class="grid grid--cols-12 w--full">
+    {%- if rings.size > 0 %}
+    <div class="col--span-4 flex flex--row flex--center"><img class="image w--36 h--36 lg:w--72 lg:h--72 {{ grays_only }}" src="{{ rings_img }}"><img class="image w--36 h--36 lg:w--72 lg:h--72 {{ inks_only }}" src="{{ rings_ink }}"></div>
+    {%- endif %}
+    <div class="col--span-4 flex flex--col flex--left gap--small lg:gap--base">
+      <span class="value value--large lg:value--xlarge" data-fit-value="true">{{ steps }}</span>
+      <span class="label lg:label--large">steps today</span>
+      {%- if sleep != "" %}<span class="label label--small lg:label--base">{{ sleep }} asleep</span>{% endif %}
+    </div>
+    <div class="col--span-4 flex flex--col flex--left gap--small lg:gap--medium">
+        {%- for r in rings %}
+        <div class="flex flex--row flex--between w--full">
+          <span class="title title--small lg:title--base lg:text--bold">{{ r.name }}</span>
+          <span class="label label--small lg:label--large">{{ r.value }}{% if r.goal != "" %} / {{ r.goal }}{% endif %} {{ r.unit }}</span>
+        </div>
+        {%- endfor %}
+    </div>
+  </div>
+  {%- endunless %}
+</div>
+<div class="title_bar">
+  <img class="image" src="{{ iosuite_icon }}">
+  <span class="title">Health</span>
+  <span class="instance">{{ updated }}</span>
+</div>

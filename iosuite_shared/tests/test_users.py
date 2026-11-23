@@ -1,0 +1,236 @@
+import pytest
+
+from iosuite_shared import apppasswords, sessions, users
+
+
+def test_create_authenticate_roles():
+    assert not users.any_users()
+    u = users.create("alex", "secret123", "admin", "iopix", email="Alex@Example.com", suite_admin=True)
+    assert u["email"] == "alex@example.com" and u["suiteAdmin"] and u["role"] == "admin"
+    assert users.any_users()
+    assert users.authenticate("alex", "wrong") is None
+    assert users.authenticate("alex", "secret123", "ionote")["role"] == "admin"  # a suite admin everywhere
+    assert users.authenticate("ALEX@example.com", "secret123")["id"] == u["id"]  # by email, case-insensitive
+    v = users.create("kid", "", "viewer", "iopix")
+    assert v["passwordless"] and v["role"] == "viewer"
+    assert users.role_of(v, "ionote") == "member"  # the default role
+    users.db.set_setting("default_role", "none", "ionote")
+    assert users.role_of(v, "ionote") == "none"
+    with pytest.raises(ValueError):
+        users.set_role(v["id"], "iopix", "bogus")
+    with pytest.raises(ValueError):
+        users.update(v["id"], role="editor", app="iopix")  # no password: member at most
+    users.update(v["id"], role="member", app="iopix")  # a member is fine without one
+    assert users.get(v["id"], "iopix")["role"] == "member"
+    users.update(v["id"], password="longenough", role="editor", app="iopix")
+    assert users.get(v["id"], "iopix")["role"] == "editor"
+    assert users.get(v["id"], "ionote")["role"] == "none"
+    with pytest.raises(ValueError):
+        users.update(v["id"], password="")  # an editor somewhere: keeps its password
+    with pytest.raises(ValueError):
+        users.create("Alex", "another12")  # names are unique, case-insensitively
+    with pytest.raises(ValueError):
+        users.delete(u["id"])  # the only suite admin
+    assert [a["name"] for a in users.accounts("ionote")] == ["alex"]  # kid has no access there
+    assert {a["name"] for a in users.accounts("iopix")} == {"alex", "kid"}
+
+
+def test_settings_and_data():
+    u = users.create("alex", "secret123")
+    assert users.get_settings(u["id"], "iopix") == {}
+    out = users.set_settings(u["id"], "iopix", {"theme": "dark", "grid": 4, "x" * 65: "ignored"})
+    assert out == {"theme": "dark", "grid": 4}
+    assert users.set_settings(u["id"], "iopix", {"theme": None}) == {"grid": 4}
+    assert users.get_settings(u["id"], "ionote") == {}  # per app
+    users.set_value(u["id"], "iopix", "person", 42)
+    assert users.get_value(u["id"], "iopix", "person") == 42
+    users.set_value(u["id"], "iopix", "person", None)
+    assert users.get_value(u["id"], "iopix", "person") is None
+
+
+def test_sessions():
+    u = users.create("alex", "secret123", "editor", "iopix")
+    tok = sessions.create(u["id"], "iopix", "password")
+    got = sessions.user_from_token(tok, "ionote")  # the same session serves another app, with the role there
+    assert got["id"] == u["id"] and got["role"] == "member"
+    users.update(u["id"], password="changed123")  # ends every session
+    assert sessions.user_from_token(tok, "iopix") is None
+    tok = sessions.create(u["id"], "iopix", "password")
+    sessions.end_all(u["id"])
+    assert sessions.user_from_token(tok, "iopix") is None
+    assert sessions.user_from_token("garbage", "iopix") is None
+
+
+def test_cookie_domain(monkeypatch):
+    __import__("iosuite_shared.db").db.set_setting("COOKIE_DOMAIN", "example.com")  # the suite's setting (Settings › Global settings)
+    assert sessions.cookie_domain("photo.example.com") == "example.com"
+    assert sessions.cookie_domain("notes.example.com:8610") == "example.com"
+    assert sessions.cookie_domain("192.168.1.5:8600") is None
+    assert sessions.cookie_domain("evil-example.com") is None
+
+
+def test_app_passwords():
+    u = users.create("alex", "secret123", "editor", "iocontact")
+    pw = apppasswords.create(u["id"], "iocontact", "Phone")
+    assert pw.startswith("iocontact-")
+    assert apppasswords.authenticate("alex", pw, "iocontact")["id"] == u["id"]
+    assert apppasswords.authenticate(None, pw, "iocontact")["id"] == u["id"]  # bearer: no name needed
+    assert apppasswords.authenticate("alex", pw, "iopix") is None  # one app only
+    assert apppasswords.authenticate("alex", "secret123", "iocontact")["id"] == u["id"]  # the account password works too
+    assert apppasswords.authenticate("alex", "nope", "iocontact") is None
+    assert len(apppasswords.list_for(u["id"], "iocontact")) == 1
+    apppasswords.delete(u["id"], apppasswords.list_for(u["id"], "iocontact")[0]["id"])
+    assert apppasswords.authenticate("alex", pw, "iocontact") is None
+
+
+def test_a_hash_with_other_parameters_is_upgraded_and_other_formats_refused():
+    from argon2 import PasswordHasher
+    from iosuite_shared import db
+    from iosuite_shared.passwords import hash_password, needs_rehash
+    import base64, hashlib, os
+    weaker = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1).hash("weakpass123")
+    db.ex("INSERT INTO ios_users (name, hash, created_at) VALUES ('weak', %s, 1)", (weaker,))
+    assert needs_rehash(weaker) and not needs_rehash(hash_password("x"))
+    assert users.authenticate("weak", "wrong-password") is None
+    u = users.authenticate("weak", "weakpass123")
+    stored = db.one("SELECT hash FROM ios_users WHERE id = %s", (u["id"],))["hash"]
+    assert stored.startswith("$argon2id$") and not needs_rehash(stored) and users.authenticate("weak", "weakpass123")
+    # scrypt hashes (0.28 and before, and before the suite) are not read
+    salt = os.urandom(16)
+    h = hashlib.scrypt(b"oldpass123", salt=salt, n=2 ** 13, r=8, p=1, dklen=32)
+    b64 = lambda v: base64.b64encode(v).decode()
+    db.ex("INSERT INTO ios_users (name, hash, created_at) VALUES ('old', %s, 1), ('older', %s, 1)",
+          (f"scrypt2$8192$8$1${b64(salt)}${b64(h)}", f"scrypt${b64(salt)}${b64(h)}"))
+    assert users.authenticate("old", "oldpass123") is None and users.authenticate("older", "oldpass123") is None
+
+
+def test_app_passwords_are_stored_as_sha256_and_scrypt_rows_refused():
+    from iosuite_shared import db
+    from iosuite_shared.passwords import token_hash
+    import base64, hashlib, os
+    u = users.create("alex", "secret123", "editor", "iocontact")
+    pw = apppasswords.create(u["id"], "iocontact", "Mac")
+    assert db.one("SELECT hash FROM ios_app_passwords")["hash"] == token_hash(pw)
+    assert apppasswords.authenticate(None, pw, "iocontact")["id"] == u["id"]
+    # a row from 0.24 (scrypt2) no longer signs in
+    salt = os.urandom(16)
+    h = hashlib.scrypt(pw.encode(), salt=salt, n=2 ** 13, r=8, p=1, dklen=32)
+    db.ex("UPDATE ios_app_passwords SET hash = %s", (f"scrypt2$8192$8$1${base64.b64encode(salt).decode()}${base64.b64encode(h).decode()}",))
+    apppasswords.forget()
+    assert apppasswords.authenticate(None, pw, "iocontact") is None
+
+
+def test_sign_in_by_name_never_picks_another_account_by_its_email():
+    bob = users.create("bob", "secret123", "viewer", "iopix")
+    users.create("alex@example.com", "other-pass", "viewer", "iopix")
+    users.update(bob["id"], email="alex@example.com")
+    assert users.authenticate("alex@example.com", "other-pass")["name"] == "alex@example.com"
+    assert users.authenticate("alex@example.com", "secret123") is None  # the name wins; bob's email is not tried
+    assert users.authenticate("bob", "secret123")["name"] == "bob"
+
+
+def test_role_ladder_and_markers():
+    users.create("alex", "secret123", suite_admin=True)
+    v = users.create("vic", "secret123", "viewer", "iocalendar")
+    m = users.create("meg", "secret123", "member", "iocalendar")
+    e = users.create("ed", "secret123", "editor", "iocalendar")
+    for u, member, writer in ((v, False, False), (m, True, False), (e, True, True)):
+        u = users.get(u["id"], "iocalendar")
+        assert users.is_signed_in(u) and users.is_member(u) is member and users.can_write(u) is writer
+    assert users.role_of(users.get(v["id"]), "ionote") == "member"  # no row: the default, member
+    users.db.set_setting("default_role", "viewer", "ionote")
+    assert users.role_of(users.get(v["id"]), "ionote") == "viewer"
+
+
+def test_admin_tools_are_for_suite_admins_only():
+    from iosuite_shared import admin, suite
+    suite.register("iodns", name="ioDNS", admin_tool=True)
+    suite.register("iocalendar", name="ioCalendar")
+    boss = users.create("alex", "secret123", suite_admin=True)
+    with pytest.raises(ValueError):
+        users.create("ed", "secret123", "admin", "iodns")  # takes no roles
+    ed = users.create("ed", "secret123")
+    users.set_role(ed["id"], "iodns", "admin")  # a row from before: ignored
+    with pytest.raises(ValueError):
+        users.update(ed["id"], role="viewer", app="iodns")
+    assert users.role_of(users.get(boss["id"]), "iodns") == "admin"
+    assert users.role_of(users.get(ed["id"]), "iodns") == "none" and users.default_role("iodns") == "none"
+    assert [a["app"] for a in suite.visible(users.get(ed["id"]))] == ["iocalendar"]
+    assert {a["app"] for a in suite.visible(users.get(boss["id"]))} == {"iocalendar", "iodns"}
+    with pytest.raises(ValueError):
+        admin.set_roles(boss, ed["id"], {"iodns": "admin"})
+    with pytest.raises(ValueError):
+        admin.set_app("iodns", default_role="member")
+    eff = {u["name"]: u["effective"] for u in admin.accounts()}
+    assert eff["ed"]["iodns"] == "none" and eff["alex"]["iodns"] == "admin"
+    svc = users.service_account("iostart")
+    users.set_role(svc["id"], "iodns", "viewer")  # an app reading an admin tool keeps the role links gave it
+    assert users.role_of(users.get(svc["id"]), "iodns") == "viewer"
+
+
+def test_me_says_what_the_account_may_change():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from iosuite_shared.fastapi import Auth
+    users.create("alex", "secret123", suite_admin=True)
+    users.create("meg", "secret123", "member", "ionote")
+    auth = Auth("ionote", register=False)
+    app = FastAPI()
+    app.middleware("http")(auth.middleware())
+    app.include_router(auth.router())
+    c = TestClient(app)
+    assert c.post("/api/auth/login", json={"name": "meg", "password": "secret123"}).status_code == 200
+    me = c.get("/api/auth/me").json()
+    assert me["isMember"] and not me["canWrite"]
+    auth.write_role = "member"  # an app where everything is one's own
+    assert c.get("/api/auth/me").json()["canWrite"]
+
+
+_one = users.db.one
+
+
+def test_account_changes_are_one_transaction_and_a_name_taken_meanwhile_is_no_500(monkeypatch):
+    users.create("txa", "password1", role="member", app="iotest", email="txa@example.com")
+    # another request takes the name between the check and the insert: the unique key answers, as "taken"
+    monkeypatch.setattr(users, "find", lambda *a, **k: None)
+    with pytest.raises(users.Invalid, match="user name is taken"):
+        users.create("txa", "password1")
+    monkeypatch.setattr(users.db, "one", lambda *a, **k: None if "email = %s" in a[0] else _one(*a, **k))
+    with pytest.raises(users.Invalid, match="email address"):
+        users.create("txb", "password1", email="txa@example.com")
+    monkeypatch.undo()
+    # a role that fails to save leaves the name as it was
+    u = users.find("txa")
+    monkeypatch.setattr(users, "set_role", lambda *a: (_ for _ in ()).throw(RuntimeError("down")))
+    with pytest.raises(RuntimeError):
+        users.update(u["id"], name="txa2", role="viewer", app="iotest")
+    monkeypatch.undo()
+    assert users.find("txa") and not users.find("txa2")
+    users.delete(u["id"])
+
+
+def test_the_first_account_is_made_once_whatever_the_cache_says():
+    """Security review 2026-11-20: two first-run setups (two apps, a moment apart, each with any_users cached as False)
+    make one suite admin; the other is refused, checked in the database under a lock."""
+    import threading
+    assert not users.any_users()  # cached False now, as in another app's process
+    users.create("alex", "secret123", suite_admin=True, first=True)
+    users._cache.update(any=False, any_at=__import__("time").time())  # stale: another process made the account
+    with pytest.raises(users.FirstTaken):
+        users.create("mallory", "secret123", suite_admin=True, first=True)
+    assert users.find("mallory") is None
+    # at the same moment, from two threads: one account
+    users.db.ex("DELETE FROM ios_users")
+    users.invalidate()
+    out = []
+
+    def setup(name):
+        try:
+            out.append(users.create(name, "secret123", suite_admin=True, first=True)["name"])
+        except users.FirstTaken:
+            out.append(None)
+    ts = [threading.Thread(target=setup, args=(n,)) for n in ("one", "two", "three")]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert sorted(out, key=str).count(None) == 2
+    assert users.db.one("SELECT COUNT(*) AS n FROM ios_users WHERE service IS NULL")["n"] == 1

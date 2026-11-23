@@ -1,0 +1,279 @@
+{
+  "key": "iopix",
+  "name": "ioPix",
+  "description": "Photos",
+  "tag": "Photos",
+  "color": "#3b4a8c",
+  "folder": "pix",
+  "order": 20,
+  "heavy": true,
+  "compose": {
+    "name": "photos",
+    "what": "photos"
+  },
+  "install": {
+    "data": true,
+    "extra": [
+      "--no-digikam",
+      "--features",
+      "none"
+    ],
+    "photos": true,
+    "launchd": "com.iopix"
+  },
+  "start": {
+    "rank": 10,
+    "tile": true,
+    "find": {
+      "head": "Photos",
+      "rank": 80
+    },
+    "searchUrl": "#/photos?q={q}"
+  },
+  "items": [
+    {
+      "kind": "photo",
+      "label": "Photo",
+      "plural": "Photos",
+      "href": "#/photos?p={id}"
+    }
+  ],
+  "settings": [
+    {
+      "name": "PHOTOS_ROOT",
+      "label": "Photos folder",
+      "type": "text",
+      "hint": "Where the photos are, when the library has a single album root."
+    },
+    {
+      "name": "DIGIKAM_DB_TYPE",
+      "label": "digiKam database",
+      "type": "choice",
+      "choices": [
+        "sqlite",
+        "mysql",
+        "none"
+      ],
+      "default": "sqlite",
+      "hint": "none: no digiKam at all, ioPix keeps the library itself."
+    },
+    {
+      "name": "DIGIKAM_DB_DIR",
+      "label": "Folder with digikam4.db",
+      "type": "text"
+    },
+    {
+      "name": "DIGIKAM_DB_HOST",
+      "label": "digiKam MySQL host",
+      "type": "text",
+      "default": "127.0.0.1"
+    },
+    {
+      "name": "DIGIKAM_DB_PORT",
+      "label": "digiKam MySQL port",
+      "type": "number",
+      "default": "3306"
+    },
+    {
+      "name": "DIGIKAM_DB_NAME",
+      "label": "digiKam MySQL database",
+      "type": "text",
+      "default": "digikam"
+    },
+    {
+      "name": "DIGIKAM_DB_USER",
+      "label": "digiKam MySQL user",
+      "type": "text",
+      "default": "digikam",
+      "hint": "Its password is set in ioPix under Settings › Library › digiKam database."
+    },
+    {
+      "name": "DIGIKAM_DB_BACKUP",
+      "label": "Back up digiKam's database before destructive operations",
+      "type": "choice",
+      "choices": [
+        "auto",
+        "skip"
+      ],
+      "default": "auto"
+    },
+    {
+      "name": "DIGIKAM_DB_DUMP",
+      "label": "Command that dumps digiKam's MySQL database",
+      "type": "text",
+      "hint": "Used instead of mysqldump, e.g. through docker exec."
+    },
+    {
+      "name": "DIGIKAM_CHECK",
+      "label": "How to tell that digiKam is closed",
+      "type": "choice",
+      "choices": [
+        "pgrep",
+        "none"
+      ],
+      "default": "pgrep",
+      "hint": "none: digiKam runs on another machine and cannot be seen."
+    },
+    {
+      "name": "DIGIKAM_MYSQL_DATES",
+      "label": "Dates in a MySQL digiKam library",
+      "type": "choice",
+      "choices": [
+        "",
+        "utc",
+        "local"
+      ],
+      "hint": "Empty: detected."
+    },
+    {
+      "name": "SIDECAR_COMPAT",
+      "label": "Name new sidecars photo.xmp",
+      "type": "switch",
+      "default": "0"
+    },
+    {
+      "name": "EDITING",
+      "label": "Allow metadata edits",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "DB_WRITE",
+      "label": "Allow “Apply to digiKam database”",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "PREWARM",
+      "label": "Build all grid thumbnails in the background",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "SEMANTIC",
+      "label": "Search by content",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "ANALYSIS",
+      "label": "Analyse photos in the background",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "CAPTIONS",
+      "label": "Describe every photo in a sentence",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "AUTO_MODELS",
+      "label": "Models to download when missing",
+      "type": "text",
+      "hint": "For example siglip2,yolox,geonames."
+    },
+    {
+      "name": "BG_THREADS",
+      "label": "Cores a background job may use",
+      "type": "number",
+      "hint": "Empty: half the machine."
+    },
+    {
+      "name": "PREWARM_WORKERS",
+      "label": "Threads for thumbnails",
+      "type": "number",
+      "hint": "Empty: the cores above."
+    },
+    {
+      "name": "ANALYSIS_WORKERS",
+      "label": "Threads for analysis",
+      "type": "number",
+      "hint": "Empty: the cores above."
+    },
+    {
+      "name": "JOBS_PROCESS",
+      "label": "Run AI jobs in a process of their own",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "JOBS_MEMORY_MB",
+      "label": "Most memory the job process may hold (MB)",
+      "type": "number",
+      "hint": "Empty: 60% of the machine's. 0: no limit."
+    },
+    {
+      "name": "MEMORY_RESERVE_MB",
+      "label": "Free memory the server keeps (MB)",
+      "type": "number",
+      "hint": "Empty: 8% of the machine's."
+    },
+    {
+      "name": "THUMB_HEIGHT",
+      "label": "Thumbnail height",
+      "type": "number",
+      "default": "360"
+    },
+    {
+      "name": "THUMB_MAX_WIDTH",
+      "label": "Thumbnail width at most",
+      "type": "number",
+      "default": "1080"
+    },
+    {
+      "name": "THUMB_QUALITY",
+      "label": "Thumbnail quality",
+      "type": "number",
+      "default": "76"
+    },
+    {
+      "name": "PREVIEW_SIZE",
+      "label": "Preview size (longest edge)",
+      "type": "number",
+      "default": "2560"
+    },
+    {
+      "name": "PREVIEW_QUALITY",
+      "label": "Preview quality",
+      "type": "number",
+      "default": "86"
+    },
+    {
+      "name": "PREVIEW_CACHE_MAX_MB",
+      "label": "Preview cache at most (MB)",
+      "type": "number",
+      "default": "8000"
+    },
+    {
+      "name": "VARIANT_CACHE_MAX_MB",
+      "label": "Cut-down thumbnails cache at most (MB)",
+      "type": "number",
+      "default": "2000"
+    },
+    {
+      "name": "REINDEX_POLL",
+      "label": "Seconds between checks of digiKam's database",
+      "type": "number",
+      "default": "20"
+    },
+    {
+      "name": "INDEX_PATCH",
+      "label": "Update the search index in place after small changes",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "SCANNER_LOOP",
+      "label": "File scanner runs by itself",
+      "type": "switch",
+      "default": "1"
+    },
+    {
+      "name": "EXIFTOOL",
+      "label": "exiftool to use",
+      "type": "text",
+      "hint": "Empty: the one on the PATH."
+    }
+  ]
+}

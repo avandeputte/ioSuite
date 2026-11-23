@@ -1,0 +1,37 @@
+"""The conventions every app of the suite follows (iosuite_shared.testing): the port, one version, config.env, and an
+access marker on every API route."""
+from pathlib import Path
+
+from iosuite_shared import testing
+
+from iostart import __version__, access, config
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_suite_conventions():
+    testing.check_conventions(ROOT, "iostart", __version__, config)
+
+
+def test_every_api_route_declares_who_may_call_it(app):
+    testing.check_access_declared(app, access.declared)
+
+
+def test_standard_paths():
+    assert config.APP_DIR == ROOT and config.STATIC_DIR == ROOT / "static" and config.DATA_DIR.name == "iostart"
+    assert config.LOG_FILE is None  # LOG_FILE=off in the tests' stored settings
+
+
+def test_a_stop_does_not_wait_for_open_event_streams(monkeypatch):
+    """The Home card's event stream never ends by itself: uvicorn must cut it after a short grace, or a restart after an
+    update hangs until systemd kills the server (90 s with the page down)."""
+    import uvicorn
+    from iostart import __main__ as m
+    got = {}
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: got.update(kw))
+    m.main()
+    assert 0 < got["timeout_graceful_shutdown"] <= 10
+
+
+def test_served_in_a_folder_of_an_address(client):
+    testing.check_folder(client)  # https://home.example.com/suite-app/, the whole suite on one address

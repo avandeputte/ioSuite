@@ -1,0 +1,26 @@
+"""The MariaDB the tests run iopix's own database on: the suite's test server (iosuite_shared.testing).
+
+iopix's own database (settings, accounts, favorites, albums, the edit log, AI results, the library copy) is
+MariaDB-only since v1.113, so the suite needs a server. Two ways, the same as in every app of the suite:
+
+- IOSUITE_TEST_DB=host:port:user:password names one (CI uses a MariaDB service this way). The user must be
+  allowed to CREATE and DROP databases: every run starts from empty databases of its own.
+- Otherwise a container is started with Docker, `iosuite-test-mariadb` on a free local port, and left running
+  for the next run (`docker rm -f iosuite-test-mariadb` throws it away). Without Docker and without
+  IOSUITE_TEST_DB the whole suite is skipped with a message that says so.
+
+A session uses three databases: `iopix_test` for the API tests (the app imported in-process) and
+`iopix_test_ui` for the browser tests' own server (a second process, tests/ui/conftest.py); `iopix_test_nodk` is
+the no-digiKam run's (tests/test_no_digikam.py), whose library starts empty. All are dropped and created again at
+the start of every session, never shared with anything real.
+"""
+from iosuite_shared import testing
+from iosuite_shared import testing as _testing
+
+API_DB, UI_DB, NODK_DB = "iopix_test", "iopix_test_ui", "iopix_test_nodk"
+server = _testing.server  # {host, port, user, password} of a reachable MariaDB, or None (the reason in server.reason)
+
+
+def fresh_database(name: str) -> dict:
+    """Drop and create `name` on the test server; the connection settings for it (appdb's KEYS)."""
+    return {"type": "mysql", **_testing.fresh_database(name)}

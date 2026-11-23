@@ -1,0 +1,43 @@
+"""The shared ioThing accounts (iosuite-shared), as ioCalendar uses them.
+
+Accounts, passwords, sessions, app passwords and roles live in the Shared ioSuite database (IOSUITE_DB_* in
+config.env), with the suite-wide settings, shared with the other apps of the suite: one sign-in serves every app on the
+domain (COOKIE_DOMAIN). What is ioCalendar's own stays per app: the role an account holds here and its settings
+(first day of the week, default view, time zone).
+"""
+from iosuite_shared.fastapi import Auth
+from iosuite_shared.updates import Updater
+
+from iocalendar import __version__, config
+
+APP = config.APP
+
+# the version and address (the name, description and colour: app.json) go into the suite's list of apps (read by ioStart)
+auth = Auth(APP, version=__version__, public_url=config.PUBLIC_URL or None)
+auth.deny_exempt = ("/mcp", "/dav", "/.well-known/")  # apps sign in with app passwords, whatever got them through a proxy
+# a CalDAV-only app password (the Apple profile's, or "Calendar apps only" in Settings › Account) opens these and
+# nothing else: 403 on the REST API, MCP and the web app (iosuite-shared enforces it)
+auth.scope_paths = {"dav": ("/dav", "/.well-known/caldav")}
+
+
+def _account_changed(user_id, body) -> None:
+    """After someone changed their display name (Settings › Account) or an admin changed an account: the family list
+    shows names, so it is read again."""
+    from iocalendar import members
+    members.forget()
+
+
+auth.on_update = _account_changed
+
+# updates (the daily check, update.sh, restart) and the server log, as in every app of the suite (iosuite_shared.updates);
+# the daily-check switch is kept with ioCalendar's own settings
+updater = Updater(APP, __version__, user_agent=APP)
+
+
+def _person_data(user_id: int, remove: bool) -> list:
+    """What the person keeps here, when a suite admin deletes their account (iosuite_shared.persondata)."""
+    from iocalendar import persondata
+    return persondata.of(user_id, remove)
+
+
+auth.person_data = _person_data

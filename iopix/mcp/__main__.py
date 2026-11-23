@@ -1,0 +1,39 @@
+"""`python -m iopix.mcp [--user NAME]`: the MCP server over stdio, for clients that spawn a local process. It acts as
+the account named by --user or MCP_USER (or the only admin, when there is just one), as the HTTP endpoint does for a
+client signed in with an app password. The account and its role are read when the server starts: a role changed later
+counts from the next start (anyone who can start it holds the database password)."""
+import sys
+
+from iopix import config, users
+from iopix.data import state as appstate
+from iopix.mcp import current_user, server
+from iopix.photos import history
+
+
+def _pick_user():
+    name = config.MCP_USER
+    if "--user" in sys.argv[1:]:
+        i = sys.argv.index("--user")
+        name = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
+    accounts = users.list_users()
+    if name:
+        u = next((u for u in accounts if u["name"].lower() == name.lower()), None)
+        if not u:
+            sys.exit(f"no ioPix account named {name!r}")
+        if u.get("role") == "none":
+            sys.exit(f"the account {name!r} has no access to ioPix")
+        return u
+    admins = [u for u in accounts if u.get("role") == "admin" or u.get("suiteAdmin")]
+    if len(admins) == 1:
+        return admins[0]
+    if not accounts:
+        return {"id": 0, "name": "owner", "role": "admin"}  # no accounts yet: the open install, as in the web app
+    sys.exit("name the account: python -m iopix.mcp --user NAME (or MCP_USER=NAME)")
+
+
+users.init()
+me = _pick_user()
+current_user.set(me)
+appstate.viewer.set(me)  # private albums and favourites: theirs, as over HTTP
+history.user.set(me["name"])  # the change log names them, not "system"
+server.run()

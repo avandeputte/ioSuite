@@ -1,0 +1,684 @@
+{
+ "today": {
+  "screen": "today",
+  "name": "Today",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "weather": {
+   "temp": "48\u00b0",
+   "text": "Mostly cloudy",
+   "icon": 2,
+   "hi": "52\u00b0",
+   "lo": "41\u00b0",
+   "rain": "40%",
+   "days": [
+    {
+     "day": "Fri",
+     "hi": "55\u00b0",
+     "lo": "44\u00b0",
+     "text": "Sunny"
+    }
+   ]
+  },
+  "list": [
+   {
+    "label": "Today \u00b7 1 late",
+    "rows": [
+     {
+      "title": "Pay the water bill",
+      "when": "Late",
+      "note": "",
+      "late": true,
+      "ink": "blue"
+     },
+     {
+      "title": "Theo: no school",
+      "when": "All day",
+      "note": "",
+      "late": false,
+      "ink": "green"
+     },
+     {
+      "title": "Riley's dentist",
+      "when": "9:30 AM",
+      "note": "@ Bayside Dental",
+      "late": false,
+      "ink": "blue"
+     },
+     {
+      "title": "Sign Ava's field trip form",
+      "when": "Due 3 PM",
+      "note": "",
+      "late": false,
+      "ink": "red"
+     },
+     {
+      "title": "Ava swim practice",
+      "when": "4 PM",
+      "note": "@ Flushing Meadows Aquatic Center",
+      "late": false,
+      "ink": "red"
+     },
+     {
+      "title": "Dinner with the Parks",
+      "when": "6 PM",
+      "note": "@ Nan Xiang Dumpling",
+      "late": false,
+      "ink": "yellow"
+     },
+     {
+      "title": "Order Thanksgiving turkey",
+      "when": "To do",
+      "note": "",
+      "late": false,
+      "ink": "yellow"
+     },
+     {
+      "title": "Call the plumber about the upstairs sink",
+      "when": "To do",
+      "note": "",
+      "late": false,
+      "ink": "green"
+     }
+    ],
+    "more": 0
+   },
+   {
+    "label": "Tomorrow \u00b7 Nov 20",
+    "rows": [
+     {
+      "title": "Grandma Joan",
+      "when": "Birthday",
+      "note": "\u00b7 turns 80",
+      "late": false,
+      "ink": ""
+     },
+     {
+      "title": "Recycling out",
+      "when": "7 AM",
+      "note": "",
+      "late": false,
+      "ink": ""
+     },
+     {
+      "title": "Parent-teacher conference",
+      "when": "3:30 PM",
+      "note": "@ PS 41",
+      "late": false,
+      "ink": "red"
+     },
+     {
+      "title": "Return library books",
+      "when": "To do",
+      "note": "",
+      "late": false,
+      "ink": "green"
+     }
+    ],
+    "more": 0
+   },
+   {
+    "label": "Saturday \u00b7 Nov 21",
+    "rows": [
+     {
+      "title": "Book flights for Christmas",
+      "when": "To do",
+      "note": "",
+      "late": false,
+      "ink": "yellow"
+     }
+    ],
+    "more": 0
+   },
+   {
+    "label": "Sunday \u00b7 Nov 22",
+    "rows": [
+     {
+      "title": "Soccer: Theo vs. Hawks",
+      "when": "10 AM",
+      "note": "@ Cunningham Park",
+      "late": false,
+      "ink": "green"
+     },
+     {
+      "title": "Grandma's birthday lunch",
+      "when": "12:30 PM",
+      "note": "@ Ralph's",
+      "late": false,
+      "ink": "blue"
+     },
+     {
+      "title": "Renew Costco membership",
+      "when": "Due 5 PM",
+      "note": "",
+      "late": false,
+      "ink": "blue"
+     }
+    ],
+    "more": 0
+   },
+   {
+    "label": "Monday \u00b7 Nov 23",
+    "rows": [
+     {
+      "title": "Uncle Rob",
+      "when": "Birthday",
+      "note": "",
+      "late": false,
+      "ink": ""
+     }
+    ],
+    "more": 0
+   },
+   {
+    "label": "Tuesday \u00b7 Nov 24",
+    "rows": [
+     {
+      "title": "Car service",
+      "when": "8 AM",
+      "note": "@ Bayside Honda",
+      "late": false,
+      "ink": "red"
+     },
+     {
+      "title": "Put the bins out",
+      "when": "To do",
+      "note": "",
+      "late": false,
+      "ink": ""
+     }
+    ],
+    "more": 0
+   }
+  ],
+  "none": "Nothing planned or due today"
+ },
+ "calendar": {
+  "screen": "calendar",
+  "name": "Calendar",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "days": [
+   {
+    "label": "Today",
+    "date": "Nov 19",
+    "events": [
+     {
+      "time": "All day",
+      "title": "Theo: no school",
+      "place": "",
+      "ink": "green"
+     },
+     {
+      "time": "9:30 AM",
+      "title": "Riley's dentist",
+      "place": "Bayside Dental",
+      "ink": "blue"
+     },
+     {
+      "time": "4 PM",
+      "title": "Ava swim practice",
+      "place": "Flushing Meadows Aquatic Center",
+      "ink": "red"
+     },
+     {
+      "time": "6 PM",
+      "title": "Dinner with the Parks",
+      "place": "Nan Xiang Dumpling",
+      "ink": "yellow"
+     }
+    ]
+   },
+   {
+    "label": "Tomorrow",
+    "date": "Nov 20",
+    "events": [
+     {
+      "time": "7 AM",
+      "title": "Recycling out",
+      "place": "",
+      "ink": ""
+     },
+     {
+      "time": "3:30 PM",
+      "title": "Parent-teacher conference",
+      "place": "PS 41",
+      "ink": "red"
+     }
+    ]
+   },
+   {
+    "label": "Sunday",
+    "date": "Nov 22",
+    "events": [
+     {
+      "time": "10 AM",
+      "title": "Soccer: Theo vs. Hawks",
+      "place": "Cunningham Park",
+      "ink": "green"
+     },
+     {
+      "time": "12:30 PM",
+      "title": "Grandma's birthday lunch",
+      "place": "Ralph's",
+      "ink": "blue"
+     }
+    ]
+   },
+   {
+    "label": "Tuesday",
+    "date": "Nov 24",
+    "events": [
+     {
+      "time": "8 AM",
+      "title": "Car service",
+      "place": "Bayside Honda",
+      "ink": "red"
+     }
+    ]
+   }
+  ],
+  "count": 9,
+  "more": 0
+ },
+ "tasks": {
+  "screen": "tasks",
+  "name": "Tasks",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "tasks": [
+   {
+    "title": "Pay the water bill",
+    "when": "Late",
+    "late": true,
+    "ink": "blue"
+   },
+   {
+    "title": "Sign Ava's field trip form",
+    "when": "3 PM",
+    "late": false,
+    "ink": "red"
+   },
+   {
+    "title": "Order Thanksgiving turkey",
+    "when": "",
+    "late": false,
+    "ink": "yellow"
+   },
+   {
+    "title": "Call the plumber about the upstairs sink",
+    "when": "",
+    "late": false,
+    "ink": "green"
+   },
+   {
+    "title": "Return library books",
+    "when": "",
+    "late": false,
+    "ink": "green"
+   },
+   {
+    "title": "Book flights for Christmas",
+    "when": "",
+    "late": false,
+    "ink": "yellow"
+   },
+   {
+    "title": "Renew Costco membership",
+    "when": "",
+    "late": false,
+    "ink": "blue"
+   },
+   {
+    "title": "Water the plants",
+    "when": "",
+    "late": false,
+    "ink": ""
+   }
+  ],
+  "more": 0,
+  "overdue": 1
+ },
+ "docs": {
+  "screen": "docs",
+  "name": "Documents",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "items": [
+   {
+    "title": "Morgan's passport",
+    "kind": "Passport",
+    "who": "Morgan",
+    "when": "Expired 7 days ago",
+    "date": "Nov 12, 2026",
+    "expired": true
+   },
+   {
+    "title": "Car registration",
+    "kind": "Registration",
+    "who": "",
+    "when": "Expires in 12 days",
+    "date": "Dec 1, 2026",
+    "expired": false
+   },
+   {
+    "title": "Riley's driver license",
+    "kind": "Driver license",
+    "who": "Riley",
+    "when": "Expires in 57 days",
+    "date": "Jan 15, 2027",
+    "expired": false
+   },
+   {
+    "title": "Home insurance policy",
+    "kind": "Insurance",
+    "who": "",
+    "when": "Expires in 74 days",
+    "date": "Feb 1, 2027",
+    "expired": false
+   }
+  ],
+  "more": 0,
+  "expired": 1
+ },
+ "health": {
+  "screen": "health",
+  "name": "Health",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "steps": "3,412",
+  "rings": [
+   {
+    "name": "Move",
+    "value": "412",
+    "goal": "600",
+    "unit": "kcal",
+    "pct": 69
+   },
+   {
+    "name": "Exercise",
+    "value": "24",
+    "goal": "30",
+    "unit": "min",
+    "pct": 80
+   },
+   {
+    "name": "Stand",
+    "value": "5",
+    "goal": "12",
+    "unit": "h",
+    "pct": 42
+   }
+  ],
+  "sleep": "7 h 11 min",
+  "in_bed": "7 h 50 min",
+  "week": [
+   {
+    "day": "Fri",
+    "steps": "8,214",
+    "pct": 64
+   },
+   {
+    "day": "Sat",
+    "steps": "10,433",
+    "pct": 81
+   },
+   {
+    "day": "Sun",
+    "steps": "6,120",
+    "pct": 48
+   },
+   {
+    "day": "Mon",
+    "steps": "12,880",
+    "pct": 100
+   },
+   {
+    "day": "Tue",
+    "steps": "7,340",
+    "pct": 57
+   },
+   {
+    "day": "Wed",
+    "steps": "9,105",
+    "pct": 71
+   },
+   {
+    "day": "Thu",
+    "steps": "3,412",
+    "pct": 26
+   }
+  ],
+  "average": "8,215"
+ },
+ "money": {
+  "screen": "money",
+  "name": "Money",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "bills": [
+   {
+    "day": "Today",
+    "name": "Con Edison",
+    "amount": "$142.17"
+   },
+   {
+    "day": "Today",
+    "name": "Spotify",
+    "amount": "$16.99"
+   },
+   {
+    "day": "Tomorrow",
+    "name": "Netflix",
+    "amount": "$22.99"
+   },
+   {
+    "day": "Tomorrow",
+    "name": "Car insurance",
+    "amount": "$212.40"
+   },
+   {
+    "day": "Sat",
+    "name": "Verizon",
+    "amount": "~$185.00"
+   },
+   {
+    "day": "Mon",
+    "name": "Daycare",
+    "amount": "$640.00"
+   },
+   {
+    "day": "Mon",
+    "name": "Water",
+    "amount": "~$61.35"
+   },
+   {
+    "day": "Tue",
+    "name": "Mortgage",
+    "amount": "$2,450.00"
+   },
+   {
+    "day": "Wed",
+    "name": "Gym",
+    "amount": "$45.00"
+   }
+  ],
+  "days": [
+   {
+    "day": "Thu",
+    "amount": "159",
+    "pct": 6
+   },
+   {
+    "day": "Fri",
+    "amount": "235",
+    "pct": 10
+   },
+   {
+    "day": "Sat",
+    "amount": "185",
+    "pct": 8
+   },
+   {
+    "day": "Sun",
+    "amount": "",
+    "pct": 0
+   },
+   {
+    "day": "Mon",
+    "amount": "701",
+    "pct": 29
+   },
+   {
+    "day": "Tue",
+    "amount": "2.5k",
+    "pct": 100
+   },
+   {
+    "day": "Wed",
+    "amount": "45",
+    "pct": 2
+   }
+  ],
+  "more": 0,
+  "total": "$3,775.90",
+  "low": [
+   "Checking: under $500.00 on Dec 1"
+  ],
+  "behind": [
+   "Chase"
+  ]
+ },
+ "weather": {
+  "screen": "weather",
+  "name": "Weather",
+  "weekday": "Thursday",
+  "date": "November 19",
+  "date_short": "Thu, Nov 19",
+  "updated": "8:05 AM",
+  "place": "Bayside",
+  "temp": "48\u00b0",
+  "text": "Mostly cloudy",
+  "icon": 2,
+  "feels": "44\u00b0",
+  "hi": "52\u00b0",
+  "lo": "41\u00b0",
+  "rain": "60%",
+  "note": "Rain from 1 PM",
+  "wind": "12 mph",
+  "humidity": "71%",
+  "uv": "2",
+  "hours": [
+   {
+    "time": "9 AM",
+    "icon": 2,
+    "temp": "48\u00b0",
+    "rain": "",
+    "y": 80
+   },
+   {
+    "time": "10 AM",
+    "icon": 3,
+    "temp": "49\u00b0",
+    "rain": "",
+    "y": 60
+   },
+   {
+    "time": "11 AM",
+    "icon": 3,
+    "temp": "51\u00b0",
+    "rain": "",
+    "y": 20
+   },
+   {
+    "time": "12 PM",
+    "icon": 2,
+    "temp": "52\u00b0",
+    "rain": "25%",
+    "y": 0
+   },
+   {
+    "time": "1 PM",
+    "icon": 5,
+    "temp": "52\u00b0",
+    "rain": "55%",
+    "y": 0
+   },
+   {
+    "time": "2 PM",
+    "icon": 5,
+    "temp": "51\u00b0",
+    "rain": "70%",
+    "y": 20
+   },
+   {
+    "time": "3 PM",
+    "icon": 5,
+    "temp": "49\u00b0",
+    "rain": "65%",
+    "y": 60
+   },
+   {
+    "time": "4 PM",
+    "icon": 2,
+    "temp": "47\u00b0",
+    "rain": "30%",
+    "y": 100
+   }
+  ],
+  "days": [
+   {
+    "day": "Today",
+    "icon": 5,
+    "text": "Showers",
+    "hi": "52\u00b0",
+    "lo": "41\u00b0",
+    "rain": "60%"
+   },
+   {
+    "day": "Fri",
+    "icon": 0,
+    "text": "Sunny",
+    "hi": "55\u00b0",
+    "lo": "44\u00b0",
+    "rain": ""
+   },
+   {
+    "day": "Sat",
+    "icon": 3,
+    "text": "Intermittent clouds",
+    "hi": "50\u00b0",
+    "lo": "39\u00b0",
+    "rain": ""
+   },
+   {
+    "day": "Sun",
+    "icon": 6,
+    "text": "Thunderstorms",
+    "hi": "43\u00b0",
+    "lo": "31\u00b0",
+    "rain": "80%"
+   },
+   {
+    "day": "Mon",
+    "icon": 7,
+    "text": "Snow",
+    "hi": "36\u00b0",
+    "lo": "27\u00b0",
+    "rain": "65%"
+   }
+  ]
+ }
+}

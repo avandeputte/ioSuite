@@ -1,0 +1,31 @@
+"""The shared ioThing accounts (iosuite-shared), as ionote uses them.
+
+Accounts, passwords, sessions and roles live in the Shared ioSuite database (IOSUITE_DB_* in config.env, app/suitedb.py),
+shared by every app of the suite: one sign-in serves every app on the domain (COOKIE_DOMAIN). What is
+ionote' own stays per app: the role an account holds here and its display settings.
+"""
+from iosuite_shared.fastapi import Auth
+from iosuite_shared.updates import Updater
+
+from ionote import __version__, config
+
+APP = config.APP
+
+
+# its row in the suite's list of apps (ioStart, the start page): the version and address here, the rest from ionote.json
+auth = Auth(APP, version=__version__, public_url=config.PUBLIC_URL or None)
+auth.write_role = "member"  # every note is its owner's own: a member writes theirs (canWrite in /api/auth/me), a viewer only reads
+auth.deny_exempt = ("/mcp",)  # MCP clients sign in with an app password, whatever Cloudflare service token got them through
+
+# updates (the daily check, update.sh, restart) and the server log, as in every app of the suite (iosuite_shared.updates);
+# the daily-check switch is kept with ionote' own settings
+updater = Updater(APP, __version__, user_agent="ionote")
+
+
+def _person_data(user_id: int, remove: bool) -> list:
+    """What the person keeps here, when a suite admin deletes their account (iosuite_shared.persondata)."""
+    from ionote import persondata
+    return persondata.of(user_id, remove)
+
+
+auth.person_data = _person_data

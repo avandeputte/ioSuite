@@ -1,0 +1,64 @@
+{
+  "key": "iocontact",
+  "name": "ioContact",
+  "description": "Contacts",
+  "tag": "Contacts for the family",
+  "color": "#4f2f7d",
+  "folder": "contacts",
+  "sync": [
+    "/dav",
+    "/.well-known/",
+    "/cal/"
+  ],
+  "order": 90,
+  "otherPorts": "LDAP 3890",
+  "compose": {
+    "name": "contacts",
+    "what": "contacts"
+  },
+  "start": {
+    "rank": 60,
+    "tile": true,
+    "find": {
+      "head": "People",
+      "rank": 10
+    }
+  },
+  "items": [
+    {
+      "kind": "contact",
+      "label": "Contact",
+      "plural": "Contacts",
+      "href": "#/c/{id}"
+    }
+  ],
+  "notifications": [
+    {
+      "kind": "birthdays",
+      "label": "Birthdays",
+      "hint": "In the morning, whose birthday or anniversary it is"
+    }
+  ],
+  "settings": [
+    {
+      "name": "LDAP_PORT",
+      "label": "LDAP directory: port",
+      "type": "number",
+      "default": "3890",
+      "hint": "The read-only address book for mail apps and phones. 0 turns it off."
+    },
+    {
+      "name": "LDAP_HOST",
+      "label": "LDAP directory: listen address",
+      "type": "text",
+      "hint": "Empty: where the web app listens."
+    },
+    {
+      "name": "LDAP_BASE",
+      "label": "LDAP directory: base",
+      "type": "text",
+      "default": "dc=iocontact",
+      "hint": "The search base a client is given."
+    }
+  ]
+}

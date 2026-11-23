@@ -1,0 +1,44 @@
+{
+  "key": "iomoney",
+  "name": "ioMoney",
+  "description": "Household finances",
+  "tag": "Household finances",
+  "color": "#94650a",
+  "folder": "money",
+  "order": 80,
+  "compose": {
+    "name": "money",
+    "what": "finances"
+  },
+  "start": {
+    "rank": 50,
+    "tile": true,
+    "find": {
+      "head": "Money",
+      "rank": 70
+    }
+  },
+  "items": [
+    {
+      "kind": "asset",
+      "label": "House or car",
+      "plural": "Houses and cars",
+      "href": "#/account/{id}"
+    },
+    {
+      "kind": "transaction",
+      "label": "Transaction",
+      "plural": "Transactions",
+      "href": "#/transaction/{id}"
+    }
+  ],
+  "settings": [
+    {
+      "name": "SYNC",
+      "label": "Background work",
+      "type": "switch",
+      "default": "1",
+      "hint": "Monarch, quotes and notifications on their own. Off: only when asked."
+    }
+  ]
+}

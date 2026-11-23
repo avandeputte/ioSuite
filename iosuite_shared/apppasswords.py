@@ -1,0 +1,163 @@
+"""App passwords: one per device, for one app, for clients that cannot use the cookie (CardDAV, LDAP, MCP
+clients, HTTP Basic). Shown once, revocable. The form is <app>-<8 hex>-<secret>, so the prefix finds the row.
+
+Scope: what a password may reach. '' (the default) is everything the account may; DAV ('dav') is the app's sync
+protocols only (CalDAV / CardDAV, and LDAP in ioContact), the kind an Apple profile puts on a phone, so a password
+lifted from a device cannot reach the REST API, MCP or the web app. Auth enforces it by path (Auth.scope_paths); a
+server of its own (LDAP) asks authenticate_scoped and checks the scope itself. READ ('read') may only read (GET and
+HEAD, anywhere but MCP and the sync protocols: READ_NEVER): what the apps' own service accounts get to read from each other
+(iosuite_shared.links).
+"""
+import hashlib
+import re
+import secrets
+import time
+
+from iosuite_shared import db, edge, twostep, users
+from iosuite_shared.passwords import check_token, token_hash
+from iosuite_shared.errors import Invalid
+
+# An app password is random (144 bits), so its row keeps a SHA-256 of it (passwords.token_hash): a slow hash would add
+# latency and no safety. The name + account password route below is Argon2id, hence the caches.
+# A successful check is remembered for a minute (DAV clients send Basic on every request), so the hash is not computed
+# again; what it stood on is still read each time (_still_good): a revoked app password, a changed scope or a changed
+# account password count at once, in every process and every app, not when the minute is over.
+_cache: dict = {}  # key -> (until, user id, app password id or None, the account's hash when it was the account password)
+_misses: dict = {}  # a failed check, for a few seconds: a client retrying a stale password does not cost a hash each time
+MISS_S = 10
+
+
+TWO_STEP = "two-step"  # authenticate_scoped's scope for a right account password that two-step sign-in keeps from signing in
+DAV = "dav"
+READ = "read"
+READ_NEVER = ("/mcp", "/dav", "/.well-known/")
+SCOPES = ("", DAV, READ)
+# The start page is the suite's front door: an ioStart app password with no limit (scope '') also signs in at every
+# other app, as the same person with their role in that app (not at the sync protocols: HUB_NEVER). That is how the start
+# page passes a request on for a device that has only that password (its MCP server, the wall display), and an assistant
+# may as well connect to an app's /mcp with it directly. A scoped one ('dav', 'read') stays the start page's alone.
+HUB = "iostart"
+HUB_NEVER = ("/dav", "/.well-known/")
+
+
+def create(user_id: int, app: str, label: str, scope: str = "") -> str:
+    if scope not in SCOPES:
+        raise Invalid(f"Unknown app password scope: {scope!r}")
+    prefix = secrets.token_hex(4)
+    pw = f"{app}-{prefix}-{secrets.token_urlsafe(18)}"
+    db.ex("INSERT INTO ios_app_passwords (user_id, app, label, prefix, hash, created_at, scope) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+          (user_id, app, (label or "Device")[:128], prefix, token_hash(pw), int(time.time()), scope))
+    edge.publish(app, prefix, pw)
+    return pw
+
+
+def list_for(user_id: int, app: str) -> list:
+    return [{"id": r["id"], "label": r["label"], "created": r["created_at"], "lastUsed": r["last_used_at"], "scope": r["scope"]}
+            for r in db.q("SELECT * FROM ios_app_passwords WHERE user_id = %s AND app = %s ORDER BY created_at", (user_id, app))]
+
+
+def delete(user_id: int, pid: int):
+    gone = [(r["app"], r["prefix"]) for r in db.q("SELECT app, prefix FROM ios_app_passwords WHERE id = %s AND user_id = %s", (pid, user_id))]
+    db.ex("DELETE FROM ios_app_passwords WHERE id = %s AND user_id = %s", (pid, user_id))
+    _cache.clear(); _misses.clear()
+    edge.unpublish(gone)
+
+
+def forget_user(user_id: int):
+    """Before an account is deleted (its app passwords go with it): their keys off the edge."""
+    edge.unpublish([(r["app"], r["prefix"]) for r in db.q("SELECT app, prefix FROM ios_app_passwords WHERE user_id = %s", (user_id,))])
+    _cache.clear()
+
+
+def forget():
+    _cache.clear()
+    _misses.clear()
+
+
+def set_scope(app: str, prefix: str, scope: str) -> int:
+    """Give an existing password (found by its 8-hex prefix) a scope (the suite admin panel)."""
+    if scope not in SCOPES:
+        raise Invalid(f"Unknown app password scope: {scope!r}")
+    n = db.ex("UPDATE ios_app_passwords SET scope = %s WHERE app = %s AND prefix = %s", (scope, app, prefix))
+    _cache.clear(); _misses.clear()
+    return n
+
+
+def authenticate(name: str | None, password: str, app: str):
+    """The account for an app password of this app (name optional: a bearer token carries none), else, with a name,
+    for the account password. None when neither fits. Ignores the scope: see authenticate_scoped."""
+    return authenticate_scoped(name, password, app)[0]
+
+
+def authenticate_hub(name: str | None, password: str, app: str):
+    """The account, with its role in `app`, for an ioStart app password without a limit (HUB): what every app takes
+    besides its own (but at HUB_NEVER). None for anything else (an account password is not tried here: the app's own check did)."""
+    if app == HUB:
+        return None
+    user, scope = authenticate_scoped(name, password, HUB, accounts=False)
+    if not user or scope != "":
+        return None
+    return users.get(user["id"], app)
+
+
+def authenticate_scoped(name: str | None, password: str, app: str, accounts: bool = True):
+    """(account, scope) as authenticate finds them: scope is the app password's ('' everything, 'dav'...), '' for the
+    account password, None with no account. accounts False: app passwords only, not the account password.
+    An account with two-step sign-in on (iosuite_shared.twostep) is not signed in by its password here, where no code
+    can be asked for: (None, TWO_STEP), so the caller can say that an app password is needed."""
+    key = hashlib.sha256(f"{app}\0{name or ''}\0{password}{'' if accounts else chr(0) + 'apppw'}".encode()).hexdigest()
+    hit = _cache.get(key)
+    if hit and hit[0] > time.time():
+        found = _still_good(hit, app)
+        if found:
+            return found
+        _cache.pop(key, None)
+    if not password:
+        return None, None
+    missed = _misses.get(key)
+    if missed and missed > time.time():
+        return None, None
+    user, scope, pid, account_hash = None, "", None, None
+    m = re.match(r"^([a-z0-9]+)-([0-9a-f]{8})-", password)  # the word is a hint only: the row says which app
+    if m:
+        for r in db.q("SELECT * FROM ios_app_passwords WHERE prefix = %s AND app = %s", (m.group(2), app)):
+            if check_token(password, r["hash"]):
+                u = users.get(r["user_id"], app)
+                if u and (not name or name.strip().lower() in (u["name"].lower(), u["email"].lower())):
+                    db.ex("UPDATE ios_app_passwords SET last_used_at = %s WHERE id = %s", (int(time.time()), r["id"]))
+                    edge.publish(app, r["prefix"], password)  # made before the edge check was on, or since a restart
+                    user, scope, pid = u, r.get("scope") or "", r["id"]
+                    break
+    if not user and name and accounts:
+        user = users.authenticate(name, password, app)
+        if user and user["passwordless"]:
+            user = None  # a one-click account is for the LAN sign-in screen, not for clients
+        if user and twostep.enabled(user["id"]):
+            return None, TWO_STEP  # not remembered as a miss: the answer has to say why each time
+        if user:
+            account_hash = (db.one("SELECT hash FROM ios_users WHERE id = %s", (user["id"],)) or {}).get("hash")
+    if user:
+        if len(_cache) > 500:
+            _cache.clear()
+        _cache[key] = (time.time() + 60, user["id"], pid, account_hash)
+    else:
+        if len(_misses) > 500:
+            _misses.clear()
+        _misses[key] = time.time() + MISS_S
+    return user, (scope if user else None)
+
+
+def _still_good(hit, app: str):
+    """(account, scope) for a remembered check, when what it stood on is still there: the app password's row (with the
+    scope it has now), or the account password's hash unchanged. None otherwise."""
+    _, user_id, pid, account_hash = hit
+    scope = ""
+    if pid is not None:
+        r = db.one("SELECT scope FROM ios_app_passwords WHERE id = %s AND user_id = %s AND app = %s", (pid, user_id, app))
+        if not r:
+            return None
+        scope = r["scope"] or ""
+    elif (db.one("SELECT hash FROM ios_users WHERE id = %s", (user_id,)) or {}).get("hash") != account_hash or twostep.enabled(user_id):
+        return None
+    u = users.get(user_id, app)
+    return (u, scope) if u else None

@@ -1,0 +1,21 @@
+<div class="layout layout--col layout--top layout--stretch-x gap--small lg:gap--base">
+  <div class="flex flex--row flex--between w--full">
+    <span class="title lg:title--large">{{ date_short }}</span>
+    {%- if weather %}<span class="title lg:title--large">{{ weather.temp }}</span>{% endif %}
+  </div>
+  <div class="columns" data-overflow="true" data-overflow-max-cols="1" data-overflow-counter="true">
+    <div class="column">
+      {%- for g in list %}
+      {%- unless forloop.first %}<span class="label label--underline group-header" data-group-header="true">{{ g.label }}</span>{% endunless %}
+      {%- for r in g.rows %}
+      <div class="item"><div class="content"><span class="title title--small lg:title--base" data-clamp="1">{{ r.when }} &middot; {{ r.title }}</span></div></div>
+      {%- endfor %}
+      {%- if g.rows.size == 0 %}<div class="item"><div class="content"><span class="title title--small lg:title--base">{{ none }}</span></div></div>{% endif %}
+      {%- endfor %}
+    </div>
+  </div>
+</div>
+<div class="title_bar">
+  <img class="image" src="{{ iosuite_icon }}">
+  <span class="title">Today</span>
+</div>

@@ -1,0 +1,123 @@
+"""Test harness: a scratch copy of a small digiKam library, the viewer's own
+data folder under a temporary directory, and one FastAPI test client.
+
+Everything the app reads is stored (iosuite_shared.testing.app_env) BEFORE iopix.config
+is imported, so no test can touch the real library. Background analysis,
+content search, thumbnail prewarming and captions are off; what they would
+compute is tested on their own with scratch inputs.
+"""
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+HERE = Path(__file__).resolve().parent
+APP = HERE.parent
+
+SRC_DB = Path(os.environ.get("DIGIKAM_TEST_DB", str(Path.home() / "Pictures/digikamDB/digikam4.db")))
+SRC_ROOT = Path(os.environ.get("DIGIKAM_TEST_ROOT", str(Path.home() / "Pictures/photos")))
+
+_tmp = Path(tempfile.mkdtemp(prefix="iopix-tests-"))
+_lib = _tmp / "lib"
+_data = _tmp / "data"
+
+from fixture import build  # noqa: E402  (tests/ on sys.path through pytest's rootdir conftest import)
+
+# a scratch copy cut from a real digiKam library when there is one (DIGIKAM_TEST_DB / DIGIKAM_TEST_ROOT, the
+# viewer's own by default); otherwise (CI), or with DIGIKAM_TEST_LIBRARY=synthetic, a library made from scratch
+SYNTHETIC = not (SRC_DB.exists() and SRC_ROOT.exists()) or os.environ.get("DIGIKAM_TEST_LIBRARY") == "synthetic"
+if not SYNTHETIC:
+    LIB = build(SRC_DB, SRC_ROOT, _lib)
+else:
+    import synthetic  # noqa: E402
+    LIB = synthetic.build(_lib)
+    print(f"\nA test library made from scratch ({LIB['n']} files; DIGIKAM_TEST_DB / DIGIKAM_TEST_ROOT point at a real one to cut a copy from)")
+
+import mariadb  # noqa: E402  (tests/mariadb.py: the MariaDB iopix's own database runs on, iosuite_shared.testing's; Docker or IOSUITE_TEST_DB)
+
+if mariadb.server() is None:
+    print(f"\n{mariadb.server.reason}: iopix's own database is MariaDB-only, so every test needs one (Docker, or IOSUITE_TEST_DB=host:port:user:password)")
+    pytest.exit("no MariaDB for the tests", returncode=5)
+_data.mkdir(parents=True, exist_ok=True)
+# the machine's settings point at fresh databases (the Shared ioSuite database among them, never the suite's `iosuite`),
+# and ioPix's stored settings at the scratch library: set BEFORE iopix.config is imported
+SETTINGS = {
+    "DATA_DIR": str(_data), "DIGIKAM_DB_DIR": str(_lib / "db"), "PHOTOS_ROOT": str(LIB["root"]),
+    "PREWARM": "0", "SEMANTIC": "0", "ANALYSIS": "0", "CAPTIONS": "0", "REINDEX_POLL": "3600",
+    "DIGIKAM_CHECK": "none", "BG_THREADS": "2", "JOBS_PROCESS": "0",  # the jobs run in this process, where the tests can reach into them (test_jobproc.py turns the job process on)
+    "SCANNER_LOOP": "0", "LOG_FILE": str(_data / "iopix.log"),  # a server log of its own, in the scratch data folder (/api/log answers)
+}
+os.environ["HF_HUB_OFFLINE"] = "1"
+mariadb.testing.app_env("iopix", mariadb.API_DB, **SETTINGS)
+
+from iopix import config  # noqa: E402
+
+assert config.DATA_DIR.resolve() == _data.resolve() and config.DIGIKAM_DB.resolve() == LIB["db"].resolve(), "the stored settings were not picked up"
+
+
+@pytest.fixture(scope="session")
+def lib():
+    """Facts about the scratch library: ids, which have faces/tags/gps, videos."""
+    if LIB is None:
+        pytest.skip("needs a digiKam library to cut a scratch copy from (DIGIKAM_TEST_DB / DIGIKAM_TEST_ROOT)")
+    return LIB
+
+
+@pytest.fixture(scope="session")
+def client(lib):
+    """One test client for the session; the app's startup builds the index from the scratch DB."""
+    from fastapi.testclient import TestClient
+    from iopix.main import app
+    with TestClient(app) as c:
+        # the index is built in a background thread at startup; wait for it
+        import time
+        for _ in range(600):
+            s = c.get("/api/status").json()
+            if s.get("index") and not s.get("building"):
+                break
+            time.sleep(0.1)
+        yield c
+
+
+@pytest.fixture
+def photo_id(lib):
+    return lib["ids"][0]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup():
+    yield
+    shutil.rmtree(_tmp, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _digikam_vouched_closed():
+    """DIGIKAM_CHECK=none (Docker mode): the owner vouches that digiKam is closed for a while,
+    exactly as the Settings page does; the tests vouch before every test."""
+    import time
+    from iopix.data import state
+    state.init()  # the app's startup normally creates the tables; a test may run before any client exists
+    state.set_setting("digikam_closed_until", str(time.time() + 3600))
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _no_users_by_default():
+    """Most tests run in the open (no users) mode the app has before the first admin is created."""
+    from helpers import clear_accounts
+    clear_accounts()
+    yield
+
+
+@pytest.fixture
+def fresh(client):
+    """No accounts and no session cookie before and after: the open mode the app has before the
+    first admin exists, for tests that create their own accounts."""
+    from helpers import clear_accounts
+    def clear():
+        clear_accounts()
+        client.cookies.clear()
+    clear(); yield; clear()
