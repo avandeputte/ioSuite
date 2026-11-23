@@ -1,7 +1,7 @@
 import { ALERT_DEFAULTS, SECTIONS, applySections, fmtCompact, forgetTypeList, h, pages, prettyUnit, sectionOn, typeHidden, typeLabel } from './core.js';
 import { api, apiCache, applyTheme, pageTitle, saveSettings, settings } from './shell.js';
 import { card, seg } from './charts.js';
-import { accountUi, isAdmin, me, setAccount, suitePanel, toast } from './accounts.js';
+import { accountUi, me, setAccount, suitePanel } from './accounts.js';
 
 // ---------- settings: tabs, as in every ioSuite app (#/settings/account … #/settings/apps) ----------
 // One Settings page for everything, in every ioSuite app. Each tab loads only what it shows. The account's own tabs

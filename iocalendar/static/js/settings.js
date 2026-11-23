@@ -9,7 +9,6 @@ export { accountUi };
 
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
-  const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['calendars', 'Calendars'], ['holidays', 'Holidays and birthdays'],
     ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),

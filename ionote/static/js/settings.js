@@ -1,6 +1,6 @@
 /** Settings, one page as in every ioSuite app (Account and Display for accounts; Server for admins;
  *  People, Apps, Servers and Keys for suite admins), the Import and export page and the change log. */
-import { $, h, api, state, icon, toast, fail, isAdmin, canWrite, fmtDate } from './core.js';
+import { $, h, api, state, icon, toast, fail, canWrite, fmtDate } from './core.js';
 
 /** Settings › Account (with the app passwords) and Display: iosuite_shared's panels, the same in every io app. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
@@ -30,7 +30,6 @@ async function suitePanel(tab, sub) {
 
 /** A page as iopix lays one out: the title with its icon tile, the tabs under it (the tab is in the address:
  *  #/settings/display), then the tab's boxes. */
-let again = () => {};
 function pageTitle(text, ic, hue, sub = '') { return h('h1.ptitle', h('span.pic', { style: `--hue:${hue}` }, icon(ic)), text, sub ? h('span.muted', sub) : null); }
 async function tabbedPage(base, title, ic, hue, tabs, tab) {
   const main = $('#main');
@@ -39,10 +38,8 @@ async function tabbedPage(base, title, ic, hue, tabs, tab) {
   const inner = h('div.pagein', pageTitle(title, ic, hue),
     tabs.length > 1 ? h('div.stabs', { role: 'tablist' }, tabs.map(([k, label]) => h('a.pillbtn' + (k === cur[0] ? '.on' : ''), { href: `#/${base}/${k}`, role: 'tab', 'aria-selected': String(k === cur[0]) }, label))) : null);
   main.append(h('div.page', inner));
-  again = () => tabbedPage(base, title, ic, hue, tabs, cur[0]);
   try { for (const b of await cur[2]()) if (b) inner.append(b); } catch (e) { inner.append(h('p.err', e.message)); }
 }
-const render = () => again();
 
 /** Settings: Account and Display for accounts; and the suite's own tabs (People, Apps, Servers, Keys) for
  *  suite admins. Before any account exists, only Display. */

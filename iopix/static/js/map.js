@@ -1,5 +1,5 @@
 /** The map page (Leaflet, loaded on demand). */
-import { $, PREF, TOAST_LONG, accuracyChoices, api, date, dfDay, dfTime, errorBox, fill, fmtDist, h, icon, main, nf, plural, store } from './core.js';
+import { PREF, TOAST_LONG, accuracyChoices, api, date, dfDay, dfTime, errorBox, fill, fmtDist, h, icon, main, nf, plural, store } from './core.js';
 import { S, applyFilter, filterParams, go, toast, toastError } from './state.js';
 import { modal } from './actions.js';
 import { editPhotos } from './editing.js';
