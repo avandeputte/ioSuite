@@ -453,6 +453,7 @@ class Auth:
           than it said, so nothing large is ever held in memory."""
         log = self.log
         limit_for = limit_for or (lambda path, ctype: body_limit)
+        app.state.iosuite_auth = self  # the host registers the app as soon as it is up (iosuite_shared.host)
 
         def error(msg: str, status: int):
             return JSONResponse({"detail": msg}, status_code=status)

@@ -480,3 +480,23 @@ def test_the_copy_says_whether_it_is_serving(monkeypatch):
     h.by_name["iocalendar"].state = "starting"
     s, _, b = ask(h, "/-/status")
     assert s == 503 and b == {"detail": "starting"}
+
+
+def test_an_app_is_in_the_suite_s_list_as_soon_as_it_is_up():
+    """Another copy passes an app's requests here from the moment the app is up: the host writes its row at start,
+    not at the first request somebody happens to make to this copy."""
+    from fastapi import FastAPI
+    called = []
+
+    class Auth:
+        def register(self):
+            called.append("iocalendar")
+    app = FastAPI()
+    app.state.iosuite_auth = Auth()
+    h = Host([Entry(name="iocalendar", asgi=app), Entry(name="iotask", asgi=FastAPI())], ports={80: "web"})  # iotask: nothing to register
+
+    async def go():
+        await h.start()
+        assert [e.state for e in h.entries] == ["up", "up"] and called == ["iocalendar"]
+        await h.stop()
+    asyncio.run(go())

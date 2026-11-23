@@ -245,6 +245,7 @@ class Host:
             try:
                 async with e.asgi.router.lifespan_context(e.asgi):
                     e.state, e.error = "up", ""
+                    await asyncio.to_thread(_register, e)
                     e.ready.set()
                     await self._stop.wait()
                 e.state = "stopped"
@@ -276,6 +277,19 @@ class Host:
 
     def status(self) -> list[dict[str, Any]]:
         return [{"app": e.name, "state": e.state, "error": e.error} for e in self.entries]
+
+
+def _register(e: Entry) -> None:
+    """The app's row in the suite's list of apps, written as soon as it is up: the other copies of the suite pass its
+    requests here from then on, not from the first request somebody happens to make to this copy. Never stops an
+    app from starting (its own middleware tries again on a request)."""
+    auth = getattr(getattr(e.asgi, "state", None), "iosuite_auth", None)
+    if auth is None:
+        return
+    try:
+        auth.register()
+    except Exception as x:  # noqa: BLE001
+        log.warning("%s could not be registered in the suite's list of apps: %s", e.name, x)
 
 
 async def _unavailable(scope: Scope, receive: Receive, send: Send, e: Entry | None, path: str | None = None) -> None:
