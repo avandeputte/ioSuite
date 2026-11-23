@@ -235,4 +235,4 @@ jobs:
                 interval: 5s
           EOF
           docker compose -f docker-compose.yml -f two.yml up -d --wait --wait-timeout 300 || { docker compose -f docker-compose.yml -f two.yml ps; docker compose -f docker-compose.yml -f two.yml logs --no-log-prefix --tail 60 iosuite iopix; exit 1; }
-          python3 tools/twocopies.py --web 80 --other-web 8081 --other-app iopix --login "alex:a-password-for-the-check" || { docker compose -f docker-compose.yml -f two.yml logs --no-log-prefix --tail 60 iosuite iopix; exit 1; }
+          python3 tools/twocopies.py --web 80 --other-web 8081 --other-app iopix --app iocalendar --login "alex:a-password-for-the-check" || { docker compose -f docker-compose.yml -f two.yml logs --no-log-prefix --tail 60 iosuite iopix; exit 1; }

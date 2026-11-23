@@ -4,7 +4,8 @@
     python3 tools/twocopies.py --web 80 --other-web 8081 --other-app iopix --login alex:PASSWORD
 
 `--web` is the copy with the start page, `--other-web` the second copy (another port on this machine, or with --other-at
-another machine), `--other-app` an app only the second copy runs. Checks that each copy answers for the other's apps
+another machine), `--other-app` an app only the second copy runs, `--app` one only the first copy runs (unless said:
+the first of the suite's apps that is neither the start page nor --other-app). Checks that each copy answers for the other's apps
 (a request for an app that runs elsewhere is passed across), that one sign-in holds in both, that the list of apps says
 where each runs, and that the log screen shows both copies on one timeline. Exit code 1 when something is not so.
 Not part of the program: nothing imports it. The checks on GitHub run it (.github/workflows/tests.yml).
@@ -27,13 +28,14 @@ def main() -> int:
     p.add_argument("--other-at", default=None)
     p.add_argument("--other-web", type=int, default=8081)
     p.add_argument("--other-app", default="iopix")
+    p.add_argument("--app", default=None, help="an app only the first copy runs")
     p.add_argument("--login", required=True, help="NAME:PASSWORD of a suite admin")
     p.add_argument("--wait", type=int, default=180)
     a = p.parse_args()
     known = smoke.manifests()
     one, two = f"http://{a.at}:{a.web}", f"http://{a.other_at or a.at}:{a.other_web}"
     folder = "/" + known[a.other_app]["folder"]
-    mine = next(k for k in known if k not in (a.other_app, "iostart") and known[k].get("folder"))  # an app of the first copy
+    mine = a.app or next(k for k in known if k not in (a.other_app, "iostart") and known[k].get("folder"))  # an app of the first copy
     until = time.time() + a.wait
     while time.time() < until and (smoke.ask(one + "/-/status", 5)[0] != 200 or smoke.ask(two + "/-/status", 5)[0] != 200):
         time.sleep(1)
