@@ -3,6 +3,8 @@ import { go, route } from './main.js';
 import { askScope, drawView } from './views.js';
 import { eventWeather } from './weather.js';
 import { safeUrl } from '../../api/auth/ui.js';  // a link that is a link (never javascript:)
+import { closeDialogs } from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+export { closeDialogs };
 
 // ------------------------------------------------------------------ one event
 export const ridQ = (rid) => (rid ? `?recurrenceId=${encodeURIComponent(rid)}` : '');
@@ -93,7 +95,6 @@ export function openBillCard(o) {
   back.append(h('div', { class: 'dialog', role: 'dialog', 'aria-label': o.merchant }, card));
   document.body.append(back);
 }
-export function closeDialogs() { document.querySelectorAll('.dialog-back').forEach((d) => d.remove()); }
 export async function openEvent(o) {
   let j;
   try { j = await api(`api/events/${o.id}${ridQ(o.recurrenceId)}`); } catch (e) { fail(e); return; }

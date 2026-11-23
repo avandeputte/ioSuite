@@ -3,45 +3,22 @@
    reminder and who sees it; adding one from a scan (read on the server: OCR, a passport's machine-readable zone, a
    license's barcode) or typed in; and settings (account, display, and for admins the server, and for suite admins
    security and global settings), laid out as in the other ioSuite apps. */
-import { client, h, passkeyButton, safeUrl, signIn } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
+import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, initials, menuOpen, openNav, popMenu, put, toast, toggleSuite } from '../api/auth/frame.js';
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
 const $ = (s, el = document) => el.querySelector(s);
-/** replaceChildren that leaves out null and false (as h() does) and flattens lists. */
-const fill = (el, ...kids) => el.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false));
-/** append with the same manners. */
-const put = (el, ...kids) => el.append(...kids.flat(9).filter((k) => k != null && k !== false));
-const ICONS = {
-  list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
-  menuOpen: 'M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z',
-  pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
-  menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
-  search: 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
-  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
-  people: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
-  link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
-  upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
-  download: 'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
-  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
-  edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
-  delete: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
-  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
-  logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
+addIcons({
   more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
-  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
   alert: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
-  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
-  ai: 'M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z',
-  theme: 'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',
-  print: 'M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z',
   book: 'M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z',
   box: 'M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4l16-.02V7z',
   lock: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
   tag: 'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
   timer: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0 0 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9a8.994 8.994 0 0 0 7.03-14.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
   dish: 'M8.1 13.34l2.83-2.83L3.91 3.5a4.008 4.008 0 0 0 0 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z',
-  photo: 'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z',
   favorite: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
   favoriteBorder: 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z',
   star: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
@@ -51,28 +28,19 @@ const ICONS = {
   books: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 10l-2.5-1.5L15 12V4h5v8z',
   text: 'M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z',
   file: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
-  prev: 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z',
-  next: 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
-  minus: 'M19 13H5v-2h14v2z',
-  globe: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95a15.65 15.65 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.92 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.987 7.987 0 0 1 5.08 16zm2.95-8H5.08a7.987 7.987 0 0 1 4.33-3.56A15.65 15.65 0 0 0 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z',
   build: 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z',
   shield: 'M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z',
   archive: 'M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5 6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z',
   place: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z',
   subdir: 'M19 15l-6 6-1.42-1.42L15.17 16H4V4h2v10h9.17l-3.59-3.58L13 9l6 6z',
   grid: 'M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z',
-  money: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
   stack: 'M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z',
-  receipt: 'M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z',
-  copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
   pdf: 'M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z',
-  history: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
   folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
   passport: 'M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-6 3c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zm4 13H8v-2h8v2zm-4-11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
   badge: 'M20 7h-5V4c0-1.1-.9-2-2-2h-2c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM9 12c.83 0 1.5.67 1.5 1.5S9.83 15 9 15s-1.5-.67-1.5-1.5S8.17 12 9 12zm3 6H6v-.75c0-1 2-1.5 3-1.5s3 .5 3 1.5V18zm1-9h-2V4h2v5zm5 7.5h-4V15h4v1.5zm0-3h-4V12h4v1.5z',
   car: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
   plane: 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z',
-  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
   health: 'M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z',
   cert: 'M4 3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h8v5l3-3 3 3v-5h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H4zm8 2h8v3h-8V5zm0 5h8v3h-8v-3zM4 5h6v8H4V5z',
   gavel: 'M1 21h12v2H1zM5.245 8.07l2.83-2.827 14.14 14.142-2.828 2.828zM12.317 1l5.657 5.656-2.83 2.83-5.654-5.66zM3.825 9.485l5.657 5.657-2.828 2.828-5.657-5.657z',
@@ -85,61 +53,10 @@ const ICONS = {
   lockFill: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z',
   open: 'M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
   info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
-};
-const icon = (n, cls = '') => { const s = document.createElement('span'); s.className = 'ic ' + cls; s.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ICONS[n] || ''}"/></svg>`; return s; };
+});
 
-let toastTimer;
-/** A note at the foot of the page. */
-function toast(msg) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
-}
-const fail = (e) => toast(e.message || String(e));
 
-function dialog(title, body, buttons, cls = '') {
-  return new Promise((resolve) => {
-    const back = h('div', { class: 'dialog-back' });
-    const close = (v) => { back.remove(); resolve(v); };
-    back.addEventListener('click', (e) => { if (e.target === back) close(null); });
-    const btns = (buttons || [{ label: 'OK', value: true, primary: true }]).map((b) =>
-      h('button', { class: `pillbtn noic ${b.primary ? 'primary' : ''} ${b.danger ? 'danger' : ''}`, onclick: () => close(typeof b.value === 'function' ? b.value() : b.value) }, b.label));
-    back.append(h('div', { class: `dialog ${cls}`, role: 'dialog' }, h('h2', null, title), body, h('div', { class: 'btns' }, btns)));
-    document.body.append(back);
-    const f = back.querySelector('input,select,textarea'); if (f) f.focus();
-  });
-}
-const confirmDialog = (title, text, ok = 'OK', danger = false) => dialog(title, h('p', null, text), [{ label: 'Cancel', value: false }, { label: ok, value: true, primary: !danger, danger }]);
-function closeDialogs() { document.querySelectorAll('.dialog-back').forEach((d) => d.remove()); }
-
-/** A menu that drops from a button: items are [icon, label, what it does (a function, or an address)]; a second click
-    on the button, a click elsewhere, Escape or scrolling puts it away. */
-let openMenu = null;
-function closeMenu() {
-  if (!openMenu) return;
-  openMenu.el.remove(); document.removeEventListener('click', openMenu.outside); openMenu = null;
-}
-function popMenu(btn, items) {
-  const mine = openMenu && openMenu.btn === btn;
-  closeMenu();
-  if (mine) return;
-  const el = h('div', { class: 'menu pop', role: 'menu' }, items.filter(Boolean).map(([ic, label, act]) => (typeof act === 'string'
-    ? h('a', { class: 'mi', role: 'menuitem', href: act, onclick: closeMenu }, icon(ic, 's'), label)
-    : h('button', { class: 'mi', role: 'menuitem', onclick: () => { closeMenu(); act(); } }, icon(ic, 's'), label))));
-  document.body.append(el);
-  const r = btn.getBoundingClientRect();
-  el.style.left = `${Math.round(Math.max(8, Math.min(r.right - el.offsetWidth, innerWidth - el.offsetWidth - 8)))}px`;
-  el.style.top = `${Math.round(r.bottom + 4 + el.offsetHeight > innerHeight - 8 ? Math.max(8, r.top - el.offsetHeight - 4) : r.bottom + 4)}px`;
-  const outside = (e) => { if (!el.contains(e.target) && !btn.contains(e.target)) closeMenu(); };
-  openMenu = { el, btn, outside };
-  setTimeout(() => document.addEventListener('click', outside), 0);
-  $('#main').addEventListener('scroll', closeMenu, { once: true });
-}
-
-const hue = (s) => { let x = 0; for (const c of s || '') x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
-const initials = (fn) => { const p = (fn || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
-const store = { get: (k) => { try { return localStorage.getItem(`iodocs.${k}`); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(`iodocs.${k}`, v); } catch { /* private mode */ } } };
+const store = frame.storeFor('iodocs');
 
 
 // ------------------------------------------------------------------ state
@@ -179,83 +96,16 @@ const memberBadge = (m, face = false) => h('span', { class: `mem${face && m.hasF
 const possessive = (n) => (/s$/i.test(n) ? `${n}’` : `${n}’s`);
 
 // ------------------------------------------------------------------ chrome
-function drawUser() {
-  const m = $('#usermenu'); m.replaceChildren();
-  if (!S.user) return;
-  const btn = h('button', { class: 'avatarbtn', title: S.user.displayName, style: { background: `hsl(${hue(S.user.name)} 45% 45%)` } }, initials(S.user.displayName));
-  let menu = null;
-  const closeMenu = () => { if (menu) { menu.remove(); menu = null; document.removeEventListener('click', outside); } };
-  const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== btn) closeMenu(); };
-  btn.onclick = () => {
-    if (menu) return closeMenu();
-    menu = h('div', { class: 'menu' },
-      h('div', { class: 'who' }, h('b', null, S.user.displayName), h('div', { class: 'muted small' }, `${S.user.name} · ${S.user.role}`)),
-      h('a', { class: 'mi', href: '#/settings', onclick: closeMenu }, icon('settings', 's'), 'Settings'),
-      h('button', { class: 'mi', onclick: async () => { const r = await api('api/auth/logout', { method: 'POST' }); if (r && r.cloudflareLogout) location.href = r.cloudflareLogout; else location.reload(); } }, icon('logout', 's'), 'Sign out'));
-    m.append(menu);
-    setTimeout(() => document.addEventListener('click', outside), 0);
-  };
-  m.append(btn);
-}
+function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to all the documents. */
-async function loadSuite() {
-  try {
-    const r = await api('api/auth/suite');
-    S.suite = (r.items || []).filter((a) => a.url); suiteSelf = r.app;  // in the suite's one order, this app too
-    if (!S.suite.some((a) => a.app !== r.app)) S.suite = [];  // only this app: no menu
-  } catch { S.suite = []; }
-  const b = $('#suitebtn');
-  if (b) { b.hidden = !S.suite.length; b.onclick = () => toggleSuite(b); }
-  if (!S.suite.length) closeSuite();
-  drawNav();
-}
-let suiteSelf = null;  // this app's key, marked in the menu
-let suitePop = null;
-function closeSuite() {
-  if (!suitePop) return;
-  suitePop.remove(); suitePop = null;
-  document.removeEventListener('click', suiteOutside, true);
-  document.removeEventListener('keydown', suiteKey);
-  removeEventListener('resize', closeSuite);
-}
-function suiteOutside(e) { if (suitePop && !suitePop.contains(e.target) && !e.target.closest('.suitebtn')) closeSuite(); }
-function suiteKey(e) { if (e.key === 'Escape') closeSuite(); }
-function appTile(a) {
-  const mark = (a.name || a.app).replace(/^io(?=[A-Z])/, '').slice(0, 1).toUpperCase();
-  const fallback = () => h('span', { class: 'appic fb', style: { background: a.color || 'var(--brand)' } }, mark);
-  const ic = a.icon ? h('img', { class: 'appic', src: a.icon, alt: '', onerror: (e) => e.currentTarget.replaceWith(fallback()) }) : fallback();
-  const el = h('a', { class: 'apptile', href: a.url, role: 'menuitem', title: a.description || a.name, onclick: closeSuite },
-    ic, h('span', { class: 'appnm' }, a.name || a.app));
-  el.classList.toggle('tool', !!a.adminTool);  // admin tools: a smaller icon
-  if (a.app === suiteSelf) { el.classList.add('cur'); el.setAttribute('aria-current', 'page'); }
-  return el;
-}
-function toggleSuite(btn) {
-  if (suitePop) { closeSuite(); return; }
-  if (!S.suite.length) return;
-  // the apps, then the admin tools in a section of their own: the server sends those to their admins only
-  const apps = S.suite.filter((a) => !a.adminTool), tools = S.suite.filter((a) => a.adminTool);
-  suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
-    ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
-  document.body.append(suitePop);
-  const r = btn.getBoundingClientRect();
-  suitePop.style.top = `${Math.round(r.bottom + 6)}px`;
-  suitePop.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - suitePop.offsetWidth - 8)))}px`;
-  setTimeout(() => { document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey); addEventListener('resize', closeSuite); }, 0);
-}
-/** The theme: the account's (Settings › Display), remembered in this browser too so the sign-in page has it. */
-function applyTheme(choice) {
-  if (choice) store.set('theme', choice);
-  const t = choice || store.get('theme') || 'system';
-  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-}
+async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
+function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 
 /* The sidebar, as in the other io apps: the name on top, the documents (all of them, what expires, archived), the
    kinds, the family, adding, Settings at the foot. It docks beside the page on a wide screen unless its button put it
    away (remembered); otherwise it slides over the page. Phones get a bottom bar. */
-const DOCK_MIN = 1100;
 const VIEWS = { all: ['All documents', 'folder', '--c-blue'], expiring: ['To renew', 'timer', '--c-orange'], archived: ['Archived', 'archive', '--c-slate'] };
 const viewCount = (k) => ({ all: S.counts.documents, expiring: (S.counts.soon || 0) + (S.counts.expired || 0), archived: S.counts.archived }[k] || null);
 const kindOf = (k) => S.kinds.find((x) => x.key === k) || { key: k, label: k, plural: k, icon: 'file' };
@@ -297,23 +147,8 @@ function drawNav() {
   applySidebar();
   $('.navmore')?.classList.toggle('on', ['kind', 'person', 'new', 'scan', 'settings', 'search'].includes(r.view));
 }
-function applySidebar() {
-  const body = document.body, btn = $('#sidebtn');
-  const docked = innerWidth >= DOCK_MIN && store.get('sidebar') !== '0';
-  body.classList.toggle('side-docked', docked);
-  if (docked) closeNav();
-  if (!btn) return;
-  const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : innerWidth >= DOCK_MIN ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
-  btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
-}
-function sidebarButton() {
-  if (document.body.classList.contains('side-docked')) store.set('sidebar', '0');
-  else if (innerWidth >= DOCK_MIN) store.set('sidebar', '1');
-  else { closeNav(); return; }
-  applySidebar();
-}
-function openNav() { document.body.classList.add('side-open'); $('#navscrim').hidden = false; }
-function closeNav() { document.body.classList.remove('side-open'); $('#navscrim').hidden = true; }
+function applySidebar() { frame.applySidebar(store); }
+function sidebarButton() { frame.sidebarButton(store); }
 
 /** Phones: what the bottom bar has no room for (the family, the kinds, adding, settings). */
 function moreSheet() {
@@ -767,9 +602,7 @@ async function showSettings(page, r) {
   const body = h('div'); page.append(body);
   await ({ account: setAccount, display: setDisplay, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
-const fld = (l, e) => h('label', { class: 'field' }, h('span', null, l), e);
 
-const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 /** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
 async function setAccount(el) {
   const ui = await accountUi();
@@ -791,49 +624,10 @@ async function setDisplay(el) {
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
-async function setSuite(el, r) {
-  let ui;
-  try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: 'warn' }, `The panel did not load: ${e.message}`)); return; }
-  await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
-}
+function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 // ------------------------------------------------------------------ sign-in
-function showSignIn() {
-  // as in the other io apps: a tile per account; one click for a passwordless account, a password for the others
-  if (document.querySelector('.signin')) return;
-  const first = !S.status.usersExist;
-  const name = h('input', { class: 't', placeholder: 'User name', autocomplete: 'username', autocapitalize: 'none' });
-  const pw = h('input', { class: 't', type: 'password', placeholder: first ? 'Password (8 or more)' : 'Password', autocomplete: first ? 'new-password' : 'current-password' });
-  const err = h('div', { class: 'err' });
-  const form = h('div', { class: 'signin-form' }, name, pw);
-  const tiles = h('div', { class: 'accounts' });
-  const btn = h('button', { class: 'pillbtn primary noic', type: 'submit' }, first ? 'Create the admin account' : 'Sign in');
-  const login = async (n, p) => {
-    err.textContent = '';
-    try { if (first) await api('api/auth/setup', { method: 'POST', json: { name: n, password: p } }); else await signIn({ name: n, password: p }); location.reload(); } catch (x) { err.textContent = x.message; }
-  };
-  const submit = (e) => { e.preventDefault(); login(name.value.trim(), pw.value); };
-  document.body.append(h('div', { class: 'signin' }, h('form', { class: 'dialog', onsubmit: submit },
-    h('div', { class: 'brand' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }), h('span', { class: 'brand-name', style: { display: 'inline' } }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Docs'))),
-    first ? h('p', { class: 'muted' }, 'Welcome. Make the first account: it is the admin, who adds the rest of the family in Settings. (Already use another io app? Sign in there first, or use the same name and password here once the apps share their accounts.)') : h('h2', null, 'Sign in'),
-    tiles, form, err, h('div', { class: 'btns' }, btn), first ? null : passkeyButton(() => location.reload()))));
-  if (first) { name.focus(); return; }
-  const pick = (t) => tiles.querySelectorAll('.account').forEach((x) => x.classList.toggle('on', x === t));
-  api('api/auth/accounts').then((d) => {
-    if (!d.accounts.length) { name.focus(); return; }
-    form.hidden = true; btn.hidden = true;
-    tiles.append(...d.accounts.map((a) => {
-      const t = h('button', { type: 'button', class: 'account', title: a.passwordless ? `Sign in as ${a.name}` : `${a.name} (password)`, onclick: () => {
-        pick(t);
-        if (a.passwordless) { login(a.name, ''); return; }
-        name.value = a.name; name.hidden = true; form.hidden = false; btn.hidden = false; pw.value = ''; pw.focus();
-      } }, h('span', { class: 'av big', style: { '--h': hue(a.displayName || a.name) } }, initials(a.displayName || a.name)), h('span', { class: 'nm' }, a.displayName || a.name), a.passwordless ? null : h('span', { class: 'muted small' }, 'password'));
-      return t;
-    }), h('button', { type: 'button', class: 'account', title: 'Type a user name', onclick: (e) => {
-      pick(e.currentTarget); name.value = ''; name.hidden = false; form.hidden = false; btn.hidden = false; name.focus();
-    } }, h('span', { class: 'av big other' }, '…'), h('span', { class: 'nm' }, 'Other')));
-  }).catch(() => name.focus());
-}
+function showSignIn() { frame.signInScreen({ api, name: 'Docs', first: !S.status.usersExist }); }
 
 // ------------------------------------------------------------------ start
 async function start() {
@@ -862,7 +656,7 @@ async function start() {
     }, 250);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (document.querySelector('.lightbox')) return; if (openMenu) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
+    if (e.key === 'Escape') { if (document.querySelector('.lightbox')) return; if (menuOpen()) closeMenu(); else if (document.querySelector('.dialog-back')) closeDialogs(); else if (document.body.classList.contains('side-open')) closeNav(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.querySelector('.signin, .dialog-back, .lightbox')) return;
     if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
     else if (e.key === 'n' && canAdd()) location.hash = '#/scan';

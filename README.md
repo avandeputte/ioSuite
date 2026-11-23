@@ -161,6 +161,12 @@ app answers (`/api/auth`, `/api/status`, `/api/live`, `/api/suite`…), the MCP 
 helpers (`iosuite_shared.db.AppDatabase`), the accounts as an app sees them (`iosuite_shared.users.AppUsers`) and
 what a local MCP server and its diagnostics say (`iosuite_shared.mcp`) are kept once as well.
 
+Each app's page is a page of its own, and what the pages all did in the same words is one script and one style
+sheet the suite serves beside them: `iosuite_shared/static/frame.js` (the icons most of them draw, the note at the
+foot of the page, dialogs, the menus, the menu of the suite's apps, the account's menu, the sign-in screen, the
+sidebar, the theme), `account-panel.js` (`h()`, the client, Settings › Account) and `base.css`. A page imports
+them from its own app (`api/auth/frame.js`), so it works the same on whichever server the app runs.
+
 ## From a checkout
 
 ```sh

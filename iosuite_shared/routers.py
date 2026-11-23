@@ -159,6 +159,13 @@ def auth_router(self) -> APIRouter:
         return FileResponse(Path(__file__).with_name("static") / "account-panel.js", media_type="text/javascript",
                             headers={"Cache-Control": "no-cache"})
 
+    @r.get("/api/auth/frame.js", dependencies=[access.public])
+    def api_frame():
+        """The frame the apps' pages share (static/frame.js): icons, the note at the foot of the page, dialogs, the
+        menu of the suite's apps, the sidebar, the theme: import { ... } from '../api/auth/frame.js'."""
+        return FileResponse(Path(__file__).with_name("static") / "frame.js", media_type="text/javascript",
+                            headers={"Cache-Control": "no-cache"})
+
     @r.get("/api/auth/base.css", dependencies=[access.public])
     def api_base_css():
         """The look the single-page io apps share (static/base.css), linked before each one's own static/app.css."""
