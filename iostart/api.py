@@ -16,6 +16,7 @@ from iosuite_shared.access import json_body
 
 from iostart.auth import auth
 from iostart import access, apps, config, siteicons, bookmarkcheck, bookmarkdav, bookmarkfiles, bookmarks, bookmarksync, homeassistant as ha, ncbookmarks, layout, status as appstatus, rates, timers, trmnl, trmnlpush, trmnlserver, wall, weather, widgets
+from iostart import search as suitesearch
 
 router = APIRouter()
 
@@ -489,6 +490,20 @@ def bookmarks_extension():
                 z.write(full, os.path.join("iostart-bookmarks", os.path.relpath(full, EXTENSION_DIR)))
     return Response(buf.getvalue(), media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="iostart-bookmarks-{_extension_version() or "extension"}.zip"'})
+
+
+# ------------------------------------------------------------------ one search across the apps (app/search.py)
+
+@router.get("/api/search", dependencies=[access.signed_in])
+async def search_everywhere(request: Request, q: str = "", tz: str = "", apps: str = "", wait: bool = False):
+    """What every app with a search finds for q, asked at the same time with the viewer's own sign-in and ranked
+    together: {items: [item + {app, score}], apps: {key: {more} | {status, why}}, late: [key]}. Items are in the suite's
+    shape (iosuite_shared.suiteitems), best first; finished tasks and events that are over are left out. apps: only
+    these (comma-separated; the ones the viewer hid stay out). late: the apps that had not answered within a few
+    seconds; ask again for those with apps=<them>&wait=1, which waits for them as long as an app is ever waited for."""
+    only = [k for k in apps.split(",") if k] or None
+    return await run_in_threadpool(suitesearch.everywhere, request, q, tz, only,
+                                   widgets.TIMEOUT * 3 if wait else suitesearch.DEADLINE)
 
 
 # ------------------------------------------------------------------ what the tiles show (app/widgets.py)

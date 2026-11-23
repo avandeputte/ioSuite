@@ -448,13 +448,13 @@ function docWhen(x) {
 }
 /** A row of the search box for what an app found, in the suite's shape (iosuite_shared.suiteitems): its picture or
     icon (with its colour), its name, then when it is, or its line, and what it comes to. */
-function foundRow(a, x) {
+function foundRow(a, x, mark) {
   const ic = x.icon || 'link';
   const pic = x.image != null
     ? h('span', { class: `bmic pic${x.round ? ' round' : ''}` }, h('img', { src: itemImage(a.key, x.kind, x.id, x.image), alt: '', onerror: (e) => e.target.replaceWith(x.round ? initials(x.title) : icon(ic, 's')) }))
     : h('span', { class: 'bmic hit', style: x.color ? { '--c': x.color } : undefined }, icon(ic, 's'));
   const when = x.when ? [whenShort(x.when, x.allDay), x.recurring ? '↻' : ''].filter(Boolean).join(' ') : '';
-  return [pic, h('span', { class: 'qname', title: [x.title, x.text].filter(Boolean).join(' · ') }, x.title),
+  return [pic, h('span', { class: 'qname', title: [x.title, x.text].filter(Boolean).join(' · ') }, x.title, mark ? h('span', { class: 'qfrom small' }, a.start.find.head) : null),
     when && x.amount == null ? h('span', { class: 'muted small when' }, when) : h('span', { class: `muted small ${x.amount != null ? 'when' : 'rest'}` }, x.amount != null ? (x.kind === 'payee' ? x.text : when) : x.text || ''),
     x.amount != null ? h('span', { class: `small qamt${x.amount > 0 && x.kind !== 'payee' ? ' in' : ''}` }, money(x.amount, x.currency)) : null].filter(Boolean);
 }
@@ -468,7 +468,7 @@ function searchBox() {
   const list = h('div', { class: 'qlist', hidden: true });
   const box = h('div', { class: 'search' }, icon('search', 's'), inp, h('kbd', null, /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'), list);
   let rows = [], sel = 0, timer = null, things = { q: '', items: [] };
-  const got = {};  // app key: {q, items} it found for that text
+  let found = { q: '', items: [] };  // what the apps found for that text, ranked together (best first)
   const hide = () => { list.hidden = true; list.replaceChildren(); rows = []; };
   const row = (href, kids, ext) => { const a = h('a', { class: 'qrow', href, ...(ext ? { target: '_blank', rel: 'noreferrer' } : {}), onmousedown: (e) => e.preventDefault() }, kids); rows.push(a); return a; };
   const build = () => {
@@ -476,7 +476,12 @@ function searchBox() {
     rows = [];
     if (!q) return hide();
     const links = (S.bookmarks || []).filter((l) => fold(`${l.name} ${l.description || ''} ${l.href}`).includes(fold(q))).slice(0, 6);
-    const found_ = finders().map((a) => [a, got[a.key]]).filter(([, g]) => g && g.q === ql && g.items.length);
+    // what the apps found, ranked together (app/search.py): the best few from any app first when more than one app
+    // found something, then each app's own section, the one with the best find first
+    const byKey = Object.fromEntries(finders().map((a) => [a.key, a]));
+    const hits = (found.q === ql ? found.items : []).filter((x) => byKey[x.app]);
+    const top = new Set(new Set(hits.map((x) => x.app)).size > 1 ? hits.slice(0, 3) : []);
+    const found_ = [...new Set(hits.map((x) => x.app))].map((k) => [byKey[k], hits.filter((x) => x.app === k && !top.has(x))]).filter(([, xs]) => xs.length);
     // "t buy milk fri": a task for ioTask; "n the gate code is 4411": a note for ioNote (the row comes first: Enter adds it)
     const add = quickPrefix(q);
     // "timer 10m pasta": a kitchen timer; "15% of 84", "350f in c": the answer (Enter copies it)
@@ -485,7 +490,7 @@ function searchBox() {
     const bang = add || tmr ? null : webBang(q), site = bang || add || tmr ? null : looksLikeSite(q), cal = !bang && !add && !tmr && S.apps.find((a) => a.key === 'iocalendar') && parseEvent(q);
     const eng = bang ? bang.engine : webEngine(), wq = bang ? bang.q : q;
     const webRow = () => row(eng.url(wq), [h('span', { class: 'bmic' }, icon('web', 's')), h('span', { class: 'qname' }, `“${wq}”`), h('span', { class: 'muted small' }, eng.name)], true);
-    const found = links.length || found_.length || (things.q === ql && things.items.length);
+    const any = links.length || hits.length || (things.q === ql && things.items.length);
     const addRow = () => {
       if (add.kind === 'task') {
         const t = parseEvent(add.text) || { title: add.text[0].toUpperCase() + add.text.slice(1), date: null, start: null };
@@ -507,7 +512,8 @@ function searchBox() {
       bang ? [h('div', { class: 'qhead' }, eng.name), webRow()] : null,
       links.length ? h('div', { class: 'qhead' }, 'Bookmarks') : null,
       links.map((l) => { const src = bmIcon(l); return row(l.href, [h('span', { class: 'bmic' }, src ? h('img', { src, alt: '' }) : l.abbr), h('span', { class: 'qname' }, l.name), h('span', { class: 'muted small' }, l.description || l.href)], true); }),
-      found_.flatMap(([a, g]) => [h('div', { class: 'qhead' }, a.start.find.head), ...g.items.map((x) => row(`${a.url}/${x.href || ''}`, foundRow(a, x)))]),
+      top.size ? [h('div', { class: 'qhead' }, 'Best matches'), ...[...top].map((x) => row(`${byKey[x.app].url}/${x.href || ''}`, foundRow(byKey[x.app], x, true)))] : null,
+      found_.flatMap(([a, xs]) => [h('div', { class: 'qhead' }, a.start.find.head), ...xs.map((x) => row(`${a.url}/${x.href || ''}`, foundRow(a, x)))]),
       // Home Assistant: an entity's state, and a tap switches the ones the admin lets the page control
       things.q === ql && things.items.length ? h('div', { class: 'qhead' }, 'Home') : null,
       things.q === ql ? things.items.map((t) => { const a = row(t.control ? '#' : haLink(t), [h('span', { class: `bmic ha${t.on ? ' on' : ''}` }, icon(haIcon(t), 's')), h('span', { class: 'qname' }, t.name), h('span', { class: `muted small${t.control ? ' tap' : ''}` }, t.control ? `${t.text || t.state} · tap` : t.text || t.state)]);
@@ -517,26 +523,33 @@ function searchBox() {
       cal ? [h('div', { class: 'qhead' }, 'Add to the calendar'), (() => { const a = row('#', [h('span', { class: 'bmic' }, icon('event', 's')), h('span', { class: 'qname' }, cal.title || '(no title)'), h('span', { class: 'muted small' }, eventWhen(cal))]);
         a.onclick = (e) => { e.preventDefault(); inp.blur(); quickAdd(cal); }; return a; })()] : null,
       // nothing here matches: the web first, so Enter searches it
-      !bang && !site && !found && !add && !tmr ? [h('div', { class: 'qhead' }, 'Web'), webRow()] : null,
+      !bang && !site && !any && !add && !tmr ? [h('div', { class: 'qhead' }, 'Web'), webRow()] : null,
       add ? null : h('div', { class: 'qhead' }, 'Search in'),
       add ? [] : S.allApps.filter((a) => appSearch(a, q)).map((a) => row(appSearch(a, q), [h('img', { class: 'qapp', src: a.icon, alt: '' }), h('span', { class: 'qname' }, appName(a.name, a.color)), h('span', { class: 'muted small' }, `“${q}”`)])),
-      !bang && !site && found ? webRow() : null,
+      !bang && !site && any ? webRow() : null,
     ];
     sel = Math.min(sel, rows.length - 1);
     rows.forEach((r, i) => r.classList.toggle('on', i === sel));
     list.replaceChildren(...kids.flat().filter(Boolean)); list.hidden = false;
   };
-  // each app answers on its own: the box grows as they do, a slow or absent one holds up none of the others
-  const askApps = () => {
+  // one question for every app (api/search: asked at the same time, ranked together); an app that is slow to answer
+  // is asked again on its own and its finds join the others where they rank, so it holds up none of them
+  const askApps = async () => {
     const q = inp.value.trim(), ql = q.toLowerCase();
     if (q.length < 2 || quickPrefix(q) || parseTimer(q)) return;  // "t buy milk" is something to add, not to look for
-    for (const a of finders()) {
-      widget(a.key, { q }).then((d) => {
-        if (inp.value.trim().toLowerCase() !== ql) return;
-        // a finished task, an event that is over: the app's own search has them
-        got[a.key] = { q: ql, items: ((d && d.items) || []).filter((x) => !x.done) }; build();
-      });
-    }
+    const keys = finders().map((a) => a.key);
+    if (!keys.length) return;
+    const ask = (params) => api(`api/search?${new URLSearchParams({ q, tz: viewerTz(), ...params })}`).catch(() => null);
+    const take = (d) => {
+      if (!d || inp.value.trim().toLowerCase() !== ql) return;
+      const items = (found.q === ql ? found.items : []).concat(d.items || []);
+      items.sort((x, y) => y.score - x.score || keys.indexOf(x.app) - keys.indexOf(y.app));
+      found = { q: ql, items }; build();
+    };
+    found = { q: ql, items: [] };
+    const d = await ask({ apps: keys.join(',') });
+    take(d);
+    if (d && d.late && d.late.length) d.late.forEach((k) => ask({ apps: k, wait: 1 }).then(take));
   };
   const askThings = async () => {
     const q = inp.value.trim(), ql = q.toLowerCase();

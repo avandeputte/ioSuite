@@ -129,6 +129,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .qrow .when + .qamt { margin-left: 0; }
 .qrow .qapp { width: 28px; height: 28px; border-radius: 22%; }
 .qrow .qname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow .qname .qfrom { margin-left: .5em; color: var(--fg2); }
 .qrow .muted { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 .qrow .nm .io { color: var(--name-io); } .qrow .nm .ap { color: color-mix(in srgb, var(--c, var(--fg)) calc(100% - var(--app-lift)), white var(--app-lift)); font-weight: 600; }
 /* the start page has no top bar (no title): the account menu sits at the end of the first row */
