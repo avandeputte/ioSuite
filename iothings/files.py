@@ -14,7 +14,7 @@ import re
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from iosuite_shared import helper
+from iosuite_shared import helper, stamp
 from iosuite_shared.errors import Invalid
 
 from iothings import config, db
@@ -104,6 +104,7 @@ def may_attach(u: dict, it: dict) -> None:
         raise Forbidden("A viewer only looks: a member or more adds files")
 
 
+@stamp.records("iothings", "item", "file added", item=lambda u, it, *a, **k: it["id"])
 def add(u: dict, it: dict, raw: bytes, hint: str | None, mime: str | None, kind: str | None) -> dict:
     """Keep a file with the thing; kind left out: a photo for a picture, a manual for a PDF, other otherwise."""
     may_attach(u, it)
@@ -157,6 +158,7 @@ def inline(mime: str) -> bool:
     return mime in INLINE
 
 
+@stamp.records("iothings", "item", "file changed", item=lambda u, it, *a, **k: it["id"])
 def change(u: dict, it: dict, fid, data: dict) -> dict:
     """{kind?, first?: true to make it the first of its kind (a photo: the one the cards show)}"""
     may_attach(u, it)
@@ -179,6 +181,7 @@ def change(u: dict, it: dict, fid, data: dict) -> dict:
     return one(it["id"], fid)
 
 
+@stamp.records("iothings", "item", "file removed", item=lambda u, it, *a, **k: it["id"])
 def remove(u: dict, it: dict, fid) -> None:
     """Members remove what they added; editors and the one who added the thing remove any of its files."""
     f = db.one("SELECT id, created_by FROM thg_files WHERE id = %s AND item_id = %s", (int(fid), it["id"]))

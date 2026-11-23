@@ -5,6 +5,7 @@ what a search by category finds. A split transaction counts as changed by hand: 
 category alone."""
 from decimal import Decimal
 
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import db, model
@@ -48,6 +49,7 @@ def rewords(tid: int) -> None:
     db.ex("UPDATE mny_transactions SET words = %s, updated_at = updated_at WHERE id = %s", (_words(t, parts, tags.monarch(t) + own), tid))
 
 
+@stamp.records("iomoney", "transaction", "split", item=lambda u, t, *a, **k: t["id"])
 def put(u: dict, t: dict, parts) -> dict:
     """Split the transaction into parts [{amount, category?, notes?}] (two and more; each amount its share, as a
     positive number or signed as the transaction; together the whole amount), or make it whole again with none."""

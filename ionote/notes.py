@@ -38,7 +38,7 @@ import uuid as uuidlib
 from datetime import datetime, timedelta
 
 from ionote import config, db
-from iosuite_shared import related as linked_items
+from iosuite_shared import related as linked_items, stamp
 from iosuite_shared.errors import Invalid
 
 SOURCES = ("clipboard", "service", "screenshot", "manual", "web", "photo", "import", "share", "mcp")
@@ -402,7 +402,16 @@ def save_note(uid: str, data: dict, user: str, force: bool = False) -> dict:
         else:
             action = "share" if shared and not old["family"] else "unshare" if unshared else "edit"
         log_change(con, user, action, "note", uid, display_title(n))
-        return get_note(uid, con)
+        out = get_note(uid, con)
+    # the note's record of who added and changed it, with what (iosuite_shared.stamp)
+    what = {"share": "moved to Family", "unshare": "made private"}.get(action, "")
+    if action == "edit":
+        what = ", ".join(w for w, k in (("title", "title"), ("text", "body"), ("tags", "tags"), ("pinned", "pinned"), ("folder", "folderID"))
+                         if old.get(k) != n.get(k))
+    elif action == "create" and old:
+        what = "restored"
+    stamp.touch("ionote", "note", uid.upper(), {"delete": "deleted", "create": "added" if not old else "changed"}.get(action, "changed"), what)
+    return out
 
 
 def delete_note(uid: str, user: str, ts: float = None) -> dict:

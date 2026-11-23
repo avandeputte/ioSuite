@@ -30,7 +30,7 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp.shared.exceptions import MCPError
 from mcp_types import CallToolResult, TextContent, Tool
 
-from iosuite_shared import links, suite
+from iosuite_shared import links, stamp, suite
 from iosuite_shared import mcp as shared_mcp
 
 from iostart import __version__, config
@@ -173,6 +173,9 @@ async def _headers(app: str) -> dict:
     h = await anyio.to_thread.run_sync(lambda: links.headers(config.APP, app, sign_in=False))  # Cloudflare Access only
     h["Authorization"] = signed_in_with.get() or ""
     h["User-Agent"] = f"ioStart/{__version__} (the suite's MCP server)"
+    behalf = stamp.passed_on()  # so what the assistant changes there is recorded as MCP through the start page
+    if behalf:
+        h[stamp.HEADER] = behalf
     return h
 
 

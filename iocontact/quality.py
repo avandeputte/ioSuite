@@ -15,6 +15,7 @@ import re
 import unicodedata
 
 from iocontact import csvio, db, model
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 # ------------------------------------------------------------------ names
@@ -443,6 +444,7 @@ def undo(merge_id: int, user: dict | None = None) -> dict:
         for cid in set(ids) | touched:
             model._touch(cid)  # new etag and sync token: phones pick the contacts up again
         db.ex("UPDATE con_contact_merges SET undone_at = NOW() WHERE id = %s", (merge_id,))
+    stamp.touch_many("iocontact", "contact", ids, "changed", "merge undone")  # their record of who changed them
     return {"restored": [model.get_row(i)["fn"] for i in ids]}
 
 

@@ -7,6 +7,7 @@ from mcp.server.mcpserver import Image
 from mcp.server.mcpserver.exceptions import ToolError
 
 from iosuite_shared import users
+from iosuite_shared.stamp import with_changes
 
 from ionote import attachments, config, images, notes
 from ionote.mcp.base import APP, READ_ONLY, clamp_limit, iso, note_or_fail, parse_date, resolve_folder, server, summary
@@ -75,7 +76,8 @@ def get_note(note_id: str) -> dict:
     if n.get("attachments"):
         out["attachments"] = [{"id": a["id"], "name": a["name"], "type": a["mime"], "bytes": a["bytes"],
                                "text_preview": _preview(attachments.text(n["id"], a["id"]) or "", 400)} for a in n["attachments"]]
-    return {k: v for k, v in out.items() if v not in (None, "", [])}
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes({k: v for k, v in out.items() if v not in (None, "", [])}, "ionote", "note", str(n["id"]).upper())
 
 
 def _preview(t: str, chars: int) -> str:

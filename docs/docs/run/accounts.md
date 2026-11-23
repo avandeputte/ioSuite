@@ -97,3 +97,21 @@ not with the pages: see [The three ports](../reference/configuration.md#the-thre
 Sessions are random tokens in an HttpOnly cookie, valid for 30 days and renewed while in use; each records where it
 began and was last seen. Passwords are hashed with Argon2id, and wrong passwords cost a growing wait. Sign out ends this
 browser's session; an admin can end any session under Security › People.
+
+## Who added and changed what
+
+Every event, task, contact, note, recipe, thing, document, transaction, house or car, and photo keeps a short record:
+who added it and who changed it last, with what, and when. Under an item, below **Linked**, one quiet line says it
+("Added by Alex with the web page (Safari on Mac) · changed by Sam with CalDAV (iPhone calendar) yesterday, 8:02 AM"),
+and **History** opens its last 20 changes, kept 90 days, each with a few words on what changed (time, place, title) but
+never what the item says. The MCP tools that read one item answer it too, under `changes`.
+
+"With what" is told from how the change came in: the web page (and the browser), a native app, CalDAV or CardDAV, MCP,
+another app password, an import (a file, Homebox), a sync (Monarch Money, a subscribed calendar) or the app itself (a
+rule, public holidays, the demo data). When an app password signed the change in, its name is shown, so name them after
+the device ("iPhone calendar", "Claude"). A change the start page made for someone (quick add, the wall display, the
+suite's MCP server) names the start page as well as what the person used.
+
+The record is shown only to people who may see the item, admins included in that rule: a private event's record is
+as private as the event. The address a change came from is shown to the person who made it and to suite admins;
+everyone else sees "at home" or "away from home".

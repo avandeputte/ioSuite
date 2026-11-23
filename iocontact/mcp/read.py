@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from mcp.server.mcpserver import Image
 from mcp.server.mcpserver.exceptions import ToolError
 
+from iosuite_shared.stamp import with_changes
 from iosuite_shared import users as shared_users
 
 from iocontact import __version__, config, db, iopix, model, relations as rel, vcard
@@ -65,7 +66,9 @@ def get_contact(contact: str) -> dict:
     job, social profiles with links, websites, labels, notes, relations (with the related contact's id when it is a
     contact you can see), the ioPix person it is linked to, and its link in the web app."""
     u = who()
-    return contact_out(u, find_contact(u, contact)["id"])
+    c = find_contact(u, contact)
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(contact_out(u, c["id"]), "iocontact", "contact", c["id"])
 
 
 @server.tool(annotations=READ_ONLY)

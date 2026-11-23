@@ -14,7 +14,7 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 
-from iosuite_shared import related, users as shared_users
+from iosuite_shared import related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iomoney import config, db
@@ -523,9 +523,11 @@ def create_account(u: dict, b: dict) -> dict:
     set_balance(aid, dt.date.today(), bal, "sync" if kind == "investment" else "manual")  # an investment account: its holdings
     if not household and b.get("people"):
         set_people(u, aid, _people(u, u["id"], b.get("people")))
+    stamp.touch("iomoney", "asset", aid, "added")  # its record of who added and changed it (iosuite_shared.stamp)
     return account_row(aid)
 
 
+@stamp.records("iomoney", "asset", "", item=lambda u, a, *x, **k: a["id"])
 def update_account(u: dict, a: dict, b: dict) -> dict:
     _need(can_write(u, a))
     sets, args = [], []
@@ -598,6 +600,7 @@ def account_info(u: dict, a: dict) -> dict:
     return {k: info[k] for k in INFO_FIELDS if info.get(k) not in (None, "")}
 
 
+@stamp.records("iomoney", "asset", "details", item=lambda u, a, *x, **k: a["id"])
 def set_account_info(u: dict, a: dict, b: dict) -> dict:
     """Change the fields given (empty: removed), the others stay; any account, one from Monarch Money too."""
     _need(can_write(u, a))
@@ -638,6 +641,8 @@ def delete_account(u: dict, a: dict) -> None:
     db.ex("DELETE FROM mny_accounts WHERE id = %s", (a["id"],))  # its balances, transactions and holdings go with it
     related.forget("asset", a["id"])
     receipts.forget(tids)
+    stamp.touch("iomoney", "asset", a["id"], "deleted")
+    stamp.forget("iomoney", "transaction", tids)
 
 
 def set_balance(aid: int, on: dt.date, balance: Decimal, source: str = "sync", note: str = None) -> None:
@@ -658,6 +663,7 @@ def valuations(u: dict, a: dict, limit: int = 400) -> list[dict]:
     return [{"day": r["day"].isoformat(), "value": n2(r["balance"]), "source": r["source"], "note": r["note"]} for r in rows]
 
 
+@stamp.records("iomoney", "asset", "value", item=lambda u, a, *x, **k: a["id"])
 def add_valuation(u: dict, a: dict, b: dict) -> None:
     _need(can_write(u, a))
     if a["source"] == "monarch":
@@ -668,6 +674,7 @@ def add_valuation(u: dict, a: dict, b: dict) -> None:
     set_balance(a["id"], on, money(b.get("value"), "The value"), "manual", text(b.get("note"), 255, "The note"))
 
 
+@stamp.records("iomoney", "asset", "value removed", item=lambda u, a, *x, **k: a["id"])
 def remove_valuation(u: dict, a: dict, on) -> None:
     _need(can_write(u, a))
     if a["source"] == "monarch":
@@ -943,6 +950,7 @@ def create_transaction(u: dict, a: dict, b: dict) -> dict:
         tags.put(tx_row(tid), b["tags"])
     review.looked(u, tid)  # typed in by a person: looked at
     transfers.link("t.id = %s", (tid,))
+    stamp.touch("iomoney", "transaction", tid, "added")  # its record of who added and changed it (iosuite_shared.stamp)
     return tx_row(tid)
 
 
@@ -1050,6 +1058,7 @@ def delete_transaction(u: dict, t: dict) -> None:
     _move_balance(t["account_id"], -Decimal(t["amount"]))
     from iomoney import receipts
     receipts.forget([t["id"]])
+    stamp.touch("iomoney", "transaction", t["id"], "deleted")
 
 
 def categories(u: dict) -> list[dict]:

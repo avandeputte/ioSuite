@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
+from iosuite_shared.stamp import with_changes
+
 from iorecipe import __version__, api, config, model
 from iorecipe.mcp.base import ADDS, DELETES, READ_ONLY, WRITES, clamp, find_book, find_recipe, recipe_out, server, summary, who
 
@@ -71,7 +73,9 @@ def get_recipe(recipe: str) -> dict:
     """Everything about one recipe (its id, or its title when that names one): ingredients, steps, notes, times, tags,
     where it comes from, your favourite and rating, the cookbooks it is in."""
     u = who()
-    return recipe_out(u, find_recipe(u, recipe))
+    r = find_recipe(u, recipe)
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(recipe_out(u, r), "iorecipe", "recipe", r["id"])
 
 
 @server.tool(annotations=ADDS)

@@ -18,6 +18,7 @@ import time
 import zipfile
 
 from ionote import attachments, config, db, images, notes
+from iosuite_shared import stamp
 from iosuite_shared.errors import Invalid
 
 EXT = {"image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/tiff": "tiff", "image/bmp": "bmp"}
@@ -127,6 +128,12 @@ def _member(z: zipfile.ZipFile, name: str, limit: int) -> bytes:
 
 
 def import_zip(src, user: str) -> dict:
+    """_import_zip_(), with each note it adds or changes recorded as an import (iosuite_shared.stamp)."""
+    with stamp.as_("import", "an ioNote backup"):
+        return _import_zip_(src, user)
+
+
+def _import_zip_(src, user: str) -> dict:
     """Import an export (zip, or its notes.json alone), from bytes or a file. Records keep their ids; newer
     server copies win. An id another account on this server has (its export, imported here) gets a new one. A family
     note comes in as one for an editor; for anyone else as a note of their own, unless the family still has it."""

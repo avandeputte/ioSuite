@@ -288,6 +288,53 @@ SCHEMA = [
         origin VARCHAR(40) NOT NULL DEFAULT '',
         INDEX idx_ios_changes_at (at)
     )""",
+    # who added an item of an app and who changed it last, through what and where (iosuite_shared.stamp): one row per
+    # item (kind and id as in ios_related); *_client one of stamp.CLIENTS, *_where the app password's name, the browser
+    # or the job, *_via the app that asked on the person's behalf; *_name the account's name then, kept when it goes
+    """CREATE TABLE IF NOT EXISTS ios_item_stamps (
+        app VARCHAR(32) NOT NULL,
+        kind VARCHAR(16) NOT NULL,
+        item VARCHAR(64) NOT NULL,
+        created_at BIGINT NULL,
+        created_by INT NULL,
+        created_name VARCHAR(128) NULL,
+        created_client VARCHAR(8) NULL,
+        created_where VARCHAR(191) NULL,
+        created_via VARCHAR(32) NULL,
+        updated_at BIGINT NOT NULL,
+        updated_by INT NULL,
+        updated_name VARCHAR(128) NULL,
+        updated_client VARCHAR(8) NULL,
+        updated_where VARCHAR(191) NULL,
+        updated_via VARCHAR(32) NULL,
+        PRIMARY KEY (app, kind, item),
+        FOREIGN KEY (created_by) REFERENCES ios_users(id) ON DELETE SET NULL,
+        FOREIGN KEY (updated_by) REFERENCES ios_users(id) ON DELETE SET NULL
+    )""",
+    # an item's history (iosuite_shared.stamp): the last KEEP changes of each item, for DAYS days; place as *_where
+    # above, ip the address the change came from (shown only to whoever made it and to suite admins), outside: from
+    # outside the network; what: a few words on what changed, never the item's content
+    """CREATE TABLE IF NOT EXISTS ios_item_changes (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        app VARCHAR(32) NOT NULL,
+        kind VARCHAR(16) NOT NULL,
+        item VARCHAR(64) NOT NULL,
+        at BIGINT NOT NULL,
+        action VARCHAR(8) NOT NULL,
+        what VARCHAR(255) NULL,
+        user_id INT NULL,
+        name VARCHAR(128) NULL,
+        client VARCHAR(8) NOT NULL,
+        place VARCHAR(191) NULL,
+        via VARCHAR(32) NULL,
+        ip VARCHAR(64) NULL,
+        cloudflare TINYINT NOT NULL DEFAULT 0,
+        outside TINYINT NOT NULL DEFAULT 0,
+        INDEX idx_ios_item_changes_item (app, kind, item, id),
+        INDEX idx_ios_item_changes_at (at),
+        INDEX idx_ios_item_changes_user (user_id),
+        FOREIGN KEY (user_id) REFERENCES ios_users(id) ON DELETE SET NULL
+    )""",
 ]
 
 _overrides: dict = {}  # the tests point the library at another database

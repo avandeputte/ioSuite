@@ -12,7 +12,7 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 
-from iosuite_shared import family as suite_family, related, users as shared_users
+from iosuite_shared import family as suite_family, related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iothings import db
@@ -672,6 +672,7 @@ def create(u: dict, data: dict, import_ref: str | None = None) -> dict:
         _set_labels(iid, ids)
         _set_people(iid, who)
     _rewords(iid)
+    stamp.touch("iothings", "item", iid, "added")  # its record of who added and changed it (iosuite_shared.stamp)
     return get(iid)
 
 
@@ -694,6 +695,9 @@ def update(u: dict, it: dict, data: dict) -> dict:
         if who is not None:
             _set_people(it["id"], who)
     _rewords(it["id"])
+    what = [k.replace("location_id", "place").replace("_", " ") for k in f if f[k] != it.get(k)]
+    what += [w for w, k in (("labels", "labels"), ("people", "people")) if k in data]
+    stamp.touch("iothings", "item", it["id"], "changed", ", ".join(what))
     return get(it["id"])
 
 
@@ -701,6 +705,7 @@ def delete(u: dict, it: dict) -> None:
     need_write(u, it)
     db.ex("DELETE FROM thg_items WHERE id = %s", (it["id"],))  # its files, labels, upkeep and log go with it
     related.forget("item", it["id"])  # its links to other items of the suite go too
+    stamp.touch("iothings", "item", it["id"], "deleted")
 
 
 def duplicate(u: dict, it: dict) -> dict:

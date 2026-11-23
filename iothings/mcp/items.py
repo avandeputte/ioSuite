@@ -3,6 +3,8 @@ the log, editors and admins change everything. Upkeep made here stays in ioThing
 pick); its "done" is the same as in the web app."""
 from typing import Literal, Optional
 
+from iosuite_shared.stamp import with_changes
+
 from iothings import __version__, config, model, upkeep
 from iothings.mcp.base import ADDS, DELETES, READ_ONLY, WRITES, clamp, find_item, find_location, guard, item_out, server, summary, who
 
@@ -68,7 +70,9 @@ def get_item(item: str) -> dict:
     """Everything about one thing (its id, or its name when that names one): place, labels, whose it is, maker, model and serial
     number, purchase, warranty and sale details, own fields, notes, files, upkeep and maintenance log."""
     u = who()
-    return item_out(u, find_item(u, item))
+    it = find_item(u, item)
+    # who added it and changed it last, with what (iosuite_shared.stamp)
+    return with_changes(item_out(u, it), "iothings", "item", it["id"])
 
 
 @server.tool(annotations=ADDS)

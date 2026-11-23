@@ -30,6 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from iosuite_shared import stamp
 from iosuite_shared import outbound
 from iosuite_shared.errors import Invalid
 
@@ -362,6 +363,12 @@ def _why(e) -> str:
 
 
 def _one(u: dict, hb: Homebox, hid: str, places: dict, cache: dict) -> None:
+    """_one_(), with the thing it adds or changes recorded as an import from Homebox for u (iosuite_shared.stamp)."""
+    with stamp.job("Homebox", "import", u):
+        return _one_(u, hb, hid, places, cache)
+
+
+def _one_(u: dict, hb: Homebox, hid: str, places: dict, cache: dict) -> None:
     x = hb.thing(hid)
     data, path = _data(x, places)
     data["locationId"] = model.location_by_path(path, cache)

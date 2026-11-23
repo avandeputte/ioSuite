@@ -97,7 +97,8 @@ def authenticate_hub(name: str | None, password: str, app: str):
     user, scope = authenticate_scoped(name, password, HUB, accounts=False)
     if not user or scope != "":
         return None
-    return users.get(user["id"], app)
+    u = users.get(user["id"], app)
+    return dict(u, app_password=user["app_password"]) if u and user.get("app_password") else u
 
 
 def authenticate_scoped(name: str | None, password: str, app: str, accounts: bool = True):
@@ -126,7 +127,7 @@ def authenticate_scoped(name: str | None, password: str, app: str, accounts: boo
                 if u and (not name or name.strip().lower() in (u["name"].lower(), u["email"].lower())):
                     db.ex("UPDATE ios_app_passwords SET last_used_at = %s WHERE id = %s", (int(time.time()), r["id"]))
                     edge.publish(app, r["prefix"], password)  # made before the edge check was on, or since a restart
-                    user, scope, pid = u, r.get("scope") or "", r["id"]
+                    user, scope, pid = dict(u, app_password={"id": r["id"], "label": r["label"]}), r.get("scope") or "", r["id"]
                     break
     if not user and name and accounts:
         user = users.authenticate(name, password, app)
@@ -153,11 +154,13 @@ def _still_good(hit, app: str):
     _, user_id, pid, account_hash = hit
     scope = ""
     if pid is not None:
-        r = db.one("SELECT scope FROM ios_app_passwords WHERE id = %s AND user_id = %s AND app = %s", (pid, user_id, app))
+        r = db.one("SELECT scope, label FROM ios_app_passwords WHERE id = %s AND user_id = %s AND app = %s", (pid, user_id, app))
         if not r:
             return None
         scope = r["scope"] or ""
     elif (db.one("SELECT hash FROM ios_users WHERE id = %s", (user_id,)) or {}).get("hash") != account_hash or twostep.enabled(user_id):
         return None
     u = users.get(user_id, app)
+    if u and pid is not None:  # which app password signed in (iosuite_shared.stamp names it)
+        u = dict(u, app_password={"id": pid, "label": r["label"]})
     return (u, scope) if u else None

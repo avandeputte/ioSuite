@@ -44,7 +44,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from iosuite_shared import apppasswords, credentials, db, inside, sessions, suite, users
+from iosuite_shared import apppasswords, credentials, db, inside, sessions, stamp, suite, users
 
 log = logging.getLogger("iosuite_shared.links")
 _lock = threading.Lock()
@@ -270,6 +270,9 @@ def viewer_headers(request, user_agent: str = "ioSuite", accept: str = "applicat
             h["Cookie"] = f"{sessions.COOKIE}={tok}"
         elif request.headers.get("authorization"):
             h["Authorization"] = request.headers["authorization"]
+        behalf = stamp.passed_on()  # what the person used and where from, for the other app's record of what they change
+        if behalf:
+            h[stamp.HEADER] = behalf
     try:
         h.update(headers("", "", sign_in=False))
     except Exception:  # noqa: BLE001  the shared database is away: without the token

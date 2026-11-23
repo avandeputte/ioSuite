@@ -10,7 +10,7 @@ private one is its owner's).
 import json
 import re
 
-from iosuite_shared import helper, related, users as shared_users
+from iosuite_shared import helper, related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iorecipe import db, images
@@ -235,6 +235,7 @@ def create(u: dict, data: dict, family: bool) -> dict:
     f["created_by"] = u["id"]
     cols = list(f)
     rid = db.ex(f"INSERT INTO rcp_recipes ({', '.join(cols)}) VALUES ({db.marks(len(cols))})", [f[c] for c in cols])
+    stamp.touch("iorecipe", "recipe", rid, "added")  # its record of who added and changed it (iosuite_shared.stamp)
     return get(rid, u)
 
 
@@ -258,6 +259,10 @@ def update(u: dict, r: dict, data: dict) -> dict:
             # private now: out of the family's cookbooks, and nobody else's favourite or rating stays on it
             db.ex("DELETE br FROM rcp_book_recipes br JOIN rcp_books b ON b.id = br.book_id WHERE br.recipe_id = %s AND b.owner_id IS NULL", (r["id"],))
             db.ex("DELETE FROM rcp_marks WHERE recipe_id = %s AND user_id <> %s", (r["id"], u["id"]))
+    what = [k for k in f if f[k] != r.get(k)]
+    if "owner_id" in sets:
+        what.append("made private" if sets["owner_id"] else "moved to the family's")
+    stamp.touch("iorecipe", "recipe", r["id"], "changed", ", ".join(w.replace("_", " ") for w in what))
     return get(r["id"], u)
 
 
@@ -266,6 +271,7 @@ def delete(u: dict, r: dict) -> None:
         raise Forbidden("You can see this recipe but not delete it")
     db.ex("DELETE FROM rcp_recipes WHERE id = %s", (r["id"],))
     related.forget("recipe", r["id"])  # its links to other items of the suite go too
+    stamp.touch("iorecipe", "recipe", r["id"], "deleted")
 
 
 # ---- the photos
@@ -286,6 +292,7 @@ def photos(rid: int) -> list[dict]:
     return db.q("SELECT id, step, position, width, height FROM rcp_photos WHERE recipe_id = %s ORDER BY step IS NOT NULL, step, position, id", (int(rid),))
 
 
+@stamp.records("iorecipe", "recipe", "photo added", item=lambda u, r, *a, **k: r["id"])
 def add_photo(u: dict, r: dict, raw: bytes, step: int | None = None) -> dict:
     """One more picture of the recipe (the first is the one the cards show), or the picture of a step (it replaces
     the one that step had). The picture's row, without its bytes."""
@@ -307,6 +314,7 @@ def add_photo(u: dict, r: dict, raw: bytes, step: int | None = None) -> dict:
     return {"id": pid, "step": step, "width": pic["width"], "height": pic["height"]}
 
 
+@stamp.records("iorecipe", "recipe", "photo removed", item=lambda u, r, *a, **k: r["id"])
 def remove_photo(u: dict, r: dict, pid: int) -> None:
     _writable(u, r)
     with db.tx():
@@ -315,6 +323,7 @@ def remove_photo(u: dict, r: dict, pid: int) -> None:
         _cover(r["id"])
 
 
+@stamp.records("iorecipe", "recipe", "photos reordered", item=lambda u, r, *a, **k: r["id"])
 def order_photos(u: dict, r: dict, ids: list) -> None:
     """The recipe's own pictures in this order (the first is the one the cards show); those left out follow."""
     _writable(u, r)

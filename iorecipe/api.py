@@ -10,7 +10,7 @@ import re
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
-from iosuite_shared import helper
+from iosuite_shared import helper, stamp
 from iosuite_shared.access import json_body
 
 from iorecipe import access, ai, config, model, ocr, portable, scrape, shopping, textimport
@@ -195,7 +195,8 @@ def import_from(u: dict, url: str, family: bool) -> dict:
         raise model.Forbidden("Only editors add family recipes" if family else "A viewer only looks; a member keeps recipes of their own")
     data, picture = scrape.recipe_at(url)
     how = data.pop("readBy", "data")
-    r = model.create(u, data, family)
+    with stamp.as_("import", "a web page"):
+        r = model.create(u, data, family)
     if picture:
         try:
             model.add_photo(u, r, picture)

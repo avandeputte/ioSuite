@@ -7,6 +7,7 @@
      // more options: canEdit: false (no + and ×, whatever the role), onOpen(item): runs before an item of this same app
      // opens in place (the app closes its dialog, say); items of the other apps open in a new tab
      // first: 'item' (the kind the picker opens on, when its app is in the suite), empty: the words shown while nothing is linked
+     // changes: false leaves out the line under it that says who added and changed the item (changes-panel.js)
      panel.pick();                                                    // opens the picker (a menu item of the app's own, say)
 */
 import { h, api, styles as kitStyles, setToast, toast, fail } from '../auth/ui.js';
@@ -172,7 +173,14 @@ export function mount(el, opts = {}) {
     if (added) { items = [added, ...items.filter((i) => i.link !== added.link)]; draw(); toast(`Linked: ${added.title}`); }
   }
   load();
-  return { reload: load, pick: () => pick() };
+  // who added the item and changed it (changes-panel.js), as a quiet line under "Linked"
+  let changes = null;
+  if (opts.changes !== false && kind && id != null) {
+    let at = el.nextElementSibling;
+    if (!(at && at.classList.contains('ch'))) { at = document.createElement('div'); el.after(at); }
+    import('../changes/ui.js').then((m) => { changes = m.mount(at, { kind, id }); }).catch(() => {});
+  }
+  return { reload: () => { load(); if (changes) changes.reload(); }, pick: () => pick() };
 }
 
 // ------------------------------------------------------------------ the picker

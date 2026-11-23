@@ -17,6 +17,7 @@ from PIL import Image
 from iosuite_shared import helper
 
 from ionote import config, db, images
+from iosuite_shared import stamp
 from ionote.notes import NotFound, check_uuid, display_title, get_note, log_change, need_write, new_uuid, owner
 
 log = logging.getLogger("ionote.attachments")
@@ -97,6 +98,7 @@ def _text_of(data: bytes, mime: str, name: str) -> str:
     return ""
 
 
+@stamp.records("ionote", "note", "attachment", item=lambda uid, *a, **k: str(uid).upper())
 def put(note_uid: str, data: bytes, name: str, user: str, mime_hint: str = "", att_uid: str = None, text: str = None) -> dict:
     """Attach a file to a note (which must exist and not be in the trash) and return the note. att_uid: the id a device
     chose (the same file sent again is a no-op); text: what a device read from it itself (Vision), else the server reads it."""
@@ -136,6 +138,7 @@ def put(note_uid: str, data: bytes, name: str, user: str, mime_hint: str = "", a
     return out
 
 
+@stamp.records("ionote", "note", "attachment renamed", item=lambda uid, *a, **k: str(uid).upper())
 def rename(note_uid: str, att_uid: str, name: str, user: str) -> dict:
     note_uid, att_uid = check_uuid(note_uid), check_uuid(att_uid)
     with db.tx() as con:
@@ -148,6 +151,7 @@ def rename(note_uid: str, att_uid: str, name: str, user: str) -> dict:
         return get_note(note_uid, con)
 
 
+@stamp.records("ionote", "note", "attachment removed", item=lambda uid, *a, **k: str(uid).upper())
 def remove(note_uid: str, att_uid: str, user: str) -> dict:
     note_uid, att_uid = check_uuid(note_uid), check_uuid(att_uid)
     with db.tx() as con:
