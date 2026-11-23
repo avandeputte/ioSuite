@@ -132,7 +132,8 @@ jobs:
 
   one-copy:
     # installed as a server installs it (the program's environment, `iosuite install`, the databases made with a
-    # MariaDB administrator), then every app in one copy, asked from outside
+    # MariaDB administrator), then every app in one copy, asked from outside; the copy asks a certificate authority
+    # of the checks' own for a certificate and answers HTTPS with it
     runs-on: ubuntu-latest
     services:
       mariadb:
@@ -158,6 +159,21 @@ jobs:
           .venv/bin/iosuite install --list
       - name: Every app answers in one copy
         run: |
+          .venv/bin/iosuite serve > serve.log 2>&1 &
+          echo $! > serve.pid
+          python tools/smoke.py --web 8080 --sync 8443 || { tail -100 serve.log; exit 1; }
+      - name: The suite asks for a certificate of its own and answers HTTPS
+        env:
+          ADMIN_PASSWORD: a-password-for-the-check
+        run: |
+          kill "$(cat serve.pid)"; while kill -0 "$(cat serve.pid)" 2>/dev/null; do sleep 1; done
+          echo "HTTPS_PORT=4443" >> config.env
+          # as under a service manager: started again when it ends (it ends once, to open its HTTPS ports)
+          ( while [ ! -f stop-https ]; do .venv/bin/iosuite serve >> serve-https.log 2>&1; sleep 1; done ) &
+          .venv/bin/python tools/https.py --web 8080 --sync 8443 --https 4443 --login "alex:$ADMIN_PASSWORD" || { tail -80 serve-https.log; exit 1; }
+          touch stop-https; pkill -f "iosuite serve" || true; while pgrep -f "iosuite serve" > /dev/null; do sleep 1; done
+          sed -i '/^HTTPS_PORT=/d' config.env
+          .venv/bin/iosuite set suite PUBLIC_URL ""
           .venv/bin/iosuite serve > serve.log 2>&1 &
           echo $! > serve.pid
           python tools/smoke.py --web 8080 --sync 8443 || { tail -100 serve.log; exit 1; }
