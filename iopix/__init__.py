@@ -1,4 +1,4 @@
-"""iopix: the server. Start with `python -m iopix` (run.sh, the service and the container do)."""
+"""iopix: the server, one of the apps `iosuite serve` runs."""
 
 from iosuite_shared import __version__  # the suite's version: one number for every app
 

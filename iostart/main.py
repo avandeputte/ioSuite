@@ -1,33 +1,18 @@
-"""ioStart: the application (start-up, who is asking, the routes and the web app).
+"""ioStart: the application (what is its own: its tables and jobs, what a device may ask without an account, its
+routes and its two pages; the rest is every app's: iosuite_shared.application).
 
 Who may call a route is declared on the route (iostart/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
 """
-import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from iosuite_shared import mcp as shared_mcp, users
-from iosuite_shared import demo as suite_demo
-from iosuite_shared.updates import setup_log
+from iosuite_shared import application, mcp as shared_mcp, users
 
 from iostart import __version__, api, appsignin, bookmarkext, bookmarks, config, db, keys, mcp, news, newsapi, timers, trmnlpush
 from iostart.auth import auth, updater
 
-setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-log = logging.getLogger("iostart")
-
-# what a visitor may still fetch when sign-in is required: the app shell and its files, and the API docs
-OPEN_PATHS = ("/", "/bookmarks", "/manifest.webmanifest", "/bookmarks.webmanifest", "/api/docs", "/api/openapi.json")
-# /mcp signs in on its own (Auth.mcp_gate); the sync protocols under /dav answer 401 with a Basic challenge themselves
-# (a sync app shows that as "wrong password"), and the sign-in flow for apps starts before anyone is signed in; a wall
-# display asks for its pairing code before it has a sign-in (approving one takes a signed-in person: its route says so)
-OPEN_PREFIXES = ("/static/", "/mcp", "/dav/", "/api/wall/pair")
 # a TRMNL e-ink device set to this server (iostart/trmnlserver.py) has no account: it signs its requests with its own key
 TRMNL_DEVICE = {("GET", "/api/setup"), ("GET", "/api/display"), ("GET", "/api/current_screen"), ("POST", "/api/log")}
 
@@ -36,28 +21,6 @@ def _device_asks(request) -> bool:
     return (request.method, request.url.path) in TRMNL_DEVICE or (request.method == "GET" and request.url.path.startswith("/api/trmnl/image/"))
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await run_in_threadpool(db.migrate)
-    await run_in_threadpool(users.init)
-    await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
-    await run_in_threadpool(bookmarks.claim_unowned)  # bookmarks nobody owns become the first admin's
-    await run_in_threadpool(keys.declare)  # the Home Assistant token and AccuWeather key live with the suite's keys and tokens
-    # the copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds people
-    # follow (iostart/news.py), the screens pushed to TRMNL's cloud (iostart/trmnlpush.py)
-    looks = [j for j in (timers.job(), news.job(), trmnlpush.job()) if j]
-    updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
-    log.info("ioStart %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
-    async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
-        yield
-    for j in looks:
-        j.cancel()
-
-
-app = FastAPI(title="ioStart", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,
-              openapi_url="/api/openapi.json",
-              description="The start page of ioSuite: one place with every io app, and the accounts they share.")
-
 # Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
 mcp_switch = shared_mcp.Switch(config.APP,
                                "The suite's one MCP server: an AI assistant connected here with an ioStart app password uses every "
@@ -65,30 +28,37 @@ mcp_switch = shared_mcp.Switch(config.APP,
 mcp_enabled = mcp_switch.enabled
 
 
-# who is asking, whether sign-in is required at all, the cross-site check on writes, and the MCP endpoint's gate (the
-# switch; an app password or session; every tool acts as that account): iosuite_shared's middleware
-app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES, is_open=_device_asks,
-                                       before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set,
-                                                                    on_request=mcp.remember_sign_in)))
+def _jobs() -> list:
+    """The copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds
+    people follow (iostart/news.py), the screens pushed to TRMNL's cloud (iostart/trmnlpush.py)."""
+    return [j for j in (timers.job(), news.job(), trmnlpush.job()) if j]
 
 
 def _limit_for(path: str, ctype: str) -> int:
     return config.MAX_IMPORT_BYTES if "/import" in path or path.endswith("/api/news/opml") or path.startswith("/dav/") else config.MAX_JSON_BYTES
 
 
-# 400 for bad input, the headers, no-store on the API, the body cap: the same in every app of the suite
-auth.install(app, limit_for=_limit_for)
-
-
-app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin: every account, role, app password, session and app of the suite (suite admins; Settings › People, Apps, Servers and Keys)
-app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
-app.include_router(auth.status_router(updater))  # /api/status: public, the same shape in every app
-app.include_router(api.router)
-app.include_router(newsapi.router)  # /api/news: the feed reader (the Feeds page) and the headlines card
-app.include_router(appsignin.router)  # /dav/nextcloud/index.php/login/v2: how the extension and the iPhone app sign in
-app.include_router(bookmarkext.router)  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)
-shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of everything else
+app = application.create(
+    auth, updater, __version__, config,
+    description="The start page of ioSuite: one place with every io app, and the accounts they share.",
+    prepare=(db.migrate, users.init,
+             bookmarks.claim_unowned,  # bookmarks nobody owns become the first admin's
+             keys.declare),            # the Home Assistant token and AccuWeather key live with the suite's keys and tokens
+    jobs=_jobs,
+    mcp=mcp, mcp_enabled=mcp_enabled,
+    before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set, on_request=mcp.remember_sign_in),
+    # what a visitor may still fetch when sign-in is required, beside what app.json lists as sync (/dav/: the
+    # extension's sync answers 401 with a Basic challenge itself, and the sign-in flow for apps starts before anyone
+    # is signed in): the Bookmarks page; a wall display asks for its pairing code before it has a sign-in (approving
+    # one takes a signed-in person: its route says so)
+    open_paths=("/bookmarks", "/bookmarks.webmanifest"), open_prefixes=("/api/wall/pair",),
+    middleware={"is_open": _device_asks},
+    limit_for=_limit_for, related=False,
+    routers=(api.router,
+             newsapi.router,       # /api/news: the feed reader (the Feeds page) and the headlines card
+             appsignin.router,     # /dav/nextcloud/index.php/login/v2: how the extension and the iPhone app sign in
+             bookmarkext.router),  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)
+    page=False)  # two pages (the start page and Bookmarks), served below
 
 
 def _page(swap: dict[str, str] | None = None) -> HTMLResponse:

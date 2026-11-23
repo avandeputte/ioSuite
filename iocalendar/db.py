@@ -1,11 +1,8 @@
 """MariaDB access: one short connection per unit of work, and the schema (created at start)."""
 
-import pymysql
-from pymysql.cursors import DictCursor
-
 from iocalendar import config
 
-from iosuite_shared import db as shared_db, schema
+from iosuite_shared import db as shared_db
 
 SCHEMA_VERSION = 3  # recorded in cal_schema_version; the tables are made as SCHEMA says, and get the columns and indexes added to it later (schema.create)
 PREFIX = "cal"
@@ -93,75 +90,25 @@ SCHEMA = [
         FOREIGN KEY (calendar_id) REFERENCES cal_calendars(id) ON DELETE CASCADE)""",
 ]
 
-def connect(database: str | None = None):
-    return pymysql.connect(host=config.DB_HOST, port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASSWORD,
-                           database=database if database is not None else config.DB_NAME, charset="utf8mb4",
-                           cursorclass=DictCursor, autocommit=True, connect_timeout=8)
 
-
-# The pool, the transaction nested calls share, and q / one / ex / many are the suite's (iosuite_shared.db.Database):
-# a statement on its own is one round trip, tx() is one transaction (committed on success, rolled back on error), and
-# q / one / ex inside a `with tx():` block run in it.
-_db = shared_db.Database(connect)
+# Where the database is, its pool, the transaction nested calls share, q / one / ex / many, the settings table and the
+# tables made at start are the suite's (iosuite_shared.db.AppDatabase): a statement on its own is one round trip, tx()
+# is one transaction (committed on success, rolled back on error), and q / one / ex inside a `with tx():` block run in it.
+_db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 pool = _db.pool
-tx, q, one, ex, many = _db.tx, _db.q, _db.one, _db.ex, _db.many
+connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
+marks = shared_db.marks
+get_setting, set_setting = _db.get_setting, _db.set_setting
+schema_version, ensure_database, reset_all = _db.schema_version, _db.ensure_database, _db.reset_all
 
 
-def marks(n: int) -> str:
-    return ",".join(["%s"] * n) if n else "NULL"
-
-
-def get_setting(k: str, default: str | None = None) -> str | None:
-    r = one("SELECT value FROM cal_settings WHERE name = %s", (k,))
-    return r["value"] if r else default
-
-
-def set_setting(k: str, v: str | None) -> None:
-    if v is None:
-        ex("DELETE FROM cal_settings WHERE name = %s", (k,))
-    else:
-        ex("INSERT INTO cal_settings (name, value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE value = VALUES(value)", (k, v))
-
-
-def schema_version() -> int:
-    with tx() as con, con.cursor() as cur:
-        return schema.current_version(cur, PREFIX)
-
-
-def ensure_database() -> None:
-    """Create the database when it is missing and the user may (CREATE privilege); otherwise leave it to the admin."""
-    try:
-        connect().close()
-        return
-    except pymysql.err.OperationalError as e:
-        if e.args[0] != 1049:  # anything but "unknown database"
-            raise
-    con = connect(database="")
-    try:
-        with con.cursor() as cur:
-            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{config.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-    finally:
-        con.close()
+def _family_calendar(cur) -> None:
+    """The family calendar everyone shares."""
+    cur.execute("SELECT id FROM cal_calendars WHERE owner_id IS NULL AND kind = 'events' LIMIT 1")
+    if not cur.fetchone():
+        cur.execute("INSERT INTO cal_calendars (owner_id, slug, name, description, color) VALUES "
+                    "(NULL, 'family', 'Family', 'Shared with everyone in the family', '#8e44d6')")
 
 
 def migrate() -> None:
-    ensure_database()
-    with tx() as con, con.cursor() as cur:
-        schema.create(cur, SCHEMA, " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")
-        schema.ensure_version_table(cur, PREFIX)
-        schema.record_version(cur, PREFIX, SCHEMA_VERSION)
-        # the family calendar everyone shares
-        cur.execute("SELECT id FROM cal_calendars WHERE owner_id IS NULL AND kind = 'events' LIMIT 1")
-        if not cur.fetchone():
-            cur.execute("INSERT INTO cal_calendars (owner_id, slug, name, description, color) VALUES "
-                        "(NULL, 'family', 'Family', 'Shared with everyone in the family', '#8e44d6')")
-
-
-def reset_all() -> None:
-    """Tests only: drop every table of this app (cal_*; the database may hold the other apps' too)."""
-    with tx() as con, con.cursor() as cur:
-        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-        for t in schema.tables(cur):
-            if t.startswith(PREFIX + "_"):
-                cur.execute(f"DROP TABLE `{t}`")
-        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    _db.migrate(after=_family_calendar)

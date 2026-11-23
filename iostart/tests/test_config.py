@@ -26,12 +26,11 @@ def test_a_stop_does_not_wait_for_open_event_streams(monkeypatch):
     """The Home card's event stream never ends by itself: the server must cut it after a short grace, or a restart after
     an update hangs until systemd kills the server (90 s with the page down)."""
     from iosuite_shared import host, serve
-    from iostart import __main__ as m
     got = {}
     monkeypatch.setattr(serve, "run", lambda target, hosts, ports, **kw: got.update(kw, target=target))
     monkeypatch.setattr(host, "wait_for_database", lambda seconds=0: True)
     monkeypatch.setattr(host, "RUNNING", None)
-    m.main()
+    host.run(["iostart"])   # `iosuite serve --apps iostart`
     assert 0 < got["timeout_graceful_shutdown"] <= 10 and [e.name for e in got["target"].entries] == ["iostart"]
 
 

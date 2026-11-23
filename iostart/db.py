@@ -4,12 +4,9 @@ The start page keeps prt_settings (the default photo strip, the weather settings
 switch, each account's layout), prt_schema_version and the bookmarks. What the page grows later gets its tables here
 too. Every table is prt_<name>, the suite's naming convention (the apps can share one database)."""
 
-import pymysql
-from pymysql.cursors import DictCursor
-
 from iostart import config
 
-from iosuite_shared import db as shared_db, schema
+from iosuite_shared import db as shared_db
 
 SCHEMA_VERSION = 10  # 10: feeds, the reader (prt_feeds, prt_feed_items, prt_feed_subs, prt_feed_marks: iostart/news.py); 9: kitchen timers (prt_timers); 8: TRMNL devices (prt_trmnl_devices); 7: shared and personal bookmarks (owner, shared; prt_bookmark_starts)
 PREFIX = "prt"
@@ -111,62 +108,17 @@ SCHEMA = [
     )""",
 ]
 
-def connect(database: str | None = None):
-    return pymysql.connect(host=config.DB_HOST, port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASSWORD,
-                           database=database if database is not None else config.DB_NAME, charset="utf8mb4",
-                           cursorclass=DictCursor, autocommit=True, connect_timeout=8)
+
+def _tables() -> list:
+    from iostart import news  # the reader's tables are written where they are explained (iostart/news.py)
+    return SCHEMA + news.SCHEMA
 
 
-# The pool, the transaction nested calls share, and q / one / ex / many are the suite's (iosuite_shared.db.Database):
-# a statement on its own is one round trip, tx() is one transaction (committed on success, rolled back on error), and
-# q / one / ex inside a `with tx():` block run in it.
-_db = shared_db.Database(connect)
+# Where the database is, its pool, the transaction nested calls share, q / one / ex / many, the settings table and the
+# tables made at start are the suite's (iosuite_shared.db.AppDatabase): a statement on its own is one round trip, tx()
+# is one transaction (committed on success, rolled back on error), and q / one / ex inside a `with tx():` block run in it.
+_db = shared_db.AppDatabase(config, PREFIX, _tables, SCHEMA_VERSION)
 pool = _db.pool
-tx, q, one, ex, many = _db.tx, _db.q, _db.one, _db.ex, _db.many
-
-
-def get_setting(k: str, default: str | None = None) -> str | None:
-    r = one("SELECT value FROM prt_settings WHERE name = %s", (k,))
-    return r["value"] if r else default
-
-
-def set_setting(k: str, v: str | None) -> None:
-    if v is None:
-        ex("DELETE FROM prt_settings WHERE name = %s", (k,))
-    else:
-        ex("INSERT INTO prt_settings (name, value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE value = VALUES(value)", (k, v))
-
-
-def ensure_database() -> None:
-    """Create the database when it is missing and the user may (CREATE privilege); otherwise leave it to the admin."""
-    try:
-        connect().close()
-        return
-    except pymysql.err.OperationalError as e:
-        if e.args[0] != 1049:  # anything but "unknown database"
-            raise
-    con = connect(database="")
-    try:
-        with con.cursor() as cur:
-            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{config.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-    finally:
-        con.close()
-
-
-def migrate() -> None:
-    ensure_database()
-    with tx() as con, con.cursor() as cur:
-        from iostart import news  # the reader's tables are written where they are explained (iostart/news.py)
-        schema.create(cur, SCHEMA + news.SCHEMA, " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")
-        schema.ensure_version_table(cur, PREFIX)
-        schema.record_version(cur, PREFIX, SCHEMA_VERSION)
-
-
-def reset_all() -> None:
-    """Tests only: drop every table of this app (prt_*; the database may hold the other apps' too)."""
-    with tx() as con, con.cursor() as cur:
-        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-        for t in schema.tables(cur):
-            if t.startswith(PREFIX + "_"):
-                cur.execute(f"DROP TABLE `{t}`")
-        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
+get_setting, set_setting = _db.get_setting, _db.set_setting
+ensure_database, migrate, reset_all = _db.ensure_database, _db.migrate, _db.reset_all

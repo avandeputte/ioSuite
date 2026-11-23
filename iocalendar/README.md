@@ -219,7 +219,7 @@ viewer's limits). CI runs them against MariaDB.
 The package `iocalendar/` of the repository:
 
 ```
-main.py            the application: start-up (tables, first admin, birthdays sync), who is asking, routes
+main.py            the application: what is ioCalendar's own (its jobs, body limits, routes), handed to iosuite_shared.application
 api.py             the REST API: calendars, events, occurrences, free/busy, import/export, subscriptions, Apple profile
 caldav.py          CalDAV / WebDAV
 ical.py            iCalendar and jCal: reading, indexing, expanding repeating events, editing, writing

@@ -1,65 +1,32 @@
-"""ioHealth: the iPhone app's upload API and the fitness web app, on one port (8650), over the suite's
-shared accounts (iosuite_shared, as in every app of the suite).
+"""ioHealth: the iPhone app's upload API and the fitness web app, over the suite's shared accounts (what is its
+own: its tables and jobs, the phone's endpoints, its routes; the rest is every app's: iosuite_shared.application).
 
 Who may call a route is declared on the route (iohealth/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, or a bearer app
 password), whether sign-in is required at all (it always is here: health data is private), and refuses cross-site
 writes.
 """
-import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from iosuite_shared import chores, demo as suite_demo, pages, users as shared
-from iosuite_shared.updates import setup_log
+from iosuite_shared import application, chores, users as shared
 
 from iohealth import __version__, config, db, notify, suiteitems, upload, usual, webapi
 from iohealth.auth import APP, auth, updater
 
-setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-log = logging.getLogger("app")
 
-# what a visitor may still fetch: the app shell (which shows the sign-in), its files (/static/), the API docs and the
-# phone's endpoints (which check the app password themselves)
-OPEN_PATHS = ("/", "/manifest.webmanifest", "/api/docs", "/api/openapi.json", "/v1/health")
-OPEN_PREFIXES = ("/static/", "/v1/")
+def _jobs() -> list:
+    return [chores.start(notify.weekly, every_s=60, first_s=20, name="weekly summary", app=config.APP),  # Monday morning: last week next to the one before
+            chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual", app=config.APP)]  # at each person's morning time
 
 
-@asynccontextmanager
-async def lifespan(_app):
-    db.wait_for_server()
-    shared.init()
-    db.migrate()
-    suite_demo.at_start(APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package); before the hourly backfill
-    webapi.start_backfill()
-    updater.start_daily()
-    week = chores.start(notify.weekly, every_s=60, first_s=20, name="weekly summary", app=config.APP)  # Monday morning: last week next to the one before
-    morning = chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual", app=config.APP)  # at each person's morning time
-    log.info("ioHealth started, writing to %s:%s/%s (%s)", db.params()["host"], db.params()["port"], db.params()["database"],
-             "accounts exist" if shared.any_users() else "no accounts yet: create the first one from the sign-in screen, inside your network")
-    yield
-    week.cancel()
-    morning.cancel()
-
-
-app = FastAPI(title="ioHealth", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
-              description="Apple Health data from the iPhone in your own MariaDB: the phone uploads to /v1/, the web app reads /api/. "
-                          "Every figure is the signed-in account's own.")
-
-# who is asking, whether sign-in is required at all, the cross-site check on writes: iosuite_shared's middleware
-app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES))
-upload.on_sync.append(webapi.sync_finished)
-upload.on_user_sync.append(notify.after_sync_quietly)  # "goal reached" and "outside your usual" notifications
+def _where() -> str:
+    c = db.params()
+    return "writing to %s:%s/%s (%s)" % (c["host"], c["port"], c["database"], "accounts exist" if shared.any_users() else
+                                         "no accounts yet: create the first one from the sign-in screen, inside your network")
 
 
 def _limit_for(path: str, ctype: str) -> int:
     if path.startswith("/v1/"):  # the phone's batches: app.upload counts them itself, after decompression
         return upload.MAX_BODY
     return config.MAX_JSON_BYTES
-
-
-# 400 for bad input, the headers, no-store on the API, the body cap: the same in every app of the suite
-auth.install(app, limit_for=_limit_for)
 
 
 def _status_extra(request) -> dict:
@@ -72,18 +39,19 @@ def _status_extra(request) -> dict:
     return out
 
 
-app.include_router(auth.router())        # /api/auth/*: login, accounts, logout, me, settings, password, setup, sessions, app-passwords, proxy
-app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite/tile: the start page's tile (app.json)
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the Settings › People panel): the whole suite (suite admins)
-app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
-app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(upload.router)
-app.include_router(webapi.router)
-app.include_router(usual.router)       # /api/usual: what is outside the account's usual
+upload.on_sync.append(webapi.sync_finished)
+upload.on_user_sync.append(notify.after_sync_quietly)  # "goal reached" and "outside your usual" notifications
 
-
-
-
-pages.mount(app, config.STATIC_DIR, __version__)  # /, the manifest and /static
+app = application.create(
+    auth, updater, __version__, config,
+    description="Apple Health data from the iPhone in your own MariaDB: the phone uploads to /v1/, the web app reads /api/. "
+                "Every figure is the signed-in account's own.",
+    prepare=(db.wait_for_server, shared.init, db.migrate),
+    start=(webapi.start_backfill,),  # the hourly rollup of the types that have none yet, after the demo data
+    jobs=_jobs, where=_where,
+    # (the phone's endpoints under /v1/, app.json's sync, check the app password themselves)
+    limit_for=_limit_for, status=_status_extra, suite=suiteitems.PROVIDER, related=False,
+    routers=(upload.router, webapi.router,
+             usual.router))  # /api/usual: what is outside the account's usual
 
 __all__ = ["app", "APP"]

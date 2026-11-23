@@ -1,61 +1,20 @@
-"""ioRecipe: the application (start-up, who is asking, the routes and the web app).
+"""ioRecipe: the application (what is its own: its tables and jobs, its body limits, its routes; the rest is every
+app's: iosuite_shared.application).
 
 Who may call a route is declared on the route (iorecipe/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
 """
-import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
-from iosuite_shared import mcp as shared_mcp, pages
-from iosuite_shared import demo as suite_demo
-from iosuite_shared.updates import setup_log
+from iosuite_shared import application, mcp as shared_mcp
 
 from iorecipe import __version__, ai, api, config, db, mcp, model, suiteitems, users
 from iorecipe.auth import auth, updater
-
-setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-log = logging.getLogger("iorecipe")
-
-
-# what a visitor may still fetch when sign-in is required: the app shell and its files, the API docs and the MCP
-# endpoint (its gate below)
-OPEN_PATHS = ("/", "/manifest.webmanifest", "/api/docs", "/api/openapi.json")
-OPEN_PREFIXES = ("/static/", "/mcp")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await run_in_threadpool(db.migrate)
-    await run_in_threadpool(users.init)
-    await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
-    ai.start()              # the AI model on its way, where it is wanted and not there yet
-    updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
-    log.info("ioRecipe %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
-    async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
-        yield
-
-
-app = FastAPI(title="ioRecipe", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,
-              openapi_url="/api/openapi.json",
-              description="The family's recipes: ingredients, steps, a photo, and import from a web page. Also served "
-                          "to AI assistants over MCP (/mcp).")
-
 
 # Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
 mcp_switch = shared_mcp.Switch(config.APP,
                                "Lets an AI assistant look recipes up, add them and import them from the web, as you.")
 mcp_enabled = mcp_switch.enabled
-
-
-# who is asking, whether sign-in is required at all, the cross-site check on writes, and the MCP endpoint's gate (the
-# switch; an app password or session; every tool acts as that account): iosuite_shared's middleware
-app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES,
-                                       before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set)))
 
 
 def _limit_for(path: str, ctype: str) -> int:
@@ -64,29 +23,18 @@ def _limit_for(path: str, ctype: str) -> int:
     return config.MAX_PHOTO_BYTES if path.endswith(("/photos", "/import/photo")) else config.MAX_JSON_BYTES
 
 
-# 400 for bad input, the headers, no-store on the API, the body cap: the same in every app of the suite
-auth.install(app, limit_for=_limit_for, not_found=(model.NotFound,))
-
-
-@app.exception_handler(model.Forbidden)
-async def _forbidden(request, e):
-    return JSONResponse({"detail": str(e)}, status_code=403)
-
-
 def _status_extra(request) -> dict:
     """ioRecipe's own fields of GET /api/status, beside the suite's."""
     u = request.state.user
     return {"mcp": mcp_enabled() if u else None}
 
 
-app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the panel of Settings › People, Apps, Servers and Keys): the whole suite (suite admins)
-app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
-app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
-app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite: search, items, tile, as every app answers them (app.json)
-app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(api.router)
-shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of everything else
-
-
-pages.mount(app, config.STATIC_DIR, __version__)  # /, the manifest and /static
+app = application.create(
+    auth, updater, __version__, config,
+    description="The family's recipes: ingredients, steps, a photo, and import from a web page. Also served "
+                "to AI assistants over MCP (/mcp).",
+    prepare=(db.migrate, users.init),
+    start=(ai.start,),  # the AI model on its way, where it is wanted and not there yet
+    mcp=mcp, mcp_enabled=mcp_enabled,
+    limit_for=_limit_for, not_found=(model.NotFound,), forbidden=(model.Forbidden,),
+    status=_status_extra, suite=suiteitems.PROVIDER, routers=(api.router,))

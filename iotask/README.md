@@ -193,7 +193,7 @@ them against MariaDB.
 The package `iotask/` of the repository:
 
 ```
-main.py            the application: start-up (tables, first admin), who is asking, routes
+main.py            the application: what is ioTask's own (its jobs, body limits, routes), handed to iosuite_shared.application
 api.py             the REST API: lists, tasks, ticking off, postponing, activity and undo, templates, import/export, connection details, Apple profile
 caldav.py          CalDAV / WebDAV (to-dos)
 ical.py            iCalendar: reading, indexing, editing and writing VTODOs, moving a repeating task on

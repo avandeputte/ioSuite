@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 
+import pymysql
 from iosuite_shared import credentials
 
 from iodns import config, db, providers
@@ -46,7 +47,7 @@ def save_view(body: dict, vid: int | None = None) -> dict:
         try:
             vid = db.ex("INSERT INTO dns_views (slug, name, description, position) VALUES (%s, %s, %s, %s)",
                         (slug, name, str(body.get("description") or "")[:255] or None, pos))
-        except db.pymysql.err.IntegrityError:
+        except pymysql.err.IntegrityError:
             raise ValueError(f"There is a view {slug!r} already") from None
     else:
         view(vid)

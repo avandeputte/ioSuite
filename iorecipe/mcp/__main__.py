@@ -1,28 +1,12 @@
 """`python -m iorecipe.mcp [--user NAME]`: the MCP server over stdio, for clients that start a local process.
-It acts as the account named by --user or MCP_USER (or the only admin, when there is just one)."""
-import sys
+It acts as the account named by --user or MCP_USER (or the only admin, when there is just one):
+iosuite_shared.mcp.stdio_user."""
+from iosuite_shared import mcp as shared_mcp
 
 from iorecipe import config, db, users
-from iorecipe.mcp import server, current_user
-
-
-def _pick_user():
-    name = config.MCP_USER
-    if "--user" in sys.argv[1:]:
-        i = sys.argv.index("--user")
-        name = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
-    if name:
-        u = users.find(name)
-        if not u:
-            sys.exit(f"no ioRecipe account named {name!r}")
-        return u
-    admins = [u for u in users.all_users() if u["role"] == "admin"]
-    if len(admins) == 1:
-        return admins[0]
-    sys.exit("name the account: python -m iorecipe.mcp --user NAME (or MCP_USER=NAME)")
-
+from iorecipe.mcp import current_user, server
 
 db.migrate()
 users.init()
-current_user.set(_pick_user())
+current_user.set(shared_mcp.stdio_user(config.APP, config.MCP_USER, users.all_users()))
 server.run()

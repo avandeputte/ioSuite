@@ -1,53 +1,15 @@
-"""ioDocs: the application (start-up, who is asking, the routes and the web app).
+"""ioDocs: the application (what is its own: its tables and jobs, its body limits, its routes; the rest is every
+app's: iosuite_shared.application).
 
 Who may call a route is declared on the route (iodocs/access.py); iosuite_shared's middleware works out who is asking
 (the shared session cookie, the identity a reverse proxy such as Cloudflare Access vouches for, HTTP Basic or a bearer
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
 """
-import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
-from iosuite_shared import chores, mcp as shared_mcp, pages
-from iosuite_shared import demo as suite_demo
-from iosuite_shared.updates import setup_log
+from iosuite_shared import application, chores, mcp as shared_mcp
 
 from iodocs import __version__, api, config, db, mcp, model, notify, suiteitems, users
 from iodocs.auth import auth, updater
-
-setup_log()  # the copy's one log, each line marked with its app (iosuite_shared.logs); the app runs without the file
-log = logging.getLogger("iodocs")
-
-
-# what a visitor may still fetch when sign-in is required: the app shell and its files, the API docs and the MCP
-# endpoint (its gate below)
-OPEN_PATHS = ("/", "/manifest.webmanifest", "/api/docs", "/api/openapi.json")
-OPEN_PREFIXES = ("/static/", "/mcp")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await run_in_threadpool(db.migrate)
-    await run_in_threadpool(users.init)
-    await run_in_threadpool(suite_demo.at_start, config.APP)  # the demo data while the suite's demo switch is on (iosuite_shared.demo fetches the iosuite_demo package)
-    updater.start_daily()   # the daily "is there a newer version" check, while the setting allows it
-    notes = chores.start(notify.run, every_s=60, first_s=20, name="notifications", app=config.APP)  # the morning's papers about to expire
-    log.info("ioDocs %s started, database %s:%s/%s", __version__, config.DB_HOST, config.DB_PORT, config.DB_NAME)
-    async with shared_mcp.running(mcp.server):  # the MCP endpoint (/mcp) lives in this process
-        yield
-    notes.cancel()
-
-
-app = FastAPI(title="ioDocs", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None,
-              openapi_url="/api/openapi.json",
-              description="The family's important papers: passports, ID cards, driver's licenses, insurance "
-                          "policies, certificates, each with its scans, whose it is and when it expires, with a "
-                          "reminder before it does. Scans are read on the server (OCR, a passport's machine-readable "
-                          "zone, a license's barcode) to fill the details in. Also served to AI assistants over MCP (/mcp).")
-
 
 # Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
 mcp_switch = shared_mcp.Switch(config.APP,
@@ -55,23 +17,12 @@ mcp_switch = shared_mcp.Switch(config.APP,
 mcp_enabled = mcp_switch.enabled
 
 
-# who is asking, whether sign-in is required at all, the cross-site check on writes, and the MCP endpoint's gate (the
-# switch; an app password or session; every tool acts as that account): iosuite_shared's middleware
-app.middleware("http")(auth.middleware(open_paths=OPEN_PATHS, open_prefixes=OPEN_PREFIXES,
-                                       before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set)))
+def _jobs() -> list:
+    return [chores.start(notify.run, every_s=60, first_s=20, name="notifications", app=config.APP)]  # the morning's papers about to expire
 
 
 def _limit_for(path: str, ctype: str) -> int:
     return config.MAX_FILE_BYTES if path.endswith("/files") else config.MAX_JSON_BYTES
-
-
-# 400 for bad input, the headers, no-store on the API, the body cap: the same in every app of the suite
-auth.install(app, limit_for=_limit_for, not_found=(model.NotFound,))
-
-
-@app.exception_handler(model.Forbidden)
-async def _forbidden(request, e):
-    return JSONResponse({"detail": str(e)}, status_code=403)
 
 
 def _status_extra(request) -> dict:
@@ -80,14 +31,13 @@ def _status_extra(request) -> dict:
     return {"mcp": mcp_enabled() if u else None}
 
 
-app.include_router(auth.router())        # /api/auth/*: sign-in, accounts, me, settings, password, sessions, app passwords, suite
-app.include_router(auth.admin_router())  # /api/suite-admin (+ ui.js, the panel of Settings › People, Apps, Servers and Keys): the whole suite (suite admins)
-app.include_router(auth.live_router())  # /api/live: the one live-refresh stream a page holds, with every app's changes on it
-app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
-app.include_router(auth.suite_router(suiteitems.PROVIDER))  # /api/suite: search, items, tile, as every app answers them (app.json)
-app.include_router(auth.status_router(updater, extra=_status_extra))  # /api/status: public, the same shape in every app
-app.include_router(api.router)
-shared_mcp.mount(app, mcp.server)  # MCP over streamable HTTP at /mcp, ahead of everything else
-
-
-pages.mount(app, config.STATIC_DIR, __version__)  # /, the manifest and /static
+app = application.create(
+    auth, updater, __version__, config,
+    description="The family's important papers: passports, ID cards, driver's licenses, insurance "
+                "policies, certificates, each with its scans, whose it is and when it expires, with a "
+                "reminder before it does. Scans are read on the server (OCR, a passport's machine-readable "
+                "zone, a license's barcode) to fill the details in. Also served to AI assistants over MCP (/mcp).",
+    prepare=(db.migrate, users.init), jobs=_jobs,
+    mcp=mcp, mcp_enabled=mcp_enabled,
+    limit_for=_limit_for, not_found=(model.NotFound,), forbidden=(model.Forbidden,),
+    status=_status_extra, suite=suiteitems.PROVIDER, routers=(api.router,))

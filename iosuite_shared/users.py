@@ -158,6 +158,36 @@ def accounts(app: str | None = None) -> list:
     return out
 
 
+class AppUsers:
+    """The suite's accounts as one app sees them: get() and find() give an account with the role it holds in that
+    app, all_users() the accounts by name, init() is what the app calls at start. An app's users.py holds one and
+    names what the rest of the app calls: `get, find, all_users, init = _users.get, _users.find, ...`.
+
+    `default_role`: the role an account holds in the app while nobody gave it one, written once, at the first start
+    ("none" for an app that is not for everyone with an account; a suite admin changes it under Settings › Apps)."""
+
+    ROLES = APP_ROLES
+
+    def __init__(self, app: str, default_role: str | None = None):
+        self.app, self.default_role = app, default_role
+
+    def get(self, uid: int) -> dict | None:
+        return get(uid, self.app)
+
+    def find(self, name_or_email: str) -> dict | None:
+        return find(name_or_email, self.app)
+
+    def all_users(self) -> list[dict]:
+        return sorted(list_users(self.app), key=lambda u: u["name"].lower())
+
+    def init(self) -> None:
+        """The Shared ioSuite database's tables, the ADMIN_USER / ADMIN_PASSWORD account on a first start with no
+        accounts, and the app's default role where it has one of its own."""
+        init()
+        if self.default_role and not db.one("SELECT 1 AS x FROM ios_settings WHERE app = %s AND name = 'default_role'", (self.app,)):
+            db.set_setting("default_role", self.default_role, self.app)
+
+
 @contextmanager
 def _atomic():
     """One transaction for a change made in several statements (its checks included), and a name or email address that

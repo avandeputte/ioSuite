@@ -1,13 +1,8 @@
 """MariaDB access: one short connection per unit of work, and the schema (created and migrated at start)."""
-import threading
-from contextlib import contextmanager
-
-import pymysql
-from pymysql.cursors import DictCursor
 
 from iobackup import config
 
-from iosuite_shared import db as shared_db, schema
+from iosuite_shared import db as shared_db
 
 SCHEMA_VERSION = 1
 PREFIX = "bkp"
@@ -85,90 +80,10 @@ SCHEMA = [
 ]
 
 
-def connect(database: str | None = None):
-    return pymysql.connect(host=config.DB_HOST, port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASSWORD,
-                           database=database if database is not None else config.DB_NAME, charset="utf8mb4",
-                           cursorclass=DictCursor, autocommit=False, connect_timeout=8)
-
-
-_local = threading.local()
-pool = shared_db.Pool(connect)  # a few open connections, reused: no new handshake and sign-in for every query
-
-
-@contextmanager
-def tx():
-    """A pooled connection inside one transaction: committed on success, rolled back on error. Nested calls share it."""
-    con = getattr(_local, "con", None)
-    if con is not None:
-        yield con
-        return
-    con = pool.borrow()
-    _local.con = con
-    broken = False
-    try:
-        yield con
-        con.commit()
-    except BaseException as e:
-        broken = isinstance(e, (pymysql.err.OperationalError, pymysql.err.InterfaceError))
-        if not broken:
-            con.rollback()
-        raise
-    finally:
-        _local.con = None
-        pool.give_back(con, broken)
-
-
-def q(sql: str, args=None) -> list[dict]:
-    with tx() as con, con.cursor() as cur:
-        cur.execute(sql, args)
-        return list(cur.fetchall())
-
-
-def one(sql: str, args=None) -> dict | None:
-    rows = q(sql, args)
-    return rows[0] if rows else None
-
-
-def ex(sql: str, args=None) -> int:
-    """Run a statement; returns lastrowid (inserts) or rowcount."""
-    with tx() as con, con.cursor() as cur:
-        n = cur.execute(sql, args)
-        return cur.lastrowid or n
-
-
-def marks(n: int) -> str:
-    return ",".join(["%s"] * n) if n else "NULL"
-
-
-def ensure_database() -> None:
-    """Create the database when it is missing and the user may (CREATE privilege); otherwise leave it to the admin."""
-    try:
-        connect().close()
-        return
-    except pymysql.err.OperationalError as e:
-        if e.args[0] != 1049:  # anything but "unknown database"
-            raise
-    con = connect(database="")
-    try:
-        with con.cursor() as cur:
-            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{config.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-    finally:
-        con.close()
-
-
-def migrate() -> None:
-    ensure_database()
-    with tx() as con, con.cursor() as cur:
-        schema.create(cur, SCHEMA, " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")
-        schema.ensure_version_table(cur, PREFIX)
-        schema.record_version(cur, PREFIX, SCHEMA_VERSION)
-
-
-def reset_all() -> None:
-    """Tests only: drop every table of this app (bkp_*; the database may hold the other apps' too)."""
-    with tx() as con, con.cursor() as cur:
-        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-        for t in schema.tables(cur):
-            if t.startswith(PREFIX + "_"):
-                cur.execute(f"DROP TABLE `{t}`")
-        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+# Where the database is, its pool, the transaction nested calls share, q / one / ex / many, the settings table and the
+# tables made at start are the suite's (iosuite_shared.db.AppDatabase): a statement on its own is one round trip, tx()
+# is one transaction (committed on success, rolled back on error), and q / one / ex inside a `with tx():` block run in it.
+_db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
+connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
+marks = shared_db.marks
+ensure_database, migrate, reset_all = _db.ensure_database, _db.migrate, _db.reset_all

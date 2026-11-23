@@ -1,6 +1,5 @@
 """The server itself, for admins: health."""
-import platform
-import sys
+from iosuite_shared import mcp as shared_mcp
 
 from iomoney import __version__, config, db, monarch, users
 from iomoney.auth import updater
@@ -13,17 +12,9 @@ def diagnostics() -> dict:
     transactions, holdings, quotes), the Monarch sync, the MCP switch, the last update check and update, and the
     accounts with a role here."""
     need_admin()
-    out = {"version": __version__, "commit": updater.local_commit()[:7], "docker": updater.in_docker(),
-           "python": sys.version.split()[0], "platform": platform.platform(), "appDir": str(config.APP_DIR),
-           "publicUrl": config.PUBLIC_URL or None, "update": updater.status()}
-    try:
-        out["database"] = {"host": f"{config.DB_HOST}:{config.DB_PORT}", "name": config.DB_NAME,
-                           "server": db.one("SELECT version() AS v")["v"], "schema": db.schema_version(),
-                           **{t: db.one(f"SELECT count(*) AS n FROM mny_{t}")["n"] for t in ("accounts", "transactions", "holdings", "quotes", "recurring")}}
-        out["monarch"] = monarch.status()
-    except Exception as e:  # noqa: BLE001
-        out["database"] = {"error": str(e)[:200]}
     from iomoney.main import mcp_enabled
-    out["mcp"] = {"enabled": mcp_enabled()}
-    out["accounts"] = [{"name": u["name"], "role": u.get("role")} for u in users.all_users()]
+    out = shared_mcp.diagnostics(config, __version__, updater, db, mcp_enabled, users.all_users(), counts=lambda: {
+        t: db.one(f"SELECT count(*) AS n FROM mny_{t}")["n"] for t in ("accounts", "transactions", "holdings", "quotes", "recurring")})
+    if "error" not in out["database"]:
+        out["monarch"] = monarch.status()
     return out
