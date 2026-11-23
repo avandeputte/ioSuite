@@ -240,7 +240,8 @@ def test_a_restart_is_asked_of_the_apps_named_and_the_copy_starts_once(tmp_path,
         suite.register(k, name=k)
     assert suiteupdates.request("restart", "alex", ["iocalendar", "iotask", "nosuch"]) == ["iocalendar", "iotask"]
     assert suiteupdates.request("restart", "alex") == ["iocalendar", "iopix", "iotask"]
-    cal, task = updater(tmp_path, monkeypatch), updater(tmp_path, monkeypatch, app="iotask")
+    cal = updater(tmp_path, monkeypatch)
+    updater(tmp_path, monkeypatch, app="iotask")
     restarted = []
     monkeypatch.setattr(updates.Updater, "restart", staticmethod(lambda delay=0.5: restarted.append(delay)))
     cal.serve(suiteupdates.claim("iocalendar"))

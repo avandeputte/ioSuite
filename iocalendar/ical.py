@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import recurring_ical_events
 from icalendar import Alarm, Calendar, Event, vCalAddress, vRecur, vText
 
-from iocalendar import __version__, config
+from iocalendar import __version__
 from iosuite_shared.errors import Invalid
 
 PRODID = f"-//iothing//ioCalendar {__version__}//EN"

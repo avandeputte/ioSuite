@@ -18,7 +18,6 @@ import urllib.request
 
 from iosuite_shared import credentials
 
-from iopix import config as appconfig  # "config" is the map configuration function below
 from iopix.data import state
 
 SESSION_URL = "https://tile.googleapis.com/v1/createSession"

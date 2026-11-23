@@ -2,7 +2,6 @@
 IOSUITE_TEST_DB=host:port:user:password): two scratch databases, health_test and health_test_auth, dropped and
 recreated per session, never a live one. Without a test server the suite is skipped. The app starts once per session;
 every test begins with empty tables."""
-import os
 import re
 import threading
 

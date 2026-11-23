@@ -5,7 +5,6 @@ from iosuite_shared import users as shared_users
 import pytest
 
 import mariadb
-from iopix.ai import analysis
 from iopix.data import state, appdb
 from iopix import users
 

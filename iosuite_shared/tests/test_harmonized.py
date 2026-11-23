@@ -1,17 +1,16 @@
 """What every app gets the same way since 0.11.0: the public status, install() (400 for bad input, the headers, the body
 cap), the MCP gate and helpers, the log set-up, the standard settings and the test helpers."""
 import json
-import logging
 
 import iosuite_shared
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
-from iosuite_shared import config, db, testing, users
+from iosuite_shared import db, testing, users
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.fastapi import Auth
-from iosuite_shared.updates import Updater, setup_log
+from iosuite_shared.updates import Updater
 
 
 class FakeUpdater:

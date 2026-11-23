@@ -8,7 +8,6 @@ compute is tested on their own with scratch inputs.
 """
 import os
 import shutil
-import sys
 import tempfile
 from pathlib import Path
 

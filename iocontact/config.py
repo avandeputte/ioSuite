@@ -21,7 +21,7 @@ DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD = _db["host"], _db["port"], _db[
 
 # LDAP directory (read-only): port 0 turns it off; it listens where the web app does unless told otherwise
 LDAP_PORT = env_int("LDAP_PORT", 3890)
-LDAP_HOST = [h.strip("[]") for h in serve.hosts(env("LDAP_HOST", HOST))]  # noqa: F821 - HOST: the machine's, from standard()
+LDAP_HOST = [h.strip("[]") for h in serve.hosts(env("LDAP_HOST", globals()["HOST"]))]  # HOST: the machine's, from standard()
 LDAP_BASE = env("LDAP_BASE", "dc=iocontact")
 
 # ioPix is found in the suite's list of apps and signed in to by itself (app/iopix.py): nothing to set

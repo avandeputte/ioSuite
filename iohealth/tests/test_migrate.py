@@ -1,5 +1,4 @@
 """A fresh database gets every table, view and index, and starting again changes nothing."""
-import os
 
 import pymysql
 import pytest

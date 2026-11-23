@@ -20,7 +20,7 @@ from dateutil import rrule as du_rrule
 from dateutil.relativedelta import relativedelta
 from icalendar import Alarm, Calendar, Event, Todo, vDDDTypes, vRecur
 
-from iotask import __version__, config
+from iotask import __version__
 from iosuite_shared.errors import Invalid
 
 PRODID = f"-//iothing//ioTask {__version__}//EN"

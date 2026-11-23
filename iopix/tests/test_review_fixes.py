@@ -4,8 +4,6 @@ import sqlite3
 
 import pytest
 
-from helpers import login
-
 from iopix.digikam import dkdb
 from iopix.digikam.dbsync import SyncError
 
