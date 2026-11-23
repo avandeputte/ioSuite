@@ -37,7 +37,7 @@ jobs:
       - name: Every app's manifest
         run: |
           python -m pip install -q -e .
-          python -c "from iosuite_shared import catalog; print(len(catalog.APPS), 'apps:', ', '.join(a['key'] for a in catalog.APPS))"
+          python -c "from iosuite_shared import catalog; print(len(catalog.APPS), 'apps:', ', '.join(catalog.APPS))"
       - name: JavaScript
         run: |
           # the web apps' files are ES modules: parsed as modules (a plain --check can miss errors); the libraries of others are left alone
@@ -45,11 +45,15 @@ jobs:
             node --input-type=module --check < "$f" || { echo "::error file=$f::does not parse"; exit 1; }
           done
           node -e 'JSON.parse(require("fs").readFileSync("iostart/static/extension/manifest.json"))'
+          for f in iostart/static/extension/*.js iostart/tests/extension/*.js; do node --check "$f"; done
       - name: Shell
         run: |
           sh -n update.sh
           bash -n install.sh
           for f in $(find . -name '*.sh' -not -path './.venv/*' -not -name update.sh); do bash -n "$f"; done
+      - name: The edge worker (Cloudflare) and its tests
+        working-directory: cloudflare/edge-auth
+        run: node --test
 
   tests:
     runs-on: ubuntu-latest
@@ -96,9 +100,33 @@ jobs:
           IOBACKUP_TEST_DB_USER: root
           IOBACKUP_TEST_DB_PASSWORD: root
         run: bash iobackup/tests/integration.sh
-      - name: ioStart's bookmark extension against a real server
-        if: matrix.part == 'iostart'
-        run: for f in iostart/static/extension/*.js iostart/tests/extension/*.js; do node --check "$f"; done
+
+  iopix-browser:
+    # ioPix's pages in a real browser (Playwright, headless Chromium), on a library the tests make from scratch
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      IOSUITE_TEST_DB: 127.0.0.1:3306:root:root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Packages
+        run: |
+          python -m pip install -q -e ".[iopix,test]" numpy playwright
+          pkgs="$(python -c "import json; print(' '.join(json.load(open('iopix/app.json')).get('system', [])))")"
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $pkgs >/dev/null
+          python -m playwright install --with-deps chromium >/dev/null
+      - name: Browser tests
+        run: python -m pytest -q -p no:cacheprovider iopix/tests/ui
 
   one-copy:
     # installed as a server installs it (the program's environment, `iosuite install`, the databases made with a
@@ -129,6 +157,7 @@ jobs:
       - name: Every app answers in one copy
         run: |
           .venv/bin/iosuite serve > serve.log 2>&1 &
+          echo $! > serve.pid
           python tools/smoke.py --web 8080 --sync 8443 || { tail -100 serve.log; exit 1; }
       - name: Two apps taken out, then put back
         run: |
@@ -137,3 +166,14 @@ jobs:
           if grep -q "ioDNS" list.txt; then echo "::error::ioDNS is still in the list"; exit 1; fi
           .venv/bin/iosuite install --yes --add iodns,iobackup --no-service
           .venv/bin/iosuite install --list | grep -q "ioDNS"
+      - name: Two copies, one suite (ioPix in a copy of its own)
+        env:
+          ADMIN_PASSWORD: a-password-for-the-check
+        run: |
+          kill "$(cat serve.pid)"; sleep 3
+          .venv/bin/iosuite install --yes --copy pix --apps iopix --no-service
+          .venv/bin/iosuite install --list
+          .venv/bin/iosuite set suite PUBLIC_URL http://127.0.0.1:8080
+          .venv/bin/iosuite serve > serve.log 2>&1 &
+          IOSUITE_CONFIG="$PWD/copies/pix/config.env" .venv/bin/iosuite serve > serve-pix.log 2>&1 &
+          python tools/twocopies.py --web 8080 --other-web 8081 --other-app iopix --login "alex:$ADMIN_PASSWORD" || { tail -60 serve.log serve-pix.log; exit 1; }

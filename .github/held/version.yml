@@ -1,0 +1,48 @@
+# The suite's version, set on main by itself: nothing else touches the version line, so two changes never meet on it.
+# After every push to main, .github/scripts/version.py raises the version (iosuite_shared/__init__.py) in a commit of
+# its own when the push changed something an install has; by the last number, or the middle one when a merged pull
+# request carries the label `feature` (the first with `major`). A version that has no release yet then gets one (tag
+# v<version>), and the image is built from it: image.yml is started here, because a commit made by a workflow starts
+# none by itself.
+# One run at a time; a run looks at everything main got since the version last changed, so none is missed.
+name: Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: version
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # the version commit, the release
+  actions: write    # starting the image build
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0  # what main got since the version last changed
+      - name: Set the version
+        id: v
+        run: python3 .github/scripts/version.py
+      - name: Build the image of this version
+        if: steps.v.outputs.released == 'false'
+        run: gh workflow run image.yml --ref main
+      - name: Release the version
+        # last, so a run that fails before here is made good by the next one: no release yet means not done yet
+        if: steps.v.outputs.released == 'false'
+        env:
+          V: ${{ steps.v.outputs.version }}
+          TITLE: ${{ steps.v.outputs.title }}
+          SHA: ${{ steps.v.outputs.sha }}
+        run: |
+          printf '\n\nImage: `ghcr.io/avandeputte/iosuite2:v%s` (also `latest`; with ioPix'"'"'s AI packages `v%s-ai` and `ai`).\n' "$V" "$V" >> notes.md
+          gh release create "v$V" --target "$SHA" --title "ioSuite $V: $TITLE" --notes-file notes.md

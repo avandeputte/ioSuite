@@ -68,6 +68,19 @@ def sign_in(web: str, who: str):
         return None
 
 
+def processes(pid: int) -> list:
+    """[(PSS in MB, what it runs)] of pid's tree, largest first."""
+    out = []
+    for p in tree(pid):
+        try:
+            pss = sum(int(x.split()[1]) for x in Path(f"/proc/{p}/smaps_rollup").read_text().splitlines() if x.startswith("Pss:"))
+            cmd = Path(f"/proc/{p}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace").strip()
+            out.append((pss / 1024, cmd[-90:]))
+        except OSError:
+            pass
+    return sorted(out, reverse=True)
+
+
 def timed(url: str, n: int, cookie: str = None) -> tuple:
     """(median, 95th percentile) in ms of n requests, one after another."""
     ms = []
@@ -119,6 +132,8 @@ def main() -> int:
                             "idle_pss_mb": round(idle[0]), "idle_rss_mb": round(idle[1]), "after_pss_mb": round(after[0]), "requests": rows})
             print(f"\n{len(keys)} apps ({', '.join(keys)})")
             print(f"  started in {started:.1f} s; {len(tree(proc.pid))} process(es); memory {idle[0]:.0f} MB settled, {after[0]:.0f} MB after the requests (RSS {idle[1]:.0f} MB)")
+            for mb, cmd in processes(proc.pid):
+                print(f"    {mb:6.0f} MB  {cmd}")
             for key, r in rows.items():
                 s, pg = r["status"], r["page"]
                 def f(x):
