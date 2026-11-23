@@ -8,8 +8,8 @@ repository. It reads docs/, landing/ and the READMEs (the repository's and each 
 
   - a link to a file in this repository (raw.githubusercontent.com/.../iosuite/main/x,
     github.com/.../iosuite/blob|tree/main/x) that is not there;
-  - a link into the first repository's files, or an image of it (ghcr.io/.../iosuite/<app>): the suite is one
-    program in one repository, with one image;
+  - a link into the first repository's files (github.com/.../iosuite-old/...), or an image of a single app
+    (ghcr.io/.../<app>): the suite is one program in one repository, with one image;
   - a port of the time each app was a program of its own (8600 to 8720) next to an app's name;
   - a setting written as a command (`iosuite set APP NAME`, `--set APP.NAME=`) that no app declares;
   - the three ports (the pages, devices, MCP) said otherwise than the program's defaults;
@@ -28,7 +28,7 @@ HERE = pathlib.Path(__file__).resolve().parent.parent
 SRC = HERE.parent
 OWNER = "avandeputte"
 REPO = "iosuite"
-FIRST = "iosuite"  # the first repository: an app was a program of its own there
+FIRST = "iosuite-old"  # the first repository, archived: an app was a program of its own there
 # the apps, from their manifests (<app>/app.json), in their order
 APPS = sorted((json.loads(p.read_text()) for p in SRC.glob("io*/app.json")), key=lambda m: m.get("order", 0))
 LABELS = {m["name"]: m["key"] for m in APPS}
