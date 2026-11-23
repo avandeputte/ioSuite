@@ -84,6 +84,8 @@ jobs:
           python -m pip install -q -e ".[$extras]"
           # what the app's manifest says it needs of the system (exiftool, tesseract, …)
           pkgs="$([ -f "$PART/app.json" ] && python -c "import json,sys; print(' '.join(json.load(open(sys.argv[1])).get('system', [])))" "$PART/app.json" || true)"
+          # ioDocs' tests draw made-up passports: their zone in its own font (OCR-B), as on a real one
+          if [ "$PART" = iodocs ]; then pkgs="$pkgs fonts-ocr-b"; fi
           if [ -n "$pkgs" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $pkgs >/dev/null; fi
       - name: Tests
         run: |
@@ -170,7 +172,7 @@ jobs:
         env:
           ADMIN_PASSWORD: a-password-for-the-check
         run: |
-          kill "$(cat serve.pid)"; sleep 3
+          kill "$(cat serve.pid)"; while kill -0 "$(cat serve.pid)" 2>/dev/null; do sleep 1; done
           .venv/bin/iosuite install --yes --copy pix --apps iopix --no-service
           .venv/bin/iosuite install --list
           .venv/bin/iosuite set suite PUBLIC_URL http://127.0.0.1:8080
