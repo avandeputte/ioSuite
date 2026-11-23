@@ -38,7 +38,9 @@ See [Accounts and roles](../run/accounts.md).
 
 - Look through **Settings › Global settings › Settings**: the time zone, the suite's address, and each app's own
   settings (the photos folder for ioPix, the public holidays for ioCalendar). See [Configuration](../reference/configuration.md).
-- Put the suite behind HTTPS: [Reverse proxy and HTTPS](../run/reverse-proxy.md), or [Cloudflare Tunnel and Access](../run/cloudflare.md).
+- Put the suite behind HTTPS: [Reverse proxy and HTTPS](../run/reverse-proxy.md),
+  [Cloudflare Tunnel and Access](../run/cloudflare.md), or let the suite
+  [ask for its own certificate](../run/https.md) and answer HTTPS itself.
 - Connect your devices: [Phones, Macs and other apps](../apps/devices.md). They use the devices' port (8443).
 - Settings › Global settings › Updates shows the suite's version and updates it: [Updates](../run/updates.md).
 - Optionally, let an AI assistant in: [AI assistants (MCP)](../run/assistants.md).

@@ -32,7 +32,8 @@ SYNC_PORT=8443                     # phones, native apps and devices (off: not o
 MCP_PORT=8444                      # MCP clients (off: not opened)
 
 INTERNAL_URL=http://192.168.1.151  # where the suite's other machines call this one (default: its LAN address)
-TLS_CERT_FILE=…  TLS_KEY_FILE=…    # HTTPS served by the program itself instead of a reverse proxy
+HTTPS_PORT=443                     # the pages over HTTPS, once there is a certificate (off: this machine stays without)
+TLS_CERT_FILE=…  TLS_KEY_FILE=…    # a certificate of your own, instead of the one the suite asks for
 DATA_DIR=/opt/iosuite/data         # what the apps write on their own, each in a folder of its name
 LOG_FILE=/opt/iosuite/data/iosuite.log   # the one log (off: the journal only)
 ADMIN_USER=…  ADMIN_PASSWORD=…     # the first admin, on an empty Shared ioSuite database
@@ -65,6 +66,9 @@ The app is chosen the same way on all three: by its own host name (`calendar.exa
 suite's address (`home.example.com/calendar/`); both work at the same time. A request that arrives at the wrong port
 is sent on to the right one. ioContact's LDAP directory keeps its own port (3890).
 
+With [a certificate](../run/https.md) the pages are also answered over HTTPS, on `HTTPS_PORT` (443), and the ports
+for devices and MCP answer HTTPS as well as plain HTTP.
+
 ## Settings in the database
 
 Under **Settings › Global settings › Settings** (suite admins), with a section for the whole suite and one per app.
@@ -93,6 +97,7 @@ Three more places hold what is not a plain setting, all in the same database:
 - **Settings › Security**: people, roles, app passwords, sign-in at the proxy and the addresses of your reverse proxies.
 - **Settings › Global settings › Apps**: each app's default role and whether it requires sign-in.
 - **Settings › Global settings › Keys and tokens**: the keys for services outside the suite. They can be written, never read back.
+- **Settings › Global settings › Certificate**: [the suite's own certificate](../run/https.md), for HTTPS without a reverse proxy.
 
 ## The `iosuite` command
 
@@ -109,6 +114,7 @@ iosuite list                                  # every account and its roles
 iosuite admin NAME                            # make NAME an admin
 iosuite password NAME                         # set an account's password
 iosuite sign-in-reset NAME                    # two-step sign-in off, passkeys removed (a lost phone)
+iosuite cert                                  # the suite's own certificate: what is stored; --on, --off, --now
 iosuite serve                                 # run the apps until stopped (what the service does)
 ```
 

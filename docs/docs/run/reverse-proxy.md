@@ -8,7 +8,8 @@ ioSuite speaks plain HTTP on three ports: the pages (80), phones, native apps an
 (8444); see [The three ports](../reference/configuration.md#the-three-ports). To reach it from outside your network,
 put a reverse proxy in front that terminates HTTPS: Caddy, nginx (or Nginx Proxy Manager), HAProxy, Traefik, or a
 [Cloudflare Tunnel](cloudflare.md). Phones want HTTPS for CalDAV and CardDAV accounts away from home, and the browser
-wants it to install the web app. The suite can also [serve HTTPS itself](#https-without-a-proxy).
+wants it to install the web app. The suite can also answer HTTPS itself, with
+[a certificate it asks for and renews](https.md), and then needs no proxy for that.
 
 ## One address for the suite
 
@@ -193,16 +194,8 @@ Docker network). Leave *Proxy* at Off unless the proxy also signs people in ([be
 
 ## HTTPS without a proxy
 
-The program can hold the certificate itself. In the machine's file:
-
-```sh
-TLS_CERT_FILE=/etc/ssl/home.example.com/fullchain.pem
-TLS_KEY_FILE=/etc/ssl/home.example.com/privkey.pem
-PORT=443
-```
-
-All three ports then speak HTTPS with that certificate. The suite's other servers call this one by the name on the
-certificate: `INTERNAL_URL=https://home.example.com`.
+The suite can ask for a certificate itself (Let's Encrypt), renew it, and answer HTTPS on its own ports, or use a
+certificate you name in the machine's file: [The suite's own certificate](https.md).
 
 ## Sign-in at the proxy
 

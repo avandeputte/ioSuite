@@ -48,3 +48,5 @@ ioContact also serves an LDAP directory, on port 3890.
 
 A reverse proxy that terminates HTTPS (Caddy, nginx, HAProxy, Traefik) or a Cloudflare Tunnel, and a domain. Phones
 want HTTPS for CalDAV and CardDAV accounts away from home. See [Reverse proxy and HTTPS](../run/reverse-proxy.md).
+Without a proxy, the suite can [ask for its own certificate](../run/https.md) and answer HTTPS itself; a domain is
+needed either way.

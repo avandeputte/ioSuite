@@ -71,6 +71,11 @@ On every port an app answers both at a name of its own (`https://calendar.exampl
 suite's address (`https://home.example.com/calendar/`). A request that comes in by the wrong port is sent to the
 right one.
 
+For HTTPS, put a reverse proxy in front, or let the suite do it: under **Settings › Global settings › Certificate**
+(or `iosuite cert --on`) it asks Let's Encrypt for a certificate for its names, renews it, and answers HTTPS itself,
+the pages on port 443 (`HTTPS_PORT`) and devices and MCP on the ports they have, which go on answering plain HTTP as
+well.
+
 ## Settings
 
 One small file per machine, `config.env` in the program folder, says how to reach the Shared ioSuite database and what
@@ -82,7 +87,7 @@ IOSUITE_DB_NAME=iosuite
 IOSUITE_DB_USER=iosuite
 IOSUITE_DB_PASSWORD=…
 APPS=iostart,iocalendar,iotask      # empty: every app installed
-# PORT=80  SYNC_PORT=8443  MCP_PORT=8444  HOST=…  DATA_DIR=…  LOG_FILE=…  TLS_CERT_FILE=…  TLS_KEY_FILE=…
+# PORT=80  SYNC_PORT=8443  MCP_PORT=8444  HTTPS_PORT=443  HOST=…  DATA_DIR=…  LOG_FILE=…  TLS_CERT_FILE=…  TLS_KEY_FILE=…
 ```
 
 Everything else is kept in the Shared ioSuite database and set under **Settings › Global settings › Settings**, or

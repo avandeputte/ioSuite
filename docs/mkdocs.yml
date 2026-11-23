@@ -112,6 +112,7 @@ nav:
   - Running it:
       - Accounts and roles: run/accounts.md
       - Reverse proxy and HTTPS: run/reverse-proxy.md
+      - The suite's own certificate: run/https.md
       - Cloudflare Tunnel and Access: run/cloudflare.md
       - Updates: run/updates.md
       - AI assistants (MCP): run/assistants.md
