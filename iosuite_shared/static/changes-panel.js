@@ -54,7 +54,8 @@ export function mount(el, opts = {}) {
     if (!rec || (!rec.added && !rec.changed && !(rec.history || []).length)) return;
     const parts = [];
     if (rec.added) parts.push(h('span', null, said('Added', rec.added), ' · ', h('span', { class: 'ch-when' }, when(rec.added.at))));
-    if (rec.changed && !(rec.added && rec.changed.at === rec.added.at)) {
+    const hist0 = rec.history || [];
+    if (rec.changed && !(rec.added && hist0.length <= 1 && rec.changed.at === rec.added.at)) {  // a change after the add
       parts.push(h('span', null, said(rec.added ? 'Changed' : 'Last changed', rec.changed), ' · ', h('span', { class: 'ch-when' }, when(rec.changed.at))));
     }
     const hist = rec.history || [];
