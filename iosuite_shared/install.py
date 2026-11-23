@@ -492,9 +492,10 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
     if a.copy and "" not in copies(base):
         die("this machine has no ioSuite yet: set the main copy up first (iosuite install), then add a second one")
     file = base / "copies" / a.copy / "config.env" if a.copy else base / "config.env"
-    if named is not None and named.resolve() != file.resolve() and not a.list:
+    if named is not None and named.resolve() not in (file.resolve(), (base / "config.env").resolve()):
         # the services and the copies of a folder are found by where their files are: one kept elsewhere would be
-        # written here beside it, and the copy would go on reading the other
+        # written here beside it, and the copy would go on reading the other. (The folder's own file is what is read
+        # when nothing is named: a second copy is added from there.)
         die(f"the installer keeps this copy's file at {file}, and --config or IOSUITE_CONFIG names {named}: "
             "leave that out" + ("" if a.copy else ", or give a second copy a name of its own with --copy NAME"))
     cfg = read_env(file)
