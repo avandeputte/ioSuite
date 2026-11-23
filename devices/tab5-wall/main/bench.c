@@ -20,7 +20,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[1200];
+static char result[1500];
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -93,6 +93,16 @@ static void turn(void *arg)
 {
     S.flip = !S.flip;   /* not saved: turned back right after */
     ui_apply_rotation();
+}
+
+static void rows_drawn(void *arg)
+{
+    kit_panel_keep(false);
+}
+
+static void rows_kept(void *arg)
+{
+    kit_panel_keep(true);
 }
 
 static void whole(void *arg)
@@ -175,6 +185,15 @@ static void run(void *arg)
     from_here(10);
     scroll_settings();
     say("Settings scrolled");
+
+    /* the same without the picture a panel keeps of its rows (kit_panel): every row drawn at every frame */
+    on_ui(rows_drawn);
+    wait_ms(300);
+    from_here(10);
+    scroll_settings();
+    say("The same, every row drawn each time");
+    on_ui(rows_kept);
+    wait_ms(300);
 
     /* the same with the screen the other way round: on a board that is turned by half a turn only (the 7B), one of
      * the two is sent as drawn and the other through the pixel processor, and the difference is what turning costs */

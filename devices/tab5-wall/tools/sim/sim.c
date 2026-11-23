@@ -88,6 +88,13 @@ static void touch_read(lv_indev_t *i, lv_indev_data_t *d)
 }
 
 static uint32_t tick(void) { return now_ms; }
+/* the time of day is the script's too (a Monday afternoon): the same pictures at every run, to compare two */
+time_t time(time_t *t)
+{
+    time_t v = 1795446000 + now_ms / 1000;
+    if (t) *t = v;
+    return v;
+}
 
 /* ------------------------------------------------------------------ what the board gives */
 
@@ -107,7 +114,8 @@ void vTaskDelay(TickType_t t) {}
 typedef struct { void (*fn)(void *); void *arg; } sim_job_t;
 static sim_job_t queue[32];
 static int nqueue;
-QueueHandle_t xQueueCreate(int n, int size) { return (QueueHandle_t)1; }
+/* the taps' jobs are queue 1 (run in step()); any other queue is the sound's */
+QueueHandle_t xQueueCreate(int n, int size) { return (QueueHandle_t)(intptr_t)(size == (int)sizeof(sim_job_t) ? 1 : 2); }
 BaseType_t xQueueSend(QueueHandle_t q, const void *item, TickType_t t)
 {
     if (q != (QueueHandle_t)1) return pdTRUE;   /* the sound's queue: nothing to play here */
@@ -221,14 +229,56 @@ int jpeg_decoder_process(jpeg_decoder_handle_t h, const jpeg_decode_cfg_t *c, co
 
 /* ------------------------------------------------------------------ the script's tools */
 
+static void save(const char *name, const uint16_t *px)
+{
+    char path[256];
+    snprintf(path, sizeof path, "out/%s.ppm", name);
+    FILE *f = fopen(path, "wb");
+    fprintf(f, "P6\n%d %d\n255\n", WALL_W, WALL_H);
+    for (int i = 0; i < WALL_W * WALL_H; i++) {
+        uint16_t p = px[i];
+        uint8_t rgb[3] = {(uint8_t)((p >> 11) * 255 / 31), (uint8_t)(((p >> 5) & 63) * 255 / 63), (uint8_t)((p & 31) * 255 / 31)};
+        fwrite(rgb, 1, 3, f);
+    }
+    fclose(f);
+}
+
+/* SIM_FRAMES=file: a line per frame drawn, the time and a sum over every pixel on the screen then, and the script
+ * goes on with a few hundred touches all over the panels. Two runs that must show the same (run.sh check: a panel
+ * with and without the picture it keeps of its rows, kit_panel) are compared by these lines; SIM_SHOT_AT=ms saves
+ * the screen as it is at that time (out/at-<ms>.ppm), to look at a frame that differs. */
+static FILE *frames_to;
+static uint32_t shot_at;
+
+static void frame_drawn(void)
+{
+    uint32_t h = 2166136261u;
+    for (int i = 0; i < WALL_W * WALL_H; i++) h = (h ^ fb[i]) * 16777619u;
+    fprintf(frames_to, "%u %08x\n", now_ms, h);
+}
+
+static int rnd(uint32_t *seed)
+{
+    *seed = *seed * 1664525u + 1013904223u;
+    return (int)(*seed >> 8);
+}
+
 static void step(void)
 {
     double t0 = cpu_now();
     not_lvgl = 0;
+    int frames = C.frames;
     lv_timer_handler();
     double dt = cpu_now() - t0 - not_lvgl;
     C.cpu += dt;
     if (dt > C.worst) C.worst = dt;
+    if (frames_to && C.frames != frames) frame_drawn();
+    if (shot_at && now_ms >= shot_at) {
+        char name[32];
+        snprintf(name, sizeof name, "at-%u", now_ms);
+        save(name, fb);
+        shot_at = 0;
+    }
     while (nqueue) {
         sim_job_t j = queue[0];
         memmove(queue, queue + 1, (size_t)(--nqueue) * sizeof j);
@@ -263,16 +313,7 @@ static void drag(int x0, int y0, int x1, int y1, int ms)
 
 static void shot(const char *name)
 {
-    char path[256];
-    snprintf(path, sizeof path, "out/%s.ppm", name);
-    FILE *f = fopen(path, "wb");
-    fprintf(f, "P6\n%d %d\n255\n", WALL_W, WALL_H);
-    for (int i = 0; i < WALL_W * WALL_H; i++) {
-        uint16_t p = fb[i];
-        uint8_t rgb[3] = {(uint8_t)((p >> 11) * 255 / 31), (uint8_t)(((p >> 5) & 63) * 255 / 63), (uint8_t)((p & 31) * 255 / 31)};
-        fwrite(rgb, 1, 3, f);
-    }
-    fclose(f);
+    save(name, fb);
     int bad = 0;
     for (int i = 0; i < WALL_W * WALL_H; i++) bad += fb[i] == 0xF81F;
     if (bad) printf("!!! %s: %d pixels were never drawn\n", name, bad);
@@ -330,6 +371,10 @@ int main(int argc, char **argv)
 {
     const char *only = argc > 1 ? argv[1] : "";
     verbose = !strcmp(only, "-v");
+    if (getenv("SIM_LOG")) sim_quiet = 0;   /* the firmware's own log lines as well */
+    if (getenv("SIM_FRAMES")) frames_to = fopen(getenv("SIM_FRAMES"), "w");
+    if (getenv("SIM_SHOT_AT")) shot_at = (uint32_t)atoi(getenv("SIM_SHOT_AT"));
+    if (getenv("SIM_KEEP")) kit_panel_keep(atoi(getenv("SIM_KEEP")) != 0);
     lv_init();
     lv_tick_set_cb(tick);
     fb = calloc((size_t)WALL_W * WALL_H, 2);
@@ -612,5 +657,43 @@ int main(int argc, char **argv)
     run(61000);
     report("a minute on the wall (61 s)");
     (void)only;
+    if (!frames_to) return 0;
+
+    /* the check's own part: the panels scrolled, dragged and tapped all over, a few hundred times; every frame of it
+     * is compared in step() */
+    uint32_t seed = 12345;
+#define RND(n) (rnd(&seed) % (n))
+    timer_add(900, "Eggs");
+    for (int i = 0; i < 400; i++) {
+        if (!kit_panel_open() || i % 80 == 0) {
+            if (ui_views_showing()) ui_views_home();
+            ui_show_wall();
+            run(100);
+            switch (i / 80 % 5) {
+            case 0: ui_show_settings(); break;
+            case 1: ui_open_timers(); break;
+            case 2: ui_open_alarms(); break;
+            case 3: ui_open_add(); break;
+            default: ui_open_event(&FEED->today[1]); break;
+            }
+            run(200);
+        }
+        int kind = RND(10);
+        int x0 = WALL_W / 8 + RND(WALL_W * 3 / 4), y0 = WALL_H / 5 + RND(WALL_H * 7 / 10);
+        if (kind < 6) {          /* a scroll, short or long, slow or flicked, at times let go before it ends */
+            int y1 = y0 + RND(WALL_H) - WALL_H / 2;
+            drag(x0, y0, x0, y1 < 0 ? 0 : y1 >= WALL_H ? WALL_H - 1 : y1, 60 + RND(500));
+            run(RND(4) ? 60 + RND(900) : 10);
+        } else if (kind < 9) {   /* a tap wherever: a switch, a button, a chip, a field, nothing */
+            tap(x0, y0);
+            run(RND(600));
+        } else {                 /* a drag sideways: a slider when on one */
+            int x1 = x0 + RND(WALL_W / 2) - WALL_W / 4;
+            drag(x0, y0, x1 < 0 ? 0 : x1 >= WALL_W ? WALL_W - 1 : x1, y0, 100 + RND(300));
+            run(200);
+        }
+        if (i % 40 == 39) fetch_once();   /* and the minute's feed behind it */
+    }
+    fclose(frames_to);
     return 0;
 }

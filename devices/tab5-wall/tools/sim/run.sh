@@ -6,6 +6,8 @@
 #   ./run.sh 7b                 the Waveshare 7B's (1024 x 600)
 #   ./run.sh tab5 -v            every area sent to the panel as well
 #   MAIN=/path/to/other/main ./run.sh    another copy of the firmware (the one before a change, to compare)
+#   ./run.sh 7b check           a panel keeps a picture of its rows (kit_panel): the script and a few hundred touches
+#                               more, once with and once without, and every frame of the two must be the same
 #   SIM_RUN="valgrind --tool=callgrind --dump-before=report --callgrind-out-file=out/cg" ./run.sh 7b
 #                               under a tool: here the instructions each step took, one file per step, by function
 #
@@ -39,4 +41,16 @@ gcc $CF -c sim.c -o "$B/sim.o" &
 gcc $CF -w -c "$SRC/cJSON/cJSON.c" -o "$B/cJSON.o" &
 wait
 gcc -o "$B/sim" "$B"/*.o "$SRC/lvgl.a" -lm -Wl,--wrap=lv_draw_sw_blend
+if [ "$1" = check ]; then
+    SIM_FRAMES=out/frames-kept.txt SIM_KEEP=1 "$B/sim" > /dev/null
+    SIM_FRAMES=out/frames-drawn.txt SIM_KEEP=0 "$B/sim" > /dev/null
+    if cmp -s out/frames-kept.txt out/frames-drawn.txt; then
+        echo "$(wc -l < out/frames-kept.txt) frames, each the same with the picture kept as with every row drawn"
+    else
+        at=$(diff out/frames-kept.txt out/frames-drawn.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
+        echo "the frames differ, first at ${at:-?} ms (SIM_SHOT_AT=$at SIM_KEEP=1 and =0 save that screen to compare)"
+        exit 1
+    fi
+    exit 0
+fi
 $SIM_RUN "$B/sim" "$@"
