@@ -26,12 +26,18 @@ def echo(name):
     return app
 
 
-def machine(monkeypatch, web=80, sync=8443, mcp=8444, **of_app):
+def machine(monkeypatch, web=80, sync=8443, mcp=8444, https=443, certificate=None, **of_app):
+    """The machine's ports, and the names of the certificate this copy serves (None: it serves none)."""
+    from iosuite_shared import certs
     monkeypatch.setattr(config, "PORT", web)
     monkeypatch.setattr(config, "SYNC_PORT", sync)
     monkeypatch.setattr(config, "MCP_PORT", mcp)
+    monkeypatch.setattr(config, "HTTPS_PORT", https)
     monkeypatch.setattr(config, "TLS_CERT_FILE", "")
     monkeypatch.setattr(config, "TLS_KEY_FILE", "")
+    monkeypatch.setattr(certs, "SERVING", ("/suite.pem", None) if certificate else None)
+    monkeypatch.setattr(certs, "NAMES", tuple(certificate or ()))
+    monkeypatch.setattr(certs, "PAGES_PORT", https if certificate else 0)
     monkeypatch.setattr(config, "OF_APP", dict(of_app))
 
 
@@ -44,9 +50,9 @@ def a_host(*apps, hosts=None, remote=None, outer=("", 0, "")):
     return h
 
 
-def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query=""):
+def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query="", scheme="http"):
     """One request through the host: (status, headers, body as JSON or text)."""
-    scope = {"type": "http", "method": method, "path": path, "raw_path": path.encode(), "query_string": query.encode(), "scheme": "http",
+    scope = {"type": "http", "method": method, "path": path, "raw_path": path.encode(), "query_string": query.encode(), "scheme": scheme,
              "headers": [(b"host", name.encode()), *[(k.encode(), v.encode()) for k, v in headers]],
              "server": ("10.0.0.5", port), "client": (peer, 50000)}
     got = {"status": 0, "headers": {}, "body": b""}
@@ -289,10 +295,19 @@ def test_a_door_s_own_port_is_left_out_of_its_address(monkeypatch, tmp_path):
     assert doors._at_port("home.example.com", "web", "/calendar") == "http://home.example.com:8080/calendar"
     assert doors._at_port("home.example.com", "sync", "") == "http://home.example.com"
     assert doors._at_port("fd00::1", "sync", "") == "http://[fd00::1]"
-    monkeypatch.setattr(config, "TLS_CERT_FILE", str(tmp_path / "c.pem"))
-    monkeypatch.setattr(config, "TLS_KEY_FILE", str(tmp_path / "k.pem"))
+    # with a certificate: https for a name it holds for, the pages at their HTTPS port; any other name as before
+    machine(monkeypatch, web=8080, sync=80, mcp=443, https=8081, certificate=["home.example.com", "*.apps.example.com"])
+    assert doors.ports() == {8080: "web", 80: "sync", 443: "mcp", 8081: "web"} and doors.secure_ports() == [8081, 80, 443]
     assert doors._at_port("home.example.com", "mcp", "/pix") == "https://home.example.com/pix"
-    assert doors._at_port("home.example.com", "web", "") == "https://home.example.com:8080"
+    assert doors._at_port("home.example.com", "web", "") == "https://home.example.com:8081"
+    assert doors._at_port("calendar.apps.example.com", "sync", "") == "https://calendar.apps.example.com:80"
+    assert doors._at_port("192.168.1.151", "sync", "/calendar") == "http://192.168.1.151/calendar"
+    assert doors._at_port("192.168.1.151", "web", "") == "http://192.168.1.151:8080"
+    machine(monkeypatch, certificate=["home.example.com"])
+    assert doors._at_port("home.example.com", "web", "/calendar") == "https://home.example.com/calendar"
+    assert doors.port_of("web") == 80 and doors.port_of("web", https=True) == 443
+    machine(monkeypatch)
+    assert doors.ports() == {80: "web", 8443: "sync", 8444: "mcp"} and doors.secure_ports() == []
 
 
 # ---- an app that runs in another copy
@@ -521,3 +536,78 @@ def test_an_app_is_in_the_suite_s_list_as_soon_as_it_is_up():
         assert [e.state for e in h.entries] == ["up", "up"] and called == ["iocalendar"]
         await h.stop()
     asyncio.run(go())
+
+
+# ---- a copy that answers HTTPS itself (iosuite_shared.certs)
+def secure_host(monkeypatch, *apps, **kw):
+    """A copy that serves a certificate for home.example.com and every name under apps.example.com: the pages on
+    443 as well as 80, devices and MCP on their ports."""
+    machine(monkeypatch, certificate=["home.example.com", "*.apps.example.com"])
+    h = a_host(*apps, **kw)
+    h.ports = doors.ports()
+    return h
+
+
+def test_the_pages_asked_without_https_by_a_name_of_the_certificate_are_sent_on(monkeypatch):
+    h = secure_host(monkeypatch, "iostart", "iocalendar")
+    assert h.ports == {80: "web", 8443: "sync", 8444: "mcp", 443: "web"}
+    s, hd, _ = ask(h, "/calendar/api/events", query="from=2026-11-01&q=a%20b")
+    assert s == 301 and hd["location"] == "https://home.example.com/calendar/api/events?from=2026-11-01&q=a%20b"
+    s, hd, _ = ask(h, "/calendar/api/events", method="POST")
+    assert s == 308 and hd["location"] == "https://home.example.com/calendar/api/events"  # asked again as it was
+    assert ask(h, "/", name="Calendar.Apps.Example.com:80")[1]["location"] == "https://calendar.apps.example.com/"
+    # over HTTPS already: served, at either port of the pages
+    s, _, b = ask(h, "/calendar/api/events", port=443, scheme="https")
+    assert s == 200 and b["app"] == "iocalendar" and b["door"] == "web"
+    # by a name the certificate does not hold for (the server's address, a name of the home network): as before
+    assert ask(h, "/calendar/api/events", name="192.168.1.151")[0] == 200
+    assert ask(h, "/calendar/api/events", name="nas.lan")[0] == 200
+    # the suite's own servers and a reverse proxy on this machine: as before
+    assert ask(h, "/calendar/api/events", peer=HERE)[0] == 200
+    # through a proxy the suite was not told about: never sent round in circles
+    for said in ("x-forwarded-proto", "x-forwarded-for", "cf-connecting-ip", "via", "forwarded"):
+        assert ask(h, "/calendar/api/events", headers=[(said, "https")])[0] == 200
+    # devices and MCP are never sent on: what was set up without HTTPS goes on working at the same port
+    s, _, b = ask(h, "/calendar/dav/alex/", port=8443, method="PROPFIND")
+    assert s == 200 and b["door"] == "sync"
+    assert ask(h, "/calendar/mcp", port=8444, method="POST")[0] == 200
+    # a copy whose HTTPS port for the pages is taken sends nobody there
+    monkeypatch.setattr("iosuite_shared.certs.PAGES_PORT", 0)
+    assert ask(h, "/calendar/api/events")[0] == 200
+    # another port than 443 is named
+    monkeypatch.setattr("iosuite_shared.certs.PAGES_PORT", 8081)
+    assert ask(h, "/x")[1]["location"] == "https://home.example.com:8081/x"
+    # and a copy without a certificate sends nobody anywhere
+    machine(monkeypatch)
+    assert ask(a_host("iostart", "iocalendar"), "/calendar/api/events")[0] == 200
+
+
+def test_a_request_at_the_wrong_door_goes_to_https_when_the_certificate_holds_for_the_name(monkeypatch):
+    h = secure_host(monkeypatch, "iostart", "iocalendar")
+    # a CalDAV address asked with the pages, over HTTPS: to the door for devices, over HTTPS too
+    s, hd, _ = ask(h, "/calendar/dav/alex/", port=443, scheme="https", method="PROPFIND")
+    assert s == 307 and hd["location"] == "https://home.example.com:8443/calendar/dav/alex/"
+    # by the server's address the certificate does not hold: without HTTPS, as it was
+    s, hd, _ = ask(h, "/calendar/dav/alex/", name="192.168.1.151", method="PROPFIND")
+    assert s == 307 and hd["location"] == "http://192.168.1.151:8443/calendar/dav/alex/"
+    # a page asked at the door for devices: to the pages, at their HTTPS port
+    s, hd, _ = ask(h, "/calendar/", port=8443, scheme="https")
+    assert s in (302, 307) and hd["location"] == "https://home.example.com/calendar/"
+    s, hd, _ = ask(h, "/calendar/", port=8443, name="192.168.1.151")
+    assert hd["location"] == "http://192.168.1.151/calendar/"
+
+
+def test_the_authority_s_check_is_answered_at_any_door_by_any_copy(monkeypatch):
+    from iosuite_shared import certs
+    machine(monkeypatch)
+    h = a_host("iocalendar")  # a copy without the start page, and without a certificate yet
+    certs._publish("http-01", "home.example.com", "tok-1", "tok-1.thumbprint")
+    s, hd, b = ask(h, "/.well-known/acme-challenge/tok-1")
+    assert s == 200 and b == "tok-1.thumbprint" and hd["content-type"].startswith("text/plain")
+    assert ask(h, "/.well-known/acme-challenge/tok-1", port=8443)[0] == 200
+    s, _, b = ask(h, "/.well-known/acme-challenge/other")
+    assert s == 404 and "No certificate is being asked for" in b
+    h = secure_host(monkeypatch, "iostart")  # with a certificate: answered, not sent on to HTTPS (a renewal's check comes to port 80)
+    assert ask(h, "/.well-known/acme-challenge/tok-1")[2] == "tok-1.thumbprint"
+    certs._remove("http-01", "home.example.com", "tok-1")
+    assert ask(h, "/.well-known/acme-challenge/tok-1")[0] == 404

@@ -32,7 +32,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
-from iosuite_shared import catalog, config, doors, prefix
+from iosuite_shared import catalog, certs, config, doors, prefix
 
 log = logging.getLogger("iosuite_shared.host")
 
@@ -102,6 +102,7 @@ class Host:
         self.by_name = {e.name: e for e in entries}
         self.local = tuple(e.name for e in entries)
         self.ports = dict(ports if ports is not None else doors.ports())  # port -> door
+        self._chores: list = []
         self.table = doors.Table()
         self._reading = asyncio.Lock()
         self._stop: asyncio.Event | None = None
@@ -140,6 +141,9 @@ class Host:
         if scope["type"] == "http" and scope.get("path") == STATUS_PATH:
             await self._status(scope, send)
             return
+        if scope["type"] == "http" and (scope.get("path") or "").startswith(certs.CHALLENGE_PATH):
+            await self._proof(scope, send)  # a certificate authority checking that the suite answers at this name
+            return
         table = await self.routes()
         from iosuite_shared import proxyauth
         peer = (scope.get("client") or ("",))[0]
@@ -151,6 +155,13 @@ class Host:
                 trusted = await asyncio.to_thread(proxyauth.Forwarded.allows, peer, True)
         except Exception:  # noqa: BLE001
             trusted = False
+        if not trusted and door == doors.WEB and scope["type"] == "http" and scope.get("scheme") == "http" and certs.PAGES_PORT:
+            # the pages asked without HTTPS, by one of the certificate's names: sent on to HTTPS. The suite's own
+            # servers, a reverse proxy, and whoever asks by another name (the server's address) are served as before.
+            where = _to_https(scope)
+            if where:
+                await doors.redirect(send, 301 if scope.get("method") in ("GET", "HEAD") else 308, where)
+                return
         r = doors.route(scope, door, table, trusted, self.local)
         if scope["type"] != "http":
             if scope["type"] == "websocket":  # no app of the suite uses one
@@ -196,6 +207,18 @@ class Host:
             await e.asgi(inner, receive, doors.with_folder(send, scope, r.folder))
         finally:
             CURRENT.reset(token)
+
+    async def _proof(self, scope: Scope, send: Send) -> None:
+        """/.well-known/acme-challenge/<token>: the proof a certificate authority looks for (iosuite_shared.certs),
+        answered by whichever copy is asked: it is in the Shared ioSuite database for the minutes it is needed."""
+        try:
+            value = await asyncio.to_thread(certs.proof, scope.get("path") or "")
+        except Exception:  # noqa: BLE001 - the database is away
+            value = None
+        if value:
+            await doors.plain(send, 200, value)
+        else:
+            await doors.plain(send, 404, "No certificate is being asked for with this token.\n")
 
     async def _status(self, scope: Scope, send: Send) -> None:
         """/-/status: whether this copy is serving (a container's health check, a load balancer's): 200 once every
@@ -248,6 +271,9 @@ class Host:
                  f"; not available: {'; '.join(down)}" if down else "")
         if config.UNREAD:
             threading.Thread(target=_restart_when_readable, name="settings-unread", daemon=True).start()
+        from iosuite_shared import chores, serve
+        certs.attach(serve.reload, _restart)
+        self._chores.append(chores.start(certs.tick, every_s=certs.EVERY_S, name="certificate", first_s=20))
 
     async def _run(self, e: Entry) -> None:
         """The app's lifespan, entered and left in this one task (its task groups require that); tried again while it fails."""
@@ -280,6 +306,9 @@ class Host:
         if self._stop is None:
             return
         self._stop.set()
+        for chore in self._chores:
+            chore.cancel()
+        self._chores.clear()
         tasks = [e.task for e in reversed(self.entries) if e.task is not None]
         if tasks:
             done, pending = await asyncio.wait(tasks, timeout=SHUTDOWN_GRACE + 5)
@@ -330,6 +359,33 @@ async def _unavailable(scope: Scope, receive: Receive, send: Send, e: Entry | No
                 "headers": [(b"content-type", ctype), (b"content-length", str(len(body)).encode()), (b"retry-after", b"15"),
                             (b"cache-control", b"no-store")]})
     await send({"type": "http.response.body", "body": body})
+
+
+THROUGH_A_PROXY = (b"x-forwarded-for", b"x-forwarded-proto", b"x-forwarded-host", b"forwarded", b"via", b"x-real-ip", b"cf-connecting-ip")
+
+
+def _to_https(scope: Scope) -> str:
+    """Where a request for the pages that came without HTTPS goes when it asked one of the certificate's names: the
+    same address over HTTPS. "" for any other name (the server's address, a name of the home network), served as it
+    came, and for a request that came through a proxy: one the suite was not told about would be sent round in
+    circles, since it asks without HTTPS whatever the visitor did."""
+    headers = scope.get("headers") or []
+    if any(k.lower() in THROUGH_A_PROXY for k, _ in headers):
+        return ""
+    host = next((v.decode("latin-1").strip() for k, v in headers if k.lower() == b"host"), "")
+    name = (host[1:].split("]")[0] if host.startswith("[") else host.split(":")[0]).lower()
+    if not certs.named(name):
+        return ""
+    raw = scope.get("raw_path") or (scope.get("path") or "/").encode("utf-8")
+    query = scope.get("query_string") or b""
+    port = "" if certs.PAGES_PORT == 443 else f":{certs.PAGES_PORT}"
+    return f"https://{name}{port}{raw.decode('latin-1')}" + (f"?{query.decode('latin-1')}" if query else "")
+
+
+def _restart() -> None:
+    """End the copy shortly: the service manager starts it again (as after an update)."""
+    import os
+    threading.Timer(1.5, lambda: os._exit(0)).start()  # what asked for it (the panel's button) still gets its answer
 
 
 def _restart_when_readable() -> None:
@@ -392,6 +448,7 @@ def run(given: list[str] | None = None, wait_s: float = 60.0) -> None:
         raise SystemExit("no app to run: none is installed in the program folder")
     logs.setup()
     wait_for_database(wait_s)
+    certs.start()  # with a certificate (the suite's own, or the machine's files) this copy's doors speak HTTPS
     host = build(which)
     opened = doors.ports()
     if not opened:
@@ -401,5 +458,6 @@ def run(given: list[str] | None = None, wait_s: float = 60.0) -> None:
         for k, v in e.serve.items():
             settings[k] = max(settings[k], v) if k in settings else v
     log.info("%s: %s", ", ".join(which), "; ".join(f"{doors.NAMES[d]} on port {p}" for p, d in opened.items()))
-    serve.run(host, config.HOST, list(opened), proxy_headers=False, ssl_certfile=config.TLS_CERT_FILE or None,
-              ssl_keyfile=config.TLS_KEY_FILE or None, log_config=None, **settings)
+    cert, key = certs.SERVING or (None, None)
+    serve.run(host, config.HOST, list(opened), secure=doors.secure_ports(), proxy_headers=False, ssl_certfile=cert, ssl_keyfile=key,
+              log_config=None, **settings)

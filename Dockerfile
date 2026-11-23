@@ -42,7 +42,7 @@ RUN echo "$COMMIT" > COMMIT
 VOLUME ["/data"]
 ENV DATA_DIR=/data PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 IOSUITE_DB_HOST=db IOSUITE_DB_PORT=3306 IOSUITE_DB_NAME=iosuite IOSUITE_DB_USER=iosuite
 # the pages, phones and devices, MCP; ioContact's LDAP
-EXPOSE 80 8443 8444 3890
+EXPOSE 80 443 8443 8444 3890
 USER iosuite
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/-/status' % (os.environ.get('PORT') or 80), timeout=4)" || exit 1
 # before it serves: the tables of the Shared ioSuite database and the first admin (iosuite_shared.stack); a stack

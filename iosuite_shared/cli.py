@@ -8,6 +8,7 @@
     iosuite admin NAME [--app APP]                make NAME an admin (the first account is a suite admin)
     iosuite list | create | role | password | sign-in-reset     the accounts
     iosuite edge                                  the Cloudflare edge check of app passwords (iosuite_shared.edge)
+    iosuite cert [--on | --off] [--now]           the suite's own certificate, so it answers HTTPS (iosuite_shared.certs)
     iosuite demo [--off]                          fill the suite with demo data (iosuite_shared.demo)
     iosuite provision                             make the databases and the one login (iosuite_shared.provision)
     iosuite stack                                 a container's first start (iosuite_shared.stack)
@@ -55,6 +56,20 @@ def _parser():
     e.add_argument("--account-id", default=None, help="store the Cloudflare account id in the Shared ioSuite database")
     e.add_argument("--namespace-id", default=None, help="store the KV namespace id")
     e.add_argument("--token-file", default=None, help="store the API token read from this file ('-': standard input)")
+    ce = sub.add_parser("cert", help="the suite's own certificate: what is stored; switch it on or off; ask for one now",
+                        description="Without options: what is set and what is stored. The suite asks a certificate authority (Let's Encrypt) for a "
+                                    "certificate for the names of its addresses, renews it, and answers HTTPS with it: the pages on port 443, "
+                                    "devices and MCP on the ports they have.")
+    ce.add_argument("--on", action="store_true", help="ask for a certificate and answer HTTPS with it")
+    ce.add_argument("--off", action="store_true", help="answer without HTTPS again (the certificate is kept)")
+    ce.add_argument("--now", action="store_true", help="ask the authority now instead of at a running server's next look")
+    ce.add_argument("--email", default=None, help="where the authority writes when something is wrong with the account")
+    ce.add_argument("--staging", action="store_true", help="Let's Encrypt's test authority: certificates browsers do not trust, for trying it out")
+    ce.add_argument("--ca", default=None, help="letsencrypt (the default), staging, or the https:// address of another ACME directory")
+    ce.add_argument("--http", action="store_true", help="the proof over HTTP: the authority asks port 80 of each name (the default)")
+    ce.add_argument("--cloudflare", action="store_true", help="the proof through Cloudflare's DNS: for a name with a star, or one the internet cannot reach")
+    ce.add_argument("--token-file", default=None, help="Cloudflare's API token (Zone, DNS, Edit), read from this file ('-': standard input)")
+    ce.add_argument("--names", default=None, help="names beside the ones the suite's addresses say, comma-separated ('' : none)")
     from iosuite_shared import demo, install, provision, stack
     demo.add_parser(sub)
     provision.add_parser(sub)
@@ -112,6 +127,50 @@ def set_cmd(a, out=print) -> int:
     return 0
 
 
+def cert_cmd(a, out=print) -> int:
+    from iosuite_shared import acme, certs
+    body: dict = {}
+    if a.on or a.off:
+        body["on"] = bool(a.on) and not a.off
+    if a.email is not None:
+        body["email"] = a.email
+    if a.staging or a.ca is not None:
+        body["ca"] = "staging" if a.staging else a.ca
+    if a.cloudflare or a.http:
+        body["proof"] = "cloudflare" if a.cloudflare else "http"
+    if a.names is not None:
+        body["names"] = a.names
+    if a.token_file:
+        body["token"] = (sys.stdin.read() if a.token_file == "-" else open(a.token_file, encoding="utf-8").read()).strip()
+    try:
+        if body:
+            certs.save(body, by="iosuite cert")
+        if a.now:
+            certs.obtain(lambda line: out(f"  {line}"))
+    except ValueError as e:
+        raise SystemExit(f"error: {e}")
+    except acme.Problem as e:
+        raise SystemExit(f"error: the certificate was not given. {e.detail}")
+    s = certs.status()
+    ca = {"letsencrypt": "Let's Encrypt", "staging": "Let's Encrypt's test authority (certificates browsers do not trust)"}.get(s["ca"], s["ca"])
+    proof = "over HTTP (the authority asks port 80 of each name)" if s["proof"] == "http" else \
+        f"through Cloudflare's DNS (API token {'set' if s['tokenSet'] else 'NOT set'})"
+    out(f"the suite's certificate: {'on' if s['on'] else 'off'}")
+    out(f"  asked from   {ca}, proof {proof}" + (f", account {s['email']}" if s["email"] else ""))
+    out(f"  for          {', '.join(s['wanted']) or 'no name yet: give the suite an address (iosuite set suite PUBLIC_URL https://home.example.com), or --names'}")
+    have = s["certificate"]
+    out("  stored       " + (f"for {', '.join(have['names'])}; from {have['issuer']}; holds until {acme.when(have['until'])}" if have else "none"))
+    st = s["state"]
+    if st:
+        how = "given" if st.get("ok") else f"not given: {st.get('error')}"
+        out(f"  last asked   {acme.when(st.get('at') or 0)} by {st.get('copy') or '?'}: {how}")
+    if s["on"] and s["due"]:
+        out(f"  due          {s['due']}: asked at a running server's next look (every {certs.EVERY_S // 60} minutes; not within the hour of a refusal), or now with --now")
+    if s["on"]:
+        out("  a server that runs opens its HTTPS ports by itself once a certificate is stored (it starts again once); HTTPS_PORT in its config.env names the pages' port (443)")
+    return 0
+
+
 def apps_cmd(a, out=print) -> int:
     from iosuite_shared import catalog, config, host, suite
     mine = host.names()
@@ -160,6 +219,8 @@ def main(argv=None):
         return settings_cmd(a)
     if a.cmd == "set":
         return set_cmd(a)
+    if a.cmd == "cert":
+        return cert_cmd(a)
     if a.cmd == "init":
         print("ok")
     elif a.cmd == "check":

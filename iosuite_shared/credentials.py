@@ -11,6 +11,8 @@ all from one place (Settings › Global settings › Keys and tokens on the star
 
 Values are write-only from the outside: listing() never returns one, only whether it is set and when it changed.
 The app reads its own with get(). This is the only place a key is kept: none is read from a file or the environment.
+A key named made_… is one the suite makes for itself (the certificate's private key, its account at the certificate
+authority): nobody types one, so listing() leaves them out.
 """
 import re
 import time
@@ -84,7 +86,7 @@ def listing(app: str = None) -> list:
     Suite shows with the service accounts' app passwords): app, appName, name, label, hint, set, updated, updatedBy."""
     rows = db.q("SELECT c.app, c.name, c.label, c.hint, c.updated_at, c.updated_by, c.value != '' AS has, "
                 "a.name AS app_name FROM ios_credentials c LEFT JOIN ios_apps a ON a.app = c.app"
-                " WHERE c.name NOT LIKE 'link\\_%%'" + (" AND c.app = %s" if app is not None else "") + " ORDER BY c.app, c.label",
+                " WHERE c.name NOT LIKE 'link\\_%%' AND c.name NOT LIKE 'made\\_%%'" + (" AND c.app = %s" if app is not None else "") + " ORDER BY c.app, c.label",
                 (app,) if app is not None else None)
     return [{"app": r["app"], "appName": r["app_name"] or r["app"] or "Whole suite", "name": r["name"], "label": r["label"] or r["name"],
              "hint": r["hint"] or "", "set": bool(r["has"]),

@@ -307,8 +307,8 @@ SUITE = "_suite"  # the whole suite's keys (app '') in the addresses: /api/suite
 
 
 def _suite_keys():
-    from iosuite_shared import links
-    credentials.declare("", links.SUITE_KEYS)  # the whole suite's: listed before any app needed them
+    from iosuite_shared import certs, links
+    credentials.declare("", [*links.SUITE_KEYS, *certs.KEYS])  # the whole suite's: listed before any app needed them
 
 
 def _key_app(app) -> str:
@@ -326,7 +326,7 @@ def set_key(me, app: str, name: str, value) -> dict:
     passwords iosuite_shared.links keeps: revoke those as app passwords)."""
     app, name = _key_app(app), str(name or "")
     _suite_keys()
-    if name.startswith("link_") or not db.one("SELECT 1 AS x FROM ios_credentials WHERE app = %s AND name = %s", (app, name)):
+    if name.startswith(("link_", "made_")) or not db.one("SELECT 1 AS x FROM ios_credentials WHERE app = %s AND name = %s", (app, name)):
         raise LookupError("No such key")
     if value is not None and not isinstance(value, str):
         raise Invalid("The value is text")
@@ -349,9 +349,10 @@ DOOR_SETTING = {"web": "PUBLIC_URL", "sync": "SYNC_URL", "mcp": "MCP_URL"}
 
 
 def addresses() -> dict:
-    """{suite: {web, sync, mcp}, ports: {web, sync, mcp}, apps: [{app, name, folder, copy, internal, web, sync, mcp}]}:
-    the suite's own address at each door (None: the address asked, with that door's port), this copy's ports, and
-    for every app the addresses it has at each door: its own (a hostname of its own) and its folder at the suite's."""
+    """{suite: {web, sync, mcp}, ports: {web, sync, mcp}, https, apps: [{app, name, folder, copy, internal, web, sync, mcp}]}:
+    the suite's own address at each door (None: the address asked, with that door's port), this copy's ports (https:
+    the ports it answers HTTPS at, None while it serves no certificate), and for every app the addresses it has at
+    each door: its own (a hostname of its own) and its folder at the suite's."""
     stored = db.settings_of("")
     whole = {d: (stored.get(k) or "").strip().rstrip("/") or None for d, k in DOOR_SETTING.items()}
     out = []
@@ -363,7 +364,9 @@ def addresses() -> dict:
             both = [(own[d] or "").rstrip("/"), f"{whole[d]}/{folder}".rstrip("/") if whole[d] else ""]
             row[d] = [u + ("/mcp" if d == "mcp" else "") for u in both if u]
         out.append(row)
+    from iosuite_shared import certs
     return {"suite": whole, "ports": {"web": config.PORT, "sync": config.SYNC_PORT, "mcp": config.MCP_PORT}, "copy": suite.copy_name(),
+            "https": {"web": certs.PAGES_PORT, "sync": config.SYNC_PORT, "mcp": config.MCP_PORT} if certs.serving() else None,
             "apps": sorted(out, key=lambda r: (r["name"] or r["app"]).lower())}
 
 

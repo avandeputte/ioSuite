@@ -118,7 +118,7 @@ def app_env(app: str, name: str, log_file: str = None, **stored_settings) -> dic
     os.environ.update(auth_env(name + "_auth"))
     os.environ["IOSUITE_CONFIG"] = os.devnull
     os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix=f"iosuite-test-{app}-"))
-    for k in ("APPS", "HOST", "PORT", "SYNC_PORT", "MCP_PORT", "INTERNAL_URL", "TLS_CERT_FILE", "TLS_KEY_FILE", "ADMIN_USER", "ADMIN_PASSWORD"):
+    for k in ("APPS", "HOST", "PORT", "SYNC_PORT", "MCP_PORT", "INTERNAL_URL", "TLS_CERT_FILE", "TLS_KEY_FILE", "HTTPS_PORT", "ACME_CA_FILE", "ADMIN_USER", "ADMIN_PASSWORD"):
         os.environ.pop(k, None)
     os.environ["LOG_FILE"] = str(log_file) if log_file else "off"  # the copy's log is the machine's: none in the tests but where one is asked for
     config.load_file()

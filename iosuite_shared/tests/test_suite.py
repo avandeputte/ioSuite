@@ -135,7 +135,7 @@ def test_internal_url_is_recorded_and_never_the_link():
 
 
 def _machine(monkeypatch, **values):
-    """The machine's settings for a test: HOST, PORT, SYNC_PORT, MCP_PORT, INTERNAL_URL, TLS_CERT_FILE, TLS_KEY_FILE."""
+    """The machine's settings for a test: HOST, PORT, SYNC_PORT, MCP_PORT, INTERNAL_URL, HTTPS_PORT..."""
     for k, v in values.items():
         monkeypatch.setattr(f"iosuite_shared.config.{k}", v)
 
@@ -171,8 +171,17 @@ def test_local_url(monkeypatch):
     _machine(monkeypatch, INTERNAL_URL="")
     monkeypatch.setattr(suite, "in_container", lambda: False)
     monkeypatch.setattr(suite, "_lan_ip", lambda: "fd00::5")
-    _machine(monkeypatch, TLS_CERT_FILE="/c", TLS_KEY_FILE="/k")
-    assert suite.local_url("iostart") == "https://[fd00::5]:9000"
+    # a copy that answers HTTPS itself is still called without it inside the network (its ports answer both)...
+    from iosuite_shared import certs
+    monkeypatch.setattr(certs, "SERVING", ("/suite.pem", None))
+    _machine(monkeypatch, SYNC_PORT=8443)
+    assert suite.local_url("iostart") == "http://[fd00::5]:9000" and suite.local_url("iotask", "sync") == "http://[fd00::5]:8443/tasks"
+    # ...unless its file says to call it over HTTPS, by a name on the certificate
+    _machine(monkeypatch, INTERNAL_URL="https://home.example.com")
+    monkeypatch.setattr(certs, "PAGES_PORT", 443)
+    assert suite.local_url("iostart") == "https://home.example.com:443" and suite.local_url("iotask", "sync") == "https://home.example.com:8443/tasks"
+    monkeypatch.setattr(certs, "SERVING", None)
+    assert suite.local_url("iostart") == "http://home.example.com:9000"
 
 
 def test_two_copies_on_one_machine_have_names_of_their_own(monkeypatch):

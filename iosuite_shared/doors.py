@@ -19,6 +19,10 @@ door, and a page asked at the sync door goes to the pages (a sync client that op
 screen where the person says yes to it: the manifest's "pages", below a sync prefix yet a page). So a phone, a native
 app or a browser extension is given one address, the sync door's, and people one, the pages'.
 
+With a certificate (iosuite_shared.certs) the copy answers HTTPS itself: the pages get a port more, HTTPS_PORT (443),
+and the ports for devices and MCP answer HTTPS as well as plain HTTP. Which door a request came in by is told by its
+port all the same, and an address a door is given to people at is https:// when the certificate holds for its name.
+
 On every door the app is chosen the same way, so both of these work at once and on the same port:
 
     https://calendar.example.com/…           the app's own name: the hostname of the PUBLIC_URL (or SYNC_URL, MCP_URL)
@@ -63,13 +67,41 @@ SET_HERE = frozenset(("host", "x-forwarded-for", "x-forwarded-proto", "x-forward
                       "forwarded", "expect", APP_HEADER, "x-iosuite-outside"))  # expect: this server says "100 Continue" itself
 
 
+def secure() -> bool:
+    """Whether this copy answers HTTPS itself (iosuite_shared.certs): the pages on HTTPS_PORT as well as PORT, and
+    the ports for devices and MCP both ways."""
+    from iosuite_shared import certs
+    return certs.serving()
+
+
 def ports() -> dict:
-    """{port: door} of the doors this copy opens (a door whose port is 0 is not opened)."""
-    return {p: d for d, p in ((WEB, config.PORT), (SYNC, config.SYNC_PORT), (MCP, config.MCP_PORT)) if p}
+    """{port: door} of the doors this copy opens (a door whose port is 0 is not opened). With a certificate the
+    pages have two: PORT as before, and the HTTPS port."""
+    from iosuite_shared import certs
+    out = {p: d for d, p in ((WEB, config.PORT), (SYNC, config.SYNC_PORT), (MCP, config.MCP_PORT)) if p}
+    if certs.PAGES_PORT:
+        out.setdefault(certs.PAGES_PORT, WEB)
+    return out
 
 
-def port_of(door: str) -> int:
-    return {WEB: config.PORT, SYNC: config.SYNC_PORT, MCP: config.MCP_PORT}[door]
+def secure_ports() -> list:
+    """The ports that answer HTTPS (and plain HTTP still, iosuite_shared.serve): none without a certificate; with
+    one, the pages' HTTPS port and the ports for devices and MCP."""
+    from iosuite_shared import certs
+    return list(dict.fromkeys(p for p in (certs.PAGES_PORT, config.SYNC_PORT, config.MCP_PORT) if p)) if secure() else []
+
+
+def port_of(door: str, https: bool = False) -> int:
+    """The port of a door: the pages' is PORT, or the HTTPS port for an address over HTTPS."""
+    from iosuite_shared import certs
+    return {WEB: certs.PAGES_PORT if https else config.PORT, SYNC: config.SYNC_PORT, MCP: config.MCP_PORT}[door]
+
+
+def _certified(name: str, door: str) -> bool:
+    """Whether the address of this door at this name is given over HTTPS: this copy serves a certificate that holds
+    for the name, and answers HTTPS at that door."""
+    from iosuite_shared import certs
+    return secure() and certs.named(name) and bool(port_of(door, True))
 
 
 def under(path: str, prefixes) -> bool:
@@ -144,14 +176,15 @@ def _named(request, mine: dict, door: str) -> str:
 
 
 def _at_port(name: str, door: str, path: str) -> str:
-    """http(s)://name[:the door's port]path: https only when this server holds the certificate itself (what serves
-    HTTPS in front of it has an address of its own for each door: PUBLIC_URL, SYNC_URL, MCP_URL)."""
-    scheme = "https" if config.TLS_CERT_FILE and config.TLS_KEY_FILE else "http"
-    port = port_of(door)
-    shown = "" if port == (443 if scheme == "https" else 80) else f":{port}"
+    """http(s)://name[:the door's port]path. https when this server holds a certificate for the name itself; what
+    serves HTTPS in front of it has an address of its own for each door (PUBLIC_URL, SYNC_URL, MCP_URL), and an
+    address the certificate does not hold for (the server's own, on the home network) stays as it was."""
+    https = _certified(name, door)
+    port = port_of(door, https)
+    shown = "" if port == (443 if https else 80) else f":{port}"
     if ":" in name:
         name = f"[{name}]"
-    return f"{scheme}://{name or 'localhost'}{shown}{path}"
+    return f"{'https' if https else 'http'}://{name or 'localhost'}{shown}{path}"
 
 
 def base(door: str, request, app: str) -> str:
@@ -197,10 +230,7 @@ def base_of(door: str, request, app: str) -> str | None:
         port = port_of(door)
         if door == WEB or not port or not of(request):  # asked without the host in front: one address for everything
             return usual.rstrip("/")
-        scheme = "https" if config.TLS_CERT_FILE and config.TLS_KEY_FILE else "http"
-        shown = "" if port == (443 if scheme == "https" else 80) else f":{port}"
-        name = f"[{u.hostname}]" if ":" in u.hostname else u.hostname
-        return f"{scheme}://{name}{shown}{u.path.rstrip('/')}"
+        return _at_port(u.hostname, door, u.path.rstrip("/"))
     return None
 
 

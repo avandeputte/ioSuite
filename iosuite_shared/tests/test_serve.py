@@ -78,3 +78,145 @@ def test_page_modules_are_never_kept_stale(tmp_path):
     c = TestClient(app)
     assert c.get("/static/js/main.js").headers["cache-control"] == "no-cache"
     assert "cache-control" not in c.get("/static/app.css").headers
+
+
+# ---- a copy with a certificate: ports that answer HTTPS and plain HTTP both
+SERVER = '''
+import json, sys
+from iosuite_shared import serve
+
+plain, both, cert, renewed, mark = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
+
+
+async def app(scope, receive, send):
+    if scope["type"] == "lifespan":
+        while True:
+            m = await receive()
+            if m["type"] == "lifespan.startup":
+                await send({"type": "lifespan.startup.complete"})
+            else:
+                open(mark, "w").write("stopped")
+                await send({"type": "lifespan.shutdown.complete"})
+                return
+    said = {"scheme": scope["scheme"], "port": scope["server"][1], "path": scope["path"]}
+    if scope["path"] == "/renew":
+        said["renewed"] = serve.reload(renewed)
+    body = json.dumps(said).encode()
+    await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+    await send({"type": "http.response.body", "body": body})
+
+serve.run(app, "127.0.0.1", [plain, both], secure=[both], ssl_certfile=cert, proxy_headers=False, log_config=None)
+'''
+
+
+def _http(sock, path="/", close=False):
+    """One request on an open connection: the answer's JSON."""
+    import json
+    sock.sendall(f"GET {path} HTTP/1.1\r\nHost: home.example.com\r\n{'Connection: close' + chr(13) + chr(10) if close else ''}\r\n".encode())
+    data = b""
+    while b"\r\n\r\n" not in data:
+        got = sock.recv(65536)
+        if not got:
+            raise ConnectionError("closed")
+        data += got
+    head, _, body = data.partition(b"\r\n\r\n")
+    assert head.startswith(b"HTTP/1.1 200"), head
+    length = int(next(line.split(b":")[1] for line in head.split(b"\r\n") if line.lower().startswith(b"content-length")))
+    while len(body) < length:
+        body += sock.recv(65536)
+    return json.loads(body)
+
+
+def test_a_port_answers_https_and_plain_http_both(tmp_path):
+    import hashlib
+    import signal
+    import ssl
+    import subprocess
+    import time
+
+    from iosuite_shared import acme
+    from iosuite_shared.tests.authority import Authority
+    ca = Authority()
+    files = []
+    for i in (1, 2):
+        key, chain = ca.issue(["home.example.com"])
+        f = tmp_path / f"cert{i}.pem"
+        f.write_text(key + chain)
+        files.append((str(f), acme.describe(chain)["fingerprint"]))
+    (tmp_path / "server.py").write_text(SERVER)
+    plain, both = _free_port(), _free_port()
+    proc = subprocess.Popen([sys.executable, str(tmp_path / "server.py"), str(plain), str(both), files[0][0], files[1][0], str(tmp_path / "mark")],
+                            stderr=subprocess.PIPE, text=True)
+    trust = ssl.create_default_context(cadata=ca.root_pem())
+
+    def secure(port):
+        s = trust.wrap_socket(socket.create_connection(("127.0.0.1", port), timeout=10), server_hostname="home.example.com")
+        return s, hashlib.sha256(s.getpeercert(binary_form=True)).hexdigest()
+    try:
+        end = time.time() + 30
+        while True:
+            try:
+                socket.create_connection(("127.0.0.1", both), timeout=1).close()
+                break
+            except OSError:
+                assert proc.poll() is None and time.time() < end, "the server did not start"
+                time.sleep(0.1)
+        # the plain port as ever; the other port without HTTPS as before, and with it
+        with socket.create_connection(("127.0.0.1", plain), timeout=10) as s:
+            assert _http(s) == {"scheme": "http", "port": plain, "path": "/"}
+        with socket.create_connection(("127.0.0.1", both), timeout=10) as s:
+            assert _http(s, "/calendar/dav/") == {"scheme": "http", "port": both, "path": "/calendar/dav/"}
+            assert _http(s, "/again")["path"] == "/again"  # the connection is kept, as on any port
+        s, shown = secure(both)
+        with s:
+            assert shown == files[0][1]  # the certificate, checked against the authority's root and the name
+            assert _http(s) == {"scheme": "https", "port": both, "path": "/"}
+            assert _http(s, "/again") == {"scheme": "https", "port": both, "path": "/again"}
+        with pytest.raises((ssl.SSLError, OSError)):  # the plain port speaks no TLS
+            secure(plain)
+        # something that begins like TLS and is not: hung up on, and the port goes on answering
+        with socket.create_connection(("127.0.0.1", both), timeout=10) as s:
+            s.sendall(b"\x16\x03\x01\x00\x05hello")
+            try:
+                while s.recv(1024):
+                    pass  # an alert, perhaps, before the end
+            except ConnectionError:
+                pass
+        # one that connects and says nothing does not hold the others up
+        idle = socket.create_connection(("127.0.0.1", both), timeout=10)
+        with socket.create_connection(("127.0.0.1", both), timeout=10) as s:
+            assert _http(s)["scheme"] == "http"
+        idle.close()
+        # a renewed certificate: connections made from now on get it, without the server starting again
+        s, shown = secure(both)
+        with s:
+            assert _http(s, "/renew")["renewed"] is True
+            assert _http(s)["scheme"] == "https"  # the open one goes on
+        s, shown = secure(both)
+        with s:
+            assert shown == files[1][1] and _http(s)["scheme"] == "https"
+        # stopped like any service: the apps get their shutdown, the process ends
+        held = socket.create_connection(("127.0.0.1", both), timeout=10)  # an idle connection does not keep it
+        assert _http(held)["scheme"] == "http"
+        proc.send_signal(signal.SIGTERM)
+        assert proc.wait(timeout=20) in (0, -signal.SIGTERM)  # the web server ends by the signal it was sent, once it has finished
+        held.close()
+        assert (tmp_path / "mark").read_text() == "stopped"
+        with pytest.raises(OSError):
+            socket.create_connection(("127.0.0.1", both), timeout=2)
+        assert f"HTTPS on port {both}" in proc.stderr.read()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_free_and_reload_without_https_doors(monkeypatch):
+    port = _free_port()
+    assert serve.free("127.0.0.1", port)
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", port))
+        s.listen()
+        assert not serve.free("127.0.0.1", port) and not serve.free("127.0.0.1,127.0.0.2", port)
+    assert not serve.free("192.0.2.77", port)  # not an address of this machine
+    monkeypatch.setattr(serve, "CONTEXT", None)
+    assert serve.reload("/nowhere.pem") is False

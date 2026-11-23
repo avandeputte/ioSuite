@@ -696,6 +696,39 @@ def admin_router(self) -> APIRouter:
             authlog.info("suite admin: %s asked of %s by %s", body.get("action"), ", ".join(asked) or "no app", (who or {}).get("name"))
         return {"asked": asked, **await run_in_threadpool(updates_now)}
 
+    @r.get("/certificate", dependencies=[access.suite_admin])
+    def api_certificate(request: Request):
+        """The suite's own certificate (iosuite_shared.certs): what is set, the names it is asked for, the one stored,
+        how the last asking went, and what this server serves."""
+        from iosuite_shared import certs
+        return call(certs.status)
+
+    @r.put("/certificate", dependencies=[access.suite_admin])
+    async def api_certificate_save(request: Request):
+        """Body: any of on, email, ca (letsencrypt, staging, or an ACME directory's address), proof (http or
+        cloudflare), names (beside the suite's addresses), token (Cloudflare's, for the proof through DNS)."""
+        from iosuite_shared import certs
+        body = await json_body(request)
+        who = me(request)
+        out = await run_in_threadpool(call, certs.save, body, (who or {}).get("name"))
+        authlog.info("suite admin: the suite's certificate is %s (%s, proof %s) by %s", "on" if out["on"] else "off", out["ca"], out["proof"], (who or {}).get("name"))
+        return out
+
+    @r.post("/certificate", dependencies=[access.suite_admin])
+    async def api_certificate_ask(request: Request):
+        """Ask the authority for a certificate now. The answer comes when the authority has looked (up to a few
+        minutes); 502 with the authority's own words when it says no. A server that has to open its HTTPS ports
+        starts again right after."""
+        from iosuite_shared import acme, certs
+        who = me(request)
+        try:
+            have = await run_in_threadpool(call, certs.ask_now)
+        except acme.Problem as e:
+            authlog.info("suite admin: a certificate asked by %s was not given: %s", (who or {}).get("name"), e.detail)
+            raise HTTPException(502, f"The certificate was not given. {e.detail}")
+        authlog.info("suite admin: a certificate for %s asked by %s", ", ".join(have["names"]), (who or {}).get("name"))
+        return await run_in_threadpool(call, certs.status)
+
     @r.get("/proxy", dependencies=[access.suite_admin])
     def api_proxy(request: Request):
         """Sign-in at a reverse proxy (Cloudflare Access...) for the whole suite: the values, the last token seen."""

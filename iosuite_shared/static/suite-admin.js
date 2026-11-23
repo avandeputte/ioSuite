@@ -4,8 +4,8 @@
    (who is in it, their colour, their ioContact card and their person in photos: the same in every app).
 
    It fills two Settings tabs, Security (people, roles, app passwords, sign-in at the proxy) and Global settings (the
-   apps and their addresses, the settings the apps read as they start, updates, keys and tokens, and the log of
-   every server on one timeline): TABS.
+   apps and their addresses, the settings the apps read as they start, the suite's own certificate, updates, keys and
+   tokens, and the log of every server on one timeline): TABS.
    Served by iosuite-shared at <app>/api/suite-admin/ui.js (Auth.admin_router()); it talks to the API next to it, so an
    app served under a sub-path works too. One ES module, no build step, its own styles (scoped under .iosa), using the
    app's colours when it has them (--fg, --fg2, --bg, --line, --accent, --brand, --danger; ioHealth's --text, --muted,
@@ -213,13 +213,13 @@ function sinceText(ts) {
 const appLabel = (o, key) => (o.apps.find((a) => a.app === key) || {}).name || key;
 
 // ------------------------------------------------------------------ the panel
-export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'Apps'], ['settings', 'Settings'], ['updates', 'Updates'], ['keys', 'Keys and tokens'], ['logs', 'Logs']];
+export const SUBS = [['people', 'People'], ['family', 'Family'], ['roles', 'Roles'], ['passwords', 'App passwords'], ['signin', 'Sign-in at the proxy'], ['apps', 'Apps'], ['settings', 'Settings'], ['certificate', 'Certificate'], ['updates', 'Updates'], ['keys', 'Keys and tokens'], ['logs', 'Logs']];
 /** The two Settings tabs the panel fills, in every app: #/settings/security/<sub> and #/settings/global/<sub>. */
 export const TABS = {
   security: { label: 'Security', subs: ['people', 'family', 'roles', 'passwords', 'signin'],
     intro: 'Who can sign in to the io apps, who is in the family, and with which role. Changes apply to every app.' },
-  global: { label: 'Global settings', subs: ['apps', 'settings', 'updates', 'keys', 'logs'],
-    intro: 'Settings for every io app: default roles, sign-in, addresses, settings, updates, keys and the log.' },
+  global: { label: 'Global settings', subs: ['apps', 'settings', 'certificate', 'updates', 'keys', 'logs'],
+    intro: 'Settings for every io app: default roles, sign-in, addresses, settings, the certificate, updates, keys and the log.' },
 };
 
 /** Draw the panel into `el`. Options: tab (security or global: which parts are shown, see TABS), sub (the first part
@@ -244,7 +244,7 @@ export async function mount(el, opts = {}) {
       h('div', { class: 'sa-segs' }, subs.map(([k, l]) => h('button', { class: sub === k ? 'on' : '', onclick: () => go(k) }, l))),
       body);
     const ctx = { o, redraw: draw, go, photoPeople };
-    await ({ people, family, roles, passwords, keys, apps, updates, signin, settings, logs })[sub](body, ctx);
+    await ({ people, family, roles, passwords, keys, apps, updates, signin, settings, certificate, logs })[sub](body, ctx);
   };
   const go = (k) => { sub = k; if (opts.onSub) opts.onSub(k); draw(); };
   await draw();
@@ -684,7 +684,7 @@ async function addresses(el) {
     : h('span', { class: 'sa-muted' }, d.ports[door] ? `the address asked, port ${d.ports[door]}${a.folder ? `, /${a.folder}/` : ''}${door === 'mcp' ? (a.folder ? 'mcp' : ', /mcp') : ''}` : 'not opened on this server'));
   el.replaceChildren(box('apps', 'Addresses',
     h('p', { class: 'sa-muted' }, 'Every server of the suite has three doors: one for the pages, one for phones, native apps and devices that sync, and one for MCP, so each can have its own firewall rule. At each door an app answers at a name of its own and in its folder at the suite’s address, both at once.'),
-    h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'App'), DOORS.map(([k, l]) => h('th', null, l, d.ports[k] ? h('span', { class: 'sa-muted' }, ` · port ${d.ports[k]}`) : null))),
+    h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'App'), DOORS.map(([k, l]) => h('th', null, l, d.ports[k] ? h('span', { class: 'sa-muted' }, ` · port ${d.ports[k]}`, d.https && d.https[k] ? (d.https[k] === d.ports[k] ? ', also HTTPS' : `, HTTPS ${d.https[k]}`) : '') : null))),
       d.apps.map((a) => h('tr', null,
         h('td', null, h('b', null, a.name), several && a.copy ? h('div', { class: 'sa-muted sa-small' }, `on ${a.copy}`) : null),
         DOORS.map(([k]) => h('td', { class: 'sa-small', style: { wordBreak: 'break-all' } }, cell(a, k)))))),
@@ -740,6 +740,71 @@ async function settings(el, ctx) {
       h('summary', { style: { cursor: 'pointer', fontWeight: 600, padding: '6px 0' } }, a.name, a.settings.some((st) => st.value !== '') ? h('span', { class: 'sa-muted sa-small', style: { fontWeight: 400 } }, ` · ${a.settings.filter((st) => st.value !== '').length} set`) : null),
       a.settings.map((st) => field(a.app, st)))),
     h('p', { class: 'sa-muted sa-small' }, 'On the server, the same from a shell: iosuite set APP NAME VALUE (iosuite settings lists them). What a server needs before it can read the database (the database’s address and login, which apps it runs, its ports and folders) is in its config.env.')));
+}
+/* The suite's own certificate (iosuite_shared.certs): the suite asks a certificate authority for one, renews it and
+   answers HTTPS with it, so no reverse proxy is needed for that. One switch for the suite; every server follows. */
+const AUTHORITIES = [['letsencrypt', 'Let’s Encrypt'], ['staging', 'Let’s Encrypt’s test authority (to try it out: browsers do not trust its certificates)'], ['other', 'Another authority (ACME)']];
+const PROOFS = [['http', 'Over HTTP: the authority asks port 80 of each name'], ['cloudflare', 'Through Cloudflare’s DNS: also for a name with a star, or one the internet cannot reach']];
+const day = (ts) => new Date(ts * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+async function certificate(el) {
+  let d;
+  try { d = await api('certificate'); } catch (e) { el.replaceChildren(h('p', { class: 'sa-err' }, e.message)); return; }
+  let asking = false;
+  const draw = () => {
+    const opt = (list, cur) => list.map(([k, l]) => h('option', { value: k, selected: k === cur ? true : null }, l));
+    const known = d.ca === 'letsencrypt' || d.ca === 'staging';
+    const on = h('input', { type: 'checkbox', checked: d.on });
+    const email = h('input', { class: 'sa-in', type: 'email', value: d.email, placeholder: 'optional: the authority writes here when a certificate is about to run out', autocomplete: 'off' });
+    const ca = h('select', { class: 'sa-in' }, opt(AUTHORITIES, known ? d.ca : 'other'));
+    const dir = h('input', { class: 'sa-in', value: known ? '' : d.ca, placeholder: 'https://… the address of its ACME directory', autocomplete: 'off', spellcheck: false });
+    const proof = h('select', { class: 'sa-in' }, opt(PROOFS, d.proof));
+    const token = h('input', { class: 'sa-in', type: 'password', placeholder: d.tokenSet ? 'set: leave empty to keep it' : 'an API token that may edit the DNS of the names’ zones (Zone › DNS › Edit)', autocomplete: 'new-password' });
+    const names = h('textarea', { class: 'sa-in', rows: 2, placeholder: 'one per line; with Cloudflare also *.example.com', spellcheck: false, style: { fontFamily: 'monospace', fontSize: '12px' } }, (d.names || []).join('\n'));
+    const dirRow = h('div', { class: 'sa-grid' }, fld('Its directory', dir));
+    const tokenRow = h('div', { class: 'sa-grid' }, fld('Cloudflare API token', token));
+    const show = () => { dirRow.style.display = ca.value === 'other' ? '' : 'none'; tokenRow.style.display = proof.value === 'cloudflare' ? '' : 'none'; };
+    ca.onchange = proof.onchange = show;
+    const have = d.certificate, st = d.state || {};
+    const state = d.ownFiles ? 'This server answers HTTPS with a certificate of its own (TLS_CERT_FILE in its config.env).'
+      : !d.on ? 'Off: the suite answers without HTTPS, or a reverse proxy in front of it does.'
+        : d.serving ? `On: this server answers HTTPS${d.pagesPort ? `, the pages on port ${d.pagesPort}` : ' for devices and MCP'}.`
+          : have ? 'On: this server opens its HTTPS ports as it starts again, within a couple of minutes.'
+            : d.wanted.length ? 'On: no certificate yet.' : 'On, but there is no name to ask a certificate for.';
+    const lines = [h('p', null, h('b', null, state))];
+    if (d.note) lines.push(h('p', { class: 'sa-err' }, d.note.charAt(0).toUpperCase() + d.note.slice(1) + '.'));
+    if (have) lines.push(h('p', { class: 'sa-small' }, `The certificate is for ${have.names.join(', ')}, from ${have.issuer}, and holds until ${day(have.until)}. It is renewed by itself when a third of its time is left.`));
+    if (d.on && d.wanted.length && d.due) lines.push(h('p', { class: 'sa-small' }, `One is asked for ${d.wanted.join(', ')}: ${d.due}.`));
+    if (!d.wanted.length) lines.push(h('p', { class: 'sa-small' }, 'The names are the ones in the suite’s addresses (Settings: the suite’s address and an app’s own, such as https://home.example.com) and the ones added below. A name of the home network (nas.lan) or the server’s address cannot have a certificate.'));
+    if (st.at && st.ok === false) lines.push(h('p', { class: 'sa-err' }, `Asked on ${day(st.at)} from ${st.copy || 'a server'} and not given. ${st.error || ''} It is asked again by itself, an hour after a refusal at the earliest.`));
+    if ((d.moved || []).length) lines.push(h('p', { class: 'sa-muted sa-small' }, `These addresses said http:// and say https:// since: ${d.moved.map((m) => m.to).join(', ')}. Switching the certificate off puts them back.`));
+    const body = () => ({ on: on.checked, email: email.value.trim(), ca: ca.value === 'other' ? dir.value.trim() : ca.value, proof: proof.value,
+      names: names.value.split(/[\s,]+/).filter(Boolean), ...(token.value ? { token: token.value } : {}) });
+    const save = async () => {
+      try { d = await api('certificate', { method: 'PUT', json: body() }); toast(d.on ? 'Saved: a certificate is asked for within a couple of minutes' : 'Saved'); draw(); return true; } catch (e) { fail(e); return false; }
+    };
+    const ask = async () => {
+      if (asking || !await save()) return;
+      asking = true; draw();
+      try {
+        d = await api('certificate', { method: 'POST' });
+        toast('The certificate is here');
+        setTimeout(async () => { try { d = await api('certificate'); draw(); } catch { /* the server is starting again: the next look shows it */ } }, 8000);
+      } catch (e) { fail(e); try { d = await api('certificate'); } catch { /* as it was */ } }
+      asking = false; draw();
+    };
+    el.replaceChildren(box('key', 'Certificate',
+      h('p', { class: 'sa-muted' }, 'The suite can ask for its own certificate and answer HTTPS itself, without a reverse proxy: the pages on port 443, phones, devices and MCP on the ports they have. Nothing that works without HTTPS stops working: the ports go on answering both, and only a browser that asks the pages by one of the certificate’s names is sent on to HTTPS.'),
+      ...lines,
+      h('label', { class: 'sa-check' }, on, h('span', null, 'Ask for a certificate, keep it renewed, and answer HTTPS with it')),
+      h('div', { class: 'sa-grid' }, fld('Certificate authority', ca)), dirRow,
+      h('div', { class: 'sa-grid' }, fld('Proof that the names are yours', proof)), tokenRow,
+      h('div', { class: 'sa-grid' }, fld('Email', email), fld('More names', names)),
+      h('p', { class: 'sa-muted sa-small' }, 'Over HTTP, each name has to reach port 80 of this suite from the internet (a port forward on the router is enough; the suite answers the authority’s question itself). For HTTPS from outside, port 443 has to reach it too. Through Cloudflare’s DNS nothing has to be reachable.'),
+      h('div', { class: 'sa-btns' }, h('button', { class: 'sa-btn primary', onclick: save, disabled: asking ? true : null }, 'Save'),
+        h('button', { class: 'sa-btn', onclick: ask, disabled: asking ? true : null }, asking ? 'Asking the authority… (up to a few minutes)' : 'Save and ask now'))));
+    show();
+  };
+  draw();
 }
 /* Logs: every server of the suite keeps one log, each line marked with the app it came from (iosuite_shared.logs).
    This is all of them on one timeline: it opens on the app it was opened from, follows the log while it is open, and

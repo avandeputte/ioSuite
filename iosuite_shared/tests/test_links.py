@@ -100,7 +100,7 @@ def test_cloudflare_service_token_goes_along():
     assert h["CF-Access-Client-Id"] == "id.access" and h["CF-Access-Client-Secret"] == "sec"
     assert set(links.headers("iocontact", "iopix", sign_in=False)) == {"CF-Access-Client-Id", "CF-Access-Client-Secret"}
     assert {k["name"] for k in admin.keys("_suite")} == {"cf_access_client_id", "cf_access_client_secret", "cf_kv_account_id",
-                                                         "cf_kv_namespace_id", "cf_kv_api_token"}
+                                                         "cf_kv_namespace_id", "cf_kv_api_token", "cloudflare_dns_token"}
     links.forget("iocontact")
     assert admin.app_passwords() == []
 

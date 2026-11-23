@@ -11,7 +11,12 @@ cannot be read from the database, and is the same on every machine but for the l
                                                       devices and native apps sync with (8443), MCP (8444); 0 or off: not opened
     INTERNAL_URL                                      where the other machines of the suite call this copy (http://192.168.1.151);
                                                       empty: this machine's LAN address (a container has to say it)
-    TLS_CERT_FILE, TLS_KEY_FILE                       HTTPS served directly instead of behind a reverse proxy: both files
+    HTTPS_PORT                                        the pages over HTTPS (443), opened while the copy has a certificate: the
+                                                      suite's own (iosuite_shared.certs) or the two files below; 0 or off:
+                                                      this copy stays plain whatever the suite has
+    TLS_CERT_FILE, TLS_KEY_FILE                       a certificate of your own instead of the suite's: both files
+    ACME_CA_FILE                                      the root certificate of a private certificate authority the suite's
+                                                      certificate is asked from (one no public authority signed)
     DATA_DIR                                          where the apps write on their own: <DATA_DIR>/<app> (default: data/ in the program folder)
     LOG_FILE                                          the copy's one log (default: <DATA_DIR>/iosuite.log; off: none)
     ADMIN_USER, ADMIN_PASSWORD                        the first admin, made on a first start with no accounts
@@ -98,7 +103,7 @@ def _port(name: str, default: int) -> int:
 def _read():
     """The machine's settings, from the environment as it is now."""
     global DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, HOST, TLS_CERT_FILE, TLS_KEY_FILE, DATA_DIR, APPS
-    global ADMIN_USER, ADMIN_PASSWORD, REPO, BRANCH, PORT, SYNC_PORT, MCP_PORT, INTERNAL_URL, LOG_FILE
+    global ADMIN_USER, ADMIN_PASSWORD, REPO, BRANCH, PORT, SYNC_PORT, MCP_PORT, INTERNAL_URL, LOG_FILE, HTTPS_PORT, ACME_CA_FILE
     # The Shared ioSuite database: accounts, sessions, roles, app passwords, every setting and the list of apps. No
     # default password: the installer writes one into the file, a container gets it from its environment.
     DB_HOST = env(PREFIX + "HOST", "127.0.0.1")
@@ -110,7 +115,9 @@ def _read():
     # the three doors of a copy (iosuite_shared.doors): 0 where one is not opened
     PORT, SYNC_PORT, MCP_PORT = _port("PORT", 80), _port("SYNC_PORT", 8443), _port("MCP_PORT", 8444)
     INTERNAL_URL = env("INTERNAL_URL").rstrip("/")
+    HTTPS_PORT = _port("HTTPS_PORT", 443)
     TLS_CERT_FILE, TLS_KEY_FILE = env("TLS_CERT_FILE"), env("TLS_KEY_FILE")
+    ACME_CA_FILE = env("ACME_CA_FILE")
     DATA_DIR = Path(env("DATA_DIR", str(BASE / "data"))).expanduser().resolve()
     named = env("LOG_FILE")
     LOG_FILE = None if named.lower() in ("off", "none", "0") else Path(named or DATA_DIR / "iosuite.log").expanduser().resolve()

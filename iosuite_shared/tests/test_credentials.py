@@ -42,7 +42,8 @@ def test_api_keys_suite_admins_only():
     c = signed_in(app, "alex", "secret123")
     items = c.get("/api/suite-admin/keys").json()["items"]
     assert {(k["app"], k["name"]) for k in items} == {("iostart", "ha_token"), ("", "cf_access_client_id"), ("", "cf_access_client_secret"),
-                                                     ("", "cf_kv_account_id"), ("", "cf_kv_namespace_id"), ("", "cf_kv_api_token")}
+                                                     ("", "cf_kv_account_id"), ("", "cf_kv_namespace_id"), ("", "cf_kv_api_token"),
+                                                     ("", "cloudflare_dns_token")}
     assert signed_in(app, "ann", "secret123").get("/api/suite-admin/keys").status_code == 403
     assert TestClient(app, base_url="http://home.example.com").put("/api/suite-admin/keys/iostart/ha_token", json={"value": "x"}).status_code == 401
     r = c.put("/api/suite-admin/keys/iostart/ha_token", json={"value": "s3cret"})

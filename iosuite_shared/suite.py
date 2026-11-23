@@ -134,7 +134,11 @@ def copy_address(host: str = None) -> str | None:
 def local_url(app: str = None, door: str = "web", host: str = None, https: bool = None) -> str | None:
     """Where the app is inside the network at one of its copy's doors (iosuite_shared.doors: web, sync, mcp):
     http(s)://<the copy's address>:<the door's port>/<the app's folder>. None when the copy has no address to give
-    (copy_address) or does not open that door. https when the copy serves TLS itself (TLS_CERT_FILE and TLS_KEY_FILE)."""
+    (copy_address) or does not open that door.
+
+    Inside the network the copies talk plain HTTP, also to a copy that answers HTTPS (iosuite_shared.certs: its
+    ports go on answering both). Over HTTPS only where the machine's file says so: INTERNAL_URL=https://<a name on
+    the certificate>."""
     port = {"web": config.PORT, "sync": config.SYNC_PORT, "mcp": config.MCP_PORT}[door]
     host = copy_address(host)
     if not port or not host:
@@ -142,7 +146,10 @@ def local_url(app: str = None, door: str = "web", host: str = None, https: bool 
     if ":" in host:
         host = f"[{host}]"
     if https is None:
-        https = bool(config.TLS_CERT_FILE and config.TLS_KEY_FILE)
+        from iosuite_shared import certs
+        https = certs.serving() and config.INTERNAL_URL.lower().startswith("https://")
+        if https and door == "web":
+            port = certs.PAGES_PORT or port
     folder = folder_of(app) if app else None
     return f"{'https' if https else 'http'}://{host}:{port}" + (f"/{folder}" if folder else "")
 
