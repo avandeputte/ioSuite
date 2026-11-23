@@ -23,7 +23,7 @@ def rows(total: int, stills: int, signed_in: bool) -> list:
     jobs = [
         {"key": "thumbs", "label": "Thumbnails", "detail": "Small previews for the grid.",
          "done": total - (prewarmer.total - prewarmer.done if prewarmer.running else 0), "total": total,
-         "running": prewarmer.running, "enabled": True, "rerun": False, "since": prewarmer.started, "last": prewarmer.last, "current": (list(prewarmer.current.values())[:3] if signed_in else [])},
+         "running": prewarmer.running, "enabled": True, "rerun": True, "since": prewarmer.started, "last": prewarmer.last, "current": (list(prewarmer.current.values())[:3] if signed_in else [])},
         {"key": "embeddings", "label": "Content search", "enabled": act is not None, "rerun": True,
          "detail": (f"Model: {names[act.name]}." + (("" if act is up else f" Switching to {names[up.name]}: ") + f"{nf(len(up.ids) if up.ids is not None else 0)} of {nf(total)} indexed" + ("; results come from the photos indexed so far." if act is up else f"; search stays on {names[act.name]} until it finishes.") if up else "")
                     + (f" {nf(len(act.failed))} could not be embedded (no thumbnail; see the server log)." if act is not None and act.failed else "")) if act else "Not installed (see README).",

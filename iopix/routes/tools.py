@@ -208,6 +208,8 @@ def start_analysis(job: str = "all", reset: bool = False) -> dict:
             rotation.reset()
         elif job == "videos":
             videos.reset()
+        elif job == "thumbs":
+            pass  # the prewarmer makes every thumbnail that is missing anyway: nothing to clear first
         else:
             raise HTTPException(400, "Choose one analysis to run again from scratch")
     start_prewarm()

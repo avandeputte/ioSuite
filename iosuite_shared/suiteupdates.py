@@ -76,7 +76,7 @@ def _out(a: dict, r: dict | None) -> dict:
     r = r or {}
     now = time.time()
     pending = r.get("action") if r.get("action") and now - (r.get("requested_at") or 0) < STALE_S else None
-    return {"app": a["app"], "name": a["name"], "version": r.get("installed") or a.get("version"), "commit": r.get("git_commit"),
+    return {"app": a["app"], "name": a["name"], "copy": a.get("copy") or "", "version": r.get("installed") or a.get("version"), "commit": r.get("git_commit"),
             "latest": r.get("latest"), "status": r.get("status"),  # current | update | error, from the app's last check
             "checked": r.get("checked_at"), "canUpdate": bool(r.get("can_run")), "docker": bool(r.get("docker")),
             "state": r.get("state") or None,  # running | ok | failed: the last update
@@ -92,6 +92,38 @@ def overview() -> list:
     minutes, or it never wrote one)."""
     rows = {r["app"]: r for r in db.q("SELECT * FROM ios_updates")}
     return [_out(a, rows.get(a["app"])) for a in suite.apps()]
+
+
+def copies(apps: list) -> list:
+    """The apps grouped by the copy of the program they run in (one program, so one update per copy: what the
+    Updates screen shows). One entry per copy, in the suite's order: {copy, apps, names, version, commit, latest,
+    status, state, message, pending, behind, canUpdate, docker, watching, updated}. A copy that says no name (an
+    older row, or a machine whose name could not be read) stands on its own under "".
+
+    The apps of a copy run the same program, so they say the same version and commit; where they do not (one app was
+    stopped before the last update), the oldest version is the copy's and a failed update is what it shows."""
+    out: dict = {}
+    for a in apps:
+        c = out.setdefault(a.get("copy") or "", {"copy": a.get("copy") or "", "apps": [], "names": [], "version": None, "commit": None,
+                                                 "latest": None, "status": None, "state": None, "message": None, "pending": None,
+                                                 "behind": False, "canUpdate": False, "docker": False, "watching": False, "updated": 0})
+        c["apps"].append(a["app"])
+        c["names"].append(a["name"])
+        c["behind"] = c["behind"] or bool(a.get("behind"))
+        c["canUpdate"] = c["canUpdate"] or a["canUpdate"]
+        c["docker"] = c["docker"] or a["docker"]
+        c["watching"] = c["watching"] or a["watching"]
+        c["pending"] = c["pending"] or a["pending"]
+        if a["version"] and (not c["version"] or version_tuple(a["version"]) < version_tuple(c["version"])):
+            c["version"], c["commit"] = a["version"], a["commit"]
+        if a["latest"] and (not c["latest"] or version_tuple(a["latest"]) > version_tuple(c["latest"])):
+            c["latest"] = a["latest"]
+        if a["status"] and (c["status"] is None or a["status"] == "update"):
+            c["status"] = a["status"]
+        if a["state"] and (a["state"] == "failed" or (c["state"] != "failed" and (a["updated"] or 0) >= c["updated"])):
+            c["state"], c["message"] = a["state"], a["message"]
+        c["updated"] = max(c["updated"], a["updated"] or 0)
+    return list(out.values())
 
 
 def summary() -> dict:
@@ -120,7 +152,7 @@ def summary() -> dict:
     return {"installed": min((a["version"] for a in live), key=version_tuple, default=None), "latest": latest, "status": status,
             "checked": max((a["checked"] or 0 for a in live), default=0) or None,
             "behind": [a["app"] for a in behind], "failed": [a["app"] for a in behind if a["state"] == "failed"],
-            "canUpdate": any(a["canUpdate"] for a in behind), "apps": apps}
+            "canUpdate": any(a["canUpdate"] for a in behind), "apps": apps, "copies": copies(apps)}
 
 
 def request(action: str, by: str = None, apps=None) -> list:

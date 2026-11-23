@@ -163,7 +163,7 @@ class _client:
         self.app, self.read_s, self.http, self.client = app, read_s, None, None
 
     async def __aenter__(self) -> Client:
-        bases = await anyio.to_thread.run_sync(links.addresses, self.app, "mcp")
+        bases = await anyio.to_thread.run_sync(links.addresses, self.app, "mcp", False)  # an MCP client speaks HTTP: over the network
         if not bases:
             raise LookupError("no_address")
         headers = await _headers(self.app)
@@ -221,7 +221,7 @@ async def _why(app: str, e: BaseException) -> dict:
     if isinstance(e, TimeoutError) or _unreachable(e):
         return {"status": "unreachable", "detail": "It did not answer."}
     try:
-        bases = await anyio.to_thread.run_sync(links.addresses, app, "mcp")
+        bases = await anyio.to_thread.run_sync(links.addresses, app, "mcp", False)
         async with httpx2.AsyncClient(timeout=5) as http:
             r = await http.post(bases[0] + shared_mcp.PATH, headers={**await _headers(app), "Content-Type": "application/json",
                                                                       "Accept": "application/json, text/event-stream"},

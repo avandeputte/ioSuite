@@ -44,6 +44,8 @@ SMALL_HEIGHTS = (60, 80, 120, 160, 240)  # /thumb?h=
 FRAME_HEIGHTS = (120, 240, 360, 720)  # /video/<id>/frame?h=
 PRUNE_EVERY_S = 6 * 3600
 
+SLOW_S = 120.0        # a file still being worked on after this long is named in the log
+SLOW_LOOK_S = 30.0    # how often the prewarm job looks for one
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 
@@ -279,6 +281,7 @@ class Prewarmer:
         self.running = False
         self.started = self.last = None   # unix times: job start, last finished item (progress visibility)
         self.current = {}                 # thread name -> path being worked on right now
+        self.started_on = {}              # thread name -> when it started on that file (the slow-file warning)
         self._gen = 0
 
     def start(self, photos: list[dict]):
@@ -296,26 +299,46 @@ class Prewarmer:
             if gen == self._gen:
                 name = threading.current_thread().name
                 self.current[name] = p["path"]
-                t0 = time.time()
+                self.started_on[name] = t0 = time.time()
                 try:
                     make("t", p)
                 except Exception as e:
                     log.warning("thumbnail: %s: %s", p["path"], e)
                 finally:
                     self.current.pop(name, None)
+                    self.started_on.pop(name, None)
                     if time.time() - t0 > 60:
                         log.warning("thumbnail: %s took %.0f s", p["path"], time.time() - t0)
             self.done += 1
             self.last = time.time()
 
+        def watch(stop: threading.Event):
+            """While a file takes very long (a mount that stopped answering, a video ffmpeg chews on), its name goes
+            to the log: the screen says the job is stuck, and this says what on."""
+            said = set()
+            while not stop.wait(SLOW_LOOK_S):
+                for name, path in list(self.current.items()):
+                    took = time.time() - self.started_on.get(name, time.time())
+                    if took > SLOW_S and path not in said:
+                        said.add(path)
+                        log.warning("thumbnail: still on %s after %.0f s (%d of %d done)", path, took, self.done, self.total)
+
         def run():
             if gen != self._gen:
                 return
             self.started = self.last = time.time()
-            with ThreadPoolExecutor(config.PREWARM_WORKERS or jobs.threads(), thread_name_prefix="prewarm") as pool:
-                list(pool.map(work, todo))
-            if gen == self._gen:
-                self.running = False
+            stop = threading.Event()
+            threading.Thread(target=watch, args=(stop,), name="prewarm-watch", daemon=True).start()
+            try:
+                with ThreadPoolExecutor(config.PREWARM_WORKERS or jobs.threads(), thread_name_prefix="prewarm") as pool:
+                    list(pool.map(work, todo))
+            except BaseException:  # it ended badly (no thread to be had, out of memory): the screen must not say
+                log.exception("thumbnails: the job ended after %d of %d", self.done, self.total)  # "running" for ever
+                raise
+            finally:
+                stop.set()
+                if gen == self._gen:
+                    self.running = False
 
         jobs.submit("thumbs", run)  # one background job at a time
 

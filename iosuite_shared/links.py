@@ -28,6 +28,10 @@ that person's own sign-in instead of an app password, so the other app answers w
     body, ctype = links.as_viewer(request, "iopix", "/thumb/5", raw=True)
 
 Both ways send through call(): a redirect to another host is never followed, since the sign-in would travel with it.
+
+An app that runs in the same copy of the program is asked in this process, with the same headers, the same sign-in
+and the same answer (iosuite_shared.inside): nothing goes over the network. One that runs in another copy of the
+suite, or as a program of its own, is asked over the network as above.
 """
 import base64
 import ipaddress
@@ -40,7 +44,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from iosuite_shared import apppasswords, credentials, db, sessions, suite, users
+from iosuite_shared import apppasswords, credentials, db, inside, sessions, suite, users
 
 log = logging.getLogger("iosuite_shared.links")
 _lock = threading.Lock()
@@ -105,23 +109,26 @@ def _local(internal: str | None) -> str | None:
 
 
 DOOR_KEYS = {"web": ("internalUrl", "configuredUrl"), "sync": ("internalSyncUrl", "syncUrl"), "mcp": ("internalMcpUrl", "mcpUrl")}
+HERE = "inside"   # the other app runs in this copy: it is asked in this process (iosuite_shared.inside), not over the network
 
 
-def addresses(provider: str, door: str = "web") -> list:
-    """Where the server calls the other app, in order: localhost (on the same machine), its internal address (when
-    recorded), then the public one its settings name (PUBLIC_URL). `door`: which door of its copy
-    (iosuite_shared.doors): the pages' (the apps' APIs, as a rule), "sync" or "mcp" (its /mcp is served there only);
-    an app that recorded nothing for that door (one started without the host, on one port) is asked at its usual
-    address."""
+def addresses(provider: str, door: str = "web", here: bool = True) -> list:
+    """Where the server calls the other app, in order: in this copy when it runs here (HERE: handed to it in this
+    process, iosuite_shared.inside), then localhost (on the same machine), its internal address (when recorded), then
+    the public one its settings name (PUBLIC_URL). `door`: which door of its copy (iosuite_shared.doors): the pages'
+    (the apps' APIs, as a rule), "sync" or "mcp" (its /mcp is served there only); an app that recorded nothing for
+    that door (one started without the host, on one port) is asked at its usual address. here False: the addresses
+    over the network only, for a caller that cannot use the one in this process (an MCP client, say)."""
+    first = [HERE] if here and inside.runs(provider) else []
     try:
         r = suite.get(provider)
     except Exception:  # noqa: BLE001  the shared database is away
-        return []
-    inside, named = DOOR_KEYS[door]
-    internal, public = (r or {}).get(inside), (r or {}).get(named)
+        return first
+    key, named = DOOR_KEYS[door]
+    internal, public = (r or {}).get(key), (r or {}).get(named)
     if door != "web" and not internal and not public:
         internal, public = (r or {}).get("internalUrl"), (r or {}).get("configuredUrl")
-    out = []
+    out = list(first)
     for u in (_local(internal), internal, public):
         u = (u or "").rstrip("/")
         if u and u not in out and urllib.parse.urlsplit(u).scheme in ("http", "https"):
@@ -149,6 +156,17 @@ def call(req, timeout: float):
     """Send a request to another app of the suite, or anywhere a stored secret goes along (a urllib response): every
     such request goes out here, so no redirect takes the secret to another host."""
     return _opener.open(req, timeout=timeout)
+
+
+def send(base: str, app: str, path: str, headers: dict, timeout: float, data: bytes = None, method: str = None, door: str = "web",
+         host: str = None, limit: int = inside.LIMIT):
+    """One request to another app at one of its addresses (addresses()): handed to it in this process when the
+    address is HERE, else sent over the network. The answer either way: a urllib response, or urllib's HTTPError."""
+    if base == HERE:
+        return inside.ask(app, path, headers=headers, body=data, method=method, door=door, host=host or inside.PEER,
+                          timeout=timeout, limit=limit)
+    req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
+    return call(req, timeout)  # noqa: S310  http(s), checked in addresses()
 
 
 def _declare_suite_keys():
@@ -207,15 +225,15 @@ def get(reader: str, provider: str, path: str, timeout: float = 15, accept: str 
             h = {"Accept": accept, "User-Agent": user_agent or reader, **headers(reader, provider, fresh=fresh)}
             fresh = False
             try:
-                return call(urllib.request.Request(base + path, headers=h), timeout)  # noqa: S310  http(s), checked in addresses()
+                return send(base, provider, path, h, timeout)
             except urllib.error.HTTPError as e:
                 if e.code != 401 or attempt:
                     raise
                 log.info("%s: %s did not take its app password; making a new one", reader, provider)
                 fresh = True
-            except (urllib.error.URLError, OSError) as e:
+            except (urllib.error.URLError, OSError, LookupError) as e:  # LookupError: it stopped running in this copy
                 if last:
-                    raise
+                    raise RuntimeError(f"{provider} does not answer ({e})") from e if isinstance(e, LookupError) else e
                 log.info("%s: %s does not answer at %s (%s); trying %s", reader, provider, base, e, bases[i + 1])
                 break
 
@@ -257,6 +275,16 @@ def viewer_headers(request, user_agent: str = "ioSuite", accept: str = "applicat
     except Exception:  # noqa: BLE001  the shared database is away: without the token
         pass
     return h
+
+
+def _asked_host(request) -> str:
+    """The name the viewer asked, for an app in this copy to answer in the same style (its own name, or the suite's);
+    this machine's own address when there is no request, as a call over loopback carried."""
+    try:
+        host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    except Exception:  # noqa: BLE001 - no request, or not one of ours
+        host = ""
+    return host or inside.PEER
 
 
 def resting(app: str) -> float:
@@ -301,17 +329,17 @@ def as_viewer(request, app: str, path: str, params: dict = None, body: dict = No
         data, h["Content-Type"] = _json.dumps(body).encode(), "application/json"
     query = "?" + urllib.parse.urlencode(params) if params else ""
     why = None
+    name = _asked_host(request)
     for base in bases:
-        req = urllib.request.Request(base + path + query, data=data, headers=h, method=method or ("POST" if body is not None else "GET"))
         try:
-            with call(req, timeout) as r:  # noqa: S310  http(s), checked in addresses()
+            with send(base, app, path + query, h, timeout, data, method or ("POST" if body is not None else "GET"), host=name, limit=limit) as r:
                 got = r.read(limit)
                 out = (got, r.headers.get("Content-Type") or "application/octet-stream") if raw else _json.loads(got or b"null")
         except urllib.error.HTTPError:
             _answered[app] = base
             _resting.pop(app, None)
             raise  # it answered
-        except (urllib.error.URLError, OSError, ValueError) as e:  # ValueError: not JSON, so not the app
+        except (urllib.error.URLError, OSError, ValueError, LookupError) as e:  # ValueError: not JSON, so not the app
             why = e
             continue
         _answered[app] = base

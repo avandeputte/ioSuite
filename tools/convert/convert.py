@@ -86,6 +86,14 @@ def die(msg: str):
     raise SystemExit(f"error: {msg}")
 
 
+def _within(path: Path, root: Path) -> bool:
+    """Whether a folder lies inside another (both as they are on disk)."""
+    try:
+        return path.resolve() == root.resolve() or root.resolve() in path.resolve().parents
+    except OSError:
+        return False
+
+
 # ---- reading the old install
 def old_app(key: str, folder: Path = None, file: Path = None, run=subprocess.run, unit_dir: Path = install.UNIT_DIR) -> dict:
     """One old app: its folder (None: only its config.env was brought here), what its file says, its service, its data."""
@@ -112,7 +120,11 @@ def old_app(key: str, folder: Path = None, file: Path = None, run=subprocess.run
             out["active"] = run(["systemctl", "is-active", "-q", key]).returncode == 0
     named = cfg.get("DATA_DIR")
     data = (folder / named).resolve() if named else folder / "data"
-    out["data"], out["data_named"] = (data if data.is_dir() else None), bool(named)
+    # A data folder the old file named is kept where it is and named in Settings, but only when it lies outside the
+    # old install (a disk of its own: the photos, the backups). One inside it (DATA_DIR=/opt/iopix/data, or ../data)
+    # moves with everything else: the old folder is the old program's, and the one service may not even read it.
+    out["data"] = data if data.is_dir() else None
+    out["data_named"] = bool(named) and not _within(data, folder.parent if folder.name == "app" else folder)
     for extra, (app, package) in EXTRAS.items():
         if app == key and list(folder.glob(f".venv/lib/python*/site-packages/{package}")):
             out["extras"].append(extra)
@@ -303,6 +315,9 @@ def plan(olds: list, base: Path, data: str = "copy", device_address: str = "", m
             if o["data_named"]:
                 p["settings"].append((key, "DATA_DIR", str(o["data"])))
                 p["data"].append((key, o["data"], o["data"], "named", size))
+                p["notes"].append(f"{names[key]}'s data folder {o['data']} is outside the old install, so it stays where it is and "
+                                  f"Settings names it: the one service's account has to be able to read and write it "
+                                  f"(chown -R <the account> {o['data']})")
             elif data == "stay":
                 p["settings"].append((key, "DATA_DIR", str(o["data"])))
                 p["data"].append((key, o["data"], o["data"], "stay", size))
@@ -541,6 +556,18 @@ def carry(p: dict, log=print) -> None:
             log(f"  note: {app}: {name} could not be stored ({str(e)[:120]}): enter it in the app's Settings")
 
 
+def _give_to(path: Path, user: str, log=print) -> None:
+    """The one service's account owns what it is to write: the files the old apps wrote are their own accounts', and
+    with several of those (iopix as iopix, the rest as root) the one service could not read half of them."""
+    if not user or not hasattr(os, "geteuid") or os.geteuid() != 0:
+        return
+    try:
+        for q in [path, *path.rglob("*")]:
+            shutil.chown(q, user=user)
+    except (OSError, LookupError, KeyError) as e:  # noqa: BLE001
+        log(f"  note: {path} could not be given to {user} ({str(e)[:120]}): chown -R {user} {path}")
+
+
 def move_data(p: dict, log=print) -> list:
     """Copy or move the data folders; the (from, to) pairs moved, for going back."""
     moved = []
@@ -559,6 +586,7 @@ def move_data(p: dict, log=print) -> list:
             moved.append((src, dst))
         else:
             shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=True, ignore=shutil.ignore_patterns("*.log", "*.log.[0-9]*"))
+        _give_to(dst, p.get("user") or "", log)
         log(f"  {app}: {src} {'moved' if how == 'move' else 'copied'} to {dst}")
     return moved
 

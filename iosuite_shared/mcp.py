@@ -82,9 +82,10 @@ def add_suite_update_tools(server: MCPServer) -> None:
     async def suite_version(check: bool = True) -> dict:
         """Suite admins: the suite's version (one number for every app), the newest version on GitHub, and status:
         current, update (apps are behind: their keys in `behind`), updating, or error (GitHub could not be asked).
-        apps has every app's own line: its version, whether it runs (watching), whether it can update itself, and how
-        its last update went (state: running, ok or failed, with a message). check True (the default) first has every
-        app ask GitHub again, which takes up to half a minute; False answers from the last check."""
+        copies has one line per server of the suite (one copy of the program, with the apps it runs): its version,
+        whether it runs (watching), whether it can update itself, and how its last update went (state: running, ok or
+        failed, with a message); apps has the same per app. check True (the default) first has every app ask GitHub
+        again, which takes up to half a minute; False answers from the last check."""
         u = need_suite_admin()
 
         def work():
@@ -97,16 +98,16 @@ def add_suite_update_tools(server: MCPServer) -> None:
 
     @server.tool(annotations=UPDATES)
     async def update_suite() -> dict:
-        """Suite admins: update the suite to the newest version on GitHub: every app that is behind (run suite_version
-        first) runs its own update.sh within ten seconds and restarts (settings and data stay; its database is brought
-        up to date as it starts). Call suite_version(check=False) a minute or two later: status current, or the apps
-        still behind and why (state failed, with a message). Apps in Docker cannot update themselves (pull the image
-        there)."""
+        """Suite admins: update the suite to the newest version on GitHub: every server that is behind (run
+        suite_version first) runs update.sh within ten seconds and starts again (settings and data stay; the
+        databases are brought up to date as it starts). Call suite_version(check=False) a minute or two later: status
+        current, or what is still behind and why (state failed, with a message). A copy in Docker cannot update
+        itself (pull the image there)."""
         u = need_suite_admin()
         asked = await anyio.to_thread.run_sync(lambda: suiteupdates.request("update", by=u["name"]))
         if not asked:
-            return {"asked": [], "note": "Every app is on the newest version known (suite_version checks GitHub again)."}
-        return {"asked": asked, "note": "Each app runs update.sh within ten seconds and restarts; call suite_version(check=False) in a minute or two."}
+            return {"asked": [], "note": "Every server is on the newest version known (suite_version checks GitHub again)."}
+        return {"asked": asked, "note": "Each server runs update.sh within ten seconds and starts again; call suite_version(check=False) in a minute or two."}
 
 
 def clamp(n, lo: int, hi: int) -> int:

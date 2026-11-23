@@ -71,6 +71,14 @@ async def lifespan(_app):
 app = FastAPI(title="ioPix", version=APP_VERSION, lifespan=lifespan, docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
               description="A web front end for a digiKam photo library, for the family. Also an MCP endpoint (/mcp) for AI assistants.")
 
+@app.exception_handler(photo_index.Unavailable)
+async def _no_index(_request: Request, exc: photo_index.Unavailable) -> JSONResponse:
+    """The photo index is not there to answer from (it is still being built, or its folder is not ioPix's to read):
+    said in words, with what the log says, rather than as the sqlite error of whichever route asked first."""
+    logging.getLogger("iopix.main").warning("the photo index could not be read: %s", exc)
+    return JSONResponse({"detail": str(exc), "indexing": True}, status_code=503)
+
+
 MAX_JSON_BYTES = 4 << 20   # a JSON request larger than this is refused
 MAX_UPLOAD_BYTES = 2 << 30  # a multipart upload (photos, a library, a model): what the upload routes accept at most
 

@@ -36,8 +36,31 @@ state = {"version": None, "error": None, "source": None}
 prewarmer = thumbs.Prewarmer()  # the thumbnail cache filler; Settings › Storage and backups and the MCP diagnostics read its progress
 
 
+def why_not_readable(e: Exception = None) -> str:
+    """Why the index cannot be read, in words. It is a file ioPix builds in its own data folder as it starts, so a
+    data folder that is not there, or not the account the server runs as (one named in Settings that belonged to
+    another install, say), is the usual reason; the sqlite error itself says nothing a reader would understand."""
+    import getpass
+    who = getpass.getuser()
+    if not config.DATA_DIR.is_dir():
+        return (f"ioPix's data folder {config.DATA_DIR} does not exist. Settings › Global settings › Settings names it "
+                f"(DATA_DIR); its photo index is built there.")
+    if not os.access(config.DATA_DIR, os.W_OK):
+        return (f"ioPix's data folder {config.DATA_DIR} cannot be written by {who}, the account the server runs as, "
+                f"so its photo index cannot be built there.")
+    if not config.INDEX_DB.exists():
+        return "ioPix is still building its photo index" + (f", or could not: {state['error']}" if state.get("error") else
+                                                            " (the server log says how far it got).")
+    if not os.access(config.INDEX_DB, os.R_OK):
+        return f"ioPix's photo index {config.INDEX_DB} cannot be read by {who}, the account the server runs as."
+    return f"ioPix's photo index cannot be read: {e}"
+
+
 def db() -> sqlite3.Connection:
-    con = sqlite3.connect(f"file:{quote(str(config.INDEX_DB))}?mode=ro", uri=True)
+    try:
+        con = sqlite3.connect(f"file:{quote(str(config.INDEX_DB))}?mode=ro", uri=True)
+    except sqlite3.OperationalError as e:  # a missing or unreadable index: said in words, not as a sqlite error
+        raise index.Unavailable(why_not_readable(e)) from e
     con.row_factory = sqlite3.Row
     return con
 
@@ -176,8 +199,9 @@ def refresh(initial=False):
         auto_apply()
     except (*DB_ERRORS, index.Unavailable) as e:  # e.g. database busy, MySQL unreachable and no copy yet; try again later
         state["error"] = str(e)
-        if initial and not config.INDEX_DB.exists():
-            raise
+        if initial and not os.access(config.INDEX_DB, os.R_OK):
+            # nothing to answer from at all: the app says why it could not start rather than serving sqlite errors
+            raise index.Unavailable(why_not_readable(e)) from e
 
 
 auto = {"at": 0.0, "timer": None}

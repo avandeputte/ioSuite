@@ -251,6 +251,10 @@ class Updater:
             # the run before this start was marked failed as the restart ended it, but update.sh had written "ok"
             # (the result file is removed when a run starts, so it is that run's)
             fields.update(state="ok", message=last["text"])
+        elif r.get("state") in ("ok", "failed") and (r.get("git_commit") or "") != fields["git_commit"] and not last:
+            # the row says how an update of another program went (the one this install replaced: its own update.sh,
+            # its own folders). Nothing of that is about what runs here now, so the line is cleared rather than shown.
+            fields.update(state="", message="")
         if r.get("latest") and r.get("status") != "error":
             # the newest version GitHub had when last asked: what this start installed may be it
             fields["status"] = "update" if _version_tuple(r["latest"]) > _version_tuple(self.version) else "current"

@@ -15,8 +15,10 @@ def fresh_db(monkeypatch):
     db.configure(**testing.fresh_database(DB))
     db._ready = False
     db.settings_cache.clear()
-    from iosuite_shared import sessions, suite, users
+    from iosuite_shared import apppasswords, credentials, sessions, suite, users
     users.invalidate()
+    credentials.forget()      # a key an earlier test stored, still in the five-second cache
+    apppasswords.forget()
     suite.invalidate()
     sessions.invalidate()
     monkeypatch.setattr("iosuite_shared.passwords.HASHER", testing.FAST_HASHER)  # fast hashes for the tests

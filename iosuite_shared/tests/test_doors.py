@@ -210,26 +210,33 @@ def test_the_sync_door_reads_no_cookie(monkeypatch):
     assert s == 200 and b["door"] == "mcp" and b["cookie"] is None
 
 
-def test_a_sync_path_asked_with_the_pages_is_sent_to_the_sync_door(monkeypatch):
+def test_the_pages_port_answers_a_device_s_path_and_mcp_too(monkeypatch):
+    """One port is enough for a whole server: a device's path or /mcp asked at the pages' port is answered there, by
+    its own door's rules (no session: an app password or a token instead)."""
     machine(monkeypatch)
     h = a_host("iostart", "iocalendar", hosts={"calendar.example.com": "iocalendar"})
-    s, hd, _ = ask(h, "/calendar/dav/alex/home/", method="PROPFIND")  # whatever the method: 307 asks again as it was
-    assert s == 307 and hd["location"] == "http://home.example.com:8443/calendar/dav/alex/home/"
-    s, hd, _ = ask(h, "/ics/secret/home.ics", name="calendar.example.com", query="x=1")
-    assert s == 307 and hd["location"] == "http://calendar.example.com:8443/ics/secret/home.ics?x=1"
-    s, hd, _ = ask(h, "/dav/ext/tree", method="PUT")
-    assert s == 307 and hd["location"] == "http://home.example.com:8443/dav/ext/tree"
-    s, hd, _ = ask(h, "/calendar/mcp", method="POST")
-    assert s == 307 and hd["location"] == "http://home.example.com:8444/calendar/mcp"
+    sent = [("cookie", "iosuite_session=abc"), ("authorization", "Basic abc")]
+    s, hd, b = ask(h, "/calendar/dav/alex/home/", method="PROPFIND", headers=sent)
+    assert s == 200 and "location" not in hd and b["door"] == "sync" and b["cookie"] is None and b["authorization"] == "Basic abc"
+    assert b["app"] == "iocalendar" and b["path"] == "/dav/alex/home/" and b["folder"] == "/calendar"
+    s, _, b = ask(h, "/ics/secret/home.ics", name="calendar.example.com", query="x=1", headers=sent)
+    assert s == 200 and b["door"] == "sync" and b["path"] == "/ics/secret/home.ics" and b["folder"] == ""
+    s, _, b = ask(h, "/dav/ext/tree", method="PUT", headers=sent)
+    assert s == 200 and b["app"] == "iostart" and b["door"] == "sync"
+    s, _, b = ask(h, "/calendar/mcp", method="POST", headers=sent)
+    assert s == 200 and b["door"] == "mcp" and b["cookie"] is None
+    # the pages are still the pages there, and a page below a sync prefix (the screen a client opens) too
+    s, _, b = ask(h, "/calendar/api/events", headers=sent)
+    assert s == 200 and b["door"] == "web" and b["cookie"] == "iosuite_session=abc"
 
 
-def test_a_phone_looking_its_account_up_is_sent_to_where_it_syncs(monkeypatch):
+def test_a_phone_looking_its_account_up_reaches_the_app(monkeypatch):
     machine(monkeypatch)
     h = a_host("iostart", "iocalendar", "iocontact")
-    s, hd, _ = ask(h, "/.well-known/caldav", method="PROPFIND")
-    assert s == 301 and hd["location"] == "http://home.example.com:8443/calendar/dav/"
-    s, hd, _ = ask(h, "/.well-known/carddav")
-    assert s == 301 and hd["location"] == "http://home.example.com:8443/contacts/dav/"
+    s, _, b = ask(h, "/.well-known/caldav", method="PROPFIND")  # the pages' port answers it as the sync door does
+    assert s == 200 and b["app"] == "iocalendar" and b["door"] == "sync" and b["path"] == "/.well-known/caldav"
+    s, _, b = ask(h, "/.well-known/carddav")
+    assert s == 200 and b["app"] == "iocontact" and b["door"] == "sync"
     s, _, b = ask(h, "/.well-known/caldav", port=8443, method="PROPFIND")  # at the sync door it is the app's to answer
     assert s == 200 and b["app"] == "iocalendar" and b["path"] == "/.well-known/caldav" and b["folder"] == "/calendar"
 
@@ -265,29 +272,22 @@ def test_the_address_stored_for_a_door_is_where_its_requests_are_sent(monkeypatc
            "PUBLIC_URLS": ["https://calendar.example.com", "https://home.example.com/calendar"], "OWN_URL": "https://calendar.example.com"}
     machine(monkeypatch, iocalendar=cal)
     h = a_host("iostart", "iocalendar", hosts={"calendar.example.com": "iocalendar", "calsync.example.com": "iocalendar"})
-    s, hd, _ = ask(h, "/calendar/dav/alex/", method="PROPFIND")  # came through the folder: the folder's address
-    assert s == 307 and hd["location"] == "https://sync.example.com/calendar/dav/alex/"
-    s, hd, _ = ask(h, "/dav/alex/", name="calendar.example.com", method="PROPFIND")  # came by its own name: its own
-    assert s == 307 and hd["location"] == "https://calsync.example.com/dav/alex/"
-    s, hd, _ = ask(h, "/calendar/mcp", method="POST")
-    assert s == 307 and hd["location"] == "https://mcp.example.com/calendar/mcp"
+    # a device's path at the pages' port is answered there all the same; the stored address is what the app hands out
+    assert ask(h, "/calendar/dav/alex/", method="PROPFIND")[0] == 200
     s, hd, _ = ask(h, "/", port=8443, name="calsync.example.com")  # the app opened from a sync client
     assert s == 307 and hd["location"] == "https://calendar.example.com/"
     s, hd, _ = ask(h, "/calendar/", port=8443, name="sync.example.com")
     assert s == 307 and hd["location"] == "https://home.example.com/calendar/"
 
 
-def test_a_door_that_is_not_opened_has_nowhere_to_send_to(monkeypatch):
+def test_with_the_other_two_ports_off_the_pages_port_answers_everything(monkeypatch):
     machine(monkeypatch, sync=0, mcp=0)
     h = a_host("iostart", "iocalendar")
-    s, hd, b = ask(h, "/calendar/dav/alex/", method="PROPFIND")
-    assert s == 404 and "location" not in hd and "not opened on this server" in b["detail"]
+    s, hd, b = ask(h, "/calendar/dav/alex/", method="PROPFIND", headers=[("cookie", "iosuite_session=abc")])
+    assert s == 200 and "location" not in hd and b["door"] == "sync" and b["cookie"] is None
     s, _, b = ask(h, "/calendar/mcp", method="POST")
-    assert s == 404 and "MCP" in b["detail"]
-    # but one with an address stored (something else serves it) is
-    machine(monkeypatch, sync=0, mcp=0, iocalendar={"SYNC_URLS": ["https://sync.example.com/calendar"], "SYNC_URL_OWN": ""})
-    s, hd, _ = ask(h, "/calendar/dav/alex/", method="PROPFIND")
-    assert s == 307 and hd["location"] == "https://sync.example.com/calendar/dav/alex/"
+    assert s == 200 and b["door"] == "mcp"
+    assert doors.ports() == {80: "web"}
 
 
 def test_a_door_s_own_port_is_left_out_of_its_address(monkeypatch, tmp_path):
@@ -324,11 +324,15 @@ def test_a_request_for_another_copy_s_app_is_passed_to_that_copy_s_same_door(mon
     assert ask(h, "/pix/api/photos")[0] == 200
     assert ask(h, "/pix/api/photos", port=8443)[0] == 200
     assert passed == [("http://10.0.0.9", "iopix", "/pix", "/api/photos"), ("http://10.0.0.9:8443", "iopix", "/pix", "/api/photos")]
+    # that copy has no MCP port: its pages' port answers /mcp too, so that is where it goes, from either door here
     s, _, b = ask(h, "/pix/mcp", port=8444, method="POST")
-    assert s == 502 and "no door for MCP" in b and len(passed) == 2
-    # the doors are kept before anything is passed on
-    s, hd, _ = ask(h, "/pix/mcp", method="POST")
-    assert s == 307 and hd["location"] == "http://home.example.com:8444/pix/mcp" and len(passed) == 2
+    assert s == 200 and passed[-1] == ("http://10.0.0.9", "iopix", "/pix", "/mcp")
+    s, _, b = ask(h, "/pix/mcp", method="POST")
+    assert s == 200 and passed[-1] == ("http://10.0.0.9", "iopix", "/pix", "/mcp") and len(passed) == 4
+    # a copy with no address at all for an app is said so plainly
+    h.table.remote["iopix"] = {"web": None, "sync": None, "mcp": None}
+    s, _, b = ask(h, "/pix/mcp", method="POST")
+    assert s == 502 and "no door for MCP" in b
 
 
 def test_a_request_passed_across_arrives_inside_the_app(monkeypatch):
@@ -496,11 +500,12 @@ def test_the_doors_of_a_copy(monkeypatch):
     assert [d["port"] for d in doors.state()] == [80, 8443, 0]
 
 
-@pytest.mark.parametrize("path,query", [("/calendar/dav/a b/", ""), ("/calendar/dav/%2Fx", "a=1&b=2")])
+@pytest.mark.parametrize("path,query", [("/calendar/a b/", ""), ("/calendar/%2Fx", "a=1&b=2")])
 def test_a_redirect_keeps_the_address_as_it_was_asked(monkeypatch, path, query):
+    """A page asked at the sync door goes to the pages: the address it is sent to says what was asked."""
     machine(monkeypatch)
-    s, hd, _ = ask(a_host("iostart", "iocalendar"), path, query=query)
-    assert s == 307 and hd["location"].startswith("http://home.example.com:8443/calendar/dav/") and " " not in hd["location"]
+    s, hd, _ = ask(a_host("iostart", "iocalendar"), path, port=8443, query=query)
+    assert s == 307 and hd["location"].startswith("http://home.example.com/calendar/") and " " not in hd["location"]
     assert hd["location"].endswith("?" + query if query else "/")
 
 
@@ -584,12 +589,9 @@ def test_the_pages_asked_without_https_by_a_name_of_the_certificate_are_sent_on(
 
 def test_a_request_at_the_wrong_door_goes_to_https_when_the_certificate_holds_for_the_name(monkeypatch):
     h = secure_host(monkeypatch, "iostart", "iocalendar")
-    # a CalDAV address asked with the pages, over HTTPS: to the door for devices, over HTTPS too
-    s, hd, _ = ask(h, "/calendar/dav/alex/", port=443, scheme="https", method="PROPFIND")
-    assert s == 307 and hd["location"] == "https://home.example.com:8443/calendar/dav/alex/"
-    # by the server's address the certificate does not hold: without HTTPS, as it was
-    s, hd, _ = ask(h, "/calendar/dav/alex/", name="192.168.1.151", method="PROPFIND")
-    assert s == 307 and hd["location"] == "http://192.168.1.151:8443/calendar/dav/alex/"
+    # a CalDAV address asked with the pages over HTTPS is answered there, by the rules of the door for devices
+    s, _, b = ask(h, "/calendar/dav/alex/", port=443, scheme="https", method="PROPFIND", headers=[("cookie", "s=1")])
+    assert s == 200 and b["door"] == "sync" and b["cookie"] is None
     # a page asked at the door for devices: to the pages, at their HTTPS port
     s, hd, _ = ask(h, "/calendar/", port=8443, scheme="https")
     assert s in (302, 307) and hd["location"] == "https://home.example.com/calendar/"

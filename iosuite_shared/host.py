@@ -32,7 +32,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
-from iosuite_shared import catalog, certs, config, doors, prefix
+from iosuite_shared import catalog, certs, config, doors, inside, prefix
 
 log = logging.getLogger("iosuite_shared.host")
 
@@ -176,6 +176,7 @@ class Host:
             await doors.plain(send, 404, "No app of the suite answers at this address.\n")
             return
         method = scope.get("method", "GET")
+        door = doors.served_as(door, r.app, r.path, method)  # the pages' port answers a device's path or /mcp too, by that door's rules
         if not doors.allowed(door, r.app, r.path, method):
             status, where = doors.elsewhere(door, scope, r.app, r.path, r.folder)
             if status:  # it came in by the wrong door: the right one's address
@@ -185,7 +186,8 @@ class Host:
             await doors.json_answer(send, status, text, door=door)
             return
         if e is None:  # it runs in another copy of the suite
-            upstream = table.remote[r.app].get(door)
+            # that copy's door, or its pages' port, which answers every door's paths as well (doors.served_as)
+            upstream = table.remote[r.app].get(door) or table.remote[r.app].get(doors.WEB)
             if not upstream:
                 await doors.plain(send, 502, f"{catalog.name_of(r.app)} runs on another server of the suite, which has no door for {doors.NAMES[door]}.\n")
                 return
@@ -273,6 +275,7 @@ class Host:
             threading.Thread(target=_restart_when_readable, name="settings-unread", daemon=True).start()
         from iosuite_shared import chores, serve
         certs.attach(serve.reload, _restart)
+        inside.attach(asyncio.get_running_loop(), self)  # the apps of this copy ask each other in this process
         self._chores.append(chores.start(certs.tick, every_s=certs.EVERY_S, name="certificate", first_s=20))
 
     async def _run(self, e: Entry) -> None:
@@ -306,6 +309,7 @@ class Host:
         if self._stop is None:
             return
         self._stop.set()
+        inside.detach()
         for chore in self._chores:
             chore.cancel()
         self._chores.clear()

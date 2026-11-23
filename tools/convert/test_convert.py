@@ -255,3 +255,16 @@ def test_without_systemd_nothing_is_stopped_and_running_old_apps_are_in_the_way(
     with pytest.raises(SystemExit) as e:
         convert.apply(p, a, f.base, run=f.run, log=lambda *x: None, systemd=False, port_open=lambda host, port: True)
     assert "ioStart of the old install still run(s)" in str(e.value)
+
+
+def test_a_data_folder_the_old_file_named_inside_the_install_moves_with_the_rest(tmp_path):
+    """DATA_DIR=/opt/iopix/data names the old install's own folder: it belongs to the old program (and often to
+    another account), so it moves like an unnamed one and nothing is stored. One on a disk of its own stays."""
+    folder = old(tmp_path, "iopix", ["PORT=8640", f"DATA_DIR={tmp_path / 'opt' / 'iopix' / 'app' / 'data'}"], data={"index.db": "x"})
+    assert folder.name == "app"
+    o = found(tmp_path)[0]
+    assert o["data"] == folder / "data" and o["data_named"] is False
+    p = planned(tmp_path)
+    assert [(d[0], d[3]) for d in p["data"]] == [("iopix", "copy")] and ("iopix", "DATA_DIR") not in stored(p)
+    convert.move_data(p, log=lambda *a: None)
+    assert (tmp_path / "new" / "data" / "iopix" / "index.db").read_text() == "x"

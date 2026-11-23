@@ -13,11 +13,17 @@ firewall or a reverse proxy can treat each kind of traffic on its own:
                    here, nobody signs in or makes an account here, and no page is served.
     mcp   (8444)   MCP clients: /mcp and nothing else.
 
-What an app serves at the sync door is its manifest's "sync" list of path prefixes, plus /api/. A request that comes
-in by the wrong door is sent to the right one (a redirect): a sync or MCP path asked with the pages goes to its own
-door, and a page asked at the sync door goes to the pages (a sync client that opens the app in a browser, or the
-screen where the person says yes to it: the manifest's "pages", below a sync prefix yet a page). So a phone, a native
-app or a browser extension is given one address, the sync door's, and people one, the pages'.
+What an app serves at the sync door is its manifest's "sync" list of path prefixes, plus /api/.
+
+The port of the pages answers everything the suite serves: a device's path or /mcp asked there is answered by its own
+door's rules (served_as(): no session read, an app password or a token instead), whether or not the other two ports
+are opened at all. So a server behind a reverse proxy, a tunnel or a port forward needs one port, and the addresses
+the apps hand out (the CalDAV address for a phone, the MCP address) are still each door's own when one is stored.
+
+The other two ports serve their own and nothing else: a page asked at the sync door goes to the pages (a sync client
+that opens the app in a browser, or the screen where the person says yes to it: the manifest's "pages", below a sync
+prefix yet a page). So a phone, a native app or a browser extension can be given the sync door's address or the
+pages', and people the pages'.
 
 With a certificate (iosuite_shared.certs) the copy answers HTTPS itself: the pages get a port more, HTTPS_PORT (443),
 and the ports for devices and MCP answer HTTPS as well as plain HTTP. Which door a request came in by is told by its
@@ -142,6 +148,16 @@ def home(app: str, path: str, method: str = "GET") -> tuple:
 def allowed(door: str, app: str, path: str, method: str = "GET") -> bool:
     """Whether this door serves this path of this app (see the module's text)."""
     return door in home(app, path, method)
+
+
+def served_as(door: str, app: str, path: str, method: str = "GET") -> str:
+    """Which door's rules answer this request. The port of the pages answers everything the suite serves: a device's
+    path or /mcp asked there is answered by its own door's rules (no session, an app password or a token instead), so
+    one port is enough for a whole server, with or without the other two opened. The ports for devices and MCP serve
+    their own and nothing else: a page asked there goes to the pages (elsewhere())."""
+    if door == WEB and not allowed(WEB, app, path, method):
+        return home(app, path, method)[0]
+    return door
 
 
 def of(request) -> str:

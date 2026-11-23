@@ -916,9 +916,10 @@ async function logs(el, ctx) {
     note, list));
   await load();
 }
-/* Updates: the suite has one version and one update, every app at once (iosuite_shared.suiteupdates). The apps pick a
-   request up within seconds, so the page follows along while an update runs, and loads again when it is over: the app
-   that serves this page was updated too. The apps' own lines are under Details. */
+/* Updates: the suite has one version and one update (iosuite_shared.suiteupdates). One copy of the program runs
+   several apps, and updates once, so the lines under Details are the suite's servers, not its apps. The apps pick a
+   request up within seconds, so the page follows along while an update runs, and loads again when it is over: the
+   program that serves this page was updated too. */
 async function updates(el) {
   let d, timer = null, until = 0, round = false;
   try { d = await api('updates'); } catch (e) { el.replaceChildren(h('p', { class: 'sa-err' }, e.message)); return; }
@@ -936,54 +937,56 @@ async function updates(el) {
     try { d = await api('updates', { method: 'POST', json }); draw(); watch(); return true; } catch (e) { fail(e); return false; }
   };
   const update = async () => {
-    if (!await confirmDialog('Update ioSuite', `Install ${v(d.latest)} in every app? Each app restarts; this page follows along and loads again when they are back.`, 'Update')) return;
+    if (!await confirmDialog('Update ioSuite', `Install ${v(d.latest)} on every server of the suite? Each one restarts; this page follows along and loads again when they are back.`, 'Update')) return;
     await ask({ action: 'update' });
   };
-  const last = (a) => {
-    if (!a.watching) return h('span', { class: 'sa-muted' }, 'not running');
-    if (a.pending === 'update' || a.state === 'running') return 'updating…';
-    if (a.docker && a.behind) return h('span', { class: 'sa-muted' }, 'Docker: pull the image');
-    if (!a.state) return h('span', { class: 'sa-muted' }, '–');
-    return h('span', { class: a.state === 'failed' ? 'sa-err' : '' }, a.state, a.message ? h('div', { class: 'sa-muted sa-small' }, a.message) : null);
+  const last = (c) => {
+    if (!c.watching) return h('span', { class: 'sa-muted' }, 'not running');
+    if (c.pending === 'update' || c.state === 'running') return 'updating…';
+    if (c.docker && c.behind) return h('span', { class: 'sa-muted' }, 'Docker: pull the image');
+    if (!c.state) return h('span', { class: 'sa-muted' }, '–');
+    return h('span', { class: c.state === 'failed' ? 'sa-err' : '' }, c.state, c.message ? h('div', { class: 'sa-muted sa-small' }, c.message) : null);
   };
   const draw = () => {
-    const live = d.apps.filter((a) => a.watching), name = (k) => appLabel({ apps: d.apps }, k);
+    const servers = d.copies.filter((c) => c.watching);
+    const failed = servers.filter((c) => c.behind && c.state === 'failed');
     round = round || d.status === 'updating';
     const checked = h('span', { class: 'sa-muted sa-small' }, ` Checked ${sinceText(d.checked)}.`);
+    const where = (c) => c.copy || 'this server';
     let line, button = null;
     if (d.status === 'updating') {
-      line = [h('b', null, `Updating to ${v(d.latest)}…`), ` ${live.filter((a) => !a.behind).length} of ${live.length} apps done.`];
+      line = [h('b', null, `Updating to ${v(d.latest)}…`), ` ${servers.filter((c) => !c.behind).length} of ${servers.length} server(s) done.`];
     } else if (d.status === 'update') {
       line = [h('b', null, `ioSuite ${v(d.installed)}`), ' is installed. ', h('span', { class: 'sa-badge' }, `Update available: ${v(d.latest)}`), checked];
-      button = d.canUpdate ? h('button', { class: 'sa-btn primary', onclick: update }, d.failed.length ? 'Try again' : `Update to ${v(d.latest)}`) : null;
+      button = d.canUpdate ? h('button', { class: 'sa-btn primary', onclick: update }, failed.length ? 'Try again' : `Update to ${v(d.latest)}`) : null;
     } else if (d.status === 'error') {
       line = [h('b', null, `ioSuite ${v(d.installed)}`), ' is installed. ', h('span', { class: 'sa-err' }, 'GitHub could not be asked for the newest version.')];
     } else {
       line = [h('b', null, `ioSuite ${v(d.installed)}`), ' is the newest version.', checked];
     }
-    const docker = d.apps.filter((a) => a.behind && a.docker);
+    const docker = servers.filter((c) => c.behind && c.docker);
     head.replaceChildren(...[
       h('p', { style: { fontSize: '15px' } }, line),
-      d.failed.length ? h('p', { class: 'sa-err' }, `The update failed in ${d.failed.map(name).join(', ')}; see Details.`) : null,
-      docker.length && d.status === 'update' ? h('p', { class: 'sa-muted sa-small' }, `In Docker (${docker.map((a) => a.name).join(', ')}): docker compose pull && docker compose up -d`) : null,
+      failed.length ? h('p', { class: 'sa-err' }, `The update failed on ${failed.map(where).join(', ')}; see Details.`) : null,
+      docker.length && d.status === 'update' ? h('p', { class: 'sa-muted sa-small' }, `In Docker (${docker.map(where).join(', ')}): docker compose pull && docker compose up -d`) : null,
       h('div', { class: 'sa-multi', style: { margin: '10px 0' } }, button,
         h('button', { class: 'sa-btn', disabled: d.status === 'updating' ? true : null, onclick: async () => { if (await ask({ action: 'check' })) toast('Asking GitHub…'); } }, 'Check now'))].filter(Boolean));
-    // the apps' own lines, shown without asking when they are not all in the same place: one failed, or some are behind and others not
-    const uneven = d.failed.length > 0 || (d.status === 'update' && d.behind.length < live.length);
+    // one line per server, shown without asking when they are not all in the same place: one failed, or some are behind
+    const uneven = failed.length > 0 || (d.status === 'update' && servers.some((c) => !c.behind) && servers.some((c) => c.behind));
     const was = list.querySelector('details');
     list.replaceChildren(h('details', { open: (was ? was.open : uneven) ? true : null },
-      h('summary', { class: 'sa-muted', style: { cursor: 'pointer' } }, `Details: ${d.apps.length} app${d.apps.length === 1 ? '' : 's'}`),
-      h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'App'), h('th', null, 'Version'), h('th', null, 'Last update')),
-        d.apps.map((a) => h('tr', null,
-          h('td', null, h('b', null, a.name), h('div', { class: 'sa-muted sa-small' }, a.app)),
-          h('td', { class: 'sa-small' }, a.version || '–', a.behind ? [' ', h('span', { class: 'sa-badge' }, 'behind')] : null, a.commit ? h('div', { class: 'sa-muted' }, a.commit) : null),
-          h('td', { class: 'sa-small' }, last(a)))))));
+      h('summary', { class: 'sa-muted', style: { cursor: 'pointer' } }, `Details: ${d.copies.length} server${d.copies.length === 1 ? '' : 's'}`),
+      h('table', { class: 'sa-t' }, h('tr', null, h('th', null, 'Server'), h('th', null, 'Version'), h('th', null, 'Last update')),
+        d.copies.map((c) => h('tr', null,
+          h('td', null, h('b', null, where(c)), h('div', { class: 'sa-muted sa-small' }, `${c.apps.length} app${c.apps.length === 1 ? '' : 's'}: ${c.names.join(', ')}`)),
+          h('td', { class: 'sa-small' }, c.version || '–', c.behind ? [' ', h('span', { class: 'sa-badge' }, 'behind')] : null, c.commit ? h('div', { class: 'sa-muted' }, c.commit) : null),
+          h('td', { class: 'sa-small' }, last(c)))))));
   };
   draw();
   if (round) watch();
   const auto = h('input', { type: 'checkbox', checked: d.autoCheck, onchange: async (e) => { if (await ask({ autoCheck: e.target.checked })) toast('Saved'); else e.target.checked = !e.target.checked; } });
   el.append(box('update', 'Updates',
-    h('p', { class: 'sa-muted' }, 'The suite has one version, and every app is updated together: each app installs the new version with its own update.sh and restarts; settings and data stay.'),
+    h('p', { class: 'sa-muted' }, 'The suite has one version. Every server of the suite updates as one: each copy of the program installs the new version with update.sh and starts again; settings and data stay.'),
     head, h('label', { class: 'sa-check' }, auto, h('span', null, 'Check for a new version daily')), list));
 }
 
