@@ -434,3 +434,17 @@ def test_a_redirect_keeps_the_address_as_it_was_asked(monkeypatch, path, query):
     s, hd, _ = ask(a_host("iostart", "iocalendar"), path, query=query)
     assert s == 307 and hd["location"].startswith("http://home.example.com:8443/calendar/dav/") and " " not in hd["location"]
     assert hd["location"].endswith("?" + query if query else "/")
+
+
+def test_the_copy_says_whether_it_is_serving(monkeypatch):
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar")
+    s, _, b = ask(h, "/-/status")
+    assert s == 200 and b == {"detail": "ok"}  # a visitor is told no more
+    s, _, b = ask(h, "/-/status", port=8443, peer=HERE)
+    assert s == 200 and b["door"] == "sync" and b["apps"] == [{"app": "iostart", "state": "up", "error": ""}, {"app": "iocalendar", "state": "up", "error": ""}]
+    h.by_name["iocalendar"].state = "failed"  # tried again by itself: the copy is serving all the same
+    assert ask(h, "/-/status")[0] == 200
+    h.by_name["iocalendar"].state = "starting"
+    s, _, b = ask(h, "/-/status")
+    assert s == 503 and b == {"detail": "starting"}

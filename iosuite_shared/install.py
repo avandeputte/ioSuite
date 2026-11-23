@@ -617,7 +617,7 @@ def main(a, log=print, run=sh, ask=input, secret=getpass.getpass, unit_dir: Path
                 log("  no password given: the admin is made in the browser on the first visit")
     address = a.address if a.address is not None else (asker.text("The suite's address behind your reverse proxy, e.g. https://home.example.com (empty: the address it is reached at)", "")
                                                        if new else None)
-    if address is not None:
+    if address or a.address is not None:  # an empty answer changes nothing; --address '' takes it away
         from iosuite_shared import admin
         try:
             got = admin.set_setting(admin.SUITE, "PUBLIC_URL", address)

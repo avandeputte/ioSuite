@@ -39,6 +39,7 @@ log = logging.getLogger("iosuite_shared.host")
 RETRY_S = 30.0          # an app that could not start is tried again this often
 THREADS_PER_APP = 16    # the thread pool: at least anyio's own 40, more with many apps
 SHUTDOWN_GRACE = 3      # a stop waits this long for open requests (event streams stay open as long as a page shows)
+STATUS_PATH = "/-/status"  # the copy's own answer, whichever apps it runs (no app has a path that begins /-/)
 UNREAD_EVERY_S = 15.0   # started while the Shared ioSuite database was away: looked for this often, then started again
 
 # the app a piece of work belongs to: set for each request and each app's start-up, so its log lines go to its file
@@ -136,6 +137,9 @@ class Host:
             await self._lifespan(receive, send)
             return
         door = self.door_of(scope)
+        if scope["type"] == "http" and scope.get("path") == STATUS_PATH:
+            await self._status(scope, send)
+            return
         table = await self.routes()
         from iosuite_shared import proxyauth
         peer = (scope.get("client") or ("",))[0]
@@ -188,6 +192,15 @@ class Host:
             await e.asgi(inner, receive, doors.with_folder(send, scope, r.folder))
         finally:
             CURRENT.reset(token)
+
+    async def _status(self, scope: Scope, send: Send) -> None:
+        """/-/status: whether this copy is serving (a container's health check, a load balancer's): 200 once every
+        app has had its start, 503 before. Which app is in which state is told to this machine only."""
+        started = all(e.state != "starting" for e in self.entries)
+        more = {}
+        if (scope.get("client") or ("",))[0] in ("127.0.0.1", "::1"):
+            more = {"apps": self.status(), "door": self.door_of(scope)}
+        await doors.json_answer(send, 200 if started else 503, "ok" if started else "starting", **more)
 
     # ---- start-up and shutdown: each app's own, in a task of its own
     async def _lifespan(self, receive: Receive, send: Send) -> None:
