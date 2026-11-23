@@ -956,8 +956,11 @@ body.arranging .dock .arr[data-arr="tile"] { outline-offset: -1px; }
   .nwread h1 { font-size: 22px; }
   .nwrow-go { padding: 10px 8px; font-size: var(--fs-base); }
 }
-/* the start page's Headlines card: a line per article, in as many columns as fit */
-.newscard .nwlines { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 5px 28px; }
+/* the start page's Headlines card: a line per article, two across (three cut too much of a title off), four deep;
+   one across where two would not fit */
+.newscard { margin-top: 16px; }
+.newscard .nwlines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 28px; }
+@media (max-width: 700px) { .newscard .nwlines { grid-template-columns: minmax(0, 1fr); } }
 .nwline { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .nwline-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .nwline-by { font-size: var(--fs-s); flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -24,7 +24,7 @@ const feedIcon = (f) => (f && f.icon ? h('img', { class: 'nwico', src: f.icon, a
     follows no feed (the gear menu's Feeds is where to start). */
 export async function drawNewsCard(el, keep = false) {
   let d;
-  try { d = await api('api/news/card?n=6'); } catch { d = { feeds: 0, items: [], unread: 0 }; }
+  try { d = await api('api/news/card?n=8'); } catch { d = { feeds: 0, items: [], unread: 0 }; }
   if (!el.isConnected) return;
   el.hidden = !d.feeds && !keep;  // keep: the page is being arranged, and the card has to be there to be moved or taken off
   if (!d.feeds) { el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, 'Headlines')), h('div', { class: 'muted small' }, 'The newest articles of the feeds you follow (gear menu, Feeds).')); return; }
