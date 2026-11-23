@@ -109,7 +109,7 @@ def put_keys():
 
 def test_sync_needs_the_sign_in_in_keys_and_tokens(client, mm):
     r = client.post("/api/monarch/sync").json()
-    assert r["ok"] is False and "Keys and tokens" in r["message"] and r["signIn"]
+    assert r["ok"] is False and "Settings › Keys" in r["message"] and r["signIn"]
     keys = {k["name"] for k in client.get("/api/suite-admin/keys").json().get("items", [])} if client.get("/api/suite-admin/keys").status_code == 200 else set()
     assert not keys or {"monarch_email", "monarch_password", "monarch_mfa_secret", "monarch_token"} <= keys
 
