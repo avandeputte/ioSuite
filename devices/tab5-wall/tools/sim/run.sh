@@ -6,6 +6,8 @@
 #   ./run.sh 7b                 the Waveshare 7B's (1024 x 600)
 #   ./run.sh tab5 -v            every area sent to the panel as well
 #   MAIN=/path/to/other/main ./run.sh    another copy of the firmware (the one before a change, to compare)
+#   SIM_RUN="valgrind --tool=callgrind --dump-before=report --callgrind-out-file=out/cg" ./run.sh 7b
+#                               under a tool: here the instructions each step took, one file per step, by function
 #
 # Needs gcc, git and binutils. LVGL 9.3.0 and cJSON are fetched once into .src/ (SIM_SRC to keep them elsewhere).
 set -e
@@ -37,4 +39,4 @@ gcc $CF -c sim.c -o "$B/sim.o" &
 gcc $CF -w -c "$SRC/cJSON/cJSON.c" -o "$B/cJSON.o" &
 wait
 gcc -o "$B/sim" "$B"/*.o "$SRC/lvgl.a" -lm -Wl,--wrap=lv_draw_sw_blend
-"$B/sim" "$@"
+$SIM_RUN "$B/sim" "$@"

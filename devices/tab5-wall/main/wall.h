@@ -304,8 +304,15 @@ void kit_close_panel(void);
 bool kit_panel_open(void);
 /** What the open panel is drawn on, the whole screen wide (a keyboard under its card goes here); NULL when none is. */
 lv_obj_t *kit_panel_layer(void);
-/** How long the large redraws took since the last reset, for Settings: "12 large redraws · 31 ms each · …". */
-void ui_frames_reset(void);
+/** How long the redraws took since the last reset: how many, and added up over them the time of each (µs), how much
+ *  of it went to sending what was drawn to the panel (the rest is drawing), the pixels sent, and the slowest one. */
+typedef struct {
+    uint32_t n, all, sending, px, worst;
+} ui_frames_t;
+/** Counts from here the frames that send from_px pixels or more; 0: the large ones, a quarter of the screen. */
+void ui_frames_reset(uint32_t from_px);
+void ui_frames_get(ui_frames_t *out);
+/** For Settings: "12 large redraws · 31 ms each (22 drawing, 9 sending) · the slowest 80 ms". */
 void ui_frames_text(char *out, size_t n);
 
 /* time and text, as the person reads them */
@@ -361,6 +368,15 @@ void ota_check_now(bool install);
 ota_state_t ota_state(void);
 const char *ota_text(void);
 const char *wall_version(void);
+
+/* ------------------------------------------------------------------ bench.c */
+
+/** Measures the screen on the board: scrolls Settings, drags, swipes and changes the photo by itself, after_ms from
+ *  now and on a task of its own, and says in the log and in bench_result() what the frames of each took. */
+void bench_start(int after_ms);
+bool bench_running(void);
+const char *bench_result(void);   /* a line per scene; "" before the first run */
+bool bench_fresh(void);           /* a run has ended since this was last asked */
 
 /* ------------------------------------------------------------------ boot.c */
 

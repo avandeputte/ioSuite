@@ -1,4 +1,5 @@
 /* ioWall: the start page's wall on the wall, on an M5Stack Tab5 or a Waveshare ESP32-P4-WIFI6-Touch-LCD-7B (board.h). */
+#include <string.h>
 #include "bsp/esp-bsp.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -78,4 +79,6 @@ void app_main(void)
     }
     boot_running();
     ESP_LOGI(TAG_WALL, "ioWall %s", wall_version());
+    /* a pull request's build measures its own screen once the wall is up: a board on a cable is restarted for it */
+    if (!strncmp(wall_version(), "pr", 2)) bench_start(30000);
 }

@@ -17,6 +17,9 @@
 #include "driver/jpeg_decode.h"
 
 int sim_quiet = 1, sim_notified;
+/* what a run of the board's own measuring leaves in Settings (bench.c) */
+static const char *sim_bench = "Settings opens: 2 frames of 100% of the screen, 80.1 ms each (61.0 drawing, 19.1 sending), the slowest 120\n"
+                               "Settings scrolled: 150 frames of 61% of the screen, 44.8 ms each (30.1 drawing, 14.7 sending), the slowest 61";
 static uint32_t now_ms = 1000;
 static lv_display_t *disp;
 static lv_indev_t *indev;
@@ -134,6 +137,10 @@ bool clock_is_set(void) { return true; }
 void clock_set_zone(const char *posix) {}
 
 /* ota.c */
+void bench_start(int after_ms) {}
+bool bench_running(void) { return false; }
+bool bench_fresh(void) { return false; }
+const char *bench_result(void) { return sim_bench; }
 void ota_start(void) {}
 void ota_check_now(bool install) {}
 ota_state_t ota_state(void) { return OTA_NONE; }

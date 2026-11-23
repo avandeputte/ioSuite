@@ -621,6 +621,11 @@ static void on_check(lv_event_t *e)
     ota_check_now(true);
 }
 
+static void on_measure(lv_event_t *e)
+{
+    bench_start(300);
+}
+
 static void on_settings_closed(lv_event_t *e)
 {
     ota_lbl = frames_lbl = NULL;
@@ -669,7 +674,7 @@ void ui_show_settings(void)
 {
     lv_obj_t *c = kit_panel("Settings", P(1180), P(680));
     lv_obj_add_event_cb(c, on_settings_closed, LV_EVENT_DELETE, NULL);
-    ui_frames_reset();   /* the Screen line counts from here: opening this, and what is scrolled in it */
+    ui_frames_reset(0);  /* the Screen line counts from here: opening this, and what is scrolled in it */
     char t[200];
 
     lv_obj_t *r = setting(c, "Signed in");
@@ -737,9 +742,15 @@ void ui_show_settings(void)
 
     /* how long the screen takes to draw, measured here: the one way to know on a board nobody has a probe on */
     r = setting(c, "Screen");
+    kit_button(r, bench_running() ? "Measuring…" : "Measure", on_measure, NULL, false);
     ui_frames_text(t, sizeof t);
-    frames_lbl = kit_label(r, font_text(26), DIM, t);
-    lv_obj_set_size(frames_lbl, P(760), lv_font_get_line_height(font_text(26)));
+    frames_lbl = kit_label(c, font_text(24), DIM, t);
+    lv_obj_set_size(frames_lbl, lv_pct(100), lv_font_get_line_height(font_text(24)));   /* changes every second: a fixed size */
+    line(c, 22, DIM, "Since Settings opened. Measure scrolls, drags and swipes by itself for half a minute, then says here what each frame took.");
+    if (bench_result()[0]) {
+        lv_obj_t *res = line(c, 22, DIM, bench_result());
+        if (bench_fresh()) lv_obj_scroll_to_view(res, LV_ANIM_OFF);   /* just measured: this is what is asked for */
+    }
 
     r = setting(c, "Firmware");
     snprintf(t, sizeof t, "Version %s", wall_version());

@@ -267,9 +267,9 @@ void ui_start(lv_display_t *disp)
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     lv_indev_t *in = bsp_display_get_input_dev();
     if (in) lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_START, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_FLUSH_START, NULL);
-    lv_display_add_event_cb(disp, on_frame, LV_EVENT_REFR_READY, NULL);
+    static const lv_event_code_t timed[] = {LV_EVENT_REFR_START, LV_EVENT_FLUSH_START, LV_EVENT_FLUSH_FINISH,
+                                            LV_EVENT_FLUSH_WAIT_START, LV_EVENT_FLUSH_WAIT_FINISH, LV_EVENT_REFR_READY};
+    for (size_t i = 0; i < sizeof timed / sizeof *timed; i++) lv_display_add_event_cb(disp, on_frame, timed[i], NULL);
     lv_timer_create(tick, 1000, NULL);
     ui_apply_brightness();
     if (S.server[0] && S.token[0]) {
@@ -466,31 +466,46 @@ lv_obj_t *kit_panel(const char *title, int w, int h)
 
 /* ------------------------------------------------------------------ how long the screen takes to draw */
 
+/* A frame is drawn by LVGL (into its own buffer, in the PSRAM), then sent: turned by the pixel processor where the
+ * screen is turned, and handed to the copy into the panel's frame. The two are told apart here, since which of them
+ * a slow frame is made of decides what would make it fast. */
 static struct {
-    int64_t started;         /* when the frame began (µs) */
+    int64_t started, mark;   /* when the frame began, and the sending or waiting now going on (µs) */
     uint32_t px;             /* what the frame sent to the panel so far */
-    uint32_t n, sum, worst;  /* the large frames since the last reset */
-} frames;
+    uint32_t sending;        /* µs of the frame spent sending, waits for the frame before included */
+    uint32_t from;           /* frames that sent this many pixels or more are counted */
+    ui_frames_t sum;         /* those since the last reset: times in µs, added up */
+} frames = {.from = WALL_W * WALL_H / 4};
 
 static void on_frame(lv_event_t *e)
 {
+    int64_t now = esp_timer_get_time();
     switch (lv_event_get_code(e)) {
     case LV_EVENT_REFR_START:
-        frames.started = esp_timer_get_time();
-        frames.px = 0;
+        frames.started = now;
+        frames.px = frames.sending = 0;
         break;
     case LV_EVENT_FLUSH_START: {
         const lv_area_t *a = lv_event_get_param(e);
         if (a) frames.px += (uint32_t)lv_area_get_size(a);
+        frames.mark = now;
         break;
     }
+    case LV_EVENT_FLUSH_WAIT_START:
+        frames.mark = now;
+        break;
+    case LV_EVENT_FLUSH_FINISH:
+    case LV_EVENT_FLUSH_WAIT_FINISH:
+        frames.sending += (uint32_t)(now - frames.mark);
+        break;
     case LV_EVENT_REFR_READY:
-        /* a frame that drew a quarter of the screen or more: a scroll, a panel, a photo; not the clock's minute */
-        if (frames.px >= (uint32_t)(WALL_W * WALL_H / 4)) {
-            uint32_t ms = (uint32_t)((esp_timer_get_time() - frames.started + 500) / 1000);
-            frames.n++;
-            frames.sum += ms;
-            if (ms > frames.worst) frames.worst = ms;
+        if (frames.px && frames.px >= frames.from) {
+            uint32_t us = (uint32_t)(now - frames.started);
+            frames.sum.n++;
+            frames.sum.all += us;
+            frames.sum.sending += frames.sending;
+            frames.sum.px += frames.px;
+            if (us > frames.sum.worst) frames.sum.worst = us;
         }
         break;
     default:
@@ -498,14 +513,26 @@ static void on_frame(lv_event_t *e)
     }
 }
 
-void ui_frames_reset(void)
+void ui_frames_reset(uint32_t from_px)
 {
-    frames.n = frames.sum = frames.worst = 0;
+    memset(&frames.sum, 0, sizeof frames.sum);
+    /* by default a quarter of the screen or more: a scroll, a panel, a photo; not the clock's minute */
+    frames.from = from_px ? from_px : (uint32_t)(WALL_W * WALL_H / 4);
+}
+
+void ui_frames_get(ui_frames_t *out)
+{
+    *out = frames.sum;
 }
 
 void ui_frames_text(char *out, size_t n)
 {
-    if (!frames.n) strlcpy(out, "Nothing large drawn yet", n);
-    else snprintf(out, n, "%u large redraws · %u ms each · the slowest %u ms", (unsigned)frames.n,
-                  (unsigned)(frames.sum / frames.n), (unsigned)frames.worst);
+    const ui_frames_t *f = &frames.sum;
+    if (!f->n) {
+        strlcpy(out, "Nothing large drawn yet", n);
+        return;
+    }
+    unsigned all = (f->all / f->n + 500) / 1000, sending = (f->sending / f->n + 500) / 1000;
+    snprintf(out, n, "%u large redraws · %u ms each (%u drawing, %u sending) · the slowest %u ms", (unsigned)f->n, all,
+             all > sending ? all - sending : 0, sending, (unsigned)((f->worst + 500) / 1000));
 }

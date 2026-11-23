@@ -26,7 +26,9 @@ Firmware that puts the start page's wall (`#/wall`) on its own screen, on USB po
   while USB power fills it). Settings › Power shows the readings as they are. The Waveshare board has nothing that
   measures its battery.
 - **How quick it draws** is on the device: Settings › Screen counts the large redraws (a scroll, a panel, a
-  photo) since Settings was opened and says how long they took, each and the slowest.
+  photo) since Settings was opened and says how long they took, each and the slowest, and how much of that was
+  drawing and how much sending what was drawn to the panel. **Measure** there scrolls Settings, drags a slider,
+  swipes to a view and changes the photo by itself for half a minute and then lists what the frames of each took.
 - **Updates itself** at 3 AM from the release `wall-latest` (Settings turns that off). A firmware that does not
   run for a minute is rolled back.
 
@@ -87,6 +89,7 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/ui.c`, `ui_wall.c`, `ui_setup.c`, `ui_panels.c` | the screens (LVGL), laid out for 1280 × 720; `P()` brings each size to the board's screen |
 | `main/alarm.c` | timers, alarms, the sound |
 | `main/power.c` | the battery's level (the Tab5's INA226) |
+| `main/bench.c` | the screen measured on the board: Settings › Screen › Measure, and by itself on a pull request's build |
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
 | `main/fonts/` | Inter (SIL Open Font License, `OFL.txt`) |
@@ -122,3 +125,8 @@ with scripted touches, and prints for each step how many frames it took and how 
 filled, copied and blended in them (`./run.sh 7b` for the Waveshare's size, `MAIN=… ./run.sh` for another copy of
 `main/`, to compare). The pictures of what it passed are in `tools/sim/out/`. It counts work, not time: how long a
 frame takes on the board is what Settings › Screen says.
+
+On the board, `main/bench.c` does the same touches with a finger that is not there and times every frame: Settings ›
+Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). A pull
+request's build (version `pr…`) runs it by itself half a minute after it starts, so a board on a cable is measured
+by restarting it and reading its log.
