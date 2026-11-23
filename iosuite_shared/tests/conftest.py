@@ -22,5 +22,6 @@ def fresh_db(monkeypatch):
     monkeypatch.setattr("iosuite_shared.passwords.HASHER", testing.FAST_HASHER)  # fast hashes for the tests
     monkeypatch.setattr("iosuite_shared.config.ADMIN_USER", "")
     monkeypatch.setattr("iosuite_shared.config.LOG_FILE", None)  # no log file of the tests' own
+    monkeypatch.setattr("iosuite_shared.config.OF_APP", {})  # what an earlier test's app read as it was loaded
     db.init()
     yield
