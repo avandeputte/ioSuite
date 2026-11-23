@@ -36,8 +36,10 @@ def _client(app):
 def clean(_client):
     from iohealth import webapi
     from iohealth.auth import auth
-    for t in threading.enumerate():  # the last test's finished sync may still be sending its notifications: its writes
-        if t.name == "after-sync":     # would deadlock with the deletes below
+    # what the last test's finished sync started may still be at work (the hourly rollup of a type seen for the first
+    # time, its notifications): their writes would deadlock with the deletes below
+    for t in threading.enumerate():
+        if t.name in ("after-sync", "hourly-rollup"):
             t.join(10)
     with db.pool.auto() as con, con.cursor() as cur:
         for t in HEALTH_TABLES:
