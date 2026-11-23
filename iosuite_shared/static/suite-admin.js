@@ -752,8 +752,16 @@ async function logs(el, ctx) {
   let lines = [], cursors = {}, copies = [], names = [], timer = null, busy = false, round = 0;
   const list = h('div', { class: 'sa-log', tabindex: 0 }), note = h('div'), count = h('span', { class: 'sa-muted sa-small' });
   const several = () => copies.length > 1;
+  // a line's time as its copy wrote it; with several copies, by this browser's clock: one clock for the timeline,
+  // whatever time zone each copy keeps
+  const two = (n) => String(n).padStart(2, '0');
+  const clock = (r) => {
+    if (!several() || !r.ts) return r.time ? r.time.slice(5, 19) : '';
+    const d = new Date(r.ts * 1000);
+    return `${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  };
   const row = (r) => h('div', { class: `sa-ll ${/^(ERROR|CRITICAL)$/.test(r.level) || /Traceback/.test(r.text) ? 'err' : r.level === 'WARNING' ? 'warn' : ''}` },
-    h('span', { class: 'sa-lt' }, r.time ? r.time.slice(5, 19) : ''), ' ',
+    h('span', { class: 'sa-lt' }, clock(r)), ' ',
     several() ? h('span', { class: 'sa-lc' }, `${r.copy} `) : null,
     st.app ? null : h('span', { class: 'sa-la' }, `${r.app === '-' ? 'server' : appLabel({ apps: names }, r.app)} `),
     h('span', { class: 'sa-lv' }, `${r.level} `), h('span', { class: 'sa-muted' }, `${r.logger}: `), r.text);
