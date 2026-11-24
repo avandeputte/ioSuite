@@ -52,6 +52,9 @@ CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 # a look at the touch panel and, when something changed, a frame every 10 ms at the most
 CONFIG_LV_DEF_REFR_PERIOD=10
+# see-through drawing with this firmware's own loops (main/wall_blend.h, which LVGL's blending code includes)
+CONFIG_LV_DRAW_SW_ASM_CUSTOM=y
+CONFIG_LV_DRAW_SW_ASM_CUSTOM_INCLUDE="wall_blend.h"
 CONFIG_LV_USE_TINY_TTF=y
 CONFIG_LV_USE_QRCODE=y
 CONFIG_LV_FONT_MONTSERRAT_16=y
