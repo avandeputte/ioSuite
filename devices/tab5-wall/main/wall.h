@@ -310,6 +310,11 @@ void kit_panel_keep(bool on);
 /** false: what an open panel's card hides is drawn under it all the same, as LVGL does by itself. For comparing, as
  *  kit_panel_keep. */
 void kit_panel_cull(bool on);
+/** For the measuring: a large area is drawn in strips of about so many bytes of pixels (0: in one piece), and how
+ *  long (µs) the rows of the open panel that are in view take to draw into its picture, in strips of so many rows
+ *  (0: in one piece). */
+void kit_bands(int bytes);
+uint32_t kit_panel_rows_us(int strip);
 void kit_close_panel(void);
 bool kit_panel_open(void);
 /** What the open panel is drawn on, the whole screen wide (a keyboard under its card goes here); NULL when none is. */

@@ -264,6 +264,7 @@ static void on_any_press(lv_event_t *e)
 static void on_frame(lv_event_t *e);
 static void on_keep_display(lv_event_t *e);
 static void on_cull(lv_event_t *e);
+static void on_bands(lv_event_t *e);
 
 /* A touch at the very edge of the glass is reported one past the last pixel (the touch driver mirrors a coordinate
  * as "the size minus it", and 0 becomes the size). LVGL writes a warning to the log for every reading of such a
@@ -300,6 +301,7 @@ void ui_start(lv_display_t *disp)
     lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_REFR_START, NULL);
     lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_REFR_READY, NULL);
     lv_display_add_event_cb(disp, on_cull, LV_EVENT_REFR_START, NULL);
+    lv_display_add_event_cb(disp, on_bands, LV_EVENT_REFR_START, NULL);
     lv_timer_create(tick, 1000, NULL);
     ui_apply_brightness();
     if (S.server[0] && S.token[0]) {
@@ -482,7 +484,7 @@ static struct {
 } keep;
 
 /* draws part of the content (in its own coordinates) into the picture */
-static void keep_draw(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+static void keep_draw_part(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
     lv_obj_t *c = keep.content;
     lv_area_t a = {x1 + c->coords.x1, y1 + c->coords.y1, x2 + c->coords.x1, y2 + c->coords.y1};
@@ -508,6 +510,25 @@ static void keep_draw(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
     }
     disp->layer_head = head;
     lv_refr_set_disp_refreshing(was);
+}
+
+static int32_t keep_strip;   /* the rows are drawn in strips of so many (0: in one piece) */
+
+static void keep_draw(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+{
+    int32_t rows = keep_strip > 0 ? keep_strip : y2 - y1 + 1;
+    for (int32_t y = y1; y <= y2; y += rows) keep_draw_part(x1, y, x2, LV_MIN(y2, y + rows - 1));
+}
+
+uint32_t kit_panel_rows_us(int strip)
+{
+    if (!keep.buf || keep.y0 >= keep.y1) return 0;
+    int32_t was = keep_strip;
+    keep_strip = strip;
+    int64_t t0 = esp_timer_get_time();
+    keep_draw(0, keep.y0, (int32_t)keep.buf->header.w - 1, keep.y1 - 1);
+    keep_strip = was;
+    return (uint32_t)(esp_timer_get_time() - t0);
 }
 
 static void keep_drop(void)
@@ -649,6 +670,45 @@ static void on_cull(lv_event_t *e)
             if (around[k].x1 > around[k].x2 || around[k].y1 > around[k].y2) continue;
             d->inv_area_joined[d->inv_p] = 0;
             d->inv_areas[d->inv_p++] = around[k];
+        }
+    }
+}
+
+/* A large area drawn in strips.
+ *
+ * LVGL draws an area thing by thing: the photo over all of it, then each text and each see-through panel over that.
+ * The area is far larger than what the processor keeps at hand of the PSRAM (the cache, 256 KB: a fifth of a screen),
+ * so by the time a text is drawn the photo's pixels under it are fetched from the PSRAM again. Cut into strips that
+ * fit, everything on a strip is drawn while its pixels are still at hand. Whether that is faster on the board is
+ * what the measuring asks (bench.c): until it says so, an area is drawn in one piece. */
+static int32_t band_bytes;
+
+void kit_bands(int bytes)
+{
+    band_bytes = bytes;
+}
+
+static void on_bands(lv_event_t *e)
+{
+    lv_display_t *d = lv_event_get_target(e);
+    if (band_bytes <= 0) return;
+    /* what the layout still has to call changed is called so first: an area that comes after the strips are cut
+     * would be drawn besides them, not within them */
+    lv_obj_update_layout(lv_display_get_screen_active(d));
+    lv_obj_update_layout(lv_display_get_layer_top(d));
+    lv_obj_update_layout(lv_display_get_layer_sys(d));
+    uint32_t n = d->inv_p;
+    for (uint32_t i = 0; i < n; i++) {
+        lv_area_t a = d->inv_areas[i];
+        int32_t w = lv_area_get_width(&a), h = lv_area_get_height(&a);
+        int32_t rows = LV_MAX(16, band_bytes / (w * 2)), room = (int32_t)LV_INV_BUF_SIZE - (int32_t)d->inv_p;
+        if (d->inv_area_joined[i] || h < rows * 2 || room < 1) continue;
+        int32_t parts = LV_MIN((h + rows - 1) / rows, room + 1);
+        rows = (h + parts - 1) / parts;
+        d->inv_areas[i].y2 = a.y1 + rows - 1;
+        for (int32_t y = a.y1 + rows; y <= a.y2; y += rows) {
+            d->inv_area_joined[d->inv_p] = 0;
+            d->inv_areas[d->inv_p++] = (lv_area_t){a.x1, y, a.x2, LV_MIN(a.y2, y + rows - 1)};
         }
     }
 }

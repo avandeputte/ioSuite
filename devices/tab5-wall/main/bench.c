@@ -25,7 +25,8 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[6000];
+#define RESULT_MAX 9000
+static char *result;   /* what the last measuring said, a line per scene: in the PSRAM, the memory inside is short */
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -272,6 +273,51 @@ static void upright(void *arg)
 }
 #endif
 
+#define STRIP_BYTES 96000   /* a strip of a large area, in bytes of pixels: well inside the 256 KB kept at hand */
+
+static void strips_on(void *arg)
+{
+    kit_bands(STRIP_BYTES);
+}
+
+static void strips_off(void *arg)
+{
+    kit_bands(0);
+}
+
+/* The rows of the open panel that are in view, drawn into its picture: in one piece and in strips of fewer and fewer
+ * rows, three times each and turn about, so that whatever else the board is doing meanwhile falls on all alike. */
+static const int rows_strip[] = {0, 128, 64, 32, 16};
+static uint32_t rows_us[sizeof rows_strip / sizeof *rows_strip];
+
+static volatile bool rows_done;
+
+static void rows_ab(void *arg)
+{
+    memset(rows_us, 0, sizeof rows_us);
+    for (int r = 0; r < 3; r++) {
+        for (size_t k = 0; k < sizeof rows_strip / sizeof *rows_strip; k++) rows_us[k] += kit_panel_rows_us(rows_strip[k]) / 3;
+    }
+    rows_done = true;
+}
+
+static void note(const char *line);
+
+static void rows_say(void)
+{
+    char line[200];
+    rows_done = false;
+    on_ui(rows_ab);
+    for (int i = 0; i < 100 && !rows_done; i++) wait_ms(100);
+    int used = snprintf(line, sizeof line, "A panel's rows drawn into its picture: in one piece %u.%u ms", (unsigned)(rows_us[0] / 1000),
+                        (unsigned)(rows_us[0] % 1000 / 100));
+    for (size_t k = 1; k < sizeof rows_strip / sizeof *rows_strip && used > 0 && used < (int)sizeof line; k++) {
+        used += snprintf(line + used, sizeof line - (size_t)used, "%s of %d rows %u.%u", k == 1 ? "; in strips" : ",", rows_strip[k],
+                         (unsigned)(rows_us[k] / 1000), (unsigned)(rows_us[k] % 1000 / 100));
+    }
+    note(line);
+}
+
 static void rows_drawn(void *arg)
 {
     kit_panel_keep(false);
@@ -315,8 +361,9 @@ static void from_here(int percent)
 static void note(const char *line)
 {
     ESP_LOGI(TAG, "%s", line);
+    if (!result) return;
     size_t used = strlen(result);
-    snprintf(result + used, sizeof result - used, "%s%s", used ? "\n" : "", line);
+    snprintf(result + used, RESULT_MAX - used, "%s%s", used ? "\n" : "", line);
 }
 
 /* how fast the memory the screen is drawn in is by itself: a screen of pixels copied within the PSRAM, as a photo is
@@ -351,7 +398,7 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[420];
+    char line[460];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
@@ -371,6 +418,10 @@ static void say(const char *what)
         if (made_us && used > 0 && used < (int)sizeof line) {
             used += snprintf(line + used, sizeof line - (size_t)used, "; made in %u.%u before that", (unsigned)(made_us / 1000),
                              (unsigned)(made_us % 1000 / 100));
+        }
+        if (used > 0 && used < (int)sizeof line) {
+            used += snprintf(line + used, sizeof line - (size_t)used, "; %u K free inside",
+                             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024));
         }
         /* the pixels of a frame, in hundredths of a screen */
         for (int k = 0; k < 2; k++) {
@@ -397,7 +448,8 @@ static void run(void *arg)
         vTaskDelete(NULL);
         return;
     }
-    result[0] = 0;
+    if (!result) result = heap_caps_malloc(RESULT_MAX, MALLOC_CAP_SPIRAM);
+    if (result) result[0] = 0;
     char head[200];
     snprintf(head, sizeof head, "%s %s, %s%s, memory free: %u K inside, %u K outside", BOARD_NAME, wall_version(),
              S.flip ? "turned around" : "as mounted", send_beside() ? "" : " (turned frames sent the board package's way)",
@@ -429,6 +481,7 @@ static void run(void *arg)
     on_ui(settings);
     wait_ms(700);
     say("Settings opens again");
+    rows_say();
 
     /* and with the wall under its card drawn too, as LVGL does by itself */
     on_ui(home);
@@ -452,8 +505,17 @@ static void run(void *arg)
     from_here(10);
     scroll_settings();
     say("The same, every row drawn each time");
+    /* and each frame of that in strips */
+    on_ui(top);
+    on_ui(strips_on);
+    wait_ms(300);
+    from_here(10);
+    scroll_settings();
+    say("The same, every row drawn each time, in strips");
+    on_ui(strips_off);
     on_ui(rows_kept);
     wait_ms(300);
+    rows_say();
 
     /* the same with the screen the other way round: on a board that is turned by half a turn only (the 7B), one of
      * the two is sent as drawn and the other through the pixel processor, and the difference is what turning costs */
@@ -505,6 +567,16 @@ static void run(void *arg)
     say("A swipe to the view again");
     drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
     wait_ms(1200);
+    on_ui(strips_on);
+    from_here(10);
+    drag(WALL_W * 3 / 4, WALL_H / 2, WALL_W / 4, WALL_H / 2, 200);
+    wait_ms(1200);
+    say("A swipe to the view once more, drawn in strips");
+    from_here(10);
+    drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
+    wait_ms(1200);
+    say("A swipe back, drawn in strips");
+    on_ui(strips_off);
     on_ui(home);
     wait_ms(800);
 
@@ -515,6 +587,14 @@ static void run(void *arg)
         wait_ms(150);
     }
     say("The wall drawn whole");
+    on_ui(strips_on);
+    from_here(10);
+    for (int i = 0; i < 10; i++) {
+        on_ui(whole);
+        wait_ms(150);
+    }
+    say("The wall drawn whole, in strips");
+    on_ui(strips_off);
 
     from_here(10);
     feed_next_photo();
@@ -565,5 +645,5 @@ bool bench_fresh(void)
 
 const char *bench_result(void)
 {
-    return result;
+    return result ? result : "";
 }

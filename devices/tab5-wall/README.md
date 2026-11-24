@@ -182,4 +182,7 @@ a panel or a view is put together), and each scene's line splits its frames' tim
 what a frame was made of in pixels, counted as the simulator counts them (screens filled, copied and blended, and
 in how many pieces): a scene that is slower on the board than its count on a PC is then either drawing more than
 the PC did, or the same pixels slower. Each scrolling scene begins at the top of Settings, wherever the glides of
-the one before it ended: they go further the longer a frame takes.
+the one before it ended: they go further the longer a frame takes. Some scenes are measured twice, the second time
+with every large area cut into strips that fit in what the processor keeps at hand of the PSRAM (`kit_bands`,
+off otherwise), and a panel's rows are drawn into its picture in one piece and in strips turn about: what is
+faster on the board is then kept. The simulator's check draws everything in strips as well and compares.
