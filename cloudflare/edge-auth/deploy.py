@@ -9,7 +9,12 @@ It stops before sending when there is no Worker of that name, or when the one th
 APP_PASSWORDS (then it is not this Worker, or it was never set up: setup.py does that). After sending it reads the
 script back and says whether Cloudflare has what is in this folder.
 
-The token needs Account › Workers Scripts: Edit. Standard library only.
+It also says how the Worker is set up, without naming a host (a run's log may be public): its mode, the apps APPS
+names and its routes, with a warning for what turns every device of a host away: a route on a host APPS does not
+name, a host named for something that is no app of the suite.
+
+The token needs Account › Workers Scripts: Edit; with Zone › Workers Routes it reads the routes too. Standard library
+only.
 """
 import argparse
 import hashlib
@@ -45,6 +50,53 @@ def call(method: str, path: str, data: bytes | None = None, content_type: str = 
         return e.code, said
 
 
+def apps_named(text: str) -> dict | None:
+    """How many hosts APPS gives each app ({"calendar.example.com": "iocalendar"} is {"iocalendar": 1}); None when it
+    is not what the Worker can read. The hosts themselves are not printed: a run's log may be public."""
+    try:
+        apps = json.loads(text or "{}")
+    except ValueError:
+        return None
+    if not isinstance(apps, dict):
+        return None
+    named: dict = {}
+    for app in apps.values():
+        named[str(app)] = named.get(str(app), 0) + 1
+    return named
+
+
+def suite_apps() -> set:
+    """The names the suite publishes app passwords under: each app's key (its app.json), where devices sign in."""
+    found = set()
+    for manifest in HERE.parent.parent.glob("*/app.json"):
+        try:
+            app = json.loads(manifest.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        if app.get("sync"):
+            found.add(app.get("key"))
+    return found
+
+
+def routes(name: str) -> list | None:
+    """The Worker's routes as (host, path) pairs, from every zone the token sees; None when the token may not look
+    (it needs Zone › Workers Routes: Read or Edit; sending the script does not)."""
+    status, zones = call("GET", "/zones?per_page=50")
+    if status != 200 or not isinstance(zones, list):
+        return None
+    found, looked = [], False
+    for z in zones:
+        status, rs = call("GET", f"/zones/{z['id']}/workers/routes")
+        if status != 200 or not isinstance(rs, list):
+            continue
+        looked = True
+        for r in rs:
+            if r.get("script") == name:
+                host, _, path = (r.get("pattern") or "").partition("/")
+                found.append((host.lower(), "/" + path))
+    return found if looked else None
+
+
 def form(script: bytes) -> tuple[bytes, str]:
     """The script as Cloudflare takes it: a form with what the main module is called, and the module."""
     edge = "ioSuite" + uuid.uuid4().hex
@@ -78,6 +130,29 @@ def main():
         sys.exit(f"The Worker {a.name} has no KV namespace bound as {NAMESPACE}: nothing sent. setup.py sets it up (README.md).")
     mode = (bindings.get("MODE") or {}).get("text") or "monitor"
     print(f"Worker {a.name}: {NAMESPACE} is bound, APPS is {'set' if 'APPS' in bindings else 'NOT set'}, MODE is {mode}")
+    named = apps_named((bindings.get("APPS") or {}).get("text") or "")
+    if named is None:
+        print("::warning::APPS is not JSON: the Worker checks nothing. setup.py writes it (README.md).")
+    else:
+        hosts = {str(h).lower(): str(app) for h, app in json.loads(bindings["APPS"]["text"]).items()} if named else {}
+        mine = routes(a.name)
+        if mine is None:
+            print("its routes: not looked at (this token does not read the zone's Workers routes)")
+        for host, path in sorted(mine or [], key=lambda r: (hosts.get(r[0], ""), r[1])):
+            if host in hosts:
+                print(f"route {path} on the host of {hosts[host]}")
+            else:
+                # the Worker checks /dav* of a host it has no app for too, finds no password and, enforcing, answers 401
+                print(f"::warning::A route ({path}) is on a host that APPS does not name: the Worker has no app to look its app "
+                      f"passwords up for and, enforcing, turns every device there away. Add the host to APPS with its app "
+                      f"(setup.py --host <host>=<app>), or remove the route.")
+        known = suite_apps()
+        print("APPS names " + (", ".join(f"{app} ({n} host{'s' if n > 1 else ''})" for app, n in sorted(named.items())) or "no host"))
+        for app in sorted(set(named) - known):
+            # the keys the suite publishes are <app>:<prefix> with the app's own name, so under another name the
+            # Worker finds no password and turns every request of that host away
+            print(f"::warning::APPS names {app!r}, which is no app of the suite ({', '.join(sorted(known))}): the Worker finds no "
+                  f"app password for that host and, enforcing, turns its devices away. Name the host's app in APPS (README.md).")
 
     if a.dry_run:
         print(f"would send {MAIN} ({len(script)} bytes, {mark})")

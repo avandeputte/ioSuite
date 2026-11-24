@@ -59,7 +59,7 @@ the top of the script.
 ```
 export CLOUDFLARE_API_TOKEN=…  CLOUDFLARE_ACCOUNT_ID=…
 python3 setup.py --host calendar.example.com=iocalendar --host contacts.example.com=iocontact \
-    --host start.example.com=iosuite --deploy --rate-limit --app-token-file ~/.iosuite-edge-kv-token
+    --host start.example.com=iostart --deploy --rate-limit --app-token-file ~/.iosuite-edge-kv-token
 ```
 
 Then step 3 with the ids it prints and that token file. By hand:
@@ -108,10 +108,16 @@ export CLOUDFLARE_API_TOKEN=…  CLOUDFLARE_ACCOUNT_ID=…     # a token with Ac
 python3 deploy.py            # --dry-run looks and sends nothing
 ```
 
+Either way it says how the Worker is set up, without naming a host: its mode, the apps `APPS` names, and its routes
+when the token may read them (Zone › Workers Routes). It warns about what turns every device of a host away once the
+Worker enforces: a route on a host that `APPS` does not name, and a host given a name that is no app of the suite (the
+start page is `iostart`). A host with no route at all is not checked by the Worker: its requests go straight to the
+server.
+
 From GitHub, without a token on your own computer: **Actions › edge › Run workflow** (`.github/workflows/edge.yml`)
 runs the Worker's tests and then `deploy.py`, with the repository secrets `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID` (the two the website's deploy uses, `docs/CLOUDFLARE.md`; that token's *Workers Scripts: Edit*
-is enough). It runs only when started by hand.
+is enough). It runs only when started by hand; tick *Only look* to have the report above and send nothing.
 
 To change a host, a route or `MODE`, run `setup.py` again (or edit `wrangler.toml` and `npx wrangler deploy`).
 
