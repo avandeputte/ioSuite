@@ -191,4 +191,11 @@ line names the tasks each processor ran meanwhile, from the same timer. The same
 slower in some runs than in others, and these tell the reasons apart: a slower sum is the processor taken away, a
 slower read the memory, and the tasks at work beside it are named. Twice the probe is made with something set going
 on the other processor on purpose (memory copied, then a sum), and once the rows are drawn over and over while the
-wall fetches its next photo.
+wall fetches its next photo. While it measures, the feed, the photos and the look for a newer version wait: what is
+fetched beside a scene is the measuring's own to ask for.
+
+A `Memory …` line says what malloc has left of each kind of memory inside (the P4's own RAM, the LP RAM, TCM, and
+the pool kept for drivers, which "free inside" adds up as one), how long each kind takes to fill, and where a small
+block comes from at that moment; each scene's line says where the masks it drew through were kept. Settings is then
+opened and scrolled five times over: as it is, with little memory left inside, with the LP RAM kept away from
+malloc, and with small blocks sent to the PSRAM.

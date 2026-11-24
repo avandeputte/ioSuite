@@ -346,6 +346,10 @@ static void fetch_once(void)
 static void feed_loop(void *arg)
 {
     for (;;) {
+        if (bench_running()) {   /* the screen is being measured: what is fetched beside it is its own to ask for */
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
         fetch_once();
         views_poll();
         bool ok;
@@ -504,7 +508,8 @@ static void photo_loop(void *arg)
 {
     int wait_s = 2;
     for (;;) {
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(wait_s * 1000));
+        uint32_t asked = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(wait_s * 1000));
+        if (!asked && bench_running()) continue;   /* while the screen is measured, a photo comes when it asks for one */
         wall_photo_t pick[3];
         int npick = 0;
         bool want = false;

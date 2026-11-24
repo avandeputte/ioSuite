@@ -12,6 +12,7 @@
 #include "driver/gptimer.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_memory_utils.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
@@ -25,7 +26,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-#define RESULT_MAX 12000
+#define RESULT_MAX 20000
 static char *result;   /* what the last measuring said, a line per scene: in the PSRAM, the memory inside is short */
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
@@ -249,6 +250,14 @@ typedef struct {
     uint64_t fill, copy, blend;
 } pixels_t;
 static pixels_t pixels[2];   /* a frame's drawing; a panel's rows */
+/* and where the masks they went through are kept (a letter's shape, a round corner's row): inside, in the LP RAM, in
+ * the PSRAM. LVGL asks malloc for them, and what malloc gives when the memory inside is short is not all alike. */
+static uint64_t masks[3];
+
+static int kind_of(const void *p)
+{
+    return esp_ptr_in_rtc_dram_fast(p) ? 1 : esp_ptr_external_ram(p) ? 2 : 0;
+}
 
 void __real_lv_draw_sw_blend(lv_draw_task_t *t, const lv_draw_sw_blend_dsc_t *dsc);
 
@@ -263,6 +272,7 @@ void __wrap_lv_draw_sw_blend(lv_draw_task_t *t, const lv_draw_sw_blend_dsc_t *ds
         if (!dsc->src_buf) *(plain ? &p->fill : &p->blend) += n;
         else if (plain && (dsc->src_color_format == LV_COLOR_FORMAT_RGB565 || dsc->src_color_format == LV_COLOR_FORMAT_RGB888)) p->copy += n;
         else p->blend += n;
+        if (dsc->mask_buf) masks[kind_of(dsc->mask_buf)] += n;
     }
     __real_lv_draw_sw_blend(t, dsc);
 }
@@ -290,6 +300,7 @@ static void settings(void *arg)
     made_us = (uint32_t)(esp_timer_get_time() - t0);
     ui_frames_reset(1);
     memset(pixels, 0, sizeof pixels);
+    memset(masks, 0, sizeof masks);
 }
 
 static void under_drawn(void *arg)
@@ -420,6 +431,153 @@ static void probe_say(const char *when)
     where_say(false);
 }
 
+/* The memory inside is of several kinds, and "free inside" adds them all up: what malloc gives first (the P4's own
+ * RAM), a pool kept for drivers, a small fast corner (TCM) and the LP RAM, which the processor reaches through the
+ * low-power side of the chip. When the first runs out, malloc goes on to the others and then to the PSRAM. This
+ * says what is left of each, where a small block comes from right now, and how long each kind takes to fill. */
+#define BLOCK 914   /* as wide as a panel's card: a row of a round corner's mask */
+
+static unsigned fill_ns10(void *p)
+{
+    if (!p) return 0;
+    int64_t t0 = esp_timer_get_time();
+    for (int i = 0; i < 200; i++) memset(p, i, BLOCK);
+    return (unsigned)((esp_timer_get_time() - t0) * 10000 / (200 * BLOCK));
+}
+
+static size_t free_k(uint32_t caps)
+{
+    return heap_caps_get_free_size(caps) / 1024;
+}
+
+static void mem_say(const char *when)
+{
+    static const char *const names[] = {"inside", "LP RAM", "PSRAM"};
+    void *in = heap_caps_malloc(BLOCK, MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT), *lp = heap_caps_malloc(BLOCK, MALLOC_CAP_RTCRAM),
+         *ps = heap_caps_malloc(BLOCK, MALLOC_CAP_SPIRAM), *any = malloc(BLOCK), *small = malloc(64);
+#ifdef MALLOC_CAP_TCM
+    void *tcm = heap_caps_malloc(BLOCK, MALLOC_CAP_TCM);
+    unsigned tcm_k = (unsigned)free_k(MALLOC_CAP_TCM);
+#else
+    void *tcm = NULL;
+    unsigned tcm_k = 0;
+#endif
+    unsigned a = fill_ns10(in), b = fill_ns10(lp), c = fill_ns10(ps), d = fill_ns10(tcm);
+    char line[420];
+    snprintf(line, sizeof line,
+             "Memory %s: %u K free inside for malloc (%u in one piece), of it %u K LP RAM (%u in one piece) and %u K TCM; %u K more for "
+             "drivers only. %d bytes filled, ns a byte: inside %u.%u (%p), LP RAM %u.%u (%p), TCM %u.%u (%p), PSRAM %u.%u. "
+             "A new block of %d bytes is in the %s (%p), one of 64 in the %s (%p)",
+             when, (unsigned)free_k(MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT),
+             (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT) / 1024),
+             (unsigned)free_k(MALLOC_CAP_RTCRAM | MALLOC_CAP_DEFAULT), (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_RTCRAM) / 1024),
+             tcm_k, (unsigned)(free_k(MALLOC_CAP_INTERNAL) - free_k(MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT)), BLOCK, a / 10, a % 10, in,
+             b / 10, b % 10, lp, d / 10, d % 10, tcm, c / 10, c % 10, BLOCK, names[kind_of(any)], any, names[kind_of(small)], small);
+    note(line);
+    heap_caps_free(in);
+    heap_caps_free(lp);
+    heap_caps_free(ps);
+    heap_caps_free(tcm);
+    free(any);
+    free(small);
+}
+
+/* Three things to compare a scene under, each undone after it:
+ * little memory inside, as while a photo or the feed is fetched (blocks of 1 K are held until about 4 K of the P4's
+ * own RAM is left); the LP RAM kept away from malloc (all of it held); and small blocks sent to the PSRAM (malloc
+ * keeps inside only what is this small, where the firmware says 2048 bytes). */
+static void *squeezed[160], *lp_held[8];
+static int nsqueezed, nlp;
+
+static void squeeze(void)
+{
+    while (nsqueezed < (int)(sizeof squeezed / sizeof *squeezed)) {
+        size_t own = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT) - heap_caps_get_free_size(MALLOC_CAP_RTCRAM | MALLOC_CAP_DEFAULT);
+#ifdef MALLOC_CAP_TCM
+        size_t tcm = heap_caps_get_free_size(MALLOC_CAP_TCM | MALLOC_CAP_DEFAULT);
+        own = own > tcm ? own - tcm : 0;
+#endif
+        if (own < 5 * 1024) break;
+        void *p = heap_caps_malloc(1024, MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT);
+        if (!p) break;
+        if (kind_of(p)) {   /* the P4's own RAM has no such block left */
+            heap_caps_free(p);
+            break;
+        }
+        squeezed[nsqueezed++] = p;
+    }
+}
+
+static void unsqueeze(void)
+{
+    while (nsqueezed) heap_caps_free(squeezed[--nsqueezed]);
+}
+
+static void lp_away(void)
+{
+    while (nlp < (int)(sizeof lp_held / sizeof *lp_held)) {
+        size_t n = heap_caps_get_largest_free_block(MALLOC_CAP_RTCRAM);
+        void *p = n >= 32 ? heap_caps_malloc(n, MALLOC_CAP_RTCRAM) : NULL;
+        if (!p) break;
+        lp_held[nlp++] = p;
+    }
+}
+
+static void lp_back(void)
+{
+    while (nlp) heap_caps_free(lp_held[--nlp]);
+}
+
+static void squeeze_lp_away(void)
+{
+    lp_away();
+    squeeze();
+}
+
+static void small_out(void)
+{
+    heap_caps_malloc_extmem_enable(128);
+}
+
+static void settings(void *arg);
+static void home(void *arg);
+static void say(const char *what);
+static void scroll_settings(void);
+static void from_here(int percent);
+static void top(void *arg);
+static void rows_drawn(void *arg);
+static void rows_kept(void *arg);
+
+/* Settings opened, its rows drawn into their picture and every row drawn at each frame of a short scroll, under
+ * what set_up sets up: called when the panel before is closed, so that what Settings is made of is asked of malloc
+ * as it then stands */
+static void under(const char *what, void (*set_up)(void))
+{
+    char name[120];
+    on_ui(home);
+    wait_ms(1000);
+    if (set_up) set_up();
+    where_from_here();
+    on_ui(settings);
+    wait_ms(700);
+    snprintf(name, sizeof name, "Settings opens, %s", what);
+    say(name);
+    mem_say(what);
+    probe_say(what);
+    on_ui(rows_drawn);
+    wait_ms(300);
+    from_here(10);
+    drag(WALL_W / 2, WALL_H * 3 / 4, WALL_W / 2, WALL_H / 4, 400);
+    wait_ms(900);
+    drag(WALL_W / 2, WALL_H / 4, WALL_W / 2, WALL_H * 3 / 4, 400);
+    wait_ms(900);
+    snprintf(name, sizeof name, "Every row drawn each time, %s", what);
+    say(name);
+    on_ui(top);
+    on_ui(rows_kept);
+    wait_ms(300);
+}
+
 /* Something made to go on beside the screen's task, on the other processor, while the board is probed: memory copied
  * to and fro in the PSRAM (as a photo that is unpacked, or a frame that is turned), or a sum that needs no memory.
  * If the first slows a panel's rows as the slow runs were slowed and the second does not, it is the memory both
@@ -519,6 +677,7 @@ static void from_here(int percent)
     ui_lock();
     ui_frames_reset(percent ? (uint32_t)(WALL_W * WALL_H / 100 * percent) : 1);
     memset(pixels, 0, sizeof pixels);
+    memset(masks, 0, sizeof masks);
     ui_unlock();
     where_from_here();
 }
@@ -563,7 +722,7 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[460];
+    char line[540];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
@@ -597,6 +756,11 @@ static void say(const char *what)
             used += snprintf(line + used, sizeof line - (size_t)used, "; %s %u.%02u screens filled, %u.%02u copied, %u.%02u blended in %u pieces",
                              k ? "its rows:" : "a frame:", fill / 100, fill % 100, copy / 100, copy % 100, blend / 100, blend % 100,
                              (unsigned)(p->calls / f.n));
+        }
+        uint64_t m = masks[0] + masks[1] + masks[2];
+        if (m && used > 0 && used < (int)sizeof line) {
+            used += snprintf(line + used, sizeof line - (size_t)used, "; of the masks %u%% are kept in the LP RAM, %u%% in the PSRAM",
+                             (unsigned)(masks[1] * 100 / m), (unsigned)(masks[2] * 100 / m));
         }
     }
     made_us = 0;
@@ -646,9 +810,22 @@ static void run(void *arg)
     on_ui(settings);
     wait_ms(700);
     say("Settings opens again");
+    mem_say("with Settings open");
     probe_say("with Settings open");
     noise_say();
-    probe_say("after that");
+
+    /* the same under more and less memory, and with malloc sent elsewhere */
+    under("as it is", NULL);
+    under("little memory inside", squeeze);
+    under("little memory inside, the LP RAM kept away", squeeze_lp_away);
+    under("the LP RAM kept away", unsqueeze);
+    under("the LP RAM kept away, blocks over 128 bytes in the PSRAM", small_out);
+    on_ui(home);
+    wait_ms(1000);
+    lp_back();
+    heap_caps_malloc_extmem_enable(CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL);
+    on_ui(settings);
+    wait_ms(700);
 
     /* and with the wall under its card drawn too, as LVGL does by itself */
     on_ui(home);
@@ -769,6 +946,7 @@ static void run(void *arg)
      * memory inside is at its shortest */
     on_ui(settings_again);
     wait_ms(1000);
+    mem_say("at the end");
     probe_say("at the end");
     heap_caps_free(far);
     far = NULL;
