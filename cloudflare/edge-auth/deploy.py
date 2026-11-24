@@ -73,6 +73,25 @@ def suite_apps() -> set:
     return found
 
 
+def routes(name: str) -> list | None:
+    """The Worker's routes as (host, path) pairs, from every zone the token sees; None when the token may not look
+    (it needs Zone › Workers Routes: Read or Edit; sending the script does not)."""
+    status, zones = call("GET", "/zones?per_page=50")
+    if status != 200 or not isinstance(zones, list):
+        return None
+    found, looked = [], False
+    for z in zones:
+        status, rs = call("GET", f"/zones/{z['id']}/workers/routes")
+        if status != 200 or not isinstance(rs, list):
+            continue
+        looked = True
+        for r in rs:
+            if r.get("script") == name:
+                host, _, path = (r.get("pattern") or "").partition("/")
+                found.append((host.lower(), "/" + path))
+    return found if looked else None
+
+
 def form(script: bytes) -> tuple[bytes, str]:
     """The script as Cloudflare takes it: a form with what the main module is called, and the module."""
     edge = "ioSuite" + uuid.uuid4().hex
@@ -110,6 +129,18 @@ def main():
     if named is None:
         print("::warning::APPS is not JSON: the Worker checks nothing. setup.py writes it (README.md).")
     else:
+        hosts = {str(h).lower(): str(app) for h, app in json.loads(bindings["APPS"]["text"]).items()} if named else {}
+        mine = routes(a.name)
+        if mine is None:
+            print("its routes: not looked at (this token does not read the zone's Workers routes)")
+        for host, path in sorted(mine or [], key=lambda r: (hosts.get(r[0], ""), r[1])):
+            if host in hosts:
+                print(f"route {path} on the host of {hosts[host]}")
+            else:
+                # the Worker checks /dav* of a host it has no app for too, finds no password and, enforcing, answers 401
+                print(f"::warning::A route ({path}) is on a host that APPS does not name: the Worker has no app to look its app "
+                      f"passwords up for and, enforcing, turns every device there away. Add the host to APPS with its app "
+                      f"(setup.py --host <host>=<app>), or remove the route.")
         known = suite_apps()
         print("APPS names " + (", ".join(f"{app} ({n} host{'s' if n > 1 else ''})" for app, n in sorted(named.items())) or "no host"))
         for app in sorted(set(named) - known):
