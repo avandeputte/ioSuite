@@ -209,6 +209,9 @@ def test_what_monarch_calls_pending_is_not_kept(client, mm):
     """Monarch says pending of payments the bank took weeks ago: the word is not kept, and every transaction counts
     alike. One it sends again under another id, weeks later, is not there twice."""
     put_keys()
+    # the household starts looking here: what comes in from now on needs a look (when the page was first opened after
+    # the sync, the three counted only if both fell in the same second)
+    assert client.get("/api/tidy").json()["review"] == 0
     FakeMM.transactions = [tx("p1", 40, -280, "Friend", pending=True), tx("p2", 35, -60, "Garage", pending=True), tx("t1", 3, -54.2, "Grocer")]
     assert client.post("/api/monarch/sync").json()["ok"]
     items = client.get("/api/transactions").json()["items"]
