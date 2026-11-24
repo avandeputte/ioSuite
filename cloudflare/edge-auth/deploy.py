@@ -9,7 +9,12 @@ It stops before sending when there is no Worker of that name, or when the one th
 APP_PASSWORDS (then it is not this Worker, or it was never set up: setup.py does that). After sending it reads the
 script back and says whether Cloudflare has what is in this folder.
 
-The token needs Account › Workers Scripts: Edit. Standard library only.
+It also says how the Worker is set up, without naming a host (a run's log may be public): its mode, the apps APPS
+names and its routes, with a warning for what turns every device of a host away: a route on a host APPS does not
+name, a host named for something that is no app of the suite.
+
+The token needs Account › Workers Scripts: Edit; with Zone › Workers Routes it reads the routes too. Standard library
+only.
 """
 import argparse
 import hashlib
