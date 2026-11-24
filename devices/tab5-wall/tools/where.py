@@ -3,7 +3,7 @@
 
 A pull request's build measures the screen by itself half a minute after it starts (main/bench.c) and, after each
 scene's line, logs where a timer found the screen's task two thousand times a second: "where:" lines of
-<program counter>:<return address>*<times>. This names those places from the build's list of symbols (the .sym file
+<program counter>:<return address>:<what it was at>*<times>. This names those places from the build's list of symbols (the .sym file
 beside the .bin in the run's artifact) and prints, for each scene, the functions the samples fell in.
 
     tools/where.py serial.log iowall-waveshare7b.sym            the 20 functions most met in each scene
@@ -17,6 +17,10 @@ import bisect
 import collections
 import re
 import sys
+
+
+# what the screen's task was at when a sample was taken (ui_phase in main/wall.h)
+PHASES = {0: "between frames", 1: "laying out", 2: "drawing", 3: "sending", 4: "a panel's rows"}
 
 
 def symbols(path):
@@ -54,19 +58,30 @@ def main():
     def say():
         if scene is None or not places:
             return
-        n = sum(k for _, _, k in places)
-        by, callers = collections.Counter(), collections.defaultdict(collections.Counter)
-        for pc, ra, k in places:
-            fn = name(syms, starts, pc)
-            by[fn] += k
-            callers[fn][name(syms, starts, ra)] += k
+        n = sum(k for _, _, _, k in places)
         print("\n%s\n  %s" % (scene, head))
-        for fn, k in by.most_common(top):
-            print("  %5.1f%%  %s" % (100.0 * k / n, fn))
-            if k * 25 >= n:
-                for who, c in callers[fn].most_common(5):
-                    if who != fn:
-                        print("            %5.1f%%  return address in %s" % (100.0 * c / n, who))
+        at = collections.Counter()
+        for _, _, phase, k in places:
+            at[phase] += k
+        if len(at) > 1:
+            print("  " + ", ".join("%s %.0f%%" % (PHASES.get(p, "?"), 100.0 * k / n) for p, k in sorted(at.items())))
+        for phase in [None] + (sorted(at) if len(at) > 1 else []):
+            by, callers = collections.Counter(), collections.defaultdict(collections.Counter)
+            for pc, ra, ph, k in places:
+                if phase is None or ph == phase:
+                    fn = name(syms, starts, pc)
+                    by[fn] += k
+                    callers[fn][name(syms, starts, ra)] += k
+            if phase is not None:
+                if at[phase] * 20 < n:
+                    continue
+                print("  %s:" % PHASES.get(phase, "?"))
+            for fn, k in by.most_common(top if phase is None else max(6, top // 2)):
+                print("  %5.1f%%  %s" % (100.0 * k / n, fn))
+                if k * 25 >= n:
+                    for who, c in callers[fn].most_common(5):
+                        if who != fn:
+                            print("            %5.1f%%  return address in %s" % (100.0 * c / n, who))
 
     last = None
     for line in open(sys.argv[1], errors="replace"):
@@ -78,8 +93,8 @@ def main():
             head = text[7:]
             scene, places = last, []
         elif text.startswith("where:"):
-            for pc, ra, k in re.findall(r"([0-9a-f]+):([0-9a-f]+)\*(\d+)", text):
-                places.append((int(pc, 16), int(ra, 16), int(k)))
+            for pc, ra, phase, k in re.findall(r"([0-9a-f]+):([0-9a-f]+)(?::(\d))?\*(\d+)", text):
+                places.append((int(pc, 16), int(ra, 16), int(phase or 0), int(k)))
         else:
             say()
             scene, places, last = None, [], text

@@ -5,8 +5,9 @@
  * that turn (into a buffer of the port's own, which is then copied into the panel's frame). Measured on the 7B, the
  * turn takes 27 ms for a whole screen: 20 of the 35 ms a frame of Settings scrolling took.
  *
- * Here a turned frame is handed to a task of its own, which has the pixel processor turn it straight into the
- * panel's frame: no second copy, and LVGL draws the next frame into its other buffer meanwhile. LVGL waits before it
+ * Here a turned frame is handed to a task of its own, which turns it straight into the panel's frame (the pixel
+ * processor for a quarter turn, a loop of its own for half a turn): no second copy, and LVGL draws the next frame
+ * into its other buffer meanwhile. LVGL waits before it
  * hands over that next one (send_wait), so two are never on their way at once. A screen that is not turned is sent
  * as before: the port's copy into the panel's frame runs by itself already.
  *
@@ -14,6 +15,7 @@
  * fading in) comes as fast as the slower of drawing and turning, not as their sum. */
 #include "bsp/esp-bsp.h"
 #include "driver/ppa.h"
+#include "esp_cache.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
@@ -52,19 +54,46 @@ esp_err_t __wrap_esp_lcd_panel_draw_bitmap(esp_lcd_panel_handle_t p, int x1, int
     return __real_esp_lcd_panel_draw_bitmap(p, x1, y1, x2, y2, px);
 }
 
-/* where the area lands on the panel is worked out as the port does (lvgl_port_ppa_rotate) */
+/* Half a turn is the area's pixels in the opposite order, and the processor writes them into the panel's frame
+ * faster than the pixel processor does: measured on the 7B, the pixel processor took 27 ms for two thirds of a
+ * screen while the next frame was drawn, where the same pixels are copied in 11. */
+static esp_err_t turn_half(const job_t *j)
+{
+    int w = lv_area_get_width(&j->area), h = lv_area_get_height(&j->area);
+    int x = j->hres - j->area.x2 - 1, y = j->vres - j->area.y2 - 1;
+    const uint16_t *s = (const uint16_t *)j->px;
+    uint16_t *out = frame;
+    for (int r = 0; r < h; r++) {
+        uint16_t *d = out + (size_t)(y + h - 1 - r) * BSP_LCD_H_RES + x + w;   /* one past the row's last pixel */
+        int i = w;
+        for (; i >= 8; i -= 8, s += 8, d -= 8) {
+            d[-1] = s[0];
+            d[-2] = s[1];
+            d[-3] = s[2];
+            d[-4] = s[3];
+            d[-5] = s[4];
+            d[-6] = s[5];
+            d[-7] = s[6];
+            d[-8] = s[7];
+        }
+        for (; i > 0; i--) *--d = *s++;
+    }
+    /* the panel is shown from the memory itself, not through the processor's cache: what was written goes there now */
+    return esp_cache_msync(out + (size_t)y * BSP_LCD_H_RES + x, ((size_t)(h - 1) * BSP_LCD_H_RES + w) * 2,
+                           ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+}
+
+/* a quarter turn (the Tab5) is the pixel processor's; where the area lands on the panel is worked out as the port
+ * does (lvgl_port_ppa_rotate) */
 static esp_err_t turn(const job_t *j)
 {
+    if (j->rotation == LV_DISPLAY_ROTATION_180) return turn_half(j);
     int w = lv_area_get_width(&j->area), h = lv_area_get_height(&j->area);
     int x = j->area.x1, y = j->area.y1;
     switch (j->rotation) {
     case LV_DISPLAY_ROTATION_90:
         x = j->area.y1;
         y = j->hres - j->area.x2 - 1;
-        break;
-    case LV_DISPLAY_ROTATION_180:
-        x = j->hres - j->area.x2 - 1;
-        y = j->vres - j->area.y2 - 1;
         break;
     case LV_DISPLAY_ROTATION_270:
         x = j->vres - j->area.y2 - 1;

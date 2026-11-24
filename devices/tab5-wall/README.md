@@ -134,12 +134,20 @@ that, and is worth keeping when a screen is added or changed:
 - **A turned screen's frames are turned beside the drawing of the next** (`main/send.c`). The P4's pixel processor
   turns what was drawn before the panel shows it: by a quarter on the Tab5, whose panel stands on its side, and by
   half on a 7B mounted the other way round. Measured on the 7B, that is 27 ms a screen, and the board package's LVGL
-  port has the screen's task wait for it, then copies the result into the panel's frame. Here a task of its own has
-  the pixel processor turn each frame straight into the panel's frame while LVGL draws the next into its other
-  buffer: a scroll comes as fast as the slower of the two, not as their sum. The first frames of each turn are
+  port has the screen's task wait for it, then copies the result into the panel's frame. Here a task of its own turns
+  each frame straight into the panel's frame while LVGL draws the next into its other buffer: a scroll comes as
+  fast as the slower of the two, not as their sum. A quarter turn is the pixel processor's; half a turn is the same
+  pixels in the opposite order, which a loop on the second core writes. The first frames of each turn are
   compared with what was drawn, and the port's way is gone back to if they differ. The 7B's panel was also tried for
   the half turn (its driver chip, an EK79007, has a command to scan the other way round): the glass on this board
   ignores it.
+- **Each object keeps which style properties it has set** (`CONFIG_LV_OBJ_STYLE_CACHE`): LVGL asks for dozens of
+  them for every object it lays out and draws, and goes through the object's styles for each. On the board that was
+  a fifth of a swipe to a view.
+- **A touch is on the screen.** The touch driver counts a mirrored edge as one pixel past the last, LVGL writes a
+  warning to the log for every reading of such a point and goes on reading it after the finger is gone: measured on
+  the board, writing those lines was three quarters of what the screen's task did until the next touch elsewhere.
+  `touch_read` in `main/ui.c` brings what the panel reports onto the screen first.
 
 `tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were
@@ -159,4 +167,5 @@ request's build (version `pr…`) runs it by itself half a minute after it start
 by restarting it and reading its log. Such a build also says where the time went: a timer notes two thousand times a
 second where the screen's task is, the places follow each scene's line as `bench: where:` lines, and
 `tools/where.py serial.log iowall-….sym` names the functions (the `.sym` file is in the run's artifact, beside the
-`.bin`).
+`.bin`). Each place says what the task was at: laying out, a panel's rows, drawing, sending or between frames (where
+a panel or a view is put together), and each scene's line splits its frames' time the same way.

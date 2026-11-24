@@ -31,7 +31,9 @@ static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
 {
     lv_display_t *disp = lv_indev_get_display(i);
     int w = lv_display_get_original_horizontal_resolution(disp), h = lv_display_get_original_vertical_resolution(disp);
-    int x = at_x, y = at_y;
+    /* on the screen as it stands now: on a pull request's build the 7B stands on its side for a moment */
+    int x = LV_CLAMP(0, at_x, lv_display_get_horizontal_resolution(disp) - 1);
+    int y = LV_CLAMP(0, at_y, lv_display_get_vertical_resolution(disp) - 1);
     switch (lv_display_get_rotation(disp)) {
     case LV_DISPLAY_ROTATION_90: d->point.x = y; d->point.y = h - 1 - x; break;
     case LV_DISPLAY_ROTATION_180: d->point.x = w - 1 - x; d->point.y = h - 1 - y; break;
@@ -48,12 +50,14 @@ static void wait_ms(int ms)
 
 /* Where the time goes, on a pull request's build: a timer interrupts the screen's task two thousand times a second
  * and notes where it was (the program counter, and the return address, which for a function that calls nothing, as
- * memcpy, is who called it). After each scene the places are written to the log as "where:" lines, and
+ * memcpy, is who called it), and what it was at: between frames, laying one out, drawing, sending. After each scene
+ * the places are written to the log as "where:" lines, and
  * tools/where.py names the functions from the build's list of symbols. Without this, what a frame is made of was
  * guessed from a PC's count of the work, which knows nothing of how slow this board's memory is. */
 #define WHERE_MAX 2000
 typedef struct {
     uint32_t pc, ra;
+    uint8_t phase;   /* what the screen's task was at (ui_phase) */
 } where_t;
 static where_t *where;
 static volatile uint32_t where_n, where_busy, where_ticks;
@@ -74,6 +78,7 @@ static bool where_tick(gptimer_handle_t t, const gptimer_alarm_event_data_t *e, 
         const uint32_t *regs = *(const uint32_t *const *)now;
         where[where_n].pc = regs[0];
         where[where_n].ra = regs[1];
+        where[where_n].phase = ui_phase;
         where_n++;
     }
     return false;
@@ -110,7 +115,8 @@ static int where_order(const void *a, const void *b)
 {
     const where_t *x = a, *y = b;
     if (x->pc != y->pc) return x->pc < y->pc ? -1 : 1;
-    return x->ra < y->ra ? -1 : x->ra > y->ra;
+    if (x->ra != y->ra) return x->ra < y->ra ? -1 : 1;
+    return (int)x->phase - (int)y->phase;
 }
 
 static void where_say(void)
@@ -126,11 +132,14 @@ static void where_say(void)
     size_t used = 0;
     for (uint32_t i = 0; i < n;) {
         uint32_t same = 1;
-        while (i + same < n && where[i + same].pc == where[i].pc && where[i + same].ra == where[i].ra) same++;
-        used += (size_t)snprintf(line + used, sizeof line - used, " %x:%x*%u", (unsigned)where[i].pc, (unsigned)where[i].ra,
-                                 (unsigned)same);
+        while (i + same < n && where[i + same].pc == where[i].pc && where[i + same].ra == where[i].ra &&
+               where[i + same].phase == where[i].phase) {
+            same++;
+        }
+        used += (size_t)snprintf(line + used, sizeof line - used, " %x:%x:%u*%u", (unsigned)where[i].pc, (unsigned)where[i].ra,
+                                 (unsigned)where[i].phase, (unsigned)same);
         i += same;
-        if (used > sizeof line - 28 || i >= n) {
+        if (used > sizeof line - 30 || i >= n) {
             ESP_LOGI(TAG, "where:%s", line);
             used = 0;
         }
@@ -288,16 +297,17 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[200];
+    char line[240];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
-        unsigned all = f.all / f.n, sending = f.sending / f.n, beside = f.beside / f.n;
-        unsigned drawing = all > sending ? all - sending : 0;
-        int used = snprintf(line, sizeof line, "%s: %u frames of %u%%, %u.%u ms each (%u.%u drawing, %u.%u sending), slowest %u",
+        unsigned all = f.all / f.n, sending = f.sending / f.n, beside = f.beside / f.n, layout = f.layout / f.n, rows = f.rows / f.n;
+        unsigned drawing = all > sending + layout + rows ? all - sending - layout - rows : 0;
+        int used = snprintf(line, sizeof line,
+                            "%s: %u frames of %u%%, %u.%u ms each (%u.%u laying out, %u.%u rows, %u.%u drawing, %u.%u sending), slowest %u",
                             what, (unsigned)f.n, (unsigned)((uint64_t)f.px * 100 / f.n / (WALL_W * WALL_H)), all / 1000,
-                            all % 1000 / 100, drawing / 1000, drawing % 1000 / 100, sending / 1000, sending % 1000 / 100,
-                            (unsigned)((f.worst + 500) / 1000));
+                            all % 1000 / 100, layout / 1000, layout % 1000 / 100, rows / 1000, rows % 1000 / 100, drawing / 1000,
+                            drawing % 1000 / 100, sending / 1000, sending % 1000 / 100, (unsigned)((f.worst + 500) / 1000));
         /* a turned screen: each frame is turned beside the drawing of the next (send.c), which a frame's own time
          * shows only as its wait for the one before */
         if (beside && used > 0 && used < (int)sizeof line) {

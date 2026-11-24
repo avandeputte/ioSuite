@@ -262,6 +262,21 @@ static void on_any_press(lv_event_t *e)
 static void on_frame(lv_event_t *e);
 static void on_keep_display(lv_event_t *e);
 
+/* A touch at the very edge of the glass is reported one past the last pixel (the touch driver mirrors a coordinate
+ * as "the size minus it", and 0 becomes the size). LVGL writes a warning to the log for every reading of such a
+ * point, and goes on reading it after the finger is gone: some 66 lines a second until the next touch elsewhere.
+ * Measured on the board, writing them was three quarters of what the screen's task did. A swipe that runs off the
+ * screen is enough to start it. So what the panel reports is brought onto the screen first. */
+static void touch_read(lv_indev_t *in, lv_indev_data_t *d)
+{
+    lv_indev_read_cb_t read = (lv_indev_read_cb_t)lv_indev_get_user_data(in);
+    lv_display_t *disp = lv_indev_get_display(in);
+    read(in, d);
+    if (!disp) return;
+    d->point.x = LV_CLAMP(0, d->point.x, lv_display_get_original_horizontal_resolution(disp) - 1);
+    d->point.y = LV_CLAMP(0, d->point.y, lv_display_get_original_vertical_resolution(disp) - 1);
+}
+
 void ui_start(lv_display_t *disp)
 {
     DISP = disp;
@@ -269,8 +284,13 @@ void ui_start(lv_display_t *disp)
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     lv_indev_t *in = bsp_display_get_input_dev();
     if (in) lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
-    static const lv_event_code_t timed[] = {LV_EVENT_REFR_START, LV_EVENT_FLUSH_START, LV_EVENT_FLUSH_FINISH,
-                                            LV_EVENT_FLUSH_WAIT_START, LV_EVENT_FLUSH_WAIT_FINISH, LV_EVENT_REFR_READY};
+    if (in && lv_indev_get_type(in) == LV_INDEV_TYPE_POINTER && lv_indev_get_read_cb(in) != touch_read) {
+        lv_indev_set_user_data(in, (void *)lv_indev_get_read_cb(in));
+        lv_indev_set_read_cb(in, touch_read);
+    }
+    static const lv_event_code_t timed[] = {LV_EVENT_REFR_START, LV_EVENT_RENDER_START, LV_EVENT_FLUSH_START,
+                                            LV_EVENT_FLUSH_FINISH, LV_EVENT_FLUSH_WAIT_START, LV_EVENT_FLUSH_WAIT_FINISH,
+                                            LV_EVENT_REFR_READY};
     for (size_t i = 0; i < sizeof timed / sizeof *timed; i++) lv_display_add_event_cb(disp, on_frame, timed[i], NULL);
     /* a panel's picture of its content (kit_panel) is brought up to date as a frame begins, within its time */
     lv_display_add_event_cb(disp, on_keep_display, LV_EVENT_INVALIDATE_AREA, NULL);
@@ -393,6 +413,7 @@ static lv_obj_t *panel, *panel_card;
 #define KEEP_MAX (12 * 1024 * 1024)   /* no picture larger than this (bytes): the rows are then drawn as before */
 
 static bool keeps = true;
+static uint32_t keep_us;   /* µs this frame's rows took to draw into the picture, for the frame's own account */
 
 static struct {
     lv_obj_t *body, *content;
@@ -488,6 +509,7 @@ static void keep_ready(void)
 
 static void on_keep_display(lv_event_t *e)
 {
+    if (lv_event_get_code(e) == LV_EVENT_REFR_START) keep_us = 0;
     if (!keep.body || !keeps) return;
     switch (lv_event_get_code(e)) {
     case LV_EVENT_INVALIDATE_AREA: {
@@ -513,9 +535,15 @@ static void on_keep_display(lv_event_t *e)
         keep.dirty[keep.ndirty++] = d;
         break;
     }
-    case LV_EVENT_REFR_START:
+    case LV_EVENT_REFR_START: {
+        uint8_t was = ui_phase;
+        int64_t t0 = esp_timer_get_time();
+        ui_phase = UI_ROWS;
         keep_ready();
+        ui_phase = was;
+        keep_us = (uint32_t)(esp_timer_get_time() - t0);
         break;
+    }
     case LV_EVENT_REFR_READY:
         keep.ready = false;
         break;
@@ -706,9 +734,12 @@ static struct {
     int64_t started, mark;   /* when the frame began, and the sending or waiting now going on (µs) */
     uint32_t px;             /* what the frame sent to the panel so far */
     uint32_t sending;        /* µs of the frame spent sending, waits for the frame before included */
+    uint32_t layout;         /* µs from the frame's start to its first pixel: layout, and a panel's rows redrawn */
     uint32_t from;           /* frames that sent this many pixels or more are counted */
     ui_frames_t sum;         /* those since the last reset: times in µs, added up */
 } frames = {.from = WALL_W * WALL_H / 4};
+
+volatile uint8_t ui_phase;
 
 static void on_frame(lv_event_t *e)
 {
@@ -716,26 +747,37 @@ static void on_frame(lv_event_t *e)
     switch (lv_event_get_code(e)) {
     case LV_EVENT_REFR_START:
         frames.started = now;
-        frames.px = frames.sending = 0;
+        frames.px = frames.sending = frames.layout = 0;
+        ui_phase = UI_LAYING_OUT;
+        break;
+    case LV_EVENT_RENDER_START:
+        frames.layout = (uint32_t)(now - frames.started);
+        ui_phase = UI_DRAWING;
         break;
     case LV_EVENT_FLUSH_START: {
         const lv_area_t *a = lv_event_get_param(e);
         if (a) frames.px += (uint32_t)lv_area_get_size(a);
         frames.mark = now;
+        ui_phase = UI_SENDING;
         break;
     }
     case LV_EVENT_FLUSH_WAIT_START:
         frames.mark = now;
+        ui_phase = UI_SENDING;
         break;
     case LV_EVENT_FLUSH_FINISH:
     case LV_EVENT_FLUSH_WAIT_FINISH:
         frames.sending += (uint32_t)(now - frames.mark);
+        ui_phase = UI_DRAWING;
         break;
     case LV_EVENT_REFR_READY:
+        ui_phase = UI_BETWEEN;
         if (frames.px && frames.px >= frames.from) {
             uint32_t us = (uint32_t)(now - frames.started);
             frames.sum.n++;
             frames.sum.all += us;
+            frames.sum.rows += keep_us;
+            frames.sum.layout += frames.layout > keep_us ? frames.layout - keep_us : 0;
             frames.sum.sending += frames.sending;
             frames.sum.px += frames.px;
             if (us > frames.sum.worst) frames.sum.worst = us;

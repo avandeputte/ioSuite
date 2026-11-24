@@ -312,8 +312,14 @@ lv_obj_t *kit_panel_layer(void);
  *  of it went to sending what was drawn to the panel (the rest is drawing), the pixels sent, and the slowest one. */
 typedef struct {
     uint32_t n, all, sending, px, worst;
+    uint32_t layout;   /* µs laying out, before the first pixel */
+    uint32_t rows;     /* µs drawing a panel's rows into their picture (kit_panel), also before the first pixel */
     uint32_t beside;   /* µs a turned screen's frames took to turn, beside the drawing of the next (send.c) */
 } ui_frames_t;
+/** What the screen's task is at, for the measuring's samples (bench.c): between frames (touches, building what a tap
+ *  asked for), laying a frame out, drawing it, sending it, or drawing a panel's rows into their picture. */
+enum { UI_BETWEEN, UI_LAYING_OUT, UI_DRAWING, UI_SENDING, UI_ROWS };
+extern volatile uint8_t ui_phase;
 /** Counts from here the frames that send from_px pixels or more; 0: the large ones, a quarter of the screen. */
 void ui_frames_reset(uint32_t from_px);
 void ui_frames_get(ui_frames_t *out);
