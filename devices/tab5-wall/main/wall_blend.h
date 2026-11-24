@@ -13,6 +13,9 @@
  * frame of its script with these loops and with LVGL's own and compares them. */
 #pragma once
 
+/* LVGL includes this file from more of its drawing code than the blending: only there are the types below known */
+#ifdef LV_DRAW_SW_BLEND_PRIVATE_H
+
 #include <stdint.h>
 
 typedef uint32_t __attribute__((may_alias)) wall_blend_u32;   /* four bytes of a mask read as one number */
@@ -110,3 +113,5 @@ static inline lv_result_t wall_blend_image_opa(lv_draw_sw_blend_image_dsc_t *dsc
 #define LV_DRAW_SW_COLOR_BLEND_TO_RGB565_WITH_MASK(dsc) wall_blend_color_mask(dsc)
 #define LV_DRAW_SW_COLOR_BLEND_TO_RGB565_MIX_MASK_OPA(dsc) wall_blend_color_mask_opa(dsc)
 #define LV_DRAW_SW_RGB565_BLEND_NORMAL_TO_RGB565_WITH_OPA(dsc) wall_blend_image_opa(dsc)
+
+#endif

@@ -43,7 +43,7 @@ wait
 # LVGL's see-through drawing with the firmware's own loops (main/wall_blend.h), as the board's build has it: the files
 # of LVGL that take them are compiled here, and stand in for those in lvgl.a
 gcc -o "$B/sim-lvgl" "$B"/*.o "$SRC/lvgl.a" -lm -Wl,--wrap=lv_draw_sw_blend
-for f in "$LV"/src/draw/sw/blend/lv_draw_sw_blend_to_*.c; do
+for f in "$LV"/src/draw/sw/blend/lv_draw_sw_blend_to_*.c "$LV/src/draw/sw/lv_draw_sw.c" "$LV/src/draw/sw/lv_draw_sw_img.c"; do
     gcc -O2 -w -c "$f" -I"$LV" -I"$LV/src" $DEFS -I"$MAIN" -DLV_USE_DRAW_SW_ASM=255 -DLV_DRAW_SW_ASM_CUSTOM_INCLUDE='"wall_blend.h"' -o "$B/$(basename "$f" .c).o" &
 done
 wait
