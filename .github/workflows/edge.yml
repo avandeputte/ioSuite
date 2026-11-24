@@ -1,0 +1,31 @@
+name: edge
+# The edge check of app passwords (cloudflare/edge-auth): sends worker.js to the Worker that is already set up, after
+# its tests. Only the script: the Worker's routes, KV namespace and variables (APPS, MODE) stay as they are
+# (cloudflare/edge-auth/deploy.py). Run by hand (Actions › edge › Run workflow) after an update that changes worker.js.
+# It uses the two repository secrets the website's deploy uses (docs/CLOUDFLARE.md); without them it only says so.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: edge
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10   # a run that hangs is stopped here, not after GitHub's six hours
+    defaults:
+      run:
+        working-directory: cloudflare/edge-auth
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The Worker's tests
+        run: node --test
+      - name: Send worker.js to Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Nothing was sent: the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (docs/CLOUDFLARE.md)."
+            exit 0
+          fi
+          python3 deploy.py

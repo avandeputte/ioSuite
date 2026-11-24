@@ -95,6 +95,26 @@ Then step 3 with the ids it prints and that token file. By hand:
    make a new one.
 6. **Enforce.** Set `MODE = "enforce"` and deploy again.
 
+## After an update of the suite
+
+The Worker at Cloudflare runs the `worker.js` it was last sent. When an update of the suite changes `worker.js` (its
+release note says so), send it again. `deploy.py` sends only the script, to the Worker that is there: its routes, its
+KV namespace and its variables (`APPS`, `MODE`) stay as they are, so it needs no `wrangler.toml` and no host names. It
+looks first (no Worker of that name, or none with `APP_PASSWORDS` bound: nothing is sent), and afterwards reads the
+script back and says whether Cloudflare has what is in this folder.
+
+```
+export CLOUDFLARE_API_TOKEN=…  CLOUDFLARE_ACCOUNT_ID=…     # a token with Account › Workers Scripts: Edit
+python3 deploy.py            # --dry-run looks and sends nothing
+```
+
+From GitHub, without a token on your own computer: **Actions › edge › Run workflow** (`.github/workflows/edge.yml`)
+runs the Worker's tests and then `deploy.py`, with the repository secrets `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` (the two the website's deploy uses, `docs/CLOUDFLARE.md`; that token's *Workers Scripts: Edit*
+is enough). It runs only when started by hand.
+
+To change a host, a route or `MODE`, run `setup.py` again (or edit `wrangler.toml` and `npx wrangler deploy`).
+
 ## Rate limit (recommended)
 
 Under Security › WAF › Rate limiting rules › Create rule:
