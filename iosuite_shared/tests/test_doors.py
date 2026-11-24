@@ -5,7 +5,6 @@ import asyncio
 import json
 import time
 
-import pytest
 from starlette.requests import Request
 
 from iosuite_shared import config, doors, prefix, suite

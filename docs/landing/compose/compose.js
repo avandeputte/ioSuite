@@ -20,7 +20,7 @@
 
   // >>> suite: apps (from the apps' app.json, in their order)
   var APPS = [
-    {key:"iostart", name:"ioStart", folder:"", sub:"home", what:"start page", sync:["/dav/"]},
+    {key:"iostart", name:"ioStart", folder:"", sub:"home", what:"start page", sync:["/dav/ext"]},
     {key:"iopix", name:"ioPix", folder:"pix", sub:"photos", what:"photos"},
     {key:"ionote", name:"ioNote", folder:"notes", sub:"notes", what:"notes"},
     {key:"iocalendar", name:"ioCalendar", folder:"calendar", sub:"calendar", what:"calendar", sync:["/dav","/.well-known/","/ics/"]},
