@@ -633,7 +633,8 @@ static void on_cull(lv_event_t *e)
     uint32_t n = d->inv_p;
     for (uint32_t i = 0; i < n; i++) {
         lv_area_t a = d->inv_areas[i], mid;
-        if (d->inv_area_joined[i] || !lv_area_intersect(&mid, &a, &card) || lv_area_is_in(&a, &card, 0)) continue;
+        /* an area within the card is the card's or its content's as it is: a scroll's is drawn from what scrolls */
+        if (d->inv_area_joined[i] || lv_area_is_in(&a, &panel_card->coords, 0) || !lv_area_intersect(&mid, &a, &card)) continue;
         /* worth five areas to send in place of one: a good part of the screen is saved */
         if (lv_area_get_size(&mid) < (uint32_t)(WALL_W * WALL_H / 6) || d->inv_p + 4 > LV_INV_BUF_SIZE) continue;
         d->inv_areas[i] = mid;
