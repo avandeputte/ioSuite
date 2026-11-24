@@ -312,10 +312,12 @@ lv_obj_t *kit_panel_layer(void);
  *  of it went to sending what was drawn to the panel (the rest is drawing), the pixels sent, and the slowest one. */
 typedef struct {
     uint32_t n, all, sending, px, worst;
+    uint32_t beside;   /* µs a turned screen's frames took to turn, beside the drawing of the next (send.c) */
 } ui_frames_t;
 /** Counts from here the frames that send from_px pixels or more; 0: the large ones, a quarter of the screen. */
 void ui_frames_reset(uint32_t from_px);
 void ui_frames_get(ui_frames_t *out);
+void ui_frames_beside(uint32_t us, uint32_t px);   /* from the task that sends a turned screen's frames */
 /** For Settings: "12 large redraws · 31 ms each (22 drawing, 9 sending) · the slowest 80 ms". */
 void ui_frames_text(char *out, size_t n);
 
@@ -372,6 +374,12 @@ void ota_check_now(bool install);
 ota_state_t ota_state(void);
 const char *ota_text(void);
 const char *wall_version(void);
+
+/* ------------------------------------------------------------------ send.c */
+/** A turned screen's frames are turned and put on the panel by a task of their own from here on, while LVGL draws
+ *  the next. Once, with LVGL locked, after the board package has started the screen. */
+void send_start(lv_display_t *disp);
+bool send_beside(void);   /* it does so (false: the task could not be started, or a turned frame came out wrong) */
 
 /* ------------------------------------------------------------------ bench.c */
 

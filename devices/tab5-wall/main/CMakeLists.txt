@@ -5,17 +5,19 @@ else()
     set(BOARD_PACKAGE m5stack_tab5)
 endif()
 idf_component_register(
-    SRCS "main.c" "settings.c" "net.c" "api.c" "feed.c" "alarm.c" "ota.c" "boot.c" "power.c" "bench.c"
+    SRCS "main.c" "settings.c" "net.c" "api.c" "feed.c" "alarm.c" "ota.c" "boot.c" "power.c" "bench.c" "send.c"
          "ui.c" "ui_wall.c" "ui_views.c" "ui_setup.c" "ui_panels.c" "icons.c"
     INCLUDE_DIRS "."
     EMBED_FILES "fonts/Inter-Regular.ttf" "fonts/Inter-SemiBold.ttf" "fonts/InterDisplay-Light.ttf"
     REQUIRES ${BOARD_PACKAGE} esp_wifi esp_wifi_remote esp_netif esp_event nvs_flash esp_http_client esp_https_ota
-             app_update esp_app_format json esp_driver_jpeg esp_driver_gptimer esp_timer mbedtls lwip esp_hw_support esp_mm
+             app_update esp_app_format json esp_driver_jpeg esp_driver_gptimer esp_driver_ppa esp_lcd esp_timer mbedtls lwip esp_hw_support esp_mm
 )
 # text is cut to fit its buffer on purpose throughout (a long title, a long address)
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-format-truncation)
 # boot.c keeps what a panic said, to show it at the next start
 target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_panic_handler")
+# send.c learns the panel from the first frame the board package's LVGL port sends
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_lcd_panel_draw_bitmap")
 # the board (board.h) and the name of its app in the release (ota.c)
 if("$ENV{WALL_BOARD}" STREQUAL "waveshare7b")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE WALL_BOARD_WAVESHARE7B=1)

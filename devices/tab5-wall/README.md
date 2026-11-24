@@ -90,6 +90,7 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/alarm.c` | timers, alarms, the sound |
 | `main/power.c` | the battery's level (the Tab5's INA226) |
 | `main/wall_blend.h` | see-through drawing: the loops LVGL uses in place of its own |
+| `main/send.c` | a turned screen's frames, turned and put on the panel by a task of their own |
 | `main/bench.c` | the screen measured on the board: Settings › Screen › Measure, and by itself on a pull request's build |
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
@@ -130,10 +131,15 @@ that, and is worth keeping when a screen is added or changed:
   hook for assembly). LVGL mixes two colours in a function it calls for every pixel: black at 3/4 over a photo, as
   under a view, took about 130 ms a screen on the board. The loops here draw the same to the bit: a view's and a
   panel's darkening, a photo fading in, every letter and every round corner.
-- **A screen turned costs a copy of every frame.** The P4's pixel processor turns what was drawn before it is sent:
-  by a quarter on the Tab5, whose panel stands on its side, and by half on a 7B mounted the other way round. Measured
-  on the 7B: 27 ms a screen, where a frame sent as drawn costs nothing. The 7B's panel was tried for the half turn
-  (its driver chip, an EK79007, has a command to scan the other way round): the glass on this board ignores it.
+- **A turned screen's frames are turned beside the drawing of the next** (`main/send.c`). The P4's pixel processor
+  turns what was drawn before the panel shows it: by a quarter on the Tab5, whose panel stands on its side, and by
+  half on a 7B mounted the other way round. Measured on the 7B, that is 27 ms a screen, and the board package's LVGL
+  port has the screen's task wait for it, then copies the result into the panel's frame. Here a task of its own has
+  the pixel processor turn each frame straight into the panel's frame while LVGL draws the next into its other
+  buffer: a scroll comes as fast as the slower of the two, not as their sum. The first frames of each turn are
+  compared with what was drawn, and the port's way is gone back to if they differ. The 7B's panel was also tried for
+  the half turn (its driver chip, an EK79007, has a command to scan the other way round): the glass on this board
+  ignores it.
 
 `tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were

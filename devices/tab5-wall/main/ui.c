@@ -758,6 +758,11 @@ void ui_frames_get(ui_frames_t *out)
     *out = frames.sum;
 }
 
+void ui_frames_beside(uint32_t us, uint32_t px)
+{
+    if (px >= frames.from) frames.sum.beside += us;
+}
+
 void ui_frames_text(char *out, size_t n)
 {
     const ui_frames_t *f = &frames.sum;

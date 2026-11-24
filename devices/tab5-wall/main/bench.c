@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bsp/esp-bsp.h"
 #include "driver/gptimer.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -23,7 +24,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[1800];
+static char result[2600];
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -189,6 +190,26 @@ static void turn(void *arg)
     ui_apply_rotation();
 }
 
+#if defined(WALL_BOARD_WAVESHARE7B)
+/* The 7B stands as the Tab5 does for a moment, on a pull request's build: the Tab5's quarter turns go through the
+ * same sending (send.c), which looks at its first frames of each turn and says in the log whether they are in the
+ * panel's frame as drawn. The picture is cut off meanwhile: the screens are not laid out for this. */
+static void quarter(void *arg)
+{
+    bsp_display_rotate(lv_display_get_default(), LV_DISPLAY_ROTATION_90);
+}
+
+static void quarter_other(void *arg)
+{
+    bsp_display_rotate(lv_display_get_default(), LV_DISPLAY_ROTATION_270);
+}
+
+static void upright(void *arg)
+{
+    ui_apply_rotation();
+}
+#endif
+
 static void rows_drawn(void *arg)
 {
     kit_panel_keep(false);
@@ -267,15 +288,21 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[160];
+    char line[200];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
-        unsigned all = f.all / f.n, sending = f.sending / f.n;
+        unsigned all = f.all / f.n, sending = f.sending / f.n, beside = f.beside / f.n;
         unsigned drawing = all > sending ? all - sending : 0;
-        snprintf(line, sizeof line, "%s: %u frames of %u%%, %u.%u ms each (%u.%u drawing, %u.%u sending), slowest %u",
-                 what, (unsigned)f.n, (unsigned)((uint64_t)f.px * 100 / f.n / (WALL_W * WALL_H)), all / 1000, all % 1000 / 100,
-                 drawing / 1000, drawing % 1000 / 100, sending / 1000, sending % 1000 / 100, (unsigned)((f.worst + 500) / 1000));
+        int used = snprintf(line, sizeof line, "%s: %u frames of %u%%, %u.%u ms each (%u.%u drawing, %u.%u sending), slowest %u",
+                            what, (unsigned)f.n, (unsigned)((uint64_t)f.px * 100 / f.n / (WALL_W * WALL_H)), all / 1000,
+                            all % 1000 / 100, drawing / 1000, drawing % 1000 / 100, sending / 1000, sending % 1000 / 100,
+                            (unsigned)((f.worst + 500) / 1000));
+        /* a turned screen: each frame is turned beside the drawing of the next (send.c), which a frame's own time
+         * shows only as its wait for the one before */
+        if (beside && used > 0 && used < (int)sizeof line) {
+            snprintf(line + used, sizeof line - (size_t)used, "; turned beside the next in %u.%u", beside / 1000, beside % 1000 / 100);
+        }
     }
     note(line);
     where_say();
@@ -291,9 +318,10 @@ static void run(void *arg)
         return;
     }
     result[0] = 0;
-    char head[160];
-    snprintf(head, sizeof head, "%s %s, %s, memory free: %u K inside, %u K outside", BOARD_NAME, wall_version(),
-             S.flip ? "turned around" : "as mounted", (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+    char head[200];
+    snprintf(head, sizeof head, "%s %s, %s%s, memory free: %u K inside, %u K outside", BOARD_NAME, wall_version(),
+             S.flip ? "turned around" : "as mounted", send_beside() ? "" : " (turned frames sent the board package's way)",
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
              (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
     note(head);
     memory();
@@ -392,6 +420,22 @@ static void run(void *arg)
     feed_next_photo();
     wait_ms(4000);
     say("The next photo");
+
+#if defined(WALL_BOARD_WAVESHARE7B)
+    if (!strncmp(wall_version(), "pr", 2)) {
+        on_ui(quarter);
+        wait_ms(700);
+        on_ui(whole);
+        wait_ms(500);
+        on_ui(quarter_other);
+        wait_ms(700);
+        on_ui(whole);
+        wait_ms(500);
+        on_ui(upright);
+        wait_ms(700);
+        ESP_LOGI(TAG, "stood on its side both ways for a moment and back");
+    }
+#endif
 
     fresh = true;
     on_ui(settings_again);
