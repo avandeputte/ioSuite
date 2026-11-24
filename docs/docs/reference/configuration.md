@@ -93,7 +93,7 @@ A copy of the program opens three ports, so that each kind of traffic can have f
 | Port | Who comes in | Signed in with |
 | --- | --- | --- |
 | `PORT` (80) | people, in a browser: the pages and what the pages ask for | the session cookie, a passkey, the proxy's sign-in |
-| `SYNC_PORT` (8443) | phones, native apps and devices: CalDAV and CardDAV, calendar feeds, bookmark sync, the iPhone apps and widgets, ioHealth's uploads, e-ink screens, the wall display, scripts that use the API | an app password or a token; cookies are not read here |
+| `SYNC_PORT` (8443) | phones, native apps and devices: CalDAV and CardDAV, calendar feeds, bookmark sync, the iPhone apps and widgets, ioHealth's uploads, ioPix's pictures and videos for an app that shows them, e-ink screens, the wall display, scripts that use the API | an app password or a token; cookies are not read here |
 | `MCP_PORT` (8444) | AI assistants (MCP) | an app password |
 
 The app is chosen the same way on all three: by its own host name (`calendar.example.com`) or by its folder at the
