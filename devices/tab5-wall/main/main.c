@@ -15,8 +15,8 @@
  * the package makes, for one difference: the panel turns the picture itself. This board is only ever turned by half
  * a turn, and its panel's driver chip (EK79007) scans the other way round on a command. The package has the P4's pixel
  * processor turn every frame instead, into a third buffer: measured on the board, 27 ms for a whole screen, 20 of the
- * 35 ms a frame of Settings scrolling took, and nothing at all the other way up. (The package's own setting for
- * leaving the turning to the panel mirrors it from top to bottom only, and its touch with it.) */
+ * 35 ms a frame of Settings scrolling took, and nothing at all the other way up. The panel shows the picture the
+ * right way up with both of its scan bits set (which is how it starts), whatever its driver takes for the start. */
 static lv_display_t *screen_start(const bsp_display_cfg_t *cfg)
 {
     if (lvgl_port_init(&cfg->lvgl_port_cfg) != ESP_OK || bsp_display_brightness_init() != ESP_OK) return NULL;
@@ -32,7 +32,7 @@ static lv_display_t *screen_start(const bsp_display_cfg_t *cfg)
         .vres = BSP_LCD_V_RES,
         /* as the panel scans when nothing is said (from left to right, from the top down): what the port sets for no
          * turn, and the opposite of both for half a turn */
-        .rotation = {.swap_xy = false, .mirror_x = true, .mirror_y = false},
+        .rotation = {.swap_xy = false, .mirror_x = true, .mirror_y = true},
         .color_format = LV_COLOR_FORMAT_RGB565,
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
