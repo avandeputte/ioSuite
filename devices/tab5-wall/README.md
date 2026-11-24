@@ -178,4 +178,8 @@ by restarting it and reading its log. Such a build also says where the time went
 second where the screen's task is, the places follow each scene's line as `bench: where:` lines, and
 `tools/where.py serial.log iowall-….sym` names the functions (the `.sym` file is in the run's artifact, beside the
 `.bin`). Each place says what the task was at: laying out, a panel's rows, drawing, sending or between frames (where
-a panel or a view is put together), and each scene's line splits its frames' time the same way.
+a panel or a view is put together), and each scene's line splits its frames' time the same way. The line ends with
+what a frame was made of in pixels, counted as the simulator counts them (screens filled, copied and blended, and
+in how many pieces): a scene that is slower on the board than its count on a PC is then either drawing more than
+the PC did, or the same pixels slower. Each scrolling scene begins at the top of Settings, wherever the glides of
+the one before it ended: they go further the longer a frame takes.

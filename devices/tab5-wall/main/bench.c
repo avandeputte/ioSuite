@@ -16,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
+#include "lvgl_private.h"
 #include "wall.h"
 
 static const char *TAG = "bench";
@@ -24,7 +25,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[4000];
+static char result[6000];
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -181,6 +182,43 @@ static void on_ui(lv_async_cb_t fn)
     ui_unlock();
 }
 
+/* What a frame is made of, in pixels: everything LVGL draws ends in one function (lv_draw_sw_blend, wrapped by the
+ * linker: CMakeLists.txt), and what passes through it is counted here as tools/sim counts it on a PC: pixels filled
+ * with a colour, copied from a picture, and blended (see-through, or through a mask: text, round corners), and how
+ * many pieces they came in. With these a scene that is slow on the board is told apart: more drawn than the PC's
+ * count of the same scene says, or the same pixels drawn slower. A panel's rows drawn into its picture are counted
+ * on their own. */
+typedef struct {
+    uint32_t calls;
+    uint64_t fill, copy, blend;
+} pixels_t;
+static pixels_t pixels[2];   /* a frame's drawing; a panel's rows */
+
+void __real_lv_draw_sw_blend(lv_draw_task_t *t, const lv_draw_sw_blend_dsc_t *dsc);
+
+void __wrap_lv_draw_sw_blend(lv_draw_task_t *t, const lv_draw_sw_blend_dsc_t *dsc)
+{
+    lv_area_t a;
+    if (lv_area_intersect(&a, dsc->blend_area, &t->clip_area)) {
+        pixels_t *p = &pixels[ui_phase == UI_ROWS];
+        uint32_t n = lv_area_get_size(&a);
+        bool plain = dsc->opa >= LV_OPA_MAX && !dsc->mask_buf;
+        p->calls++;
+        if (!dsc->src_buf) *(plain ? &p->fill : &p->blend) += n;
+        else if (plain && (dsc->src_color_format == LV_COLOR_FORMAT_RGB565 || dsc->src_color_format == LV_COLOR_FORMAT_RGB888)) p->copy += n;
+        else p->blend += n;
+    }
+    __real_lv_draw_sw_blend(t, dsc);
+}
+
+/* the top of what an open panel scrolls: a scene that scrolls begins where the one before it began, however far
+ * that one's glides went (they go further the longer a frame takes) */
+static void top(void *arg)
+{
+    lv_obj_t *card = kit_panel_card();
+    if (card && lv_obj_get_child_count(card)) lv_obj_scroll_to_y(lv_obj_get_child(card, -1), 0, LV_ANIM_OFF);
+}
+
 static void home(void *arg)
 {
     kit_close_panel();
@@ -195,6 +233,7 @@ static void settings(void *arg)
     ui_show_settings();
     made_us = (uint32_t)(esp_timer_get_time() - t0);
     ui_frames_reset(1);
+    memset(pixels, 0, sizeof pixels);
 }
 
 static void under_drawn(void *arg)
@@ -268,6 +307,7 @@ static void from_here(int percent)
 {
     ui_lock();
     ui_frames_reset(percent ? (uint32_t)(WALL_W * WALL_H / 100 * percent) : 1);
+    memset(pixels, 0, sizeof pixels);
     ui_unlock();
     where_from_here();
 }
@@ -311,7 +351,7 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[280];
+    char line[420];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
@@ -329,8 +369,18 @@ static void say(const char *what)
                              beside % 1000 / 100);
         }
         if (made_us && used > 0 && used < (int)sizeof line) {
-            snprintf(line + used, sizeof line - (size_t)used, "; made in %u.%u before that", (unsigned)(made_us / 1000),
-                     (unsigned)(made_us % 1000 / 100));
+            used += snprintf(line + used, sizeof line - (size_t)used, "; made in %u.%u before that", (unsigned)(made_us / 1000),
+                             (unsigned)(made_us % 1000 / 100));
+        }
+        /* the pixels of a frame, in hundredths of a screen */
+        for (int k = 0; k < 2; k++) {
+            const pixels_t *p = &pixels[k];
+            uint64_t scr = (uint64_t)WALL_W * WALL_H * f.n;
+            if (!p->calls || used <= 0 || used >= (int)sizeof line) continue;
+            unsigned fill = (unsigned)(p->fill * 100 / scr), copy = (unsigned)(p->copy * 100 / scr), blend = (unsigned)(p->blend * 100 / scr);
+            used += snprintf(line + used, sizeof line - (size_t)used, "; %s %u.%02u screens filled, %u.%02u copied, %u.%02u blended in %u pieces",
+                             k ? "its rows:" : "a frame:", fill / 100, fill % 100, copy / 100, copy % 100, blend / 100, blend % 100,
+                             (unsigned)(p->calls / f.n));
         }
     }
     made_us = 0;
@@ -396,6 +446,7 @@ static void run(void *arg)
     say("Settings scrolled");
 
     /* the same without the picture a panel keeps of its rows (kit_panel): every row drawn at every frame */
+    on_ui(top);
     on_ui(rows_drawn);
     wait_ms(300);
     from_here(10);
@@ -406,12 +457,14 @@ static void run(void *arg)
 
     /* the same with the screen the other way round: on a board that is turned by half a turn only (the 7B), one of
      * the two is sent as drawn and the other through the pixel processor, and the difference is what turning costs */
+    on_ui(top);
     on_ui(turn);
     wait_ms(600);
     from_here(10);
     scroll_settings();
     say(S.flip ? "The same, turned around" : "The same, as mounted");
     on_ui(turn);
+    on_ui(top);
     wait_ms(600);
 
     lv_area_t a = {0};
@@ -495,7 +548,7 @@ void bench_start(int after_ms)
 {
     if (running) return;
     running = true;
-    if (xTaskCreatePinnedToCore(run, "bench", 6144, (void *)(intptr_t)after_ms, 3, NULL, 1) != pdPASS) running = false;
+    if (xTaskCreatePinnedToCore(run, "bench", 8192, (void *)(intptr_t)after_ms, 3, NULL, 1) != pdPASS) running = false;
 }
 
 bool bench_running(void)

@@ -16,6 +16,8 @@ idf_component_register(
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-format-truncation)
 # boot.c keeps what a panic said, to show it at the next start
 target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_panic_handler")
+# bench.c counts the pixels of everything LVGL draws
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=lv_draw_sw_blend")
 # send.c learns the panel from the first frame the board package's LVGL port sends
 target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_lcd_panel_draw_bitmap")
 # the board (board.h) and the name of its app in the release (ota.c)
