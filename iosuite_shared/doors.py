@@ -15,7 +15,8 @@ firewall or a reverse proxy can treat each kind of traffic on its own:
                    here, nobody signs in or makes an account here, and no page is served.
     mcp   (8444)   MCP clients: /mcp and nothing else.
 
-What an app serves at the sync door is its manifest's "sync" list of path prefixes, plus /api/.
+What an app serves at the sync door is its manifest's "sync" list of path prefixes, plus /api/ and its manifest's
+"media" list (ioPix's pictures and videos, which a native app shows as its pages do).
 
 The port of the pages answers everything the suite serves: a device's path or /mcp asked there is answered by its own
 door's rules (served_as(): no session read, an app password or a token instead), whether or not the other two ports
@@ -134,15 +135,25 @@ def page_paths(app: str) -> tuple:
     return tuple((catalog.APPS.get(app) or {}).get("pages") or ())
 
 
+def media_paths(app: str) -> tuple:
+    """The path prefixes an app serves at both doors as it does /api/ (its manifest's "media"): what its pages show
+    and a native app shows as well, outside /api/ (ioPix's thumbnails, previews and videos). To a signed-in browser
+    with the pages, to an app password at the sync door."""
+    return tuple((catalog.APPS.get(app) or {}).get("media") or ())
+
+
 def home(app: str, path: str, method: str = "GET") -> tuple:
     """The doors that serve a path of an app, the first being where one that came in elsewhere is sent: MCP for
     /mcp; the sync door for the app's sync paths; both the pages' and the sync door for /api/ (but for signing in
-    and changing an account, which is the pages' alone); the pages' door for everything else."""
+    and changing an account, which is the pages' alone) and for the app's media paths, which are read only; the
+    pages' door for everything else."""
     if path == MCP_PATH or path.startswith(MCP_PATH + "/"):
         return (MCP,)
     if under(path, sync_paths(app)) and not under(path, page_paths(app)):
         return (SYNC,)
     if path.startswith("/api/") and not (path.startswith("/api/auth/") and method not in ("GET", "HEAD", "OPTIONS")):
+        return (WEB, SYNC)
+    if method in ("GET", "HEAD", "OPTIONS") and under(path, media_paths(app)):
         return (WEB, SYNC)
     return (WEB,)
 

@@ -58,7 +58,7 @@ addresses: [Several copies and several servers](../docs/docs/start/several-apps.
 | | |
 | --- | --- |
 | Address | `/pix/` at the suite's address (`https://home.example.com/pix/`), and a name of its own if you give it one |
-| Devices | scripts with an app password at `/pix/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports); the iPhone, iPad, Mac and Apple TV apps show ioPix's own pages, so they take the pages' address |
+| Devices | scripts and apps with an app password at `/pix/api/…`, and the pictures and videos themselves (`/pix/thumb/…`, `/pix/preview/…`, `/pix/face/…`, `/pix/video/…`), at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports); the iPhone, iPad, Mac and Apple TV apps sign in as a browser does and show ioPix's own pages, so they take the pages' address |
 | MCP | `/pix/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
 | Database | `iopix`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 | On the server | exiftool (metadata editing), ffmpeg (video thumbnails), `jpegtran` from libjpeg-turbo (lossless rotate and crop), libheif and the MariaDB client (the backups of digiKam's database); the installer, the Proxmox script and the container image have them |

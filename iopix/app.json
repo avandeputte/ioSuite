@@ -5,6 +5,13 @@
   "tag": "Photos",
   "color": "#3b4a8c",
   "folder": "pix",
+  "media": [
+    "/thumb/",
+    "/preview/",
+    "/face/",
+    "/facecrop/",
+    "/video/"
+  ],
   "order": 20,
   "system": [
     "libimage-exiftool-perl",

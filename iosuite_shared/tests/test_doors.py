@@ -108,6 +108,30 @@ def test_each_path_has_its_door():
     assert doors.home("iocalendar", "/profile/token/calendar.mobileconfig") == ("web",)
 
 
+def test_pictures_a_native_app_shows_are_served_at_both_doors():
+    """ioPix's thumbnails, previews and videos are outside /api/, and its Apple TV app, widgets and share sheet show
+    them as its pages do: read at either door, changed at neither."""
+    for path in ("/thumb/12", "/preview/12", "/face/3", "/facecrop/12/1/2/3/4.jpg", "/video/12.mp4", "/video/12/frame"):
+        assert doors.home("iopix", path) == ("web", "sync"), path
+        assert doors.home("iopix", path, "HEAD") == ("web", "sync")
+        assert doors.home("iopix", path, "POST") == ("web",), path
+    assert doors.home("iopix", "/thumbs") == ("web",) and doors.home("iopix", "/") == ("web",)
+    assert doors.home("iocalendar", "/thumb/12") == ("web",)  # another app's manifest says nothing of the kind
+
+
+def test_a_picture_is_answered_at_the_sync_door_by_its_rules(monkeypatch):
+    machine(monkeypatch)
+    h = a_host("iostart", "iopix")
+    sent = [("cookie", "ios_session=abc"), ("authorization", "Basic YTpi")]
+    s, hd, b = ask(h, "/pix/thumb/12", port=8443, query="fit=square", headers=sent)
+    assert s == 200 and "location" not in hd and b["door"] == "sync" and b["cookie"] is None and b["authorization"] == "Basic YTpi"
+    assert b["app"] == "iopix" and b["path"] == "/thumb/12" and b["folder"] == "/pix"
+    s, _, b = ask(h, "/pix/thumb/12", headers=sent)  # with the pages it is the browser's, signed in by its cookie
+    assert s == 200 and b["door"] == "web" and b["cookie"] == "ios_session=abc"
+    s, hd, _ = ask(h, "/pix/", port=8443, name="home.example.com:8443")  # its pages are still the pages'
+    assert s == 307 and hd["location"] == "http://home.example.com/pix/"
+
+
 def test_nobody_signs_in_at_the_sync_door():
     assert doors.home("iocalendar", "/api/auth/login", "POST") == ("web",)
     assert doors.home("iocalendar", "/api/auth/account", "PUT") == ("web",)

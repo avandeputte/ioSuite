@@ -63,6 +63,7 @@ suite's own sign-in, which reads no browser cookie and no proxy header on those 
 | `/dav/…` | bookmark sync: the browser extension, the iPhone app | an app password |
 | `/health/v1/…` | the ioHealthSync iPhone app | user name and password |
 | `/…/api/…` | native apps, widgets, e-ink screens, the wall display, scripts | an app password or the device's token |
+| `/pix/thumb/…`, `/pix/preview/…`, `/pix/face/…`, `/pix/video/…` | ioPix's pictures and videos, for an app that shows them | an app password |
 
 | At the name for MCP | Used by | Protected by |
 | --- | --- | --- |

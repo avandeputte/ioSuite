@@ -58,4 +58,8 @@ def test_validate_refuses_clashes():
         catalog.validate([dict(a, sync=["dav"])])
     with pytest.raises(ValueError, match="pages"):
         catalog.validate([dict(a, sync=["/dav"], pages=["/elsewhere/"])])
+    for bad in (["/api/thumb/"], ["thumb"], ["/dav/files/"], ["/static/x/"]):
+        with pytest.raises(ValueError, match="media"):
+            catalog.validate([dict(a, sync=["/dav"], media=bad)])
+    assert catalog.validate([dict(a, sync=["/dav"], media=["/thumb/"])])
     assert [m["key"] for m in catalog.validate([dict(b, order=0), a])] == ["iotwo", "ioone"]

@@ -18,6 +18,8 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
   color                    its colour (#963522)
   folder                   its folder on an address the suite shares (/calendar/; none for the start page)
   sync                     the path prefixes it serves at the sync door, beside /api/ (iosuite_shared.doors): ["/dav", "/ics/"]
+  media                    the path prefixes it serves at both doors as it does /api/, read only: what its pages and a
+                           native app both show (ioPix: ["/thumb/", "/preview/"])
   order                    where it comes in lists (the website, the builder, the installer)
   adminTool                for suite admins only (ioDNS, ioBackup)
   heavy                    installed last (ioPix: a large image, the AI models)
@@ -66,6 +68,10 @@ def validate(apps: list[dict]) -> list[dict]:
         for pre in m.get("sync") or []:
             if not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static")):
                 raise ValueError(f"{k}/{MANIFEST}: sync {pre!r} is not a path prefix of its own (/dav, /ics/)")
+        for pre in m.get("media") or []:  # served at both doors, as /api/ is
+            if (not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static"))
+                    or any(str(pre).startswith(str(s).rstrip("/")) or str(s).startswith(str(pre).rstrip("/")) for s in m.get("sync") or [])):
+                raise ValueError(f"{k}/{MANIFEST}: media {pre!r} is not a path prefix of its own, apart from its sync prefixes (/thumb/)")
         for pre in m.get("pages") or []:  # under a sync prefix, yet a page a signed-in person opens: served with the pages
             if not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,80}", str(pre)) or not any(str(pre).startswith(s) for s in m.get("sync") or []):
                 raise ValueError(f"{k}/{MANIFEST}: pages {pre!r} is not below one of its sync prefixes")
