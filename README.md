@@ -75,7 +75,7 @@ A copy listens on three ports, so a firewall or a reverse proxy can treat each k
 | Door | Port | What comes in |
 |---|---|---|
 | pages | 80 (`PORT`) | the pages people open and what the pages ask for (the session cookie, passkeys, a reverse proxy's sign-in) |
-| devices | 8443 (`SYNC_PORT`) | phones and native apps, and nothing else: CalDAV, CardDAV, calendar subscriptions, bookmark sync, ioHealth's uploads, and of each app's API the calls its native apps make (its manifest's `devices`). App passwords and tokens only: no cookies, no pages, no reference of the API |
+| devices | 8443 (`SYNC_PORT`) | phones and native apps, and nothing else: CalDAV, CardDAV, the birthday calendar of a contacts profile, bookmark sync, ioHealth's uploads, and of each app's API the calls its native apps make (its manifest's `devices`). Nothing without an app password but a native app's sign-in (`/api/auth/device`); no cookies, no pages, no reference of the API, no subscription links |
 | MCP | 8444 (`MCP_PORT`) | MCP clients: `/mcp` and nothing else |
 
 On every port an app answers both at a name of its own (`https://calendar.example.com/`) and in its folder at the

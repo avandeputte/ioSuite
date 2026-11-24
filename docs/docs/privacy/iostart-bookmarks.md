@@ -20,8 +20,7 @@ sent to the extension's author or to anyone else. Nothing is sold, shared, or us
   remove it on the start page under *Settings › Account*.
 - **What you type to sign in** (from version 1.1): your account name and password on the start page and, when your
   account has two-step sign-in, the code from your code app. They are sent once to your start page, which checks
-  them and answers with the app password above. The extension does not keep your password or the code. Signing in
-  with *Ask the start page instead* sends none of them: you say yes on the start page itself.
+  them and answers with the app password above. The extension does not keep your password or the code.
 
 It does not read your browsing history, the pages you visit, your tabs, or any other site.
 

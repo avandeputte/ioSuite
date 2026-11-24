@@ -9,7 +9,7 @@ suite.
 from fastapi.responses import FileResponse, HTMLResponse
 from iosuite_shared import application, mcp as shared_mcp, pages, users
 
-from iostart import __version__, api, appsignin, bookmarks, config, db, keys, mcp, news, timers
+from iostart import __version__, api, bookmarks, config, db, keys, mcp, news, timers
 from iostart.bookmarks import api as bookmarksapi, ext as bookmarkext
 from iostart.homeassistant import api as haapi
 from iostart.news import api as newsapi
@@ -62,7 +62,6 @@ app = application.create(
              bookmarksapi.router,  # /api/bookmarks, /api/groups, /api/links: the bookmarks
              trmnlapi.router,      # /api/trmnl, and what a TRMNL device asks (/api/setup, /api/display...)
              newsapi.router,       # /api/news: the feed reader (the Feeds page) and the headlines card
-             appsignin.router,     # /dav/nextcloud/index.php/login/v2: how the extension and the iPhone app sign in
              bookmarkext.router),  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)
     page=False)  # two pages (the start page and Bookmarks), served below
 

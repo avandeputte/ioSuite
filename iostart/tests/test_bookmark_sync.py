@@ -1,4 +1,4 @@
-"""The bookmarks as a tree: what the start page shows of it, the sign-in flow that gives the browser extension and
+"""The bookmarks as a tree: what the start page shows of it, the device sign-in that gives the browser extension and
 the iPhone app their app password, and files in and out."""
 import base64
 
@@ -47,42 +47,13 @@ def test_start_page_shows_only_what_is_picked(client):
     assert client.get("/api/bookmarks/tree").json()["count"] == 3
 
 
-def test_sign_in_flow_for_apps_gives_a_sync_only_app_password(client):
-    anon = _anon()
-    f = anon.post("/dav/nextcloud/index.php/login/v2", headers={"User-Agent": "ioStart Bookmarks in Firefox", "Host": "start.example.com"}).json()
-    assert f["login"].startswith("http://start.example.com/dav/nextcloud/index.php/login/v2/flow/")
-    poll = lambda: anon.post(f["poll"]["endpoint"].replace("http://start.example.com", ""), data={"token": f["poll"]["token"]})  # noqa: E731
-    assert poll().status_code == 404
-    page = f["login"].replace("http://start.example.com", "")
-    assert "Sign in to ioStart first" in anon.get(page).text  # nobody signed in: nothing to allow
-    assert f'href="/?flow={page.rsplit("/", 1)[-1]}"' in anon.get(page).text  # the start page signs in and sends back here
-    r = client.get(page)
-    assert "ioStart Bookmarks in Firefox" in r.text and "alex" in r.text
-    token = page.rsplit("/", 1)[-1]
-    assert anon.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": token}).status_code == 403
-    assert client.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": token}, headers={"Origin": "https://evil.example"}).status_code == 403
-    assert poll().status_code == 404
-    assert "Done" in client.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": token}).text
-    got = poll().json()
-    assert got["loginName"] == "alex" and got["appPassword"].startswith("iostart-") and got["server"].endswith("/dav/nextcloud")
-    assert poll().status_code == 404  # handed out once
-    assert "no longer valid" in client.get(page).text
-    auth = _basic("alex", got["appPassword"])
-    assert anon.get("/dav/ext/tree", headers=auth).status_code == 200
-    # for sync only: not the rest of the start page; listed with the account's app passwords, where it is revoked
-    assert anon.get("/api/apps", headers=auth).status_code == 403
-    mine = client.get("/api/auth/app-passwords").json()["items"]
-    assert [(p["label"], p["scope"]) for p in mine] == [("Bookmark sync: ioStart Bookmarks in Firefox", "dav")]
-    client.delete(f"/api/auth/app-passwords/{mine[0]['id']}")
-    assert anon.get("/dav/ext/tree", headers=auth).status_code == 401
-
-
 def test_what_other_sync_apps_asked_is_no_longer_answered(client):
-    """Only the sign-in flow is left under /dav/nextcloud: no Nextcloud Bookmarks API, no bookmarks file over WebDAV."""
+    """Nothing is left under /dav/nextcloud (no sign-in flow, no Nextcloud Bookmarks API), no bookmarks file over WebDAV."""
     pw = client.post("/api/auth/app-passwords", json={"label": "A sync app", "scope": "dav"}).json()["password"]
     auth = _basic("alex", pw)
     anon = _anon()
-    for path in ("/dav/nextcloud/status.php", "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2/folder",
+    assert anon.post("/dav/nextcloud/index.php/login/v2").status_code in (401, 404)
+    for path in ("/dav/nextcloud/index.php/login/v2/flow/abc", "/dav/nextcloud/status.php", "/dav/nextcloud/index.php/apps/bookmarks/public/rest/v2/folder",
                  "/dav/nextcloud/ocs/v2.php/cloud/capabilities", "/dav/bookmarks/bookmarks.xbel", "/dav/bookmarks/"):
         assert anon.get(path, headers=auth).status_code == 404, path
 

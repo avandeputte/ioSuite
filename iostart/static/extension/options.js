@@ -1,8 +1,6 @@
-/* The settings page: signing in (with the name and password typed here, or by asking the start page, where whoever is
- * signed in says yes; either way the extension is handed an app password of its own), the state of the sync, signing
- * out. */
+/* The settings page: signing in (with the name and password typed here, for which the extension is handed an app
+ * password of its own), the state of the sync, signing out. */
 'use strict';
-let waiting = null;  // the sign-in under way: {stop}
 
 async function show() {
   const { account, status, sync } = await ext.storage.local.get(['account', 'status', 'sync']);
@@ -25,9 +23,7 @@ function address(text) {
   return (u.origin + u.pathname).replace(/\/+$/, '');
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** What both ways of signing in begin with: the address, and the browser's leave to reach it. */
+/** What signing in begins with: the address, and the browser's leave to reach it. */
 async function begin() {
   $('error').textContent = '';
   let server;
@@ -53,7 +49,7 @@ async function signedIn(server, mode, user, password) {
 }
 
 function busy(on, text) {
-  $('signin').disabled = $('ask').disabled = on;
+  $('signin').disabled = on;
   $('wait').textContent = on ? text : '';
 }
 
@@ -63,7 +59,7 @@ async function signIn() {
   const b = await begin();
   if (!b) return;
   const name = $('name').value.trim(), password = $('password').value, code = $('code').value.trim();
-  if (!name || !password) { $('error').textContent = 'Type your name and your password, or ask the start page instead.'; return; }
+  if (!name || !password) { $('error').textContent = 'Type your name and your password.'; return; }
   busy(true, 'Signing in…');
   try {
     const r = await fetch(b.server + '/api/auth/device', {
@@ -88,45 +84,7 @@ async function signIn() {
   }
 }
 
-/** Without a password typed here: the start page asks whoever is signed in there, in a tab, to say yes. */
-async function ask() {
-  const b = await begin();
-  if (!b) return;
-  const { server, mode } = b;
-  busy(true, 'Asking the start page…');
-  let tab = null, stopped = false;
-  waiting = { stop: () => { stopped = true; } };
-  try {
-    const nc = server + '/dav/nextcloud/index.php/login/v2';
-    const r = await fetch(`${nc}?client=${encodeURIComponent(await clientName())}`, { method: 'POST', credentials: 'omit' }).catch(() => null);
-    if (!r || !r.ok) throw new Error(r ? `That address did not answer as an ioStart page (${r.status}).` : 'That address cannot be reached.');
-    const flow = await r.json();
-    // the addresses the start page answers with are as it sees itself; this goes by the address typed here (asked at
-    // the address for devices, the page is sent on to where the start page's pages are)
-    const page = String(flow.login || '').split('/').pop(), token = flow.poll && flow.poll.token;
-    if (!page || !token) throw new Error('That address did not answer as an ioStart page.');
-    tab = await ext.tabs.create({ url: `${nc}/flow/${encodeURIComponent(page)}` });
-    $('wait').textContent = 'Say yes in the tab that opened…';
-    let got = null;
-    for (let i = 0; i < 600 && !stopped && !got; i++) {  // 20 minutes, as long as the start page keeps the question
-      await sleep(2000);
-      const p = await fetch(nc + '/poll', { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).catch(() => null);
-      if (p && p.ok) got = await p.json();
-    }
-    if (!got) throw new Error('Nobody said yes in time. Try again.');
-    await signedIn(server, mode, got.loginName, got.appPassword);
-    if (tab) ext.tabs.remove(tab.id).catch(() => {});
-  } catch (e) {
-    $('error').textContent = e.message;
-  } finally {
-    waiting = null;
-    busy(false);
-    show();
-  }
-}
-
 $('signin').addEventListener('click', signIn);
-$('ask').addEventListener('click', ask);
 for (const id of ['server', 'name', 'password', 'code']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') signIn(); });
 $('sync').addEventListener('click', async () => {
   $('sync').disabled = true;

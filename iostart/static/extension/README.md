@@ -35,9 +35,6 @@ for its code as well. What you typed is sent once and not kept: the extension ge
 sync only (Settings › Account on the start page lists and removes it; *Sign out* here removes it too). The browser
 asks once whether the extension may reach that one address; it has no access to any other site.
 
-*Ask the start page instead* signs in without typing a password here: a tab opens at the start page, where you are
-signed in already (or sign in as you do there, with a passkey or through your proxy), and you say yes. It needs the
-start page's pages to be reachable from where the browser is.
 
 ## Signing and the stores
 

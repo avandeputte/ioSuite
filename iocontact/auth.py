@@ -20,6 +20,9 @@ auth = Auth(APP, version=__version__, public_url=config.PUBLIC_URL or None)
 # a proxy identity with no account here is refused, except where clients sign in themselves (CardDAV and MCP with an
 # app password, their discovery, and the calendar feed's secret link)
 auth.deny_exempt = ("/mcp", "/dav", "/.well-known/", "/cal/")
+# the profile's app password (dav) reaches the birthday calendar it subscribes the device to as well: at the port for
+# devices that link also takes the password (api.calendar_feed)
+auth.scope_paths = {k: (*v, "/cal/") for k, v in auth.scope_paths.items()}
 
 
 def row_of(u):

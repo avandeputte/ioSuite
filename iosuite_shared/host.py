@@ -139,6 +139,9 @@ class Host:
             return
         door = self.door_of(scope)
         if scope["type"] == "http" and scope.get("path") == STATUS_PATH:
+            if door == doors.SYNC and (scope.get("client") or ("",))[0] not in ("127.0.0.1", "::1"):
+                await doors.json_answer(send, 401, "Sign in with an app password.", headers=[(b"www-authenticate", b'Basic realm="ioSuite", charset="UTF-8"')])
+                return  # the port open to the internet tells nobody outside this machine anything without a password
             await self._status(scope, send)
             return
         if scope["type"] == "http" and (scope.get("path") or "").startswith(certs.CHALLENGE_PATH):
@@ -176,7 +179,14 @@ class Host:
             await doors.plain(send, 404, "No app of the suite answers at this address.\n")
             return
         method = scope.get("method", "GET")
+        port = door
         door = doors.served_as(door, r.app, r.path, method)  # the pages' port answers a device's path or /mcp too, by that door's rules
+        if port == doors.SYNC:  # the port open to the internet: nothing without a password (but the sign-in), whatever the address
+            status, text = doors.at_device_port(r.app, r.path, method, any(k.lower() == b"authorization" for k, _ in scope.get("headers") or []))
+            if status:
+                await doors.json_answer(send, status, text, door=door,
+                                        headers=[(b"www-authenticate", b'Basic realm="ioSuite", charset="UTF-8"')] if status == 401 else None)
+                return
         if not doors.allowed(door, r.app, r.path, method):
             status, where = doors.elsewhere(door, scope, r.app, r.path, r.folder)
             if status:  # it came in by the wrong door: the right one's address
@@ -202,6 +212,7 @@ class Host:
         inner[prefix.SCOPE_KEY] = r.folder
         inner[doors.SCOPE_ROUTED] = True
         inner[doors.SCOPE_DOOR] = door
+        inner[doors.SCOPE_PORT] = port
         if door != doors.WEB:  # no session here: an app password, a token or the secret in the address is what counts
             inner["headers"] = [(k, v) for k, v in scope.get("headers") or [] if k.lower() != b"cookie"]
         token = CURRENT.set(e.name)

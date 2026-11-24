@@ -36,11 +36,18 @@ def test_the_lists_read_the_manifests():
 def test_what_each_app_serves_to_devices():
     assert doors.sync_paths("iocalendar") == ("/dav", "/.well-known/", "/ics/")
     assert doors.sync_paths("iocontact") == ("/dav", "/.well-known/", "/cal/") and doors.sync_paths("iotask") == ("/dav", "/.well-known/")
-    assert doors.sync_paths("iohealth") == ("/v1/",) and doors.sync_paths("iostart") == ("/dav/",) and doors.sync_paths("iomoney") == ()
-    assert doors.page_paths("iostart") and all(p.startswith("/dav/") for p in doors.page_paths("iostart"))
+    assert doors.sync_paths("iohealth") == ("/v1/",) and doors.sync_paths("iostart") == ("/dav/ext",) and doors.sync_paths("iomoney") == ()
+    assert not any(doors.page_paths(k) for k in catalog.APPS)  # no page below a sync path: nothing is sent on to the pages
+    assert doors.home_only_paths("iocalendar") == ("/.well-known/", "/ics/") and doors.home_only_paths("iocontact") == ("/.well-known/",)
     # of /api/, the calls the native apps make: the apps that have one, and no other
     assert {k for k, m in catalog.APPS.items() if m.get("devices")} == {"iopix", "ionote", "iohealth", "iostart"}
     assert catalog.APPS["iohealth"]["devices"] == catalog.APPS["iostart"]["devices"] == ["POST,DELETE /api/auth/device"]
+
+
+def test_validate_refuses_a_home_only_path_outside_the_sync_paths():
+    a = {"key": "ioone", "name": "ioOne", "description": "One", "color": "#123456", "order": 1, "folder": "one", "sync": ["/dav"], "homeOnly": ["/ics/"]}
+    with pytest.raises(ValueError, match="homeOnly"):
+        catalog.validate([a])
 
 
 def test_validate_refuses_clashes():

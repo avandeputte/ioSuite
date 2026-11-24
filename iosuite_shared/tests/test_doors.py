@@ -50,8 +50,11 @@ def a_host(*apps, hosts=None, remote=None, outer=("", 0, "")):
     return h
 
 
-def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query="", scheme="http"):
-    """One request through the host: (status, headers, body as JSON or text)."""
+def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query="", scheme="http", password=True):
+    """One request through the host: (status, headers, body as JSON or text). At the port for devices (8443) it sends
+    a password unless password is False (the app behind checks it; the host only looks for one)."""
+    if port == 8443 and password and not any(k.lower() == "authorization" for k, _ in headers):
+        headers = (*headers, ("authorization", "Bearer iocalendar-0a1b2c3d-x"))
     scope = {"type": "http", "method": method, "path": path, "raw_path": path.encode(), "query_string": query.encode(), "scheme": scheme,
              "headers": [(b"host", name.encode()), *[(k.encode(), v.encode()) for k, v in headers]],
              "server": ("10.0.0.5", port), "client": (peer, 50000)}
@@ -143,13 +146,16 @@ def test_the_apps_native_apps_have_their_calls_at_the_sync_door():
             assert doors.allowed("sync", app, doors.DEVICE_PATH, method), app
         assert not doors.allowed("sync", app, "/api/auth/login", "POST") and not doors.allowed("sync", app, "/api/docs")
         assert not doors.allowed("sync", app, "/api/suite-admin") and not doors.allowed("sync", app, "/api/auth/app-passwords", "POST")
-    assert doors.allowed("sync", "iopix", "/api/photos") and doors.allowed("sync", "iopix", "/api/folders/7/upload", "POST")
+    assert doors.allowed("sync", "iopix", "/api/photos") and doors.allowed("sync", "iopix", "/api/import/stage", "POST")
+    for path, method in (("/api/folders/7/upload", "POST"), ("/api/settings", "GET"), ("/api/duplicates", "GET"), ("/api/trash/empty", "POST"),
+                         ("/api/users", "GET"), ("/api/suite-admin/proxy", "GET"), ("/api/auth/accounts", "GET"), ("/api/log", "GET")):
+        assert not doors.allowed("sync", "iopix", path, method), path  # an admin's, at home only
     assert doors.allowed("sync", "iopix", "/api/auth/me") and doors.allowed("sync", "iopix", "/api/status")
     assert not doors.allowed("sync", "iopix", "/api/settings", "POST") and not doors.allowed("sync", "iopix", "/api/scan", "POST")  # an admin's, with the pages
     assert doors.allowed("sync", "ionote", "/api/sync") and doors.allowed("sync", "ionote", "/api/notes/u1/attachments/3", "DELETE")
     assert not doors.allowed("sync", "ionote", "/api/notes/u1") and not doors.allowed("sync", "ionote", "/api/notes")
     assert doors.allowed("sync", "iohealth", "/v1/sessions", "POST") and not doors.allowed("sync", "iohealth", "/api/status")
-    assert doors.allowed("sync", "iostart", "/dav/ext/tree")
+    assert doors.allowed("sync", "iostart", "/dav/ext/tree") and not doors.allowed("sync", "iostart", "/dav/nextcloud/index.php/login/v2", "POST")
     for path in ("/api/status", "/api/trmnl/today", "/api/display", "/api/wall", "/api/search", "/api/auth/me"):
         assert not doors.allowed("sync", "iostart", path), path
 
@@ -222,13 +228,6 @@ def test_nobody_signs_in_by_a_session_at_the_sync_door():
     assert doors.home("ionote", "/api/auth/me") == ("web", "sync")  # an app asking who its password is
     assert doors.home("ionote", "/api/auth/login", "POST") == ("web",) and doors.home("ionote", "/api/auth/logout", "POST") == ("web",)
     assert not doors.allowed("sync", "iocalendar", "/api/auth/login", "POST") and doors.allowed("web", "iocalendar", "/api/auth/login", "POST")
-
-
-def test_the_screen_to_say_yes_on_is_a_page_below_a_sync_path():
-    assert doors.home("iostart", "/dav/ext/tree") == ("sync",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/flow/abc") == ("web",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/grant", "POST") == ("web",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2") == ("sync",)  # the client's own first call
 
 
 def test_manifests_name_pages_below_their_sync_paths_only():
@@ -347,13 +346,14 @@ def test_a_phone_looking_its_account_up_reaches_the_app(monkeypatch):
     assert s == 200 and b["app"] == "iocalendar" and b["door"] == "sync" and b["path"] == "/.well-known/caldav"
     s, _, b = ask(h, "/.well-known/carddav")
     assert s == 200 and b["app"] == "iocontact" and b["door"] == "sync"
-    s, _, b = ask(h, "/.well-known/caldav", port=8443, method="PROPFIND")  # at the sync door it is the app's to answer
-    assert s == 200 and b["app"] == "iocalendar" and b["path"] == "/.well-known/caldav" and b["folder"] == "/calendar"
+    # the port for devices does not serve it: a device set up by a profile is given its whole address
+    s, _, b = ask(h, "/.well-known/caldav", port=8443, method="PROPFIND")
+    assert s == 404
 
 
-def test_the_sync_door_sends_nothing_on_but_the_screen_to_say_yes_on(monkeypatch):
+def test_the_sync_door_sends_nothing_on(monkeypatch):
     """The port for devices refuses what is not its own, the same way whatever was asked, and says nothing of where
-    the pages are. The one thing it sends on is the screen a sync client opens for its person to say yes on."""
+    the pages are."""
     machine(monkeypatch)
     h = a_host("iostart", "iocalendar", "iomoney")
     refused = set()
@@ -365,14 +365,43 @@ def test_the_sync_door_sends_nothing_on_but_the_screen_to_say_yes_on(monkeypatch
         refused.add(b["detail"])
     assert len(refused) == 1 and "ioMoney" not in refused.pop()  # one answer: it does not tell which apps are there
     s, hd, _ = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", port=8443, name="home.example.com:8443")
-    assert s == 307 and hd["location"] == "http://home.example.com/dav/nextcloud/index.php/login/v2/flow/abc"
-    s, _, b = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", headers=[("cookie", "ios_session=abc")])
-    assert s == 200 and b["app"] == "iostart" and b["door"] == "web" and b["cookie"] == "ios_session=abc"
-    # nobody signs in by a session here, and saying yes is the pages' too
+    assert s == 404 and "location" not in hd
+    # nobody signs in by a session here
     s, _, b = ask(h, "/calendar/api/auth/login", port=8443, method="POST")
     assert s == 404 and b["door"] == "sync"
     assert ask(h, "/dav/nextcloud/index.php/login/v2/grant", port=8443, method="POST")[0] == 404
     assert ask(h, "/calendar/", port=8443, method="POST")[0] == 404
+
+
+def test_the_port_for_devices_answers_nothing_without_a_password_but_the_sign_in(monkeypatch):
+    """The port open to the internet: whatever the address, served there or not, no password is a 401 with the
+    challenge a sync client answers. The one call it takes without one is a device signing in."""
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar", "iocontact", "iopix", "iohealth")
+    for path, method in (("/dav/ext/tree", "GET"), ("/calendar/dav/alex/", "PROPFIND"), ("/pix/api/status", "GET"), ("/pix/thumb/7", "GET"),
+                         ("/health/v1/health", "GET"), ("/contacts/cal/abc/family.ics", "GET"), ("/api/docs", "GET"), ("/nothing", "GET"),
+                         ("/pix/api/auth/device", "DELETE"), ("/-/status", "GET")):
+        s, hd, b = ask(h, path, port=8443, method=method, password=False)
+        assert s == 401 and hd["www-authenticate"].startswith("Basic") and "location" not in hd, path
+    for path in ("/api/auth/device", "/pix/api/auth/device", "/health/api/auth/device"):
+        s, _, b = ask(h, path, port=8443, method="POST", password=False)
+        assert s == 200 and b["door"] == "sync", path
+    assert ask(h, "/calendar/api/auth/device", port=8443, method="POST", password=False)[0] == 404  # no native app of its own
+    # what the port does not serve stays refused with a password too; the pages' port is as it was
+    assert ask(h, "/api/docs", port=8443)[0] == 404
+    assert ask(h, "/pix/api/status")[0] == 200
+
+
+def test_secret_links_and_lookups_are_not_served_at_the_port_for_devices(monkeypatch):
+    """The calendar links whose secret in the address is their only sign-in, and the lookups a profile never needs,
+    are served at the pages' port only (the manifests' homeOnly). The birthday calendar a contacts profile adds is."""
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar", "iocontact", "iotask")
+    for path in ("/calendar/ics/abc/family.ics", "/.well-known/caldav", "/.well-known/carddav", "/calendar/.well-known/caldav", "/tasks/.well-known/caldav"):
+        assert ask(h, path, port=8443)[0] == 404, path
+    assert ask(h, "/calendar/ics/abc/family.ics")[0] == 200 and ask(h, "/.well-known/caldav")[0] == 200
+    s, _, b = ask(h, "/contacts/cal/abc/family.ics", port=8443)
+    assert s == 200 and b["app"] == "iocontact"
 
 
 def test_the_mcp_door_serves_mcp_and_sends_nobody_on(monkeypatch):
@@ -397,9 +426,6 @@ def test_the_address_stored_for_a_door_is_where_its_requests_are_sent(monkeypatc
     for path, name in (("/", "calsync.example.com"), ("/calendar/", "sync.example.com")):  # a page is not sent on from there
         s, hd, _ = ask(h, path, port=8443, name=name)
         assert s == 404 and "location" not in hd
-    # the screen to say yes on, asked where the sync client was sent: to the address stored for the pages
-    s, hd, _ = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", port=8443, name="sync.example.com")
-    assert s == 307 and hd["location"] == "https://home.example.com/dav/nextcloud/index.php/login/v2/flow/abc"
 
 
 def test_with_the_other_two_ports_off_the_pages_port_answers_everything(monkeypatch):
@@ -625,15 +651,6 @@ def test_the_doors_of_a_copy(monkeypatch):
     assert [d["port"] for d in doors.state()] == [80, 8443, 0]
 
 
-@pytest.mark.parametrize("path,query", [("/dav/nextcloud/index.php/login/v2/flow/a b", ""), ("/dav/nextcloud/index.php/login/v2/flow/%2Fx", "a=1&b=2")])
-def test_a_redirect_keeps_the_address_as_it_was_asked(monkeypatch, path, query):
-    """The screen to say yes on, asked at the sync door, goes to the pages: the address it is sent to says what was asked."""
-    machine(monkeypatch)
-    s, hd, _ = ask(a_host("iostart", "iocalendar"), path, port=8443, query=query)
-    assert s == 307 and hd["location"].startswith("http://home.example.com/dav/nextcloud/index.php/login/v2/flow/") and " " not in hd["location"]
-    assert hd["location"].endswith("?" + query if query else ("a%20b", "%2Fx")[bool(query)])
-
-
 def test_the_copy_says_whether_it_is_serving(monkeypatch):
     machine(monkeypatch)
     h = a_host("iostart", "iocalendar")
@@ -717,13 +734,7 @@ def test_a_request_at_the_wrong_door_goes_to_https_when_the_certificate_holds_fo
     # a CalDAV address asked with the pages over HTTPS is answered there, by the rules of the door for devices
     s, _, b = ask(h, "/calendar/dav/alex/", port=443, scheme="https", method="PROPFIND", headers=[("cookie", "s=1")])
     assert s == 200 and b["door"] == "sync" and b["cookie"] is None
-    # the screen to say yes on, asked at the door for devices: to the pages, at their HTTPS port
-    flow = "/dav/nextcloud/index.php/login/v2/flow/abc"
-    s, hd, _ = ask(h, flow, port=8443, scheme="https")
-    assert s in (302, 307) and hd["location"] == "https://home.example.com" + flow
-    s, hd, _ = ask(h, flow, port=8443, name="192.168.1.151")
-    assert hd["location"] == "http://192.168.1.151" + flow
-    assert ask(h, "/calendar/", port=8443, scheme="https")[0] == 404  # any other page is not this port's, and is not sent on
+    assert ask(h, "/calendar/", port=8443, scheme="https")[0] == 404  # a page is not this port's, and is not sent on
 
 
 def test_the_authority_s_check_is_answered_at_any_door_by_any_copy(monkeypatch):

@@ -10,6 +10,9 @@
     "/.well-known/",
     "/cal/"
   ],
+  "homeOnly": [
+    "/.well-known/"
+  ],
   "order": 90,
   "otherPorts": "LDAP 3890",
   "compose": {

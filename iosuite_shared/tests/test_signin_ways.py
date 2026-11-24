@@ -260,7 +260,7 @@ def at_the_door_for_devices(app):
     from iosuite_shared import doors
 
     async def door(scope, receive, send):
-        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC}) if scope["type"] == "http" else scope, receive, send)
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.SYNC}) if scope["type"] == "http" else scope, receive, send)
     return TestClient(door, base_url="https://devices.example.com", headers={"cf-connecting-ip": "203.0.113.9"})
 
 
@@ -291,6 +291,30 @@ def test_a_native_app_signs_its_person_in_for_an_app_password_of_its_own():
     c = TestClient(app, base_url=HOST)
     c.post("/api/auth/login", json={"name": "alex", "password": "secret123"})
     assert c.delete("/api/auth/device", headers={"origin": HOST}).status_code == 400
+
+
+def test_at_the_port_for_devices_only_an_app_password_signs_a_request_in():
+    """The account's own password signs nothing in at the port open to the internet (a device signs in once for an app
+    password of its own), and neither does the start page's suite-wide one. At the pages' port both work as before."""
+    app, _ = make_app()
+    users.create("alex", "secret123", "admin", "iopix", suite_admin=True)
+    users.db.set_setting("require_login", "1", "iopix")
+    d = at_the_door_for_devices(app)
+    assert d.get("/api/private", headers=basic("alex", "secret123")).status_code == 401
+    made = d.post("/api/auth/device", json={"name": "alex", "password": "secret123"}).json()["password"]
+    assert d.get("/api/private", headers=basic("alex", made)).status_code == 200
+    from iosuite_shared import doors
+
+    async def pages(scope, receive, send):  # the same device path asked at the pages' port: answered by the device rules
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.WEB}) if scope["type"] == "http" else scope, receive, send)
+    p = TestClient(pages, base_url="http://192.168.1.5")
+    assert p.get("/api/private", headers=basic("alex", "secret123")).status_code == 200
+    # a wrong password is refused there even where the route asks for none, and so is an account with no access here
+    assert d.get("/api/status", headers=basic("alex", "nope")).status_code == 401
+    assert d.get("/api/status", headers=basic("alex", made)).status_code == 200
+    users.create("guest", "longenough", "none", "iopix")
+    guest = apppasswords.create(users.find("guest")["id"], "iopix", "x", "")
+    assert d.get("/api/status", headers=basic("guest", guest)).status_code == 403
 
 
 def test_a_device_signing_in_is_asked_for_the_code_of_two_step_sign_in():

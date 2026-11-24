@@ -51,12 +51,13 @@ test("paths outside /dav are not checked", async () => {
 const hreq = (path, auth, method = "POST") => new Request(`https://health.example.com${path}`, {
   method, headers: auth ? { Authorization: auth } : {} });
 
-test("ioHealth: /v1/ uploads need a known app password, Basic or Bearer; /v1/health stays open", async () => {
+test("ioHealth: /v1/ uploads and /v1/health need a known app password, Basic or Bearer", async () => {
   forwarded = 0;
   assert.equal((await worker.fetch(hreq("/v1/sessions", "Basic " + btoa(`alex:${HPW}`)), env("enforce"))).status, 207);
   assert.equal((await worker.fetch(hreq("/v1/sessions/4/items", "Bearer " + HPW), env("enforce"))).status, 207);
-  assert.equal((await worker.fetch(hreq("/v1/health", null, "GET"), env("enforce"))).status, 207);
+  assert.equal((await worker.fetch(hreq("/v1/health", "Bearer " + HPW, "GET"), env("enforce"))).status, 207);
   assert.equal(forwarded, 3);
+  assert.equal((await worker.fetch(hreq("/v1/health", null, "GET"), env("enforce"))).status, 401);
   const r = await worker.fetch(hreq("/v1/sessions", "Basic " + btoa("alex:hunter2")), env("enforce"));
   assert.equal(r.status, 401);
   assert.match(r.headers.get("WWW-Authenticate"), /realm="ioHealth"/);
@@ -67,7 +68,7 @@ test("ioHealth: /v1/ uploads need a known app password, Basic or Bearer; /v1/hea
   assert.equal((await worker.fetch(new Request("https://health.example.com/dav/"), env("enforce"))).status, 207);
 });
 
-test("the start page's bookmark sync: /dav is guarded, the sign-in flow for apps before a password exists is not", async () => {
+test("the start page's bookmark sync: all of /dav is guarded", async () => {
   const SPW = "iostart-9f8e7d6c-Zz_9aBcDeFgHiJkLmNoPqRsTu";
   kv.set("iostart:9f8e7d6c", JSON.stringify({ h: sha(SPW) }));
   const e = (mode) => ({ ...env(mode), APPS: '{"start.example.com": "iostart"}' });
@@ -84,12 +85,10 @@ test("the start page's bookmark sync: /dav is guarded, the sign-in flow for apps
   }
   assert.equal((await worker.fetch(sreq("/dav/ext", null), e("monitor"))).status, 401);
   assert.equal(forwarded, 2);
-  // no password yet: the app starts the flow and polls; the browser opens the page and says yes
-  for (const [path, method] of [["/dav/nextcloud/index.php/login/v2", "POST"],
-    ["/dav/nextcloud/index.php/login/v2/poll", "POST"], ["/dav/nextcloud/index.php/login/v2/flow/abc", "GET"], ["/dav/nextcloud/index.php/login/v2/grant", "POST"]]) {
-    assert.equal((await worker.fetch(sreq(path, null, method), e("enforce"))).status, 207, path);
+  for (const [path, method] of [["/dav/nextcloud/index.php/login/v2", "POST"], ["/dav/nextcloud/index.php/login/v2/poll", "POST"]]) {
+    assert.equal((await worker.fetch(sreq(path, null, method), e("enforce"))).status, 401, path);
   }
-  assert.equal(forwarded, 6);
+  assert.equal(forwarded, 2);
   assert.equal((await worker.fetch(sreq("/dav/nextcloud/index.php/login/v20", null, "POST"), e("enforce"))).status, 401);
   assert.equal((await worker.fetch(sreq("/dav/nextcloud/status.php", null), e("enforce"))).status, 401);
   assert.equal((await worker.fetch(sreq("/api/bookmarks", null), e("enforce"))).status, 207); // the web app: not ours

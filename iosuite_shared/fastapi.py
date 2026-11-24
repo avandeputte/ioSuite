@@ -200,6 +200,12 @@ class Auth:
             if isinstance(user, JSONResponse):  # throttled: too many wrong passwords
                 request.state.user = None
                 return user
+            if not user and doors.port_of_request(request) == doors.SYNC and request.url.path != doors.DEVICE_PATH:
+                # the port open to the internet answers nothing to a wrong password, whatever the route would let a
+                # visitor see without one (ioPix with "Sign-in required" off)
+                request.state.user = None
+                return JSONResponse({"detail": "Sign in with an app password."}, status_code=401,
+                                    headers={"WWW-Authenticate": f'Basic realm="{self.realm}"'})
         if user and not request.state.via_proxy and user.get("passwordless") and self.proxy.external(request.headers, peer):
             user = None  # a passwordless account's session (begun on the LAN) does not work from outside
         if self.suite_entry is not None:
@@ -207,6 +213,8 @@ class Auth:
         if user and user.get("role") == "none":
             request.state.user = None
             request.state.no_role_user = user
+            if doors.port_of_request(request) == doors.SYNC and request.url.path != doors.DEVICE_PATH:
+                return JSONResponse({"detail": f"Your account has no access to {self.label}"}, status_code=403)
             stamp.begin(request, None, True)
             return None
         request.state.user = self.decorate(user) if user else None
@@ -233,8 +241,12 @@ class Auth:
         if wait:
             authlog.warning("%s from %s refused: %d s to wait after repeated wrong passwords", "Basic sign-in as %r" % name if name else "bearer token", self.proxy.source(request), wait)
             return JSONResponse({"detail": f"Too many attempts; try again in {wait} seconds"}, status_code=429, headers={"Retry-After": str(wait)})
-        user, scope = apppasswords.authenticate_scoped(name or None, pw, self.app)
-        if not user and not request.url.path.startswith(apppasswords.HUB_NEVER):
+        from iosuite_shared import doors
+        # at the port open to the internet only an app password of this app signs a request in: never the account's
+        # own password (a device signs in once, doors.DEVICE_PATH, for an app password to keep) nor ioStart's
+        device_port = doors.port_of_request(request) == doors.SYNC
+        user, scope = apppasswords.authenticate_scoped(name or None, pw, self.app, accounts=not device_port)
+        if not user and not device_port and not request.url.path.startswith(apppasswords.HUB_NEVER):
             # an ioStart app password without a limit is the person's suite-wide sign-in (apppasswords.HUB): the start
             # page passes it on when it asks an app on a device's behalf (the wall display), and the suite's one MCP
             # server passes it on to every app's /mcp; never for the sync protocols, which have passwords of their own

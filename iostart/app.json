@@ -6,11 +6,7 @@
   "color": "#2f3a5a",
   "folder": null,
   "sync": [
-    "/dav/"
-  ],
-  "pages": [
-    "/dav/nextcloud/index.php/login/v2/flow/",
-    "/dav/nextcloud/index.php/login/v2/grant"
+    "/dav/ext"
   ],
   "devices": [
     "POST,DELETE /api/auth/device"

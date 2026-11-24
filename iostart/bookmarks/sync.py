@@ -1,8 +1,8 @@
 """What the bookmark sync of the browser extension and the iPhone app (iostart/bookmarks/ext.py) and the files in and
 out (iostart/bookmarks/files.py) share: who is asking, and the tree as the items of a file.
 
-A sync client signs in with HTTP Basic: the account's name and an app password (Settings › Account, or the one the
-sign-in flow for apps makes, iostart/appsignin.py), kept in the Shared ioSuite database like every app password. A
+A sync client signs in with HTTP Basic: the account's name and an app password (Settings › Account, or the one a device gets
+by signing in with its person's name and password, POST /api/auth/device), kept in the Shared ioSuite database like every app password. A
 client gets the account's tree (their own bookmarks and the shared ones, iostart/bookmarks/__init__.py); changing it takes a
 member, editor or admin, and the shared bookmarks only change for an admin of the start page, as in the Bookmarks page.
 """

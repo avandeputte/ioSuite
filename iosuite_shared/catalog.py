@@ -21,6 +21,9 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
   devices                  the calls of its API (/api/) the sync door serves as well: the ones its native apps make,
                            each named with its methods, * for one part of the path
                            (["GET /api/sync", "GET,PUT /api/notes/*/image"]). Nothing else of /api/ is served there.
+  homeOnly                 of its sync prefixes, the ones the port for devices does not serve (the pages' port only):
+                           links whose secret in the address is their only sign-in, lookups a profile never needs
+                           (["/.well-known/", "/ics/"])
   media                    the path prefixes it serves at both doors, read only: what its pages and a native app both
                            show (ioPix: ["/thumb/", "/preview/"])
   order                    where it comes in lists (the website, the builder, the installer)
@@ -76,6 +79,9 @@ def validate(apps: list[dict]) -> list[dict]:
         for pre in m.get("sync") or []:
             if not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static")):
                 raise ValueError(f"{k}/{MANIFEST}: sync {pre!r} is not a path prefix of its own (/dav, /ics/)")
+        for pre in m.get("homeOnly") or []:
+            if not any(str(pre).startswith(str(s)) for s in m.get("sync") or []):
+                raise ValueError(f"{k}/{MANIFEST}: homeOnly {pre!r} is not below one of its sync prefixes")
         for call in m.get("devices") or []:
             if not isinstance(call, str) or not CALL.fullmatch(call):
                 raise ValueError(f"{k}/{MANIFEST}: devices {call!r} is not methods and a path of its API (\"GET,PUT /api/notes/*/image\")")
