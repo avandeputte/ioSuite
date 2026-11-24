@@ -130,10 +130,10 @@ that, and is worth keeping when a screen is added or changed:
   hook for assembly). LVGL mixes two colours in a function it calls for every pixel: black at 3/4 over a photo, as
   under a view, took about 130 ms a screen on the board. The loops here draw the same to the bit: a view's and a
   panel's darkening, a photo fading in, every letter and every round corner.
-- **The 7B's panel turns the picture itself** when the board is mounted the other way round (`screen_start` in
-  `main.c`): its driver chip scans the other way on a command. The board package has the P4's pixel processor turn
-  every frame instead, which took 27 ms a screen. The Tab5's panel stands on its side and cannot: there the pixel
-  processor turns every frame by a quarter.
+- **A screen turned costs a copy of every frame.** The P4's pixel processor turns what was drawn before it is sent:
+  by a quarter on the Tab5, whose panel stands on its side, and by half on a 7B mounted the other way round. Measured
+  on the 7B: 27 ms a screen, where a frame sent as drawn costs nothing. The 7B's panel was tried for the half turn
+  (its driver chip, an EK79007, has a command to scan the other way round): the glass on this board ignores it.
 
 `tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were

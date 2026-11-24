@@ -7,56 +7,6 @@
 #include "freertos/task.h"
 #include "wall.h"
 
-#if defined(WALL_BOARD_WAVESHARE7B)
-#include "bsp/touch.h"
-#include "esp_lvgl_port.h"
-
-/* The 7B's screen is started here and not by its board package (bsp_display_start_with_config), with the same calls
- * the package makes, for one difference: the panel turns the picture itself. This board is only ever turned by half
- * a turn, and its panel's driver chip (EK79007) scans the other way round on a command. The package has the P4's pixel
- * processor turn every frame instead, into a third buffer: measured on the board, 27 ms for a whole screen, 20 of the
- * 35 ms a frame of Settings scrolling took, and nothing at all the other way up. The panel shows the picture the
- * right way up with both of its scan bits set (which is how it starts), whatever its driver takes for the start. */
-static lv_display_t *screen_start(const bsp_display_cfg_t *cfg)
-{
-    if (lvgl_port_init(&cfg->lvgl_port_cfg) != ESP_OK || bsp_display_brightness_init() != ESP_OK) return NULL;
-    bsp_lcd_handles_t lcd;
-    if (bsp_display_new_with_handles(NULL, &lcd) != ESP_OK) return NULL;
-    const lvgl_port_display_cfg_t disp_cfg = {
-        .io_handle = lcd.io,
-        .panel_handle = lcd.panel,
-        .control_handle = lcd.control,
-        .buffer_size = cfg->buffer_size,
-        .double_buffer = cfg->double_buffer,
-        .hres = BSP_LCD_H_RES,
-        .vres = BSP_LCD_V_RES,
-        /* as the panel scans when nothing is said (from left to right, from the top down): what the port sets for no
-         * turn, and the opposite of both for half a turn */
-        .rotation = {.swap_xy = false, .mirror_x = true, .mirror_y = true},
-        .color_format = LV_COLOR_FORMAT_RGB565,
-        .flags = {
-            .buff_dma = cfg->flags.buff_dma,
-            .buff_spiram = cfg->flags.buff_spiram,
-            .swap_bytes = BSP_LCD_BIGENDIAN ? true : false,
-            .sw_rotate = false,
-        },
-    };
-    const lvgl_port_display_dsi_cfg_t dsi_cfg = {0};
-    lv_display_t *disp = lvgl_port_add_disp_dsi(&disp_cfg, &dsi_cfg);
-    if (!disp) return NULL;
-    esp_lcd_touch_handle_t tp = NULL;
-    if (bsp_touch_new(NULL, &tp) == ESP_OK && tp) {
-        const lvgl_port_touch_cfg_t touch_cfg = {.disp = disp, .handle = tp};
-        lvgl_port_add_touch(&touch_cfg);
-    } else {
-        ESP_LOGE(TAG_WALL, "no touch");
-    }
-    return disp;
-}
-#else
-#define screen_start bsp_display_start_with_config
-#endif
-
 void app_main(void)
 {
     boot_begin();
@@ -75,12 +25,12 @@ void app_main(void)
         .flags = {
             .buff_dma = true,
             .buff_spiram = true,
-            .sw_rotate = true,   /* the Tab5: turned (BOARD_ROTATION) by the P4's pixel processor (LVGL_PORT_ENABLE_PPA) */
+            .sw_rotate = true,   /* turned (BOARD_ROTATION) by the P4's pixel processor (LVGL_PORT_ENABLE_PPA) */
         },
     };
     cfg.lvgl_port_cfg.task_stack = 32768;   /* the TrueType rasterizer draws on this stack */
     cfg.lvgl_port_cfg.task_affinity = 0;
-    lv_display_t *disp = screen_start(&cfg);
+    lv_display_t *disp = bsp_display_start_with_config(&cfg);
     if (!disp) {
         ESP_LOGE(TAG_WALL, "no display");
         return;

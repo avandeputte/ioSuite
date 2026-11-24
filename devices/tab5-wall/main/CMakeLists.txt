@@ -1,8 +1,6 @@
 # the board, from the environment (../CMakeLists.txt sets it): this file is also read on its own, for what it requires
 if("$ENV{WALL_BOARD}" STREQUAL "waveshare7b")
     set(BOARD_PACKAGE waveshare__esp32_p4_wifi6_touch_lcd_7b)   # its full name: the short one is not found below
-    # main.c starts this board's screen and touch itself: the touch driver's types, which the package keeps to itself
-    set(BOARD_NEEDS espressif__esp_lcd_touch)
 else()
     set(BOARD_PACKAGE m5stack_tab5)
 endif()
@@ -11,7 +9,7 @@ idf_component_register(
          "ui.c" "ui_wall.c" "ui_views.c" "ui_setup.c" "ui_panels.c" "icons.c"
     INCLUDE_DIRS "."
     EMBED_FILES "fonts/Inter-Regular.ttf" "fonts/Inter-SemiBold.ttf" "fonts/InterDisplay-Light.ttf"
-    REQUIRES ${BOARD_PACKAGE} ${BOARD_NEEDS} esp_wifi esp_wifi_remote esp_netif esp_event nvs_flash esp_http_client esp_https_ota
+    REQUIRES ${BOARD_PACKAGE} esp_wifi esp_wifi_remote esp_netif esp_event nvs_flash esp_http_client esp_https_ota
              app_update esp_app_format json esp_driver_jpeg esp_timer mbedtls lwip esp_hw_support esp_mm
 )
 # text is cut to fit its buffer on purpose throughout (a long title, a long address)

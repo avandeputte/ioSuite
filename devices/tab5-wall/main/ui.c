@@ -267,9 +267,8 @@ void ui_start(lv_display_t *disp)
     DISP = disp;
     ui_apply_rotation();
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
-    for (lv_indev_t *in = lv_indev_get_next(NULL); in; in = lv_indev_get_next(in)) {
-        lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
-    }
+    lv_indev_t *in = bsp_display_get_input_dev();
+    if (in) lv_indev_add_event_cb(in, on_any_press, LV_EVENT_PRESSED, NULL);
     static const lv_event_code_t timed[] = {LV_EVENT_REFR_START, LV_EVENT_FLUSH_START, LV_EVENT_FLUSH_FINISH,
                                             LV_EVENT_FLUSH_WAIT_START, LV_EVENT_FLUSH_WAIT_FINISH, LV_EVENT_REFR_READY};
     for (size_t i = 0; i < sizeof timed / sizeof *timed; i++) lv_display_add_event_cb(disp, on_frame, timed[i], NULL);
