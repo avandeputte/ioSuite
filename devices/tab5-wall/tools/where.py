@@ -9,7 +9,8 @@ beside the .bin in the run's artifact) and prints, for each scene, the functions
     tools/where.py serial.log iowall-waveshare7b.sym            the 20 functions most met in each scene
     tools/where.py serial.log iowall-waveshare7b.sym 40         the 40 most met
 
-For a function that calls nothing (memcpy, memset) the return address is its caller: those are listed under it.
+Under a function met in 4% of the samples or more are the functions its return addresses were in: for one that
+calls nothing (memcpy, a lock let go) that is who called it; for others it may be whoever they last came back from.
 A function drawn into the one that calls it (inline) counts as that one.
 """
 import bisect
@@ -39,7 +40,7 @@ def name(syms, starts, at):
         if not size or at < start + size:
             return what
         i -= 1
-    return "0x%x" % at
+    return "0x%x.. (not in the list: the chip's ROM, memcpy for one)" % (at & ~0xFF)
 
 
 def main():
@@ -62,9 +63,10 @@ def main():
         print("\n%s\n  %s" % (scene, head))
         for fn, k in by.most_common(top):
             print("  %5.1f%%  %s" % (100.0 * k / n, fn))
-            if k * 20 >= n and re.search(r"mem(cpy|set|move)|^0x", fn):
-                for who, c in callers[fn].most_common(4):
-                    print("            %5.1f%%  from %s" % (100.0 * c / n, who))
+            if k * 25 >= n:
+                for who, c in callers[fn].most_common(5):
+                    if who != fn:
+                        print("            %5.1f%%  return address in %s" % (100.0 * c / n, who))
 
     last = None
     for line in open(sys.argv[1], errors="replace"):

@@ -55,6 +55,9 @@ CONFIG_LV_DEF_REFR_PERIOD=10
 # see-through drawing with this firmware's own loops (main/wall_blend.h, which LVGL's blending code includes)
 CONFIG_LV_DRAW_SW_ASM_CUSTOM=y
 CONFIG_LV_DRAW_SW_ASM_CUSTOM_INCLUDE="wall_blend.h"
+# which style properties an object has set at all is kept with it: looking one up that is not set (most are not)
+# no longer goes through all its styles. Measured on the board, a view's first frame spent 18% of its time there.
+CONFIG_LV_OBJ_STYLE_CACHE=y
 CONFIG_LV_USE_TINY_TTF=y
 CONFIG_LV_USE_QRCODE=y
 CONFIG_LV_FONT_MONTSERRAT_16=y

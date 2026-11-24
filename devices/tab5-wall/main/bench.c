@@ -405,6 +405,13 @@ static void run(void *arg)
     drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
     wait_ms(1200);
     say("A swipe back");
+    /* and once more: the first time, the view's letters are drawn from their outlines */
+    from_here(10);
+    drag(WALL_W * 3 / 4, WALL_H / 2, WALL_W / 4, WALL_H / 2, 200);
+    wait_ms(1200);
+    say("A swipe to the view again");
+    drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
+    wait_ms(1200);
     on_ui(home);
     wait_ms(800);
 
