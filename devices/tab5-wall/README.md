@@ -182,7 +182,13 @@ a panel or a view is put together), and each scene's line splits its frames' tim
 what a frame was made of in pixels, counted as the simulator counts them (screens filled, copied and blended, and
 in how many pieces): a scene that is slower on the board than its count on a PC is then either drawing more than
 the PC did, or the same pixels slower. Each scrolling scene begins at the top of Settings, wherever the glides of
-the one before it ended: they go further the longer a frame takes. Some scenes are measured twice, the second time
-with every large area cut into strips that fit in what the processor keeps at hand of the PSRAM (`kit_bands`,
-off otherwise), and a panel's rows are drawn into its picture in one piece and in strips turn about: what is
-faster on the board is then kept. The simulator's check draws everything in strips as well and compares.
+the one before it ended: they go further the longer a frame takes.
+
+Between the scenes the board itself is probed (`The board with Settings open: …`): on the screen's task, a sum that
+needs no memory, bytes read from all over the PSRAM, a megabyte of it filled and the open panel's rows drawn into
+their picture, three times each, with the memory left inside. After each scene and each probe a `bench: beside it`
+line names the tasks each processor ran meanwhile, from the same timer. The same pixels were drawn several times
+slower in some runs than in others, and these tell the reasons apart: a slower sum is the processor taken away, a
+slower read the memory, and the tasks at work beside it are named. Twice the probe is made with something set going
+on the other processor on purpose (memory copied, then a sum), and once the rows are drawn over and over while the
+wall fetches its next photo.

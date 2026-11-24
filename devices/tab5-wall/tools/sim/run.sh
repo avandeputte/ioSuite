@@ -8,8 +8,7 @@
 #   MAIN=/path/to/other/main ./run.sh    another copy of the firmware (the one before a change, to compare)
 #   ./run.sh 7b check           a panel keeps a picture of its rows (kit_panel): the script and a few hundred touches
 #                               more, once with and once without, and every frame of the two must be the same; the
-#                               same for LVGL's own see-through drawing, for what a panel's card hides and for
-#                               large areas drawn in strips
+#                               same for LVGL's own see-through drawing and for what a panel's card hides
 #   SIM_RUN="valgrind --tool=callgrind --dump-before=report --callgrind-out-file=out/cg" ./run.sh 7b
 #                               under a tool: here the instructions each step took, one file per step, by function
 #
@@ -55,7 +54,6 @@ if [ "$1" = check ]; then
     SIM_FRAMES=out/frames-drawn.txt SIM_KEEP=0 "$B/sim" > /dev/null
     SIM_FRAMES=out/frames-lvgl.txt SIM_KEEP=1 "$B/sim-lvgl" > /dev/null
     SIM_FRAMES=out/frames-under.txt SIM_KEEP=1 SIM_CULL=0 "$B/sim" > /dev/null
-    SIM_FRAMES=out/frames-strips.txt SIM_KEEP=1 SIM_BANDS=96000 "$B/sim" > /dev/null
     bad=0
     if cmp -s out/frames-kept.txt out/frames-drawn.txt; then
         echo "$(wc -l < out/frames-kept.txt) frames, each the same with the picture kept as with every row drawn"
@@ -76,13 +74,6 @@ if [ "$1" = check ]; then
     else
         at=$(diff out/frames-kept.txt out/frames-under.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
         echo "a panel over the wall is another picture when what its card hides is not drawn, first at ${at:-?} ms (SIM_CULL=0 draws it)"
-        bad=1
-    fi
-    if cmp -s out/frames-kept.txt out/frames-strips.txt; then
-        echo "$(wc -l < out/frames-kept.txt) frames, each the same drawn in strips as in one piece"
-    else
-        at=$(diff out/frames-kept.txt out/frames-strips.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
-        echo "a large area drawn in strips is another picture than in one piece, first at ${at:-?} ms (SIM_BANDS=96000 draws it so)"
         bad=1
     fi
     exit $bad

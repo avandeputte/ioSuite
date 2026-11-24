@@ -376,7 +376,6 @@ int main(int argc, char **argv)
     if (getenv("SIM_SHOT_AT")) shot_at = (uint32_t)atoi(getenv("SIM_SHOT_AT"));
     if (getenv("SIM_KEEP")) kit_panel_keep(atoi(getenv("SIM_KEEP")) != 0);
     if (getenv("SIM_CULL")) kit_panel_cull(atoi(getenv("SIM_CULL")) != 0);
-    if (getenv("SIM_BANDS")) kit_bands(atoi(getenv("SIM_BANDS")));
     lv_init();
     lv_tick_set_cb(tick);
     fb = calloc((size_t)WALL_W * WALL_H, 2);

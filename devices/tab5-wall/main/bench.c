@@ -25,7 +25,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-#define RESULT_MAX 9000
+#define RESULT_MAX 12000
 static char *result;   /* what the last measuring said, a line per scene: in the PSRAM, the memory inside is short */
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
@@ -62,10 +62,38 @@ typedef struct {
     uint8_t phase;   /* what the screen's task was at (ui_phase) */
 } where_t;
 static where_t *where;
-static volatile uint32_t where_n, where_busy, where_ticks;
+static volatile uint32_t where_n, where_busy, where_ticks, where_every, where_skip;
 static volatile bool where_on;
 static TaskHandle_t ui_task;
 static gptimer_handle_t where_timer;
+
+/* Who else was at work: at each sample, the task each processor is running (the screen's own left out). What the
+ * screen's task draws can be slowed by what goes on beside it: a task that takes its processor from it, or one on
+ * the other processor that fills what both keep at hand of the PSRAM with its own data. */
+#define BESIDE_MAX 10
+typedef struct {
+    TaskHandle_t task;
+    char name[12];
+    uint32_t n;
+} beside_t;
+static beside_t beside[2][BESIDE_MAX];
+
+static void beside_note(int core, TaskHandle_t t)
+{
+    beside_t *b = beside[core];
+    for (int i = 0; i < BESIDE_MAX; i++, b++) {
+        if (b->task == t) {
+            b->n++;
+            return;
+        }
+        if (!b->task) {
+            b->task = t;
+            strlcpy(b->name, pcTaskGetName(t), sizeof b->name);   /* now: the task may be gone when this is said */
+            b->n = 1;
+            return;
+        }
+    }
+}
 
 /* FreeRTOS keeps an interrupted task's registers at the top of its stack, the program counter first and the return
  * address after it (RvExcFrame), and the stack's top is the first thing in its handle */
@@ -73,16 +101,32 @@ static bool where_tick(gptimer_handle_t t, const gptimer_alarm_event_data_t *e, 
 {
     if (!where_on) return false;
     where_ticks++;
-    TaskHandle_t now = xTaskGetCurrentTaskHandleForCore(xPortGetCoreID());
-    if (now != ui_task) return false;
-    where_busy++;
-    if (where_n < WHERE_MAX) {
-        const uint32_t *regs = *(const uint32_t *const *)now;
-        where[where_n].pc = regs[0];
-        where[where_n].ra = regs[1];
-        where[where_n].phase = ui_phase;
-        where_n++;
+    int core = xPortGetCoreID();
+    TaskHandle_t now = xTaskGetCurrentTaskHandleForCore(core), other = xTaskGetCurrentTaskHandleForCore(!core);
+    if (other) beside_note(!core, other);
+    if (now != ui_task) {
+        if (now) beside_note(core, now);
+        return false;
     }
+    where_busy++;
+    /* a scene of any length is kept evenly: when there is no room left, every second place is dropped and from
+     * then on every second sample is skipped, and so on (the first second alone said little of a long scene) */
+    if (where_skip) {
+        where_skip--;
+        return false;
+    }
+    where_skip = where_every - 1;
+    if (where_n == WHERE_MAX) {
+        for (uint32_t i = 0; i < WHERE_MAX / 2; i++) where[i] = where[2 * i];
+        where_n = WHERE_MAX / 2;
+        where_every *= 2;
+        where_skip = where_every - 1;
+    }
+    const uint32_t *regs = *(const uint32_t *const *)now;
+    where[where_n].pc = regs[0];
+    where[where_n].ra = regs[1];
+    where[where_n].phase = ui_phase;
+    where_n++;
     return false;
 }
 
@@ -109,7 +153,9 @@ static void where_setup(void *arg)
 static void where_from_here(void)
 {
     where_on = false;
-    where_n = where_busy = where_ticks = 0;
+    where_n = where_busy = where_ticks = where_skip = 0;
+    where_every = 1;
+    memset(beside, 0, sizeof beside);
     where_on = where_timer != NULL;
 }
 
@@ -121,17 +167,26 @@ static int where_order(const void *a, const void *b)
     return (int)x->phase - (int)y->phase;
 }
 
-static void where_say(void)
+static void where_say(bool places)
 {
     if (!where_timer) return;
     where_on = false;
     wait_ms(2);
     uint32_t n = where_n;
-    ESP_LOGI(TAG, "where: %u places, the screen's task at work in %u of %u samples", (unsigned)n, (unsigned)where_busy,
-             (unsigned)where_ticks);
-    qsort(where, n, sizeof *where, where_order);
+    ESP_LOGI(TAG, "where: %u places, one of every %u, the screen's task at work in %u of %u samples", (unsigned)n,
+             (unsigned)where_every, (unsigned)where_busy, (unsigned)where_ticks);
     char line[200];
     size_t used = 0;
+    for (int core = 0; core < 2; core++) {
+        used = (size_t)snprintf(line, sizeof line, "beside it, processor %d:", core);
+        for (int i = 0; i < BESIDE_MAX && beside[core][i].task && used < sizeof line - 24; i++) {
+            used += (size_t)snprintf(line + used, sizeof line - used, " %s %u", beside[core][i].name, (unsigned)beside[core][i].n);
+        }
+        ESP_LOGI(TAG, "%s", line);
+    }
+    if (!places) return;
+    used = 0;
+    qsort(where, n, sizeof *where, where_order);
     for (uint32_t i = 0; i < n;) {
         uint32_t same = 1;
         while (i + same < n && where[i + same].pc == where[i].pc && where[i + same].ra == where[i].ra &&
@@ -273,49 +328,159 @@ static void upright(void *arg)
 }
 #endif
 
-#define STRIP_BYTES 96000   /* a strip of a large area, in bytes of pixels: well inside the 256 KB kept at hand */
-
-static void strips_on(void *arg)
-{
-    kit_bands(STRIP_BYTES);
-}
-
-static void strips_off(void *arg)
-{
-    kit_bands(0);
-}
-
-/* The rows of the open panel that are in view, drawn into its picture: in one piece and in strips of fewer and fewer
- * rows, three times each and turn about, so that whatever else the board is doing meanwhile falls on all alike. */
-static const int rows_strip[] = {0, 128, 64, 32, 16};
-static uint32_t rows_us[sizeof rows_strip / sizeof *rows_strip];
-
-static volatile bool rows_done;
-
-static void rows_ab(void *arg)
-{
-    memset(rows_us, 0, sizeof rows_us);
-    for (int r = 0; r < 3; r++) {
-        for (size_t k = 0; k < sizeof rows_strip / sizeof *rows_strip; k++) rows_us[k] += kit_panel_rows_us(rows_strip[k]) / 3;
-    }
-    rows_done = true;
-}
-
 static void note(const char *line);
 
-static void rows_say(void)
+/* What the board can do at this moment, apart from any scene: on the screen's task, a sum that needs no memory, eight
+ * thousand bytes read from all over four megabytes of PSRAM (each a line the processor has to fetch), a megabyte
+ * of it filled, and the open panel's rows drawn into their picture. A scene's rows were drawn several times slower in some runs than
+ * in others, for the same pixels: with these four side by side it is the processor that was slower, the memory, or
+ * neither, and the tasks at work beside it are named (where_say). */
+#define FAR_BYTES (4 * 1024 * 1024)
+#define FAR_FILL (1024 * 1024)
+typedef struct {
+    uint32_t sum_us, far_us, fill_us, rows_us;
+} probe_t;
+static probe_t probed;
+static volatile bool probe_done;
+static uint8_t *far;
+
+static uint32_t __attribute__((noinline)) sum_loop(uint32_t n)
 {
-    char line[200];
-    rows_done = false;
-    on_ui(rows_ab);
-    for (int i = 0; i < 100 && !rows_done; i++) wait_ms(100);
-    int used = snprintf(line, sizeof line, "A panel's rows drawn into its picture: in one piece %u.%u ms", (unsigned)(rows_us[0] / 1000),
-                        (unsigned)(rows_us[0] % 1000 / 100));
-    for (size_t k = 1; k < sizeof rows_strip / sizeof *rows_strip && used > 0 && used < (int)sizeof line; k++) {
-        used += snprintf(line + used, sizeof line - (size_t)used, "%s of %d rows %u.%u", k == 1 ? "; in strips" : ",", rows_strip[k],
-                         (unsigned)(rows_us[k] / 1000), (unsigned)(rows_us[k] % 1000 / 100));
+    uint32_t x = 2463534242u;
+    for (uint32_t i = 0; i < n; i++) {
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+    }
+    return x;
+}
+
+static void probe(void *arg)
+{
+    static volatile uint32_t seen;
+    int64_t t0 = esp_timer_get_time();
+    seen = sum_loop(1000000);
+    int64_t t1 = esp_timer_get_time();
+    if (far) {
+        uint32_t s = 0;
+        for (size_t i = 0; i < FAR_BYTES; i += 512) s += far[(i * 61) % FAR_BYTES];   /* not one after the other */
+        seen += s;
+    }
+    int64_t t2 = esp_timer_get_time();
+    if (far) memset(far, (int)seen, FAR_FILL);
+    int64_t t3 = esp_timer_get_time();
+    probed.sum_us = (uint32_t)(t1 - t0);
+    probed.far_us = (uint32_t)(t2 - t1);
+    probed.fill_us = (uint32_t)(t3 - t2);
+    probed.rows_us = kit_panel_rows_us();
+    probe_done = true;
+}
+
+static bool probe_once(void)
+{
+    probe_done = false;
+    on_ui(probe);
+    for (int i = 0; i < 300 && !probe_done; i++) wait_ms(10);
+    return probe_done;
+}
+
+static void tenths(char *to, size_t max, uint32_t us)
+{
+    snprintf(to, max, "%u.%u", (unsigned)(us / 1000), (unsigned)(us % 1000 / 100));
+}
+
+/* three times over, the quickest and the slowest of each */
+static void probe_say(const char *when)
+{
+    if (!far) far = heap_caps_malloc(FAR_BYTES, MALLOC_CAP_SPIRAM);
+    probe_t lo = {UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX}, hi = {0};
+    where_from_here();
+    for (int r = 0; r < 3; r++) {
+        if (!probe_once()) return;
+        const uint32_t *v = &probed.sum_us;
+        uint32_t *l = &lo.sum_us, *h = &hi.sum_us;
+        for (int k = 0; k < 4; k++) {
+            if (v[k] < l[k]) l[k] = v[k];
+            if (v[k] > h[k]) h[k] = v[k];
+        }
+        wait_ms(20);
+    }
+    char line[300], a[8][12];
+    const uint32_t *l = &lo.sum_us, *h = &hi.sum_us;
+    for (int k = 0; k < 4; k++) {
+        tenths(a[2 * k], sizeof a[0], l[k]);
+        tenths(a[2 * k + 1], sizeof a[0], h[k]);
+    }
+    snprintf(line, sizeof line,
+             "The board %s: a sum in %s to %s ms, far bytes read in %s to %s, a megabyte filled in %s to %s, a panel's rows drawn in %s to %s; "
+             "%u K free inside, %u K in one piece",
+             when, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024));
+    note(line);
+    where_say(false);
+}
+
+/* Something made to go on beside the screen's task, on the other processor, while the board is probed: memory copied
+ * to and fro in the PSRAM (as a photo that is unpacked, or a frame that is turned), or a sum that needs no memory.
+ * If the first slows a panel's rows as the slow runs were slowed and the second does not, it is the memory both
+ * processors share that the rows wait for. */
+static volatile int noise;   /* 0: none; 1: memory copied; 2: a sum; -1: the task is to end */
+static volatile bool noise_gone;
+
+static void noise_loop(void *arg)
+{
+    size_t n = (size_t)WALL_W * WALL_H * 2;
+    uint8_t *a = heap_caps_malloc(n, MALLOC_CAP_SPIRAM), *b = heap_caps_malloc(n, MALLOC_CAP_SPIRAM);
+    uint32_t seen = 0;
+    while (noise >= 0) {
+        if (noise == 1 && a && b) {
+            memcpy(a, b, n);
+            memcpy(b, a, n);
+        } else if (noise == 2) {
+            seen += sum_loop(1000000);
+        } else {
+            wait_ms(4);
+        }
+        wait_ms(1);   /* the processor's idle task gets its turn: its watchdog stays quiet */
+    }
+    if (a) a[0] = (uint8_t)seen;   /* used: the sum is not left out */
+    heap_caps_free(a);
+    heap_caps_free(b);
+    noise_gone = true;
+    vTaskDelete(NULL);
+}
+
+static void noise_say(void)
+{
+    noise = 0;
+    noise_gone = false;
+    /* below every task of the wall's own: it takes the other processor from none of them */
+    if (xTaskCreatePinnedToCore(noise_loop, "noise", 3072, NULL, 1, NULL, 1) != pdPASS) return;
+    noise = 1;
+    wait_ms(50);
+    probe_say("while memory is copied on the other processor");
+    noise = 2;
+    wait_ms(50);
+    probe_say("while a sum is made on the other processor");
+    noise = -1;
+    for (int i = 0; i < 100 && !noise_gone; i++) wait_ms(10);
+}
+
+/* The rows of the open panel drawn into their picture, again and again while something goes on that the wall does
+ * by itself: one figure for each time, in ms, in a row. */
+static void rows_while(const char *what, int ms)
+{
+    char line[420];
+    int used = snprintf(line, sizeof line, "A panel's rows drawn %s, ms each time:", what);
+    int64_t until = esp_timer_get_time() + (int64_t)ms * 1000;
+    where_from_here();
+    while (esp_timer_get_time() < until && used > 0 && used < (int)sizeof line - 8) {
+        if (!probe_once()) break;
+        used += snprintf(line + used, sizeof line - (size_t)used, " %u", (unsigned)((probed.rows_us + 500) / 1000));
+        wait_ms(120);
     }
     note(line);
+    where_say(false);
 }
 
 static void rows_drawn(void *arg)
@@ -436,7 +601,7 @@ static void say(const char *what)
     }
     made_us = 0;
     note(line);
-    where_say();
+    where_say(true);
 }
 
 static void run(void *arg)
@@ -481,7 +646,9 @@ static void run(void *arg)
     on_ui(settings);
     wait_ms(700);
     say("Settings opens again");
-    rows_say();
+    probe_say("with Settings open");
+    noise_say();
+    probe_say("after that");
 
     /* and with the wall under its card drawn too, as LVGL does by itself */
     on_ui(home);
@@ -505,17 +672,10 @@ static void run(void *arg)
     from_here(10);
     scroll_settings();
     say("The same, every row drawn each time");
-    /* and each frame of that in strips */
     on_ui(top);
-    on_ui(strips_on);
-    wait_ms(300);
-    from_here(10);
-    scroll_settings();
-    say("The same, every row drawn each time, in strips");
-    on_ui(strips_off);
     on_ui(rows_kept);
     wait_ms(300);
-    rows_say();
+    probe_say("after the scrolling");
 
     /* the same with the screen the other way round: on a board that is turned by half a turn only (the 7B), one of
      * the two is sent as drawn and the other through the pixel processor, and the difference is what turning costs */
@@ -548,6 +708,12 @@ static void run(void *arg)
         ui_apply_brightness();
         ui_unlock();
     }
+    on_ui(top);
+    wait_ms(300);
+    probe_say("after the slider");
+    /* and while the wall fetches, unpacks and fades in its next photo behind the panel */
+    feed_next_photo();
+    rows_while("while the next photo comes", 8000);
 
     on_ui(home);
     wait_ms(1500);
@@ -567,16 +733,6 @@ static void run(void *arg)
     say("A swipe to the view again");
     drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
     wait_ms(1200);
-    on_ui(strips_on);
-    from_here(10);
-    drag(WALL_W * 3 / 4, WALL_H / 2, WALL_W / 4, WALL_H / 2, 200);
-    wait_ms(1200);
-    say("A swipe to the view once more, drawn in strips");
-    from_here(10);
-    drag(WALL_W / 4, WALL_H / 2, WALL_W * 3 / 4, WALL_H / 2, 200);
-    wait_ms(1200);
-    say("A swipe back, drawn in strips");
-    on_ui(strips_off);
     on_ui(home);
     wait_ms(800);
 
@@ -587,14 +743,6 @@ static void run(void *arg)
         wait_ms(150);
     }
     say("The wall drawn whole");
-    on_ui(strips_on);
-    from_here(10);
-    for (int i = 0; i < 10; i++) {
-        on_ui(whole);
-        wait_ms(150);
-    }
-    say("The wall drawn whole, in strips");
-    on_ui(strips_off);
 
     from_here(10);
     feed_next_photo();
@@ -617,6 +765,13 @@ static void run(void *arg)
     }
 #endif
 
+    /* Settings once more, as it is left open for the result to be read: by now a view's parts are kept and the
+     * memory inside is at its shortest */
+    on_ui(settings_again);
+    wait_ms(1000);
+    probe_say("at the end");
+    heap_caps_free(far);
+    far = NULL;
     fresh = true;
     on_ui(settings_again);
     ESP_LOGI(TAG, "done");

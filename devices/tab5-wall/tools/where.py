@@ -53,13 +53,17 @@ def main():
     syms = symbols(sys.argv[2])
     starts = [s[0] for s in syms]
     top = int(sys.argv[3]) if len(sys.argv) > 3 else 20
-    scene, places, head = None, [], ""
+    scene, places, head, beside = None, [], "", []
 
     def say():
-        if scene is None or not places:
+        if scene is None or not (places or beside):
             return
         n = sum(k for _, _, _, k in places)
         print("\n%s\n  %s" % (scene, head))
+        for b in beside:   # the tasks each processor ran meanwhile
+            print("  " + b)
+        if not places:
+            return
         at = collections.Counter()
         for _, _, phase, k in places:
             at[phase] += k
@@ -91,13 +95,15 @@ def main():
         text = m.group(1).rstrip()
         if re.match(r"where: \d+ places", text):
             head = text[7:]
-            scene, places = last, []
+            scene, places, beside = last, [], []
+        elif text.startswith("beside it"):
+            beside.append(text)
         elif text.startswith("where:"):
             for pc, ra, phase, k in re.findall(r"([0-9a-f]+):([0-9a-f]+)(?::(\d))?\*(\d+)", text):
                 places.append((int(pc, 16), int(ra, 16), int(phase or 0), int(k)))
         else:
             say()
-            scene, places, last = None, [], text
+            scene, places, beside, last = None, [], [], text
     say()
 
 
