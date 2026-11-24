@@ -89,6 +89,7 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/ui.c`, `ui_wall.c`, `ui_setup.c`, `ui_panels.c` | the screens (LVGL), laid out for 1280 × 720; `P()` brings each size to the board's screen |
 | `main/alarm.c` | timers, alarms, the sound |
 | `main/power.c` | the battery's level (the Tab5's INA226) |
+| `main/wall_blend.h` | see-through drawing: the loops LVGL uses in place of its own |
 | `main/bench.c` | the screen measured on the board: Settings › Screen › Measure, and by itself on a pull request's build |
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
@@ -99,10 +100,10 @@ The server side is in the start page: `iostart/app/wall.py`.
 
 ## What keeps it quick
 
-The screen is drawn in software, a whole area at a time, and turned by the P4's pixel processor on its way to the
-panel; what a touch costs is how many pixels are drawn for it. LVGL draws, for every area that changed, the topmost
-thing that covers the area and all that is above it. What follows from that, and is worth keeping when a screen is
-added or changed:
+The screen is drawn in software, a whole area at a time, into memory that is slow for its size (on the 7B a screen
+of pixels is filled in 8 ms and copied in 17); what a touch costs is how many pixels are drawn for it, and how. LVGL
+draws, for every area that changed, the topmost thing that covers the area and all that is above it. What follows from
+that, and is worth keeping when a screen is added or changed:
 
 - **A panel is part of the screen it opens over** (`kit_panel`), not of LVGL's top layer: nothing on the top layer
   ever counts as covering, so a panel there had the photo and the whole wall drawn again under it at every frame of
@@ -125,6 +126,14 @@ added or changed:
 - **A key pressed draws that key**, not the keyboard (`kit_keyboard`).
 - **Nothing slow on the screen's task:** settings are written to the flash by a task of their own, the network and
   the photos have theirs.
+- **See-through drawing has loops of its own** (`main/wall_blend.h`, which LVGL's blending code includes: LVGL's
+  hook for assembly). LVGL mixes two colours in a function it calls for every pixel: black at 3/4 over a photo, as
+  under a view, took about 130 ms a screen on the board. The loops here draw the same to the bit: a view's and a
+  panel's darkening, a photo fading in, every letter and every round corner.
+- **The 7B's panel turns the picture itself** when the board is mounted the other way round (`screen_start` in
+  `main.c`): its driver chip scans the other way on a command. The board package has the P4's pixel processor turn
+  every frame instead, which took 27 ms a screen. The Tab5's panel stands on its side and cannot: there the pixel
+  processor turns every frame by a quarter.
 
 `tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were
@@ -133,7 +142,9 @@ filled, copied and blended in them (`./run.sh 7b` for the Waveshare's size, `MAI
 frame takes on the board is what Settings › Screen says. Its clock stands still at one day, so two runs draw the
 same. `./run.sh 7b check` goes through the script and a few hundred touches more on every panel twice, with a panel's
 rows kept as a picture and with every row drawn, and fails when a frame of the one is not, pixel for pixel, that of
-the other: run it after a change to a panel or to `kit_panel`. `SIM_LOG=1` shows the firmware's own log lines.
+the other: run it after a change to a panel or to `kit_panel`. It also draws every frame once more with LVGL's
+own see-through drawing in place of `wall_blend.h`, and fails when the two differ. `SIM_LOG=1` shows the firmware's
+own log lines.
 
 On the board, `main/bench.c` does the same touches with a finger that is not there and times every frame: Settings ›
 Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). It
