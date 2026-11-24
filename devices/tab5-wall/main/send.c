@@ -160,7 +160,7 @@ static void sender(void *arg)
         uint32_t us = (uint32_t)(esp_timer_get_time() - t0);
         if (ok && j.rotation != checked) {
             checked = j.rotation;
-            checks = 3;
+            checks = 2;
         }
         if (ok && checks > 0) {
             ok = as_drawn(&j);

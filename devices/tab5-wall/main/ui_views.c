@@ -51,6 +51,7 @@ static cJSON *data[VIEWS];
 static time_t got_at[VIEWS];
 static char why[VIEWS][96];
 static int shown_min = -1;
+static int built = -1;           /* the view whose parts the body holds, made from its data as it is now; -1: none */
 
 /* ------------------------------------------------------------------ small parts */
 
@@ -155,13 +156,7 @@ static lv_obj_t *glyph(lv_obj_t *parent, int n, bool big)
                                       ICON_THUNDER, ICON_SNOW, ICON_FOG, ICON_WIND, ICON_SUN};
     icon_kind_t k = n >= 0 && n < (int)(sizeof MAP / sizeof MAP[0]) ? MAP[n] : ICON_CLOUD;
     lv_obj_t *i = lv_image_create(parent);
-    lv_image_set_src(i, big ? icons_big[k] : icons_small[k]);
-    int px = big ? 112 : 52;
-    if (P(px) != px) {
-        lv_image_set_scale(i, 256 * P(px) / px);
-        lv_obj_set_size(i, P(px), P(px));
-        lv_image_set_inner_align(i, LV_IMAGE_ALIGN_CENTER);
-    }
+    lv_image_set_src(i, kit_icon(k, P(big ? 112 : 52)));
     lv_obj_set_style_image_recolor(i, k == ICON_MOON || k == ICON_PARTLY_NIGHT ? lv_color_hex(0xe8ecff) : SUNNY, 0);
     lv_obj_set_style_image_recolor_opa(i, LV_OPA_COVER, 0);
     return i;
@@ -518,12 +513,17 @@ static void draw_clock(void)
 static void draw(void)
 {
     if (cur < 0) return;
-    lv_label_set_text(title, KINDS[cur].name);
+    kit_set_text(title, KINDS[cur].name);
     draw_dots();
     draw_clock();
-    lv_obj_clean(body);
     const cJSON *d = data[cur];
-    lv_label_set_text(date_lbl, d ? str(d, "date_short") : "");
+    kit_set_text(date_lbl, d ? str(d, "date_short") : "");
+    /* The view that was shown last, and the start page has said nothing new for it since: its parts are there as
+     * they were. Making a view's parts and laying them out is most of what a swipe to it takes (measured on the 7B:
+     * some 120 ms to make them and 70 to lay them out, then 110 to draw them). */
+    if (built == cur) return;
+    lv_obj_clean(body);
+    built = cur;
     if (!d) message(why[cur][0] ? why[cur] : "Asking the start page…");
     else if (str(d, "missing")[0]) message(str(d, "missing"));
     else KINDS[cur].draw(d);
@@ -562,6 +562,7 @@ static void fetch(void *arg)
         got_at[k] = time(NULL);
     }
     strlcpy(why[k], w, sizeof why[k]);
+    if (built == k && (j ? !same : !data[k])) built = -1;   /* its parts say something else now */
     /* what is on screen stays when the start page does not answer for a moment */
     if (cur == k && !same && (j || !data[k])) draw();
     ui_unlock();
@@ -621,6 +622,7 @@ void ui_views_reset(void)
     }
     listed = false;
     avail = 0;
+    built = -1;
 }
 
 void ui_views_tick(void)
@@ -695,4 +697,5 @@ void ui_views_init(lv_obj_t *parent)
     dots = row(layer, 12);
     lv_obj_align(dots, LV_ALIGN_BOTTOM_MID, 0, -P(20));
     cur = -1;
+    built = -1;
 }

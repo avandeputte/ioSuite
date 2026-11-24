@@ -24,7 +24,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-static char result[2600];
+static char result[4000];
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
 static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
@@ -187,10 +187,24 @@ static void home(void *arg)
     if (ui_views_showing()) ui_views_home();
 }
 
+static uint32_t made_us;   /* how long the screen's task took to make what the scene opens, before its first frame */
+
 static void settings(void *arg)
 {
+    int64_t t0 = esp_timer_get_time();
     ui_show_settings();
+    made_us = (uint32_t)(esp_timer_get_time() - t0);
     ui_frames_reset(1);
+}
+
+static void under_drawn(void *arg)
+{
+    kit_panel_cull(false);
+}
+
+static void under_left(void *arg)
+{
+    kit_panel_cull(true);
 }
 
 static void turn(void *arg)
@@ -297,7 +311,7 @@ static void say(const char *what)
     ui_lock();
     ui_frames_get(&f);
     ui_unlock();
-    char line[240];
+    char line[280];
     if (!f.n) {
         snprintf(line, sizeof line, "%s: nothing drawn", what);
     } else {
@@ -311,9 +325,15 @@ static void say(const char *what)
         /* a turned screen: each frame is turned beside the drawing of the next (send.c), which a frame's own time
          * shows only as its wait for the one before */
         if (beside && used > 0 && used < (int)sizeof line) {
-            snprintf(line + used, sizeof line - (size_t)used, "; turned beside the next in %u.%u", beside / 1000, beside % 1000 / 100);
+            used += snprintf(line + used, sizeof line - (size_t)used, "; turned beside the next in %u.%u", beside / 1000,
+                             beside % 1000 / 100);
+        }
+        if (made_us && used > 0 && used < (int)sizeof line) {
+            snprintf(line + used, sizeof line - (size_t)used, "; made in %u.%u before that", (unsigned)(made_us / 1000),
+                     (unsigned)(made_us % 1000 / 100));
         }
     }
+    made_us = 0;
     note(line);
     where_say();
 }
@@ -359,6 +379,16 @@ static void run(void *arg)
     on_ui(settings);
     wait_ms(700);
     say("Settings opens again");
+
+    /* and with the wall under its card drawn too, as LVGL does by itself */
+    on_ui(home);
+    on_ui(under_drawn);
+    wait_ms(1000);
+    where_from_here();
+    on_ui(settings);
+    wait_ms(700);
+    say("Settings opens, the wall drawn under it");
+    on_ui(under_left);
 
     /* the line in Settings that says how long the redraws took is itself drawn again every second: left out */
     from_here(10);
@@ -435,7 +465,7 @@ static void run(void *arg)
 
     from_here(10);
     feed_next_photo();
-    wait_ms(4000);
+    wait_ms(7000);   /* fetched, unpacked and faded in */
     say("The next photo");
 
 #if defined(WALL_BOARD_WAVESHARE7B)

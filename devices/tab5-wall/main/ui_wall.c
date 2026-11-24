@@ -81,21 +81,12 @@ static void one_line(lv_obj_t *l, const lv_font_t *f)
     lv_obj_set_height(l, lv_font_get_line_height(f));
 }
 
-/* an icon drawn from px wide at want wide (both as on the Tab5's screen) */
-static void icon_fit(lv_obj_t *i, int px, int want)
-{
-    if (P(want) == px) return;
-    lv_image_set_scale(i, 256 * P(want) / px);
-    lv_obj_set_size(i, P(want), P(want));
-    lv_image_set_inner_align(i, LV_IMAGE_ALIGN_CENTER);
-}
-
-static lv_obj_t *weather_icon(lv_obj_t *parent, int n, bool day, bool big)
+/* a weather icon px wide on the Tab5's screen: 112, 52 or 26 */
+static lv_obj_t *weather_icon(lv_obj_t *parent, int n, bool day, int px)
 {
     lv_obj_t *i = lv_image_create(parent);
     icon_kind_t k = icon_for_accuweather(n, day);
-    lv_image_set_src(i, big ? icons_big[k] : icons_small[k]);
-    icon_fit(i, big ? 112 : 52, big ? 112 : 52);
+    lv_image_set_src(i, kit_icon(k, P(px)));
     lv_obj_set_style_image_recolor(i, k == ICON_MOON || k == ICON_PARTLY_NIGHT ? lv_color_hex(0xe8ecff) : SUNNY, 0);
     lv_obj_set_style_image_recolor_opa(i, LV_OPA_COVER, 0);
     return i;
@@ -614,8 +605,7 @@ static void draw_weather(void)
         return;
     }
     icon_kind_t k = icon_for_accuweather(FEED->wicon, FEED->wday);
-    lv_image_set_src(wx_icon, icons_big[k]);
-    icon_fit(wx_icon, 112, 112);
+    lv_image_set_src(wx_icon, kit_icon(k, P(112)));
     lv_obj_set_style_image_recolor(wx_icon, k == ICON_MOON || k == ICON_PARTLY_NIGHT ? lv_color_hex(0xe8ecff) : SUNNY, 0);
     char t[16];
     if (FEED->has_temp) temp_text(t, sizeof t, FEED->temp);
@@ -644,7 +634,7 @@ static void draw_weather(void)
             strlcpy(wd, W[a.tm_wday], sizeof wd);
         }
         label(c, font_text(24), DIM, wd);
-        weather_icon(c, d->icon, true, false);
+        weather_icon(c, d->icon, true, 52);
         char mm[24];
         if (d->has_temp) snprintf(mm, sizeof mm, "%d° %d°", d->max, d->min);
         else mm[0] = 0;
@@ -670,8 +660,7 @@ static void draw_weather(void)
         if (hh->wet && hh->rain) snprintf(at, sizeof at, "%d%%", hh->rain);
         else fmt_hour(at, sizeof at, hh->t);
         label(c, font_text(16), hh->wet && hh->rain ? RAINY : DIM, at);
-        lv_obj_t *i2 = weather_icon(c, hh->icon, true, false);
-        icon_fit(i2, 52, 26);
+        weather_icon(c, hh->icon, true, 26);
         char tt[12] = "";
         if (hh->has_temp) temp_text(tt, sizeof tt, hh->temp);
         label(c, font_text(20), TEXT, tt);

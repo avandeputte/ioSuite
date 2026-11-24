@@ -144,6 +144,14 @@ that, and is worth keeping when a screen is added or changed:
 - **Each object keeps which style properties it has set** (`CONFIG_LV_OBJ_STYLE_CACHE`): LVGL asks for dozens of
   them for every object it lays out and draws, and goes through the object's styles for each. On the board that was
   a fifth of a swipe to a view.
+- **Nothing is drawn under a panel's card that the card hides** (`on_cull` in `main/ui.c`). LVGL draws an area that
+  changed from the topmost thing that covers all of it; the whole screen, as when a panel opens or the next photo
+  comes behind it, is covered by nothing, and the photo, the wall and the panel's shade were drawn under the card
+  too. Such an area is cut into the part within the card and the strips around it before the frame is drawn.
+- **A weather icon is made once at the size it is shown at** (`kit_icon`): the 7B shows the icons at four fifths of
+  the size they are drawn at, both boards show the hours' at half, and LVGL resized each at every redraw of it.
+- **A view shown again is not made again** while the start page has said nothing new for it: its parts are kept as
+  they were laid out, and only drawn.
 - **A touch is on the screen.** The touch driver counts a mirrored edge as one pixel past the last, LVGL writes a
   warning to the log for every reading of such a point and goes on reading it after the finger is gone: measured on
   the board, writing those lines was three quarters of what the screen's task did until the next touch elsewhere.
@@ -157,11 +165,13 @@ frame takes on the board is what Settings › Screen says. Its clock stands stil
 same. `./run.sh 7b check` goes through the script and a few hundred touches more on every panel twice, with a panel's
 rows kept as a picture and with every row drawn, and fails when a frame of the one is not, pixel for pixel, that of
 the other: run it after a change to a panel or to `kit_panel`. It also draws every frame once more with LVGL's
-own see-through drawing in place of `wall_blend.h`, and fails when the two differ. `SIM_LOG=1` shows the firmware's
+own see-through drawing in place of `wall_blend.h`, and once with everything under a panel's card drawn, and fails
+when any of them differs. `SIM_LOG=1` shows the firmware's
 own log lines.
 
 On the board, `main/bench.c` does the same touches with a finger that is not there and times every frame: Settings ›
 Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). It
+opens Settings with and without the wall drawn under it, and
 scrolls Settings three times over: as it is, with every row drawn each time, and with the screen turned around. A pull
 request's build (version `pr…`) runs it by itself half a minute after it starts, so a board on a cable is measured
 by restarting it and reading its log. Such a build also says where the time went: a timer notes two thousand times a
