@@ -10,7 +10,8 @@
     "/preview/",
     "/face/",
     "/facecrop/",
-    "/video/"
+    "/video/",
+    "/orig/"
   ],
   "devices": [
     "POST,DELETE /api/auth/device",
