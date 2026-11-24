@@ -18,6 +18,11 @@ def test_every_api_route_declares_who_may_call_it():
     testing.check_access_declared(app, access.declared)
 
 
+def test_the_port_for_devices_serves_calls_the_app_has_and_no_admin_s():
+    from iopix.main import app
+    testing.check_device_calls(app, "iopix", access.declared)
+
+
 def test_standard_paths():
     assert config.APP_DIR == ROOT and config.STATIC_DIR == ROOT / "static"
     assert config.INDEX_DB == config.DATA_DIR / "index.db"

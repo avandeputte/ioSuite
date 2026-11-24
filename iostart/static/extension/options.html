@@ -9,11 +9,20 @@
     <p class="muted">Keeps this browser's bookmarks the same as your start page's, both ways: the bookmarks bar, the other bookmarks and, in Firefox, the bookmarks menu. What you add, change or delete here goes to the start page and to your other browsers, and the other way round.</p>
     <label class="field" for="server">Your start page's address</label>
     <input type="url" id="server" placeholder="https://start.example.com" autocomplete="url" spellcheck="false">
+    <label class="field" for="name">Your name there</label>
+    <input type="text" id="name" autocomplete="username" autocapitalize="none" spellcheck="false">
+    <label class="field" for="password">Your password</label>
+    <input type="password" id="password" autocomplete="current-password">
+    <div id="codebox" hidden>
+      <label class="field" for="code">The code from your code app</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" spellcheck="false">
+    </div>
     <h2>The first time</h2>
     <label class="choice"><input type="radio" name="mode" value="merge" checked><span><b>Bring both together</b><span class="muted">This browser's bookmarks are added to the start page's, and the start page's come here. What is in both already is not doubled.</span></span></label>
     <label class="choice"><input type="radio" name="mode" value="server"><span><b>Take the start page's bookmarks</b><span class="muted">This browser's own bookmarks are replaced by the start page's. For a browser whose bookmarks you do not need.</span></span></label>
-    <div class="actions"><button class="primary" id="signin">Sign in</button><span id="wait" class="muted"></span></div>
+    <div class="actions"><button class="primary" id="signin">Sign in</button><button id="ask">Ask the start page instead</button><span id="wait" class="muted"></span></div>
     <p id="error" class="err"></p>
+    <p class="muted small">What you type goes to your start page once, which gives this extension a password of its own, for bookmark sync only; your own password is not kept here. <b>Ask the start page instead</b> opens it in a tab where you say yes, with no password typed here: for an account that signs in without one. That needs the address the start page's pages are at.</p>
   </section>
 
   <section id="in" hidden>

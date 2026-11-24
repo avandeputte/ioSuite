@@ -49,7 +49,7 @@ iosuite install --add ionote
 | | |
 | --- | --- |
 | Address | `/notes/` at the suite's address (`https://home.example.com/notes/`), and a name of its own if you give it one |
-| Devices | the Mac and iPhone apps at `/notes/api/…`, at the [address for devices](../reference/configuration.md#the-three-ports) |
+| Devices | the Mac and iPhone apps, at the [address for devices](../reference/configuration.md#the-three-ports): of `/notes/api/…` it serves the calls they make (sign-in, sync, pictures and attachments) and nothing else |
 | MCP | `/notes/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
 | Source | [ionote](https://github.com/avandeputte/iosuite/tree/main/ionote) (server), [ionote-apps](https://github.com/avandeputte/iosuite-apps/tree/main/ionote) (Mac, iPhone, iPad) |
 

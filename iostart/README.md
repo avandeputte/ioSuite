@@ -250,7 +250,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 | | |
 | --- | --- |
 | Address | the suite's address itself (`https://home.example.com/`) |
-| Devices | bookmark sync at `/dav/…` (the browser extension, the iPhone app), widgets, e-ink screens and the wall display at `/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| Devices | bookmark sync and the iPhone app's widgets at `/dav/…` (the browser extension, the iPhone app), at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
 | MCP | `/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
 | Database | `iostart`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 
@@ -306,7 +306,7 @@ a name and HTTPS, for the whole suite at once, and can make people sign in first
 guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
 Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-The browser extension, the iPhone app, the widgets, the e-ink screens and the wall display use the address for devices, which stays outside a sign-in at the proxy.
+The browser extension, the iPhone app and its widgets use the address for devices, which stays outside a sign-in at the proxy and serves nothing but their sign-in and the bookmark sync. E-ink screens and the wall display are given the start page's address inside the network (the pages' port), where they sign in with a key or an app password of their own.
 
 ## Tests
 

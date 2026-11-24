@@ -25,6 +25,8 @@ from iostart.auth import auth
 
 BASE = "/dav/nextcloud"
 router = APIRouter()
+# asking for a sign-in and asking how it went rest on no cookie: the extension asks them from its own origin
+auth.cookieless |= {BASE + "/index.php/login/v2", BASE + "/index.php/login/v2/poll"}
 
 
 async def _json(request: Request) -> dict:

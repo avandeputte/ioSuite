@@ -12,6 +12,9 @@
     "/dav/nextcloud/index.php/login/v2/flow/",
     "/dav/nextcloud/index.php/login/v2/grant"
   ],
+  "devices": [
+    "POST,DELETE /api/auth/device"
+  ],
   "order": 10,
   "aside": "the start page",
   "compose": {

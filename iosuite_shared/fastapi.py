@@ -92,6 +92,9 @@ class Auth:
         # where everything is one's own (ioNote, ioHealth) sets "member", so its pages and native apps offer changes to members
         self.write_role = "editor"
         self.deny_exempt = ()  # path prefixes a denied proxy identity may still reach (iopix: /mcp, which signs in with its own token)
+        # paths where no cookie counts, so a write from another origin is not refused: what a browser extension asks from
+        # its own origin before it has an app password (a native app's sign-in; ioStart adds its sign-in for apps)
+        self.cookieless = {"/api/auth/device"}
         # what a scoped app password may reach, by path prefix (apppasswords: 'dav', the app's sync protocols); anywhere
         # else it gets 403. An app without DAV sets it to {} so it offers no such passwords.
         self.scope_paths = {apppasswords.DAV: ("/dav", "/.well-known/caldav", "/.well-known/carddav")}
@@ -185,12 +188,13 @@ class Auth:
                 request.state.user = None
                 return self.no_access(request, request.state.proxy_ident)
         # the door for the pages takes an app password or a token from inside the network (the apps calling each
-        # other) and, from outside, for what the door for devices serves as well: an app's /api/ asked by a wall
-        # display, a widget, an e-ink screen or a script that was given the one address people know, as /dav and /mcp
-        # asked there already are. Signing in and changing an account with one (/api/auth/) stays refused from
-        # outside, as it is at the door for devices, and no page is ever asked with one.
+        # other) and, from outside, for an app's /api/: a wall display, a widget, an e-ink screen or a script that
+        # was given the one address people know, as /dav and /mcp asked there already are. Changing an account with
+        # one (/api/auth/) stays refused from outside (but giving back the app password a native app signed in for,
+        # doors.DEVICE_PATH), and no page is ever asked with one. (The door for devices serves far less of /api/:
+        # the calls the native apps make, doors.device_call.)
         refused = (door == doors.WEB and self.proxy.external(request.headers, peer)
-                   and not doors.allowed(doors.SYNC, self.app, request.url.path, request.method))
+                   and not doors.password_from_outside(self.app, request.url.path, request.method))
         if not user and "authorization" in request.headers and not refused:
             user = await run_in_threadpool(self._authorization, request)
             if isinstance(user, JSONResponse):  # throttled: too many wrong passwords
@@ -255,6 +259,9 @@ class Auth:
         scope = getattr(request.state, "app_password_scope", "")
         if not scope or not getattr(request.state, "user", None):
             return None
+        from iosuite_shared import doors
+        if request.url.path == doors.DEVICE_PATH and request.method == "DELETE":
+            return None  # a device signing out gives its own app password back, whatever that one may reach
         if scope == apppasswords.READ:
             if request.method in ("GET", "HEAD") and not request.url.path.startswith(apppasswords.READ_NEVER):
                 return None
@@ -337,7 +344,8 @@ class Auth:
                                         headers={"WWW-Authenticate": f'Basic realm="{auth.realm}"'} if "authorization" in request.headers else {})
             # the sync protocols (/dav) too when the browser's cookie is what signs the request in: a sync client and
             # the bookmarks extension send their app password in Authorization, which a page on another site cannot set
-            if (path.startswith(api_prefix) or (path.startswith("/dav") and "authorization" not in request.headers)) and auth.cross_site(request):
+            if ((path.startswith(api_prefix) or (path.startswith("/dav") and "authorization" not in request.headers))
+                    and path not in auth.cookieless and auth.cross_site(request)):
                 return JSONResponse({"detail": "Requests from another site are refused"}, status_code=403)
             response = await call_next(request)
             auth.finish(request, response)

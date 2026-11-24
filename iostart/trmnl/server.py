@@ -735,11 +735,12 @@ def configure(user, dev_id: int, b: dict) -> dict:
 
 
 def address():
-    """The address to give a device (its Wi-Fi setup page, "custom server"): the start page's sync door inside the
-    network (iosuite_shared.doors), since a device cannot sign in through Cloudflare Access or a reverse proxy's
-    sign-in. None when the copy listens on this machine only (HOST=127.0.0.1), does not open that door, or is in a
-    container without INTERNAL_URL: the page then says what to do."""
-    u = suite.local_url(APP, "sync")
+    """The address to give a device (its Wi-Fi setup page, "custom server"): the start page's own inside the network,
+    the port of its pages, where a device is not asked to sign in through Cloudflare Access or a reverse proxy (the
+    port for devices and native apps serves those apps' calls only, iosuite_shared.doors). None when the copy
+    listens on this machine only (HOST=127.0.0.1) or is in a container without INTERNAL_URL: the page then says what
+    to do."""
+    u = suite.local_url(APP, "web")
     if not u or re.match(r"https?://(127\.|localhost|\[::1\])", u):
         return None
     return u

@@ -38,7 +38,7 @@ photos) give it 4 CPUs and 4 GB, and a few GB of disk for the models, or run ioP
 | Port | For |
 | --- | --- |
 | 80 | the pages, in a browser |
-| 8443 | phones, native apps and devices (calendars and contacts, bookmark sync, the iPhone apps, e-ink screens) |
+| 8443 | phones and native apps (calendars and contacts, bookmark sync, the iPhone, iPad, Mac and Apple TV apps) |
 | 8444 | AI assistants (MCP) |
 
 Each can be another port, or not opened at all; see [Configuration](../reference/configuration.md#the-three-ports).

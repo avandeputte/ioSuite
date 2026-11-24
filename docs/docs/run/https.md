@@ -21,8 +21,8 @@ It is one switch for the whole suite, under **Settings › Servers › Certifica
 | 8443 (`SYNC_PORT`) | phones, native apps, devices | the same, and over HTTPS as well, on the same port |
 | 8444 (`MCP_PORT`) | MCP clients | the same, and over HTTPS as well, on the same port |
 
-Nothing that works without HTTPS stops working. The ports for devices and MCP answer both ways, so a phone, a wall
-display or an e-ink screen set up with `http://192.168.1.151:8443` goes on as it is, and the suite's other servers
+Nothing that works without HTTPS stops working. The ports for devices and MCP answer both ways, so a phone or a
+native app set up with `http://192.168.1.151:8443` goes on as it is, and the suite's other servers
 and a reverse proxy are served as before. Only one thing is sent on to HTTPS: a browser that asks the pages without
 it, by one of the certificate's names.
 

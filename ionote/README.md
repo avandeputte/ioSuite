@@ -69,7 +69,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 | | |
 | --- | --- |
 | Address | `/notes/` at the suite's address (`https://home.example.com/notes/`), and a name of its own if you give it one |
-| Devices | the Mac and iPhone apps at `/notes/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| Devices | the Mac and iPhone apps, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports): of `/notes/api/…` it serves the calls they make (sign-in, sync, pictures and attachments) and nothing else |
 | MCP | `/notes/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
 | Database | `ionote`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 | On the server | libheif, for pictures from an iPhone (`libheif1`); the installer, the Proxmox script and the container image have them |
@@ -175,7 +175,7 @@ the suite's address, or its own `PUBLIC_URL` when it has one.
 
 ## API
 
-The paths below are ioNote's own: at the suite's address they are inside its folder (`https://home.example.com/notes/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/notes/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+The paths below are ioNote's own: at the suite's address they are inside its folder (`https://home.example.com/notes/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/notes/…` behind a reverse proxy) is the one to open to the internet for phones and native apps, and serves only what they use: the calls the Mac and iPhone apps make (their sign-in at `/api/auth/device`, `/api/sync`, a note's picture and attachments). Nothing else of the API is served there. MCP clients use the address for MCP (port 8444).
 
 Every route is under `/api`; `GET /api/docs` lists them. JSON in and out; times are seconds since 1970 (UTC); ids are
 UUID strings the device chooses (`UUID().uuidString`).

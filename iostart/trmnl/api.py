@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 def _trmnl_state(request: Request, got: dict) -> dict:
-    return {**got, **trmnlserver.state(request.state.user), "server": auth.base_url(request, "sync")}  # what TRMNL reads from: the sync door
+    return {**got, **trmnlserver.state(request.state.user), "server": auth.base_url(request)}  # what TRMNL reads from: the pages' address (the port for devices serves the native apps' calls only)
 
 
 @router.get("/api/trmnl", dependencies=[access.signed_in])
@@ -137,7 +137,7 @@ def trmnl_plugin(screen: str, request: Request, mode: str = "poll"):
     sends it (strategy webhook). No password or key is in the file."""
     if screen not in trmnl.SCREENS:
         raise HTTPException(404, "No such TRMNL screen")
-    body = trmnl.plugin_zip(screen, "push" if mode == "push" else "poll", auth.base_url(request, "sync"))
+    body = trmnl.plugin_zip(screen, "push" if mode == "push" else "poll", auth.base_url(request))
     return Response(body, media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="iosuite-trmnl-{screen}{"-push" if mode == "push" else ""}.zip"'})
 

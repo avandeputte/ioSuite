@@ -50,7 +50,7 @@ iosuite install --add iopix
 | | |
 | --- | --- |
 | Address | `/pix/` at the suite's address (`https://home.example.com/pix/`), and a name of its own if you give it one |
-| Devices | scripts with an app password at `/pix/api/…`, at the [address for devices](../reference/configuration.md#the-three-ports); the iPhone, iPad, Mac and Apple TV apps show ioPix's own pages, so they take the pages' address |
+| Devices | the iPhone, iPad, Mac and Apple TV apps, at the [address for devices](../reference/configuration.md#the-three-ports): of `/pix/api/…` it serves the calls they make to browse, edit and upload, and the pictures and videos themselves (`/pix/thumb/…`, `/pix/preview/…`, `/pix/face/…`, `/pix/video/…`). An admin's settings and maintenance, and scripts with an app password, use the pages' address |
 | MCP | `/pix/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
 | Source | [iosuite/iopix](https://github.com/avandeputte/iosuite/tree/main/iopix) |
 

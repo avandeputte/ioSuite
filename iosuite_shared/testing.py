@@ -260,6 +260,29 @@ def check_access_declared(app, declared, ignore=("/api/openapi.json", "/api/docs
     assert not missing, "routes without exactly one access marker (dependencies=[access.<level>]):\n" + "\n".join(missing)
 
 
+def check_device_calls(app, key: str, declared) -> None:
+    """The calls an app's manifest lets the port for devices serve ("devices", iosuite_shared.doors) are calls the app
+    has, each with the methods it is named with, and none of them is an admin's: what that port serves is what the
+    native apps make every day, so a list cannot name a call that is gone or open the server's settings to the
+    internet. `declared` is the app's access.declared."""
+    import re
+    from iosuite_shared import catalog
+    listed = (catalog.APPS.get(key) or {}).get("devices") or []
+    assert listed, f"{key}'s manifest names no call for the port for devices: nothing was checked"
+    has = {}
+    for methods, path, route in api_routes(app):
+        has.setdefault(re.sub(r"\{[^}]+\}", "*", path), []).append((methods, route))
+    for call in listed:
+        methods, path = call.split(" ")
+        assert path in has, f"{key}/app.json: devices names {path}, which the app does not have"
+        for m in methods.split(","):
+            routes = [r for ms, r in has[path] if m in ms]
+            assert routes, f"{key}/app.json: devices names {m} {path}, which the app does not have"
+            for r in routes:
+                role = (declared(r) or ("",))[0]
+                assert role not in ("admin", "suite_admin"), f"{key}/app.json: devices names {m} {path}, which is for admins ({role})"
+
+
 def add_account(client, body: dict):
     """Make an account the way Settings › People › People does (POST /api/suite-admin/users), as the suite admin
     `client` is signed in as. {role} is the account's role in the app `client` talks to; the rest is the panel's body."""

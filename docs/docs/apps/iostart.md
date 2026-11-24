@@ -46,8 +46,10 @@ delete in one browser reaches every other browser within a minute.
 - **Firefox**: open the signed `.xpi` of the newest `extension-v…` [release](https://github.com/avandeputte/iosuite-old/releases?q=extension).
 
 Then type the start page's address in the extension (away from home: the suite's
-[address for devices](../reference/configuration.md#the-three-ports)), choose how the first sync goes, and sign in: it gets an app
-password of its own, for bookmark sync only. What it sends and keeps: [privacy policy](../privacy/iostart-bookmarks.md).
+[address for devices](../reference/configuration.md#the-three-ports)), your name and password, choose how the first sync goes,
+and sign in: it gets an app password of its own, for bookmark sync only, and does not keep what you typed. *Ask the
+start page instead* signs in without a password typed there: you say yes in a tab at the start page (for an account
+that signs in with a passkey or through a proxy; it needs the pages' address to be reachable). What it sends and keeps: [privacy policy](../privacy/iostart-bookmarks.md).
 
 ## With the other apps
 
@@ -61,6 +63,6 @@ ioStart is the suite's start page, and it answers at the suite's address itself.
 | | |
 | --- | --- |
 | Address | the suite's address itself (`https://home.example.com/`) |
-| Devices | bookmark sync at `/dav/…` (the browser extension, the iPhone app), widgets, e-ink screens and the wall display at `/api/…`, at the [address for devices](../reference/configuration.md#the-three-ports) |
+| Devices | bookmark sync and the iPhone app's widgets at `/dav/…` (the browser extension, the iPhone app), at the [address for devices](../reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
 | MCP | `/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
 | Source | [iosuite/iostart](https://github.com/avandeputte/iosuite/tree/main/iostart) |

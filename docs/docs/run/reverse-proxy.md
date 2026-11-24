@@ -84,10 +84,11 @@ device path that arrives with the pages is sent on to the address stored for dev
 address again.
 
 !!! note "`/api/` with an app password"
-    A native app, a widget, a script, an e-ink screen or the wall display can be given the address for devices
-    (`SYNC_URL`), where `/api/` answers to an app password and no browser cookie is read, or the address of the
-    pages: an app's `/api/` takes an app password or a token there too, from inside your network and from outside.
-    What nobody does from outside with an app password is sign in or change an account (`/api/auth/`).
+    The address for devices (`SYNC_URL`) serves, of an app's `/api/`, only the calls its native apps make: it is the
+    address to open to the internet, and nothing else of the API is there. A script, an e-ink screen or the wall
+    display is given the address of the pages: an app's `/api/` takes an app password or a token there, from inside
+    your network and from outside. What nobody does from outside with an app password is sign in by a session or
+    change an account (`/api/auth/`).
 
 ## Caddy
 
@@ -188,8 +189,9 @@ Docker network). Leave *Proxy* at Off unless the proxy also signs people in ([be
   and whether a visitor counts as inside your network.
 - **The suite in a folder of a site** (`https://example.com/suite/`): store that as the suite's `PUBLIC_URL`, and the
   proxy may leave the folder on the path or take it off and say so with `X-Forwarded-Prefix: /suite`.
-- **A request at the wrong port is sent on to the right one**: a CalDAV address asked with the pages goes to the
-  address for devices, a page asked at the device port goes to the pages.
+- **The pages' port answers the other two's paths as well**: a CalDAV address or `/mcp` asked with the pages is
+  answered there, by its own port's rules. The device port answers what phones and native apps use and refuses the
+  rest: a page asked there is not sent on to the pages.
 - **ioContact's LDAP** is not HTTP: keep it on the home network, or put a TLS proxy (stunnel, HAProxy, nginx stream)
   in front for `ldaps://`.
 

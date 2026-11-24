@@ -93,13 +93,18 @@ A copy of the program opens three ports, so that each kind of traffic can have f
 | Port | Who comes in | Signed in with |
 | --- | --- | --- |
 | `PORT` (80) | people, in a browser: the pages and what the pages ask for | the session cookie, a passkey, the proxy's sign-in |
-| `SYNC_PORT` (8443) | phones, native apps and devices: CalDAV and CardDAV, calendar feeds, bookmark sync, the iPhone apps and widgets, ioHealth's uploads, ioPix's pictures and videos for an app that shows them, e-ink screens, the wall display, scripts that use the API | an app password or a token; cookies are not read here |
+| `SYNC_PORT` (8443) | phones and native apps, and nothing else: CalDAV and CardDAV, calendar feeds, bookmark sync and the iPhone widgets, ioHealth's uploads, and of each app's API the calls its native apps make (ioPix, ioNote), with ioPix's pictures and videos. No page, no reference of the API, nothing of an app without a native app | an app password or a token; cookies are not read here. A native app or the browser extension gets its app password here with the name and password typed in it (`/api/auth/device`) |
 | `MCP_PORT` (8444) | AI assistants (MCP) | an app password |
 
 The app is chosen the same way on all three: by its own host name (`calendar.example.com`) or by its folder at the
-suite's address (`home.example.com/calendar/`); both work at the same time. A request that arrives at the wrong port
-is sent on to the right one, and a device given the pages' address is answered there: an app password is taken for an
-app's `/api/` on the pages' port as well. ioContact's LDAP directory keeps its own port (3890).
+suite's address (`home.example.com/calendar/`); both work at the same time. The pages' port answers what the other
+two serve as well (a CalDAV address or `/mcp` asked there), so one port is enough for a whole server; the other two
+serve their own and refuse the rest. An e-ink screen, the wall display or a script is given the pages' address: an
+app password is taken for an app's `/api/` there. ioContact's LDAP directory keeps its own port (3890).
+
+What the port for devices serves of an app's API is a list in the app's manifest (`devices` in `<app>/app.json`):
+the calls its native apps make, each with its methods. It is the port meant to be reached from the internet, so
+nothing is served there because it might be useful: a call is added to the list when an app starts to make it.
 
 With [a certificate](../run/https.md) the pages are also answered over HTTPS, on `HTTPS_PORT` (443), and the ports
 for devices and MCP answer HTTPS as well as plain HTTP.

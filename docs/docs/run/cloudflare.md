@@ -62,8 +62,14 @@ suite's own sign-in, which reads no browser cookie and no proxy header on those 
 | `/calendar/ics/…`, `/contacts/cal/…` | subscription links, free/busy, the birthdays feed | the private token in the link |
 | `/dav/…` | bookmark sync: the browser extension, the iPhone app | an app password |
 | `/health/v1/…` | the ioHealthSync iPhone app | user name and password |
-| `/…/api/…` | native apps, widgets, e-ink screens, the wall display, scripts | an app password or the device's token |
+| `/pix/api/…`, `/notes/api/…` | the ioPix and ioNote apps: the calls they make, and no other part of the API | an app password |
+| `/api/auth/device`, `/pix/api/auth/device`, `/notes/…`, `/health/…` | a native app or the browser extension signing its person in: it gets an app password of its own and keeps that | user name and password, and the code of two-step sign-in; repeated wrong ones are slowed down |
 | `/pix/thumb/…`, `/pix/preview/…`, `/pix/face/…`, `/pix/video/…` | ioPix's pictures and videos, for an app that shows them | an app password |
+
+That table is everything the name for devices answers. Pages, the scripts the pages load, the reference of the API,
+the suite's settings, e-ink screens and the wall display, and the apps without a native app are not served there, so
+it is the one name that needs to be reachable from the internet for phones; `home.example.com` can stay behind Access,
+or at home only.
 
 | At the name for MCP | Used by | Protected by |
 | --- | --- | --- |

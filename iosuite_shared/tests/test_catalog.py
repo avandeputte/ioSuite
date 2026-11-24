@@ -38,6 +38,9 @@ def test_what_each_app_serves_to_devices():
     assert doors.sync_paths("iocontact") == ("/dav", "/.well-known/", "/cal/") and doors.sync_paths("iotask") == ("/dav", "/.well-known/")
     assert doors.sync_paths("iohealth") == ("/v1/",) and doors.sync_paths("iostart") == ("/dav/",) and doors.sync_paths("iomoney") == ()
     assert doors.page_paths("iostart") and all(p.startswith("/dav/") for p in doors.page_paths("iostart"))
+    # of /api/, the calls the native apps make: the apps that have one, and no other
+    assert {k for k, m in catalog.APPS.items() if m.get("devices")} == {"iopix", "ionote", "iohealth", "iostart"}
+    assert catalog.APPS["iohealth"]["devices"] == catalog.APPS["iostart"]["devices"] == ["POST,DELETE /api/auth/device"]
 
 
 def test_validate_refuses_clashes():
@@ -62,4 +65,16 @@ def test_validate_refuses_clashes():
         with pytest.raises(ValueError, match="media"):
             catalog.validate([dict(a, sync=["/dav"], media=bad)])
     assert catalog.validate([dict(a, sync=["/dav"], media=["/thumb/"])])
+    # the calls of its API the port for devices serves: methods and a path under /api/, * for one part of it
+    for bad in (["/api/sync"], ["GET api/sync"], ["GET /sync"], ["FETCH /api/sync"], ["GET /api/"], ["GET /api/notes/**"], ["GET  /api/sync"],
+                ["GET /api/notes/{id}"], ["get /api/sync"], [{"GET": "/api/sync"}], ["GET /api/sync?x=1"], ["GET,/api/sync"]):
+        with pytest.raises(ValueError, match="devices"):
+            catalog.validate([dict(a, devices=bad)])
+    # of an account, a native app's own sign-in and its person's settings: nothing that changes an account
+    for bad in (["POST /api/auth/login"], ["POST /api/auth/password"], ["GET,POST /api/auth/app-passwords"], ["DELETE /api/auth/me"],
+                ["GET /api/auth/device"], ["POST /api/auth/*"], ["GET /api/auth/accounts"]):
+        with pytest.raises(ValueError, match="nothing that changes an account"):
+            catalog.validate([dict(a, devices=bad)])
+    assert catalog.validate([dict(a, devices=["GET /api/sync", "GET,PUT,DELETE /api/notes/*/attachments/*", "POST,DELETE /api/auth/device",
+                                              "GET /api/auth/me", "POST /api/auth/settings"])])
     assert [m["key"] for m in catalog.validate([dict(b, order=0), a])] == ["iotwo", "ioone"]
