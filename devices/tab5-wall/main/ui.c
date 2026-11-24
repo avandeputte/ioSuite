@@ -626,15 +626,16 @@ static void on_cull(lv_event_t *e)
     if (!culls || !panel_card || lv_obj_has_flag(panel, LV_OBJ_FLAG_HIDDEN) || lv_obj_get_screen(panel) != lv_display_get_screen_active(d)) return;
     lv_obj_update_layout(panel);   /* where the card is, when it was made just now */
     /* within the card's round corners: a rectangle this far in has its own corners inside them */
-    int32_t in = lv_obj_get_style_radius(panel_card, 0) * 3 / 10 + 2;
+    int32_t round = lv_obj_get_style_radius(panel_card, 0), in = round * 3 / 10 + 2;
     lv_area_t card = panel_card->coords;
     lv_area_increase(&card, -in, -in);
     if (lv_area_get_width(&card) < 8 || lv_area_get_height(&card) < 8) return;
     uint32_t n = d->inv_p;
     for (uint32_t i = 0; i < n; i++) {
         lv_area_t a = d->inv_areas[i], mid;
-        /* an area within the card is the card's or its content's as it is: a scroll's is drawn from what scrolls */
-        if (d->inv_area_joined[i] || lv_area_is_in(&a, &panel_card->coords, 0) || !lv_area_intersect(&mid, &a, &card)) continue;
+        /* an area the card covers, round corners and all, is drawn from the card or from what is in it as it is (a
+         * scroll's reaches to the card's edge, and is drawn from what scrolls) */
+        if (d->inv_area_joined[i] || lv_area_is_in(&a, &panel_card->coords, round) || !lv_area_intersect(&mid, &a, &card)) continue;
         /* worth five areas to send in place of one: a good part of the screen is saved */
         if (lv_area_get_size(&mid) < (uint32_t)(WALL_W * WALL_H / 6) || d->inv_p + 4 > LV_INV_BUF_SIZE) continue;
         d->inv_areas[i] = mid;
