@@ -52,7 +52,8 @@ jobs:
             pip install -q "idf-component-manager==2.5.2" &&
             idf.py build &&
             cd build &&
-            esptool.py --chip esp32p4 merge_bin -o iowall-full.bin @flash_args
+            esptool.py --chip esp32p4 merge_bin -o iowall-full.bin @flash_args &&
+            riscv32-esp-elf-nm -n -S --defined-only iowall.elf > iowall.sym
       - name: Gather the files
         working-directory: devices/tab5-wall/build
         run: |
@@ -60,6 +61,8 @@ jobs:
           sudo chown -R "$(id -u)" . || true
           cp iowall.bin "../out/${{ matrix.file }}.bin"
           cp iowall-full.bin "../out/${{ matrix.file }}-full.bin"
+          # where each function of this build is: tools/where.py names the places a measuring run logged with it
+          cp iowall.sym "../out/${{ matrix.file }}.sym"
           grep -E "CONFIG_ESP32P4_REV_MIN_FULL=|CONFIG_ESP_HOSTED_SDIO_PIN_CMD=" ../sdkconfig || true
           ls -la ../out
       - uses: actions/upload-artifact@v4

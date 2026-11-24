@@ -89,6 +89,8 @@ never updates itself; `WALL_VERSION=1.2 idf.py build` gives it a version.
 | `main/ui.c`, `ui_wall.c`, `ui_setup.c`, `ui_panels.c` | the screens (LVGL), laid out for 1280 × 720; `P()` brings each size to the board's screen |
 | `main/alarm.c` | timers, alarms, the sound |
 | `main/power.c` | the battery's level (the Tab5's INA226) |
+| `main/wall_blend.h` | see-through drawing: the loops LVGL uses in place of its own |
+| `main/send.c` | a turned screen's frames, turned and put on the panel by a task of their own |
 | `main/bench.c` | the screen measured on the board: Settings › Screen › Measure, and by itself on a pull request's build |
 | `main/ota.c` | updates from the release `wall-latest` (each board its own file) |
 | `main/icons.c` | the weather icons, made by `tools/make_icons.py` |
@@ -99,10 +101,10 @@ The server side is in the start page: `iostart/app/wall.py`.
 
 ## What keeps it quick
 
-The screen is drawn in software, a whole area at a time, and turned by the P4's pixel processor on its way to the
-panel; what a touch costs is how many pixels are drawn for it. LVGL draws, for every area that changed, the topmost
-thing that covers the area and all that is above it. What follows from that, and is worth keeping when a screen is
-added or changed:
+The screen is drawn in software, a whole area at a time, into memory that is slow for its size (on the 7B a screen
+of pixels is filled in 8 ms and copied in 17); what a touch costs is how many pixels are drawn for it, and how. LVGL
+draws, for every area that changed, the topmost thing that covers the area and all that is above it. What follows from
+that, and is worth keeping when a screen is added or changed:
 
 - **A panel is part of the screen it opens over** (`kit_panel`), not of LVGL's top layer: nothing on the top layer
   ever counts as covering, so a panel there had the photo and the whole wall drawn again under it at every frame of
@@ -125,6 +127,35 @@ added or changed:
 - **A key pressed draws that key**, not the keyboard (`kit_keyboard`).
 - **Nothing slow on the screen's task:** settings are written to the flash by a task of their own, the network and
   the photos have theirs.
+- **See-through drawing has loops of its own** (`main/wall_blend.h`, which LVGL's blending code includes: LVGL's
+  hook for assembly). LVGL mixes two colours in a function it calls for every pixel: black at 3/4 over a photo, as
+  under a view, took about 130 ms a screen on the board. The loops here draw the same to the bit: a view's and a
+  panel's darkening, a photo fading in, every letter and every round corner.
+- **A turned screen's frames are turned beside the drawing of the next** (`main/send.c`). The P4's pixel processor
+  turns what was drawn before the panel shows it: by a quarter on the Tab5, whose panel stands on its side, and by
+  half on a 7B mounted the other way round. Measured on the 7B, that is 27 ms a screen, and the board package's LVGL
+  port has the screen's task wait for it, then copies the result into the panel's frame. Here a task of its own turns
+  each frame straight into the panel's frame while LVGL draws the next into its other buffer: a scroll comes as
+  fast as the slower of the two, not as their sum. A quarter turn is the pixel processor's; half a turn is the same
+  pixels in the opposite order, which a loop on the second core writes. The first frames of each turn are
+  compared with what was drawn, and the port's way is gone back to if they differ. The 7B's panel was also tried for
+  the half turn (its driver chip, an EK79007, has a command to scan the other way round): the glass on this board
+  ignores it.
+- **Each object keeps which style properties it has set** (`CONFIG_LV_OBJ_STYLE_CACHE`): LVGL asks for dozens of
+  them for every object it lays out and draws, and goes through the object's styles for each. On the board that was
+  a fifth of a swipe to a view.
+- **Nothing is drawn under a panel's card that the card hides** (`on_cull` in `main/ui.c`). LVGL draws an area that
+  changed from the topmost thing that covers all of it; the whole screen, as when a panel opens or the next photo
+  comes behind it, is covered by nothing, and the photo, the wall and the panel's shade were drawn under the card
+  too. Such an area is cut into the part within the card and the strips around it before the frame is drawn.
+- **A weather icon is made once at the size it is shown at** (`kit_icon`): the 7B shows the icons at four fifths of
+  the size they are drawn at, both boards show the hours' at half, and LVGL resized each at every redraw of it.
+- **A view shown again is not made again** while the start page has said nothing new for it: its parts are kept as
+  they were laid out, and only drawn.
+- **A touch is on the screen.** The touch driver counts a mirrored edge as one pixel past the last, LVGL writes a
+  warning to the log for every reading of such a point and goes on reading it after the finger is gone: measured on
+  the board, writing those lines was three quarters of what the screen's task did until the next touch elsewhere.
+  `touch_read` in `main/ui.c` brings what the panel reports onto the screen first.
 
 `tools/sim/run.sh` builds LVGL and the firmware's screens for a PC, goes through the wall, the panels and the views
 with scripted touches, and prints for each step how many frames it took and how many screens' worth of pixels were
@@ -133,10 +164,41 @@ filled, copied and blended in them (`./run.sh 7b` for the Waveshare's size, `MAI
 frame takes on the board is what Settings › Screen says. Its clock stands still at one day, so two runs draw the
 same. `./run.sh 7b check` goes through the script and a few hundred touches more on every panel twice, with a panel's
 rows kept as a picture and with every row drawn, and fails when a frame of the one is not, pixel for pixel, that of
-the other: run it after a change to a panel or to `kit_panel`. `SIM_LOG=1` shows the firmware's own log lines.
+the other: run it after a change to a panel or to `kit_panel`. It also draws every frame once more with LVGL's
+own see-through drawing in place of `wall_blend.h`, and once with everything under a panel's card drawn, and fails
+when any of them differs. `SIM_LOG=1` shows the firmware's
+own log lines.
 
 On the board, `main/bench.c` does the same touches with a finger that is not there and times every frame: Settings ›
 Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). It
+opens Settings with and without the wall drawn under it, and
 scrolls Settings three times over: as it is, with every row drawn each time, and with the screen turned around. A pull
 request's build (version `pr…`) runs it by itself half a minute after it starts, so a board on a cable is measured
-by restarting it and reading its log.
+by restarting it and reading its log. Such a build also says where the time went: a timer notes two thousand times a
+second where the screen's task is, the places follow each scene's line as `bench: where:` lines, and
+`tools/where.py serial.log iowall-….sym` names the functions (the `.sym` file is in the run's artifact, beside the
+`.bin`). Each place says what the task was at: laying out, a panel's rows, drawing, sending or between frames (where
+a panel or a view is put together), and each scene's line splits its frames' time the same way. The line ends with
+what a frame was made of in pixels, counted as the simulator counts them (screens filled, copied and blended, and
+in how many pieces): a scene that is slower on the board than its count on a PC is then either drawing more than
+the PC did, or the same pixels slower. Each scrolling scene begins at the top of Settings, wherever the glides of
+the one before it ended: they go further the longer a frame takes.
+
+Between the scenes the board itself is probed (`The board with Settings open: …`): on the screen's task, a sum that
+needs no memory, bytes read from all over the PSRAM, a megabyte of it filled and the open panel's rows drawn into
+their picture, three times each, with the memory left inside. After each scene and each probe a `bench: beside it`
+line names the tasks each processor ran meanwhile, from the same timer. The same pixels were drawn several times
+slower in some runs than in others, and these tell the reasons apart: a slower sum is the processor taken away, a
+slower read the memory, and the tasks at work beside it are named. Twice the probe is made with something set going
+on the other processor on purpose (memory copied, then a sum), and once the rows are drawn over and over while the
+wall fetches its next photo. While it measures, the feed, the photos and the look for a newer version wait: what is
+fetched beside a scene is the measuring's own to ask for.
+
+A `Memory …` line says what malloc has left of each kind of memory inside (the P4's own RAM, the LP RAM, TCM, and
+the pool kept for drivers, which "free inside" adds up as one), how long each kind takes to fill, and where a small
+block comes from at that moment; each scene's line says where the masks it drew through were kept. This is how
+the LP RAM was found out: ESP-IDF adds it to the heap, the P4's own RAM is used up once a panel is open, and a
+byte of the LP RAM takes 130 ns to write where one inside takes 2. With half of LVGL's masks in it a frame of rows
+took 75 ms and not 31, and which run was slow depended on what was being fetched beside. `sdkconfig.defaults`
+keeps it out of the heap (`CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP=n`): malloc goes on to the PSRAM, which
+costs nothing that could be measured.

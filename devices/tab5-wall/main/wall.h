@@ -294,6 +294,9 @@ lv_obj_t *kit_label(lv_obj_t *p, const lv_font_t *f, lv_color_t c, const char *t
 void kit_set_text(lv_obj_t *l, const char *t);
 /** Shown or hidden, touched only when it is the other: LVGL draws again whatever is shown, shown already or not. */
 void kit_show(lv_obj_t *o, bool on);
+/** A weather icon (an icon_kind_t of icons.h) px pixels wide, made once from the drawn one nearest above that size:
+ *  an icon LVGL resizes is resized at every redraw of it. */
+const lv_image_dsc_t *kit_icon(int kind, int px);
 lv_obj_t *kit_button(lv_obj_t *p, const char *text, lv_event_cb_t cb, void *ud, bool primary);
 lv_obj_t *kit_textarea(lv_obj_t *p, const char *placeholder, bool password);
 lv_obj_t *kit_keyboard(lv_obj_t *p, lv_obj_t *ta, lv_event_cb_t on_ready, void *ud);
@@ -304,6 +307,12 @@ lv_obj_t *kit_panel_card(void);   /* the open panel's card, to place it; NULL wh
 /** false: a panel's rows are drawn at every frame, as LVGL does by itself, and no picture of them is kept. For
  *  comparing: the simulator checks every frame of one against the other, the board's own measuring times both. */
 void kit_panel_keep(bool on);
+/** false: what an open panel's card hides is drawn under it all the same, as LVGL does by itself. For comparing, as
+ *  kit_panel_keep. */
+void kit_panel_cull(bool on);
+/** For the measuring: how long (µs) the rows of the open panel that are in view take to draw into its picture
+ *  (0: none is open, or it keeps no picture). */
+uint32_t kit_panel_rows_us(void);
 void kit_close_panel(void);
 bool kit_panel_open(void);
 /** What the open panel is drawn on, the whole screen wide (a keyboard under its card goes here); NULL when none is. */
@@ -312,10 +321,18 @@ lv_obj_t *kit_panel_layer(void);
  *  of it went to sending what was drawn to the panel (the rest is drawing), the pixels sent, and the slowest one. */
 typedef struct {
     uint32_t n, all, sending, px, worst;
+    uint32_t layout;   /* µs laying out, before the first pixel */
+    uint32_t rows;     /* µs drawing a panel's rows into their picture (kit_panel), also before the first pixel */
+    uint32_t beside;   /* µs a turned screen's frames took to turn, beside the drawing of the next (send.c) */
 } ui_frames_t;
+/** What the screen's task is at, for the measuring's samples (bench.c): between frames (touches, building what a tap
+ *  asked for), laying a frame out, drawing it, sending it, or drawing a panel's rows into their picture. */
+enum { UI_BETWEEN, UI_LAYING_OUT, UI_DRAWING, UI_SENDING, UI_ROWS };
+extern volatile uint8_t ui_phase;
 /** Counts from here the frames that send from_px pixels or more; 0: the large ones, a quarter of the screen. */
 void ui_frames_reset(uint32_t from_px);
 void ui_frames_get(ui_frames_t *out);
+void ui_frames_beside(uint32_t us, uint32_t px);   /* from the task that sends a turned screen's frames */
 /** For Settings: "12 large redraws · 31 ms each (22 drawing, 9 sending) · the slowest 80 ms". */
 void ui_frames_text(char *out, size_t n);
 
@@ -372,6 +389,12 @@ void ota_check_now(bool install);
 ota_state_t ota_state(void);
 const char *ota_text(void);
 const char *wall_version(void);
+
+/* ------------------------------------------------------------------ send.c */
+/** A turned screen's frames are turned and put on the panel by a task of their own from here on, while LVGL draws
+ *  the next. Once, with LVGL locked, after the board package has started the screen. */
+void send_start(lv_display_t *disp);
+bool send_beside(void);   /* it does so (false: the task could not be started, or a turned frame came out wrong) */
 
 /* ------------------------------------------------------------------ bench.c */
 

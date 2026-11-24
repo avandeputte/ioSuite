@@ -154,7 +154,7 @@ static void ota_loop(void *arg)
             check(w == 2);
             continue;
         }
-        if (!looked && up > 60 && net_state() == NET_UP) {
+        if (!looked && up > 60 && net_state() == NET_UP && !bench_running()) {   /* not into the middle of a measuring */
             looked = true;
             check(false);
         }

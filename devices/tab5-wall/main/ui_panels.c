@@ -745,7 +745,9 @@ void ui_show_settings(void)
     frames_lbl = kit_label(c, font_text(24), DIM, t);
     lv_obj_set_size(frames_lbl, lv_pct(100), lv_font_get_line_height(font_text(24)));   /* changes every second: a fixed size */
     line(c, 22, DIM, "Since Settings opened. Measure scrolls, drags and swipes by itself for half a minute, then says here what each frame took.");
-    if (bench_result()[0]) {
+    /* not while it measures: Settings is opened over and over then, and laying out what the scenes before said (30 ms
+     * for every thousand letters of it) would be counted into the scenes after */
+    if (bench_result()[0] && !bench_running()) {
         lv_obj_t *res = line(c, 22, DIM, bench_result());
         if (bench_fresh()) lv_obj_scroll_to_view_recursive(res, LV_ANIM_OFF);   /* just measured: this is what is asked for */
     }

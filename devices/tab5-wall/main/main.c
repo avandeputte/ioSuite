@@ -35,6 +35,9 @@ void app_main(void)
         ESP_LOGE(TAG_WALL, "no display");
         return;
     }
+    ui_lock();
+    send_start(disp);   /* a turned screen's frames go to the panel beside the drawing of the next */
+    ui_unlock();
     bsp_display_backlight_on();
     ESP_LOGI(TAG_WALL, "%s, %s; screen up; internal memory free: %u", BOARD_NAME, WALL_OTA_FILE, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 

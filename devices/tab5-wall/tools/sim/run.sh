@@ -7,7 +7,8 @@
 #   ./run.sh tab5 -v            every area sent to the panel as well
 #   MAIN=/path/to/other/main ./run.sh    another copy of the firmware (the one before a change, to compare)
 #   ./run.sh 7b check           a panel keeps a picture of its rows (kit_panel): the script and a few hundred touches
-#                               more, once with and once without, and every frame of the two must be the same
+#                               more, once with and once without, and every frame of the two must be the same; the
+#                               same for LVGL's own see-through drawing and for what a panel's card hides
 #   SIM_RUN="valgrind --tool=callgrind --dump-before=report --callgrind-out-file=out/cg" ./run.sh 7b
 #                               under a tool: here the instructions each step took, one file per step, by function
 #
@@ -40,17 +41,41 @@ for s in ui.c ui_wall.c ui_views.c ui_panels.c ui_setup.c icons.c alarm.c power.
 gcc $CF -c sim.c -o "$B/sim.o" &
 gcc $CF -w -c "$SRC/cJSON/cJSON.c" -o "$B/cJSON.o" &
 wait
+# LVGL's see-through drawing with the firmware's own loops (main/wall_blend.h), as the board's build has it: the files
+# of LVGL that take them are compiled here, and stand in for those in lvgl.a
+gcc -o "$B/sim-lvgl" "$B"/*.o "$SRC/lvgl.a" -lm -Wl,--wrap=lv_draw_sw_blend
+for f in "$LV"/src/draw/sw/blend/lv_draw_sw_blend_to_*.c "$LV/src/draw/sw/lv_draw_sw.c" "$LV/src/draw/sw/lv_draw_sw_img.c"; do
+    gcc -O2 -w -c "$f" -I"$LV" -I"$LV/src" $DEFS -I"$MAIN" -DLV_USE_DRAW_SW_ASM=255 -DLV_DRAW_SW_ASM_CUSTOM_INCLUDE='"wall_blend.h"' -o "$B/$(basename "$f" .c).o" &
+done
+wait
 gcc -o "$B/sim" "$B"/*.o "$SRC/lvgl.a" -lm -Wl,--wrap=lv_draw_sw_blend
 if [ "$1" = check ]; then
     SIM_FRAMES=out/frames-kept.txt SIM_KEEP=1 "$B/sim" > /dev/null
     SIM_FRAMES=out/frames-drawn.txt SIM_KEEP=0 "$B/sim" > /dev/null
+    SIM_FRAMES=out/frames-lvgl.txt SIM_KEEP=1 "$B/sim-lvgl" > /dev/null
+    SIM_FRAMES=out/frames-under.txt SIM_KEEP=1 SIM_CULL=0 "$B/sim" > /dev/null
+    bad=0
     if cmp -s out/frames-kept.txt out/frames-drawn.txt; then
         echo "$(wc -l < out/frames-kept.txt) frames, each the same with the picture kept as with every row drawn"
     else
         at=$(diff out/frames-kept.txt out/frames-drawn.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
         echo "the frames differ, first at ${at:-?} ms (SIM_SHOT_AT=$at SIM_KEEP=1 and =0 save that screen to compare)"
-        exit 1
+        bad=1
     fi
-    exit 0
+    if cmp -s out/frames-kept.txt out/frames-lvgl.txt; then
+        echo "$(wc -l < out/frames-kept.txt) frames, each the same with the firmware's see-through drawing as with LVGL's own"
+    else
+        at=$(diff out/frames-kept.txt out/frames-lvgl.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
+        echo "the firmware's see-through drawing (main/wall_blend.h) draws another picture than LVGL's, first at ${at:-?} ms"
+        bad=1
+    fi
+    if cmp -s out/frames-kept.txt out/frames-under.txt; then
+        echo "$(wc -l < out/frames-kept.txt) frames, each the same with nothing drawn under a panel's card as with all of it"
+    else
+        at=$(diff out/frames-kept.txt out/frames-under.txt | sed -n 's/^< \([0-9]*\) .*/\1/p' | head -1)
+        echo "a panel over the wall is another picture when what its card hides is not drawn, first at ${at:-?} ms (SIM_CULL=0 draws it)"
+        bad=1
+    fi
+    exit $bad
 fi
 $SIM_RUN "$B/sim" "$@"

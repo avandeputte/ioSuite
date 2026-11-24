@@ -54,3 +54,7 @@ endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(iowall)
+
+# LVGL's blending code includes main/wall_blend.h (CONFIG_LV_DRAW_SW_ASM_CUSTOM_INCLUDE in sdkconfig.defaults)
+idf_component_get_property(lvgl_lib lvgl__lvgl COMPONENT_LIB)
+target_include_directories(${lvgl_lib} PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main")
