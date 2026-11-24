@@ -150,4 +150,7 @@ On the board, `main/bench.c` does the same touches with a finger that is not the
 Screen › Measure, and its lines are in the log as well (`bench: Settings scrolled: 150 frames of 61%, …`). It
 scrolls Settings three times over: as it is, with every row drawn each time, and with the screen turned around. A pull
 request's build (version `pr…`) runs it by itself half a minute after it starts, so a board on a cable is measured
-by restarting it and reading its log.
+by restarting it and reading its log. Such a build also says where the time went: a timer notes two thousand times a
+second where the screen's task is, the places follow each scene's line as `bench: where:` lines, and
+`tools/where.py serial.log iowall-….sym` names the functions (the `.sym` file is in the run's artifact, beside the
+`.bin`).

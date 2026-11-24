@@ -6,11 +6,14 @@
  * Started from Settings › "Measure the screen", and by itself half a minute after the start on a pull request's
  * build (version "pr…"), so that a board on a cable is measured by restarting it. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "driver/gptimer.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "wall.h"
 
@@ -40,6 +43,97 @@ static void finger_read(lv_indev_t *i, lv_indev_data_t *d)
 static void wait_ms(int ms)
 {
     vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
+/* Where the time goes, on a pull request's build: a timer interrupts the screen's task two thousand times a second
+ * and notes where it was (the program counter, and the return address, which for a function that calls nothing, as
+ * memcpy, is who called it). After each scene the places are written to the log as "where:" lines, and
+ * tools/where.py names the functions from the build's list of symbols. Without this, what a frame is made of was
+ * guessed from a PC's count of the work, which knows nothing of how slow this board's memory is. */
+#define WHERE_MAX 2000
+typedef struct {
+    uint32_t pc, ra;
+} where_t;
+static where_t *where;
+static volatile uint32_t where_n, where_busy, where_ticks;
+static volatile bool where_on;
+static TaskHandle_t ui_task;
+static gptimer_handle_t where_timer;
+
+/* FreeRTOS keeps an interrupted task's registers at the top of its stack, the program counter first and the return
+ * address after it (RvExcFrame), and the stack's top is the first thing in its handle */
+static bool where_tick(gptimer_handle_t t, const gptimer_alarm_event_data_t *e, void *arg)
+{
+    if (!where_on) return false;
+    where_ticks++;
+    TaskHandle_t now = xTaskGetCurrentTaskHandleForCore(xPortGetCoreID());
+    if (now != ui_task) return false;
+    where_busy++;
+    if (where_n < WHERE_MAX) {
+        const uint32_t *regs = *(const uint32_t *const *)now;
+        where[where_n].pc = regs[0];
+        where[where_n].ra = regs[1];
+        where_n++;
+    }
+    return false;
+}
+
+/* on the screen's task: the timer's interrupt comes on the core it is set up from */
+static void where_setup(void *arg)
+{
+    ui_task = xTaskGetCurrentTaskHandle();
+    if (where_timer) return;
+    where = heap_caps_malloc(WHERE_MAX * sizeof *where, MALLOC_CAP_SPIRAM);
+    const gptimer_config_t cfg = {.clk_src = GPTIMER_CLK_SRC_DEFAULT, .direction = GPTIMER_COUNT_UP, .resolution_hz = 1000000};
+    const gptimer_event_callbacks_t cbs = {.on_alarm = where_tick};
+    /* not a round number of the tick's milliseconds: the samples do not fall in step with it */
+    const gptimer_alarm_config_t alarm = {.alarm_count = 487, .flags.auto_reload_on_alarm = true};
+    gptimer_handle_t t = NULL;
+    if (!where || gptimer_new_timer(&cfg, &t) != ESP_OK) return;
+    if (gptimer_register_event_callbacks(t, &cbs, NULL) != ESP_OK || gptimer_set_alarm_action(t, &alarm) != ESP_OK ||
+        gptimer_enable(t) != ESP_OK || gptimer_start(t) != ESP_OK) {
+        gptimer_del_timer(t);
+        return;
+    }
+    where_timer = t;
+}
+
+static void where_from_here(void)
+{
+    where_on = false;
+    where_n = where_busy = where_ticks = 0;
+    where_on = where_timer != NULL;
+}
+
+static int where_order(const void *a, const void *b)
+{
+    const where_t *x = a, *y = b;
+    if (x->pc != y->pc) return x->pc < y->pc ? -1 : 1;
+    return x->ra < y->ra ? -1 : x->ra > y->ra;
+}
+
+static void where_say(void)
+{
+    if (!where_timer) return;
+    where_on = false;
+    wait_ms(2);
+    uint32_t n = where_n;
+    ESP_LOGI(TAG, "where: %u places, the screen's task at work in %u of %u samples", (unsigned)n, (unsigned)where_busy,
+             (unsigned)where_ticks);
+    qsort(where, n, sizeof *where, where_order);
+    char line[200];
+    size_t used = 0;
+    for (uint32_t i = 0; i < n;) {
+        uint32_t same = 1;
+        while (i + same < n && where[i + same].pc == where[i].pc && where[i + same].ra == where[i].ra) same++;
+        used += (size_t)snprintf(line + used, sizeof line - used, " %x:%x*%u", (unsigned)where[i].pc, (unsigned)where[i].ra,
+                                 (unsigned)same);
+        i += same;
+        if (used > sizeof line - 28 || i >= n) {
+            ESP_LOGI(TAG, "where:%s", line);
+            used = 0;
+        }
+    }
 }
 
 static void drag(int x0, int y0, int x1, int y1, int ms)
@@ -131,6 +225,7 @@ static void from_here(int percent)
     ui_lock();
     ui_frames_reset(percent ? (uint32_t)(WALL_W * WALL_H / 100 * percent) : 1);
     ui_unlock();
+    where_from_here();
 }
 
 static void note(const char *line)
@@ -183,6 +278,7 @@ static void say(const char *what)
                  drawing / 1000, drawing % 1000 / 100, sending / 1000, sending % 1000 / 100, (unsigned)((f.worst + 500) / 1000));
     }
     note(line);
+    where_say();
 }
 
 static void run(void *arg)
@@ -209,12 +305,22 @@ static void run(void *arg)
         lv_indev_set_read_cb(finger, finger_read);
     }
     ui_unlock();
+    if (!strncmp(wall_version(), "pr", 2)) on_ui(where_setup);
     on_ui(home);
     wait_ms(1500);
 
+    where_from_here();
     on_ui(settings);
     wait_ms(700);
     say("Settings opens");
+
+    /* and once more: the first time, every letter of it is drawn from its outline */
+    on_ui(home);
+    wait_ms(1000);
+    where_from_here();
+    on_ui(settings);
+    wait_ms(700);
+    say("Settings opens again");
 
     /* the line in Settings that says how long the redraws took is itself drawn again every second: left out */
     from_here(10);
