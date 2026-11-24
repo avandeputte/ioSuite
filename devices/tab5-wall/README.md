@@ -196,6 +196,9 @@ fetched beside a scene is the measuring's own to ask for.
 
 A `Memory …` line says what malloc has left of each kind of memory inside (the P4's own RAM, the LP RAM, TCM, and
 the pool kept for drivers, which "free inside" adds up as one), how long each kind takes to fill, and where a small
-block comes from at that moment; each scene's line says where the masks it drew through were kept. Settings is then
-opened and scrolled five times over: as it is, with little memory left inside, with the LP RAM kept away from
-malloc, and with small blocks sent to the PSRAM.
+block comes from at that moment; each scene's line says where the masks it drew through were kept. This is how
+the LP RAM was found out: ESP-IDF adds it to the heap, the P4's own RAM is used up once a panel is open, and a
+byte of the LP RAM takes 130 ns to write where one inside takes 2. With half of LVGL's masks in it a frame of rows
+took 75 ms and not 31, and which run was slow depended on what was being fetched beside. `sdkconfig.defaults`
+keeps it out of the heap (`CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP=n`): malloc goes on to the PSRAM, which
+costs nothing that could be measured.

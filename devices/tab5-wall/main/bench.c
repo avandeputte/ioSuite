@@ -26,7 +26,7 @@ static lv_indev_t *finger;          /* the finger that is not there */
 static volatile int at_x, at_y;
 static volatile bool down;
 static volatile bool running, fresh;
-#define RESULT_MAX 20000
+#define RESULT_MAX 12000
 static char *result;   /* what the last measuring said, a line per scene: in the PSRAM, the memory inside is short */
 
 /* LVGL turns a touch's point with the screen (lv_indev.c): the finger is put where that ends at at_x, at_y */
@@ -432,9 +432,15 @@ static void probe_say(const char *when)
 }
 
 /* The memory inside is of several kinds, and "free inside" adds them all up: what malloc gives first (the P4's own
- * RAM), a pool kept for drivers, a small fast corner (TCM) and the LP RAM, which the processor reaches through the
- * low-power side of the chip. When the first runs out, malloc goes on to the others and then to the PSRAM. This
- * says what is left of each, where a small block comes from right now, and how long each kind takes to fill. */
+ * RAM), a pool kept for drivers, a small fast corner (TCM) and, where it is left in the heap, the LP RAM, which the
+ * processor reaches through the low-power side of the chip. When the first runs out, malloc goes on to the others
+ * and then to the PSRAM. This says what is left of each, where a small block comes from right now, and how long each
+ * kind takes to fill.
+ *
+ * Measured on the 7B: the P4's own RAM is all but used up once Settings is open, and a byte of the LP RAM takes 130 ns
+ * to write where one inside takes 2 and one in the PSRAM 1.3. With LVGL's masks in the LP RAM (half of them, as soon
+ * as anything was fetched beside) a frame of rows took 75 ms and not 31. sdkconfig.defaults keeps the LP RAM out of
+ * the heap for this, and the line below shows that it is: "0 K LP RAM". */
 #define BLOCK 914   /* as wide as a panel's card: a row of a round corner's mask */
 
 static unsigned fill_ns10(void *p)
@@ -480,102 +486,6 @@ static void mem_say(const char *when)
     heap_caps_free(tcm);
     free(any);
     free(small);
-}
-
-/* Three things to compare a scene under, each undone after it:
- * little memory inside, as while a photo or the feed is fetched (blocks of 1 K are held until about 4 K of the P4's
- * own RAM is left); the LP RAM kept away from malloc (all of it held); and small blocks sent to the PSRAM (malloc
- * keeps inside only what is this small, where the firmware says 2048 bytes). */
-static void *squeezed[160], *lp_held[8];
-static int nsqueezed, nlp;
-
-static void squeeze(void)
-{
-    while (nsqueezed < (int)(sizeof squeezed / sizeof *squeezed)) {
-        size_t own = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT) - heap_caps_get_free_size(MALLOC_CAP_RTCRAM | MALLOC_CAP_DEFAULT);
-#ifdef MALLOC_CAP_TCM
-        size_t tcm = heap_caps_get_free_size(MALLOC_CAP_TCM | MALLOC_CAP_DEFAULT);
-        own = own > tcm ? own - tcm : 0;
-#endif
-        if (own < 5 * 1024) break;
-        void *p = heap_caps_malloc(1024, MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT);
-        if (!p) break;
-        if (kind_of(p)) {   /* the P4's own RAM has no such block left */
-            heap_caps_free(p);
-            break;
-        }
-        squeezed[nsqueezed++] = p;
-    }
-}
-
-static void unsqueeze(void)
-{
-    while (nsqueezed) heap_caps_free(squeezed[--nsqueezed]);
-}
-
-static void lp_away(void)
-{
-    while (nlp < (int)(sizeof lp_held / sizeof *lp_held)) {
-        size_t n = heap_caps_get_largest_free_block(MALLOC_CAP_RTCRAM);
-        void *p = n >= 32 ? heap_caps_malloc(n, MALLOC_CAP_RTCRAM) : NULL;
-        if (!p) break;
-        lp_held[nlp++] = p;
-    }
-}
-
-static void lp_back(void)
-{
-    while (nlp) heap_caps_free(lp_held[--nlp]);
-}
-
-static void squeeze_lp_away(void)
-{
-    lp_away();
-    squeeze();
-}
-
-static void small_out(void)
-{
-    heap_caps_malloc_extmem_enable(128);
-}
-
-static void settings(void *arg);
-static void home(void *arg);
-static void say(const char *what);
-static void scroll_settings(void);
-static void from_here(int percent);
-static void top(void *arg);
-static void rows_drawn(void *arg);
-static void rows_kept(void *arg);
-
-/* Settings opened, its rows drawn into their picture and every row drawn at each frame of a short scroll, under
- * what set_up sets up: called when the panel before is closed, so that what Settings is made of is asked of malloc
- * as it then stands */
-static void under(const char *what, void (*set_up)(void))
-{
-    char name[120];
-    on_ui(home);
-    wait_ms(1000);
-    if (set_up) set_up();
-    where_from_here();
-    on_ui(settings);
-    wait_ms(700);
-    snprintf(name, sizeof name, "Settings opens, %s", what);
-    say(name);
-    mem_say(what);
-    probe_say(what);
-    on_ui(rows_drawn);
-    wait_ms(300);
-    from_here(10);
-    drag(WALL_W / 2, WALL_H * 3 / 4, WALL_W / 2, WALL_H / 4, 400);
-    wait_ms(900);
-    drag(WALL_W / 2, WALL_H / 4, WALL_W / 2, WALL_H * 3 / 4, 400);
-    wait_ms(900);
-    snprintf(name, sizeof name, "Every row drawn each time, %s", what);
-    say(name);
-    on_ui(top);
-    on_ui(rows_kept);
-    wait_ms(300);
 }
 
 /* Something made to go on beside the screen's task, on the other processor, while the board is probed: memory copied
@@ -814,19 +724,6 @@ static void run(void *arg)
     probe_say("with Settings open");
     noise_say();
 
-    /* the same under more and less memory, and with malloc sent elsewhere */
-    under("as it is", NULL);
-    under("little memory inside", squeeze);
-    under("little memory inside, the LP RAM kept away", squeeze_lp_away);
-    under("the LP RAM kept away", unsqueeze);
-    under("the LP RAM kept away, blocks over 128 bytes in the PSRAM", small_out);
-    on_ui(home);
-    wait_ms(1000);
-    lp_back();
-    heap_caps_malloc_extmem_enable(CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL);
-    on_ui(settings);
-    wait_ms(700);
-
     /* and with the wall under its card drawn too, as LVGL does by itself */
     on_ui(home);
     on_ui(under_drawn);
@@ -951,9 +848,9 @@ static void run(void *arg)
     heap_caps_free(far);
     far = NULL;
     fresh = true;
+    running = false;   /* before Settings is put together again: it shows the result only when the measuring is over */
     on_ui(settings_again);
     ESP_LOGI(TAG, "done");
-    running = false;
     vTaskDelete(NULL);
 }
 
