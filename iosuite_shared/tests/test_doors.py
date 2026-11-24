@@ -177,7 +177,7 @@ def test_the_pages_take_an_app_password_from_outside_for_an_app_s_api_as_before(
 def test_pictures_a_native_app_shows_are_served_at_both_doors():
     """ioPix's thumbnails, previews and videos are outside /api/, and its Apple TV app, widgets and share sheet show
     them as its pages do: read at either door, changed at neither."""
-    for path in ("/thumb/12", "/preview/12", "/face/3", "/facecrop/12/1/2/3/4.jpg", "/video/12.mp4", "/video/12/frame"):
+    for path in ("/thumb/12", "/preview/12", "/face/3", "/facecrop/12/1/2/3/4.jpg", "/video/12.mp4", "/video/12/frame", "/orig/12"):
         assert doors.home("iopix", path) == ("web", "sync"), path
         assert doors.home("iopix", path, "HEAD") == ("web", "sync")
         assert doors.home("iopix", path, "POST") == ("web",), path
