@@ -11,7 +11,7 @@ import re
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
-from iosuite_shared import appleprofile, feeds, prefix, stamp, users as shared_users
+from iosuite_shared import appleprofile, doors, feeds, prefix, stamp, users as shared_users
 from iosuite_shared.access import json_body
 
 from iocontact import access, calendar, config, csvio, db, enrich, iopix, limits, model, quality, relations as rel, users, vcard
@@ -675,7 +675,8 @@ def _apple_profile(request: Request, label: str, password: str, calendar: str, l
                         "PayloadIdentifier": ident + ".birthdays", "PayloadUUID": str(uuid.uuid4()).upper(),
                         "PayloadDisplayName": "Birthday calendar",
                         "SubCalAccountDescription": "Family birthdays" if calendar == "family" else "Birthdays",
-                        "SubCalAccountHostName": f"{base}/cal/{tok}/{calendar}.ics", "SubCalAccountUseSSL": ssl})
+                        "SubCalAccountHostName": f"{base}/cal/{tok}/{calendar}.ics", "SubCalAccountUseSSL": ssl,
+                        "SubCalAccountUsername": u["name"], **({"SubCalAccountPassword": secret} if secret else {})})
     if ldap and config.LDAP_PORT:
         lp = {"PayloadType": "com.apple.ldap.account", "PayloadVersion": 1, "PayloadIdentifier": ident + ".ldap",
               "PayloadUUID": str(uuid.uuid4()).upper(), "PayloadDisplayName": "Directory (LDAP)",
@@ -718,10 +719,16 @@ def calendar_signed_in(which: str, request: Request):
 
 @router.get("/cal/{token}/{which}.ics", dependencies=[access.public])
 def calendar_feed(token: str, which: str, request: Request):
-    """The birthday calendar links (no sign-in: the secret in the link is the sign-in, iosuite_shared.feeds)."""
+    """The birthday calendar links (no sign-in: the secret in the link is the sign-in, iosuite_shared.feeds). At the
+    port for devices, open to the internet, the link takes its person's app password as well (the profile puts the
+    one it makes in the subscription): the secret alone is not enough there."""
     u = users.user_from_feed(token)
     if not u:
         raise HTTPException(404)
+    if doors.port_of_request(request) == doors.SYNC:
+        me = auth.current_user(request)
+        if not me or me["id"] != u["id"]:
+            raise HTTPException(404)
     return _birthdays(u, which, request)
 
 

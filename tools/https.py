@@ -122,9 +122,10 @@ def main() -> int:
             # a browser elsewhere that asks the pages without HTTPS by that name is sent on to HTTPS (the tests hold
             # that); this machine is one the suite trusts (a reverse proxy, another copy), and is served as before
             check("the pages without HTTPS are served to this machine as before", ask(a.at, a.web, "/", a.name)[0] == 200 and ask(a.at, a.web, "/")[0] == 200)
-            check("the port for devices answers without HTTPS as before", ask(a.at, a.sync, "/api/status")[0] == 200, ask(a.at, a.sync, "/api/status")[0])
-            code, _h, _b, shown = ask(a.at, a.sync, "/api/status", a.name, trust)
-            check("and over HTTPS", code == 200 and shown == have.get("fingerprint"), code)
+            # nothing there without a password: the refusal is the answer, without HTTPS and with it
+            check("the port for devices answers without HTTPS as before", ask(a.at, a.sync, "/dav/ext")[0] == 401, ask(a.at, a.sync, "/dav/ext")[0])
+            code, _h, _b, shown = ask(a.at, a.sync, "/dav/ext", a.name, trust)
+            check("and over HTTPS", code == 401 and shown == have.get("fingerprint"), code)
             check("a name the certificate is not for is refused by whoever checks it", ask(a.at, a.https, "/", "other.example.com", trust)[0] == 0)
             check("the suite's address says https://", address() == f"https://{a.name}{port}", address())
             code, d = api("GET", "certificate")

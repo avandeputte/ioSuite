@@ -1,5 +1,5 @@
-"""The routers every app mounts: /api/auth/* (sign-in, the account's own settings, passwords, sessions, app
-passwords), /api/suite-admin (suite admins), /api/server (maintenance)
+"""The routers every app mounts: /api/auth/* (sign-in, a native app's sign-in, the account's own settings, passwords,
+sessions, app passwords), /api/suite-admin (suite admins), /api/server (maintenance)
 and /api/status. Each takes the app's Auth; Auth.router() and friends call them."""
 import json
 import logging
@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import admin as suite_admin, apppasswords, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
+from iosuite_shared import admin as suite_admin, apppasswords, doors, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
 from iosuite_shared.access import UNCLAIMED, json_body, public_user
 from iosuite_shared.proxyauth import authlog, peer_of
 
@@ -20,22 +20,23 @@ def auth_router(self) -> APIRouter:
     auth, access, proxy, app = self, self.access, self.proxy, self.app
     r = APIRouter()
 
-    @r.post("/api/auth/login", dependencies=[access.public])
-    async def api_login(request: Request):
-        body = await json_body(request)
+    async def by_password(request: Request, body: dict, what: str = "sign-in"):
+        """(account, how, None) for the name, the password and, with two-step sign-in on, the code in a request's body;
+        (None, None, the answer to send) while the code is still missing or wrong. Wrong ones are counted by visitor
+        and name, and past the limit the answer is a 429 before any hash is computed."""
         name, src = str(body.get("name", ""))[:64], proxy.source(request)
         visitor = proxy.visitor_of(request)
         wait = users.attempt_wait(visitor, name)
         if wait:
-            authlog.warning("sign-in as %r from %s refused: %d s to wait after repeated failures", name, src, wait)
+            authlog.warning("%s as %r from %s refused: %d s to wait after repeated failures", what, name, src, wait)
             raise HTTPException(429, f"Too many attempts; try again in {wait} seconds", headers={"Retry-After": str(wait)})
         u = await run_in_threadpool(users.authenticate, name, str(body.get("password", ""))[:1024], app)
         if not u:
             wait = users.attempt_failed(visitor, name)
-            authlog.warning("failed sign-in as %r from %s (wrong user name or password%s)", name, src, f"; {wait} s wait" if wait else "")
+            authlog.warning("failed %s as %r from %s (wrong user name or password%s)", what, name, src, f"; {wait} s wait" if wait else "")
             raise HTTPException(401, "Wrong user name or password")
         if u.get("passwordless") and proxy.external(request.headers, peer_of(request)):
-            authlog.warning("one-click sign-in as %s refused from %s (outside: a password is required)", u["name"], src)
+            authlog.warning("one-click %s as %s refused from %s (outside: a password is required)", what, u["name"], src)
             raise HTTPException(403, "From outside your network, sign in with an account that has a password")
         two_step = not u.get("passwordless") and await run_in_threadpool(twostep.enabled, u["id"])
         if two_step:
@@ -43,21 +44,61 @@ def auth_router(self) -> APIRouter:
             # twoStep tells the sign-in screen to ask for it; a wrong code counts like a wrong password
             code = str(body.get("code") or "")[:64].strip()
             if not code:
-                return JSONResponse({"detail": "Enter the code from your code app", "twoStep": True}, status_code=401)
+                return None, None, JSONResponse({"detail": "Enter the code from your code app", "twoStep": True}, status_code=401)
             if not await run_in_threadpool(twostep.check, u["id"], code):
                 wait = users.attempt_failed(visitor, name)
-                authlog.warning("failed sign-in as %r from %s (wrong two-step code%s)", name, src, f"; {wait} s wait" if wait else "")
-                return JSONResponse({"detail": "That code is not right", "twoStep": True}, status_code=401)
+                authlog.warning("failed %s as %r from %s (wrong two-step code%s)", what, name, src, f"; {wait} s wait" if wait else "")
+                return None, None, JSONResponse({"detail": "That code is not right", "twoStep": True}, status_code=401)
         users.attempt_succeeded(visitor, name)
         if u["role"] == "none":
-            authlog.warning("sign-in as %s refused: no access to %s", u["name"], app)
+            authlog.warning("%s as %s refused: no access to %s", what, u["name"], app)
             raise HTTPException(403, f"Your account has no access to {auth.label}")
-        authlog.info("signed in: %s (%s, %s) from %s", u["name"], u["role"],
-                     "one click" if u.get("passwordless") else "password and code" if two_step else "password", src)
+        return u, "one click" if u.get("passwordless") else "password and code" if two_step else "password", None
+
+    @r.post("/api/auth/login", dependencies=[access.public])
+    async def api_login(request: Request):
+        u, how, answer = await by_password(request, await json_body(request))
+        if answer is not None:
+            return answer
+        authlog.info("signed in: %s (%s, %s) from %s", u["name"], u["role"], how, proxy.source(request))
         u = auth.decorate(u)
         resp = JSONResponse({"user": u, "settings": users.get_settings(u["id"], app)})
         auth.sign_in(resp, request, u, "oneclick" if u.get("passwordless") else "password")
         return resp
+
+    # ---- a native app signs its person in (doors.DEVICE_PATH): no session and no cookie, an app password of its own
+    @r.post(doors.DEVICE_PATH, dependencies=[access.public])
+    async def api_device_sign_in(request: Request):
+        """{name, password, code?, label?, scope?}: the name and password typed in a native app (and the code of
+        two-step sign-in, asked for as the sign-in screen is: 401 with twoStep) get the app an app password of its own,
+        {name, password, scope, user, settings}, which it keeps and sends with every request (HTTP Basic with the name,
+        or Bearer) in place of what was typed. label names the device in Settings › Account; scope as there. Answered
+        at the door for devices too, where nothing else signs anybody in."""
+        body = await json_body(request)
+        u, how, answer = await by_password(request, body, "device sign-in")
+        if answer is not None:
+            return answer
+        if u.get("passwordless"):
+            raise HTTPException(403, "A one-click account cannot sign a device in: it has no password to check")
+        scope = str(body.get("scope") or "")
+        if scope and scope not in auth.scope_paths:
+            raise HTTPException(400, f"Unknown scope: {scope}")
+        label = " ".join(str(body.get("label") or "").split())[:100] or "Device"
+        pw = await run_in_threadpool(apppasswords.create, u["id"], app, label, scope)
+        authlog.info("device signed in: %s (%s, %s) from %s, as %r", u["name"], u["role"], how, proxy.source(request), label)
+        return {"name": u["name"], "password": pw, "scope": scope, "user": auth.decorate(u), "settings": users.get_settings(u["id"], app)}
+
+    @r.delete(doors.DEVICE_PATH, dependencies=[access.signed_in])
+    def api_device_sign_out(request: Request):
+        """A device signs out: the app password this request is signed in with is removed, so it is not left in
+        Settings › Account for a device that no longer has it."""
+        u = auth.current_user(request)
+        used = (u or {}).get("app_password")
+        if not used:
+            raise HTTPException(400, "This is for a device signed in with an app password, which it gives back")
+        apppasswords.delete(u["id"], used["id"])
+        authlog.info("device signed out: %s from %s (%r)", u["name"], proxy.source(request), used.get("label"))
+        return {"ok": True}
 
     # ---- passkeys at the sign-in screen (iosuite_shared.passkeys): offered only where somebody has one
     @r.get("/api/auth/login/passkey", dependencies=[access.public])

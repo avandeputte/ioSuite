@@ -5,7 +5,6 @@ import asyncio
 import json
 import time
 
-import pytest
 from starlette.requests import Request
 
 from iosuite_shared import config, doors, prefix, suite
@@ -50,8 +49,11 @@ def a_host(*apps, hosts=None, remote=None, outer=("", 0, "")):
     return h
 
 
-def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query="", scheme="http"):
-    """One request through the host: (status, headers, body as JSON or text)."""
+def ask(host, path, port=80, method="GET", name="home.example.com", headers=(), peer=OUTSIDE, query="", scheme="http", password=True):
+    """One request through the host: (status, headers, body as JSON or text). At the port for devices (8443) it sends
+    a password unless password is False (the app behind checks it; the host only looks for one)."""
+    if port == 8443 and password and not any(k.lower() == "authorization" for k, _ in headers):
+        headers = (*headers, ("authorization", "Bearer iocalendar-0a1b2c3d-x"))
     scope = {"type": "http", "method": method, "path": path, "raw_path": path.encode(), "query_string": query.encode(), "scheme": scheme,
              "headers": [(b"host", name.encode()), *[(k.encode(), v.encode()) for k, v in headers]],
              "server": ("10.0.0.5", port), "client": (peer, 50000)}
@@ -100,12 +102,76 @@ def test_each_path_has_its_door():
     assert doors.home("iocalendar", "/ics/secret/home.ics") == ("sync",)
     assert doors.home("iocontact", "/cal/secret/birthdays.ics") == ("sync",)
     assert doors.home("iohealth", "/v1/upload", "POST") == ("sync",)
-    assert doors.home("iocalendar", "/api/events") == ("web", "sync")
-    assert doors.home("iocalendar", "/api/events", "POST") == ("web", "sync")
+    # an app's API is the pages': a phone's calendar talks CalDAV, and no native app asks ioCalendar's API
+    assert doors.home("iocalendar", "/api/events") == ("web",)
+    assert doors.home("iocalendar", "/api/events", "POST") == ("web",)
     assert doors.home("iocalendar", "/") == ("web",) and doors.home("iocalendar", "/static/app.js") == ("web",)
     assert doors.home("iocalendar", "/mcpx") == ("web",)
     # a profile download is a person's browser, with the pages
     assert doors.home("iocalendar", "/profile/token/calendar.mobileconfig") == ("web",)
+
+
+def test_of_an_app_s_api_the_sync_door_serves_the_calls_its_native_apps_make(monkeypatch):
+    """The port for devices is the one opened to the internet: of /api/ it serves what an app's manifest names
+    ("devices"), call by call, and nothing else of any app."""
+    from iosuite_shared import catalog
+    apps = {**catalog.APPS, "ionote": {**catalog.APPS["ionote"], "devices": ["GET /api/sync", "POST /api/sync/push", "GET,PUT /api/notes/*/image",
+                                                                             "POST,DELETE /api/auth/device", "POST /api/*/password"]}}
+    monkeypatch.setattr(catalog, "APPS", apps)
+    assert doors.home("ionote", "/api/sync") == ("web", "sync") and doors.home("ionote", "/api/sync", "HEAD") == ("web", "sync")
+    assert doors.home("ionote", "/api/sync", "POST") == ("web",)                 # another method of a call that is named
+    assert doors.home("ionote", "/api/sync/push", "POST") == ("web", "sync") and doors.home("ionote", "/api/sync/push") == ("web",)
+    assert doors.home("ionote", "/api/notes/ab-12/image", "PUT") == ("web", "sync")
+    for path in ("/api/notes/ab-12", "/api/notes/ab-12/image/x", "/api/notes//image", "/api/notes/a/b/image", "/api/sync/", "/api/syncx", "/api"):
+        assert doors.home("ionote", path) == ("web",), path                      # * is one part of a path, and a call is the whole path
+    # what tells about the API, the scripts the pages load and the suite's settings are nobody's call
+    for path in ("/api/docs", "/api/openapi.json", "/api/auth/ui.js", "/api/live.js", "/api/live", "/api/suite-admin", "/api/suite-admin/proxy",
+                 "/api/auth/app-passwords", "/api/auth/accounts", "/api/push/sw.js", "/api/status"):
+        assert doors.home("ionote", path) == ("web",), path
+    # of an account, a native app's own sign-in only, whatever a list says
+    assert doors.home("ionote", "/api/auth/device", "POST") == ("web", "sync")
+    assert doors.home("ionote", "/api/auth/password", "POST") == ("web",) and doors.home("ionote", "/api/auth/login", "POST") == ("web",)
+    # an app whose manifest names no call has none of its API at this port
+    for app in ("iomoney", "iodocs", "iothings", "iorecipe", "iodns", "iobackup", "iocalendar", "iocontact", "iotask"):
+        assert not catalog.APPS[app].get("devices"), app
+        for path, method in (("/api/status", "GET"), ("/api/auth/me", "GET"), ("/api/auth/device", "POST"), ("/api/suite-admin", "GET")):
+            assert doors.home(app, path, method) == ("web",), (app, path)
+
+
+def test_the_apps_native_apps_have_their_calls_at_the_sync_door():
+    """As the manifests are: ioPix's, ioNote's and ioHealth's own apps, and the start page's (bookmarks, widgets)."""
+    for app in ("iopix", "ionote", "iohealth", "iostart"):
+        for method in ("POST", "DELETE"):
+            assert doors.allowed("sync", app, doors.DEVICE_PATH, method), app
+        assert not doors.allowed("sync", app, "/api/auth/login", "POST") and not doors.allowed("sync", app, "/api/docs")
+        assert not doors.allowed("sync", app, "/api/suite-admin") and not doors.allowed("sync", app, "/api/auth/app-passwords", "POST")
+    assert doors.allowed("sync", "iopix", "/api/photos") and doors.allowed("sync", "iopix", "/api/import/stage", "POST")
+    for path, method in (("/api/folders/7/upload", "POST"), ("/api/settings", "GET"), ("/api/duplicates", "GET"), ("/api/trash/empty", "POST"),
+                         ("/api/users", "GET"), ("/api/suite-admin/proxy", "GET"), ("/api/auth/accounts", "GET"), ("/api/log", "GET")):
+        assert not doors.allowed("sync", "iopix", path, method), path  # an admin's, at home only
+    assert doors.allowed("sync", "iopix", "/api/auth/me") and doors.allowed("sync", "iopix", "/api/status")
+    assert not doors.allowed("sync", "iopix", "/api/settings", "POST") and not doors.allowed("sync", "iopix", "/api/scan", "POST")  # an admin's, with the pages
+    assert doors.allowed("sync", "ionote", "/api/sync") and doors.allowed("sync", "ionote", "/api/notes/u1/attachments/3", "DELETE")
+    assert not doors.allowed("sync", "ionote", "/api/notes/u1") and not doors.allowed("sync", "ionote", "/api/notes")
+    assert doors.allowed("sync", "iohealth", "/v1/sessions", "POST") and not doors.allowed("sync", "iohealth", "/api/status")
+    assert doors.allowed("sync", "iostart", "/dav/ext/tree") and not doors.allowed("sync", "iostart", "/dav/nextcloud/index.php/login/v2", "POST")
+    for path in ("/api/status", "/api/trmnl/today", "/api/display", "/api/wall", "/api/search", "/api/auth/me"):
+        assert not doors.allowed("sync", "iostart", path), path
+
+
+def test_the_pages_take_an_app_password_from_outside_for_an_app_s_api_as_before():
+    """What the port for devices serves is one thing; where the pages' port takes an app password or a token from a
+    request from outside is another, and wider: a wall display, an e-ink screen or a script is given the address
+    people know. Never to sign in by a session or change an account, and never for a page."""
+    assert doors.password_from_outside("iocalendar", "/api/events") and doors.password_from_outside("iocalendar", "/api/events", "POST")
+    assert doors.password_from_outside("iostart", "/api/trmnl/today") and doors.password_from_outside("iomoney", "/api/accounts")
+    assert doors.password_from_outside("iocalendar", "/api/auth/me")
+    assert not doors.password_from_outside("iocalendar", "/api/auth/login", "POST")
+    assert not doors.password_from_outside("iocalendar", "/api/auth/app-passwords", "POST")
+    assert doors.password_from_outside("iocalendar", doors.DEVICE_PATH, "POST") and doors.password_from_outside("iocalendar", doors.DEVICE_PATH, "DELETE")
+    assert doors.password_from_outside("iopix", "/thumb/12") and not doors.password_from_outside("iopix", "/thumb/12", "POST")
+    assert not doors.password_from_outside("iocalendar", "/") and not doors.password_from_outside("iocalendar", "/static/app.js")
+    assert not doors.password_from_outside("iocalendar", "/thumb/12")
 
 
 def test_pictures_a_native_app_shows_are_served_at_both_doors():
@@ -128,22 +194,39 @@ def test_a_picture_is_answered_at_the_sync_door_by_its_rules(monkeypatch):
     assert b["app"] == "iopix" and b["path"] == "/thumb/12" and b["folder"] == "/pix"
     s, _, b = ask(h, "/pix/thumb/12", headers=sent)  # with the pages it is the browser's, signed in by its cookie
     assert s == 200 and b["door"] == "web" and b["cookie"] == "ios_session=abc"
-    s, hd, _ = ask(h, "/pix/", port=8443, name="home.example.com:8443")  # its pages are still the pages'
-    assert s == 307 and hd["location"] == "http://home.example.com/pix/"
+    s, hd, _ = ask(h, "/pix/", port=8443, name="home.example.com:8443")  # its pages are the pages': not here, and not told where
+    assert s == 404 and "location" not in hd
 
 
-def test_nobody_signs_in_at_the_sync_door():
+def test_a_native_app_signs_its_person_in_at_the_sync_door_and_nothing_else_of_the_account_is_written_there():
+    """The name and password typed in a native app get it an app password (iosuite_shared.routers), and signing out
+    gives it back: the one path of /api/auth/ the door for devices takes a write at. A browser's sign-in, with its
+    session, and every change to an account stay with the pages."""
+    for method in ("POST", "DELETE"):
+        assert doors.home("iopix", doors.DEVICE_PATH, method) == ("web", "sync")
+        assert doors.allowed("sync", "iostart", doors.DEVICE_PATH, method)
+    assert doors.home("iopix", doors.DEVICE_PATH + "/x", "POST") == ("web",) and doors.home("iopix", doors.DEVICE_PATH + "s", "POST") == ("web",)
+    assert doors.home("iopix", "/api/auth/app-passwords", "POST") == ("web",) and doors.home("iopix", "/api/auth/password", "POST") == ("web",)
+    assert doors.home("iocalendar", doors.DEVICE_PATH, "POST") == ("web",)  # an app no native app signs in to: its phones have a profile
+
+
+def test_a_device_s_sign_in_reaches_the_app_at_the_sync_door(monkeypatch):
+    machine(monkeypatch)
+    h = a_host("iostart", "iopix")
+    s, _, b = ask(h, "/pix/api/auth/device", port=8443, method="POST")
+    assert s == 200 and b["door"] == "sync" and b["app"] == "iopix" and b["path"] == "/api/auth/device"
+    s, _, b = ask(h, "/api/auth/device", port=8443, method="POST")          # the start page, at the root
+    assert s == 200 and b["door"] == "sync" and b["app"] == "iostart"
+    s, _, b = ask(h, "/pix/api/auth/login", port=8443, method="POST")      # a browser's sign-in is not served here
+    assert s == 404 and b["door"] == "sync"
+
+
+def test_nobody_signs_in_by_a_session_at_the_sync_door():
     assert doors.home("iocalendar", "/api/auth/login", "POST") == ("web",)
     assert doors.home("iocalendar", "/api/auth/account", "PUT") == ("web",)
-    assert doors.home("iocalendar", "/api/auth/me") == ("web", "sync")  # an app asking who its password is
+    assert doors.home("ionote", "/api/auth/me") == ("web", "sync")  # an app asking who its password is
+    assert doors.home("ionote", "/api/auth/login", "POST") == ("web",) and doors.home("ionote", "/api/auth/logout", "POST") == ("web",)
     assert not doors.allowed("sync", "iocalendar", "/api/auth/login", "POST") and doors.allowed("web", "iocalendar", "/api/auth/login", "POST")
-
-
-def test_the_screen_to_say_yes_on_is_a_page_below_a_sync_path():
-    assert doors.home("iostart", "/dav/ext/tree") == ("sync",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/flow/abc") == ("web",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2/grant", "POST") == ("web",)
-    assert doors.home("iostart", "/dav/nextcloud/index.php/login/v2") == ("sync",)  # the client's own first call
 
 
 def test_manifests_name_pages_below_their_sync_paths_only():
@@ -221,12 +304,14 @@ def test_an_app_that_is_not_up_says_so(monkeypatch):
 # ---- the doors
 def test_the_sync_door_reads_no_cookie(monkeypatch):
     machine(monkeypatch)
-    h = a_host("iostart", "iocalendar")
+    h = a_host("iostart", "iocalendar", "ionote")
     sent = [("cookie", "ios_session=abc"), ("authorization", "Basic YTpi")]
     s, _, b = ask(h, "/calendar/api/events", headers=sent)
     assert s == 200 and b["door"] == "web" and b["cookie"] == "ios_session=abc"
-    s, _, b = ask(h, "/calendar/api/events", port=8443, headers=sent)
+    s, _, b = ask(h, "/notes/api/sync", port=8443, headers=sent)
     assert s == 200 and b["door"] == "sync" and b["cookie"] is None and b["authorization"] == "Basic YTpi"
+    s, hd, b = ask(h, "/calendar/api/events", port=8443, headers=sent)  # not a call of a native app: not at this port
+    assert s == 404 and "location" not in hd and b["door"] == "sync"
     s, _, b = ask(h, "/calendar/dav/alex/", port=8443, method="REPORT", headers=sent)
     assert s == 200 and b["cookie"] is None and b["path"] == "/dav/alex/"
     s, _, b = ask(h, "/calendar/mcp", port=8444, method="POST", headers=sent)
@@ -260,24 +345,62 @@ def test_a_phone_looking_its_account_up_reaches_the_app(monkeypatch):
     assert s == 200 and b["app"] == "iocalendar" and b["door"] == "sync" and b["path"] == "/.well-known/caldav"
     s, _, b = ask(h, "/.well-known/carddav")
     assert s == 200 and b["app"] == "iocontact" and b["door"] == "sync"
-    s, _, b = ask(h, "/.well-known/caldav", port=8443, method="PROPFIND")  # at the sync door it is the app's to answer
-    assert s == 200 and b["app"] == "iocalendar" and b["path"] == "/.well-known/caldav" and b["folder"] == "/calendar"
-
-
-def test_a_page_asked_at_the_sync_door_is_sent_to_the_pages(monkeypatch):
-    machine(monkeypatch)
-    h = a_host("iostart", "iocalendar")
-    s, hd, _ = ask(h, "/calendar/", port=8443, name="home.example.com:8443")
-    assert s == 307 and hd["location"] == "http://home.example.com/calendar/"
-    s, hd, _ = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", port=8443, name="home.example.com:8443")
-    assert s == 307 and hd["location"] == "http://home.example.com/dav/nextcloud/index.php/login/v2/flow/abc"
-    s, _, b = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", headers=[("cookie", "ios_session=abc")])
-    assert s == 200 and b["app"] == "iostart" and b["door"] == "web" and b["cookie"] == "ios_session=abc"
-    # anything but a browser's GET is refused where it is: nobody signs in here
-    s, _, b = ask(h, "/calendar/api/auth/login", port=8443, method="POST")
-    assert s == 404 and b["door"] == "sync" and "devices and native apps" in b["detail"]
-    s, _, b = ask(h, "/calendar/", port=8443, method="POST")
+    # the port for devices does not serve it: a device set up by a profile is given its whole address
+    s, _, b = ask(h, "/.well-known/caldav", port=8443, method="PROPFIND")
     assert s == 404
+
+
+def test_the_sync_door_sends_nothing_on(monkeypatch):
+    """The port for devices refuses what is not its own, the same way whatever was asked, and says nothing of where
+    the pages are."""
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar", "iomoney")
+    refused = set()
+    for path in ("/", "/calendar/", "/calendar/api/events", "/calendar/api/docs", "/calendar/api/openapi.json", "/api/docs", "/api/openapi.json",
+                 "/api/auth/ui.js", "/api/live.js", "/api/push/sw.js", "/static/frame.js", "/static/base.css", "/api/status", "/api/wall",
+                 "/api/trmnl/today", "/api/display", "/api/suite-admin", "/money/", "/money/api/status", "/money/api/accounts", "/nothing/here"):
+        s, hd, b = ask(h, path, port=8443, name="home.example.com:8443")
+        assert s == 404 and "location" not in hd and b["door"] == "sync", path
+        refused.add(b["detail"])
+    assert len(refused) == 1 and "ioMoney" not in refused.pop()  # one answer: it does not tell which apps are there
+    s, hd, _ = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", port=8443, name="home.example.com:8443")
+    assert s == 404 and "location" not in hd
+    # nobody signs in by a session here
+    s, _, b = ask(h, "/calendar/api/auth/login", port=8443, method="POST")
+    assert s == 404 and b["door"] == "sync"
+    assert ask(h, "/dav/nextcloud/index.php/login/v2/grant", port=8443, method="POST")[0] == 404
+    assert ask(h, "/calendar/", port=8443, method="POST")[0] == 404
+
+
+def test_the_port_for_devices_answers_nothing_without_a_password_but_the_sign_in(monkeypatch):
+    """The port open to the internet: whatever the address, served there or not, no password is a 401 with the
+    challenge a sync client answers. The one call it takes without one is a device signing in."""
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar", "iocontact", "iopix", "iohealth")
+    for path, method in (("/dav/ext/tree", "GET"), ("/calendar/dav/alex/", "PROPFIND"), ("/pix/api/status", "GET"), ("/pix/thumb/7", "GET"),
+                         ("/health/v1/health", "GET"), ("/contacts/cal/abc/family.ics", "GET"), ("/api/docs", "GET"), ("/nothing", "GET"),
+                         ("/pix/api/auth/device", "DELETE"), ("/-/status", "GET")):
+        s, hd, b = ask(h, path, port=8443, method=method, password=False)
+        assert s == 401 and hd["www-authenticate"].startswith("Basic") and "location" not in hd, path
+    for path in ("/api/auth/device", "/pix/api/auth/device", "/health/api/auth/device"):
+        s, _, b = ask(h, path, port=8443, method="POST", password=False)
+        assert s == 200 and b["door"] == "sync", path
+    assert ask(h, "/calendar/api/auth/device", port=8443, method="POST", password=False)[0] == 404  # no native app of its own
+    # what the port does not serve stays refused with a password too; the pages' port is as it was
+    assert ask(h, "/api/docs", port=8443)[0] == 404
+    assert ask(h, "/pix/api/status")[0] == 200
+
+
+def test_secret_links_and_lookups_are_not_served_at_the_port_for_devices(monkeypatch):
+    """The calendar links whose secret in the address is their only sign-in, and the lookups a profile never needs,
+    are served at the pages' port only (the manifests' homeOnly). The birthday calendar a contacts profile adds is."""
+    machine(monkeypatch)
+    h = a_host("iostart", "iocalendar", "iocontact", "iotask")
+    for path in ("/calendar/ics/abc/family.ics", "/.well-known/caldav", "/.well-known/carddav", "/calendar/.well-known/caldav", "/tasks/.well-known/caldav"):
+        assert ask(h, path, port=8443)[0] == 404, path
+    assert ask(h, "/calendar/ics/abc/family.ics")[0] == 200 and ask(h, "/.well-known/caldav")[0] == 200
+    s, _, b = ask(h, "/contacts/cal/abc/family.ics", port=8443)
+    assert s == 200 and b["app"] == "iocontact"
 
 
 def test_the_mcp_door_serves_mcp_and_sends_nobody_on(monkeypatch):
@@ -293,14 +416,15 @@ def test_the_address_stored_for_a_door_is_where_its_requests_are_sent(monkeypatc
     cal = {"SYNC_URLS": ["https://calsync.example.com", "https://sync.example.com/calendar"], "SYNC_URL_OWN": "https://calsync.example.com",
            "MCP_URLS": ["https://mcp.example.com/calendar"], "MCP_URL_OWN": "",
            "PUBLIC_URLS": ["https://calendar.example.com", "https://home.example.com/calendar"], "OWN_URL": "https://calendar.example.com"}
-    machine(monkeypatch, iocalendar=cal)
+    start = {"PUBLIC_URLS": ["https://home.example.com"], "OWN_URL": "", "SYNC_URLS": ["https://sync.example.com"], "SYNC_URL_OWN": ""}
+    machine(monkeypatch, iocalendar=cal, iostart=start)
     h = a_host("iostart", "iocalendar", hosts={"calendar.example.com": "iocalendar", "calsync.example.com": "iocalendar"})
     # a device's path at the pages' port is answered there all the same; the stored address is what the app hands out
     assert ask(h, "/calendar/dav/alex/", method="PROPFIND")[0] == 200
-    s, hd, _ = ask(h, "/", port=8443, name="calsync.example.com")  # the app opened from a sync client
-    assert s == 307 and hd["location"] == "https://calendar.example.com/"
-    s, hd, _ = ask(h, "/calendar/", port=8443, name="sync.example.com")
-    assert s == 307 and hd["location"] == "https://home.example.com/calendar/"
+    assert ask(h, "/dav/alex/", port=8443, name="calsync.example.com", method="PROPFIND")[2]["app"] == "iocalendar"
+    for path, name in (("/", "calsync.example.com"), ("/calendar/", "sync.example.com")):  # a page is not sent on from there
+        s, hd, _ = ask(h, path, port=8443, name=name)
+        assert s == 404 and "location" not in hd
 
 
 def test_with_the_other_two_ports_off_the_pages_port_answers_everything(monkeypatch):
@@ -376,9 +500,12 @@ def test_a_request_passed_across_arrives_inside_the_app(monkeypatch):
     assert s == 200 and b["app"] == "iopix" and b["path"] == "/api/photos" and b["folder"] == "/pix" and b["door"] == "web"
     assert b["cookie"] == "ios_session=abc"
     assert seen == [("/api/photos", "10.0.0.9")]
-    s, _, b = ask(first, "/pix/api/photos", port=8443, method="POST", headers=[("authorization", "Basic abc")])
+    s, _, b = ask(first, "/pix/api/photos", port=8443, headers=[("authorization", "Basic abc")])
     assert s == 200 and b["path"] == "/api/photos" and b["folder"] == "/pix" and b["door"] == "sync" and b["authorization"] == "Basic abc"
     assert len(seen) == 2
+    # what the port for devices does not serve of ioPix is refused by the copy that was asked: nothing is passed on
+    assert ask(first, "/pix/api/settings", port=8443, method="POST", headers=[("authorization", "Basic abc")])[0] == 404
+    assert ask(first, "/pix/api/docs", port=8443)[0] == 404 and len(seen) == 2
     # at ioPix's own name there is no folder to tell the other copy about
     first.table.hosts["photos.example.com"] = "iopix"
     s, _, b = ask(first, "/api/photos", name="photos.example.com")
@@ -523,15 +650,6 @@ def test_the_doors_of_a_copy(monkeypatch):
     assert [d["port"] for d in doors.state()] == [80, 8443, 0]
 
 
-@pytest.mark.parametrize("path,query", [("/calendar/a b/", ""), ("/calendar/%2Fx", "a=1&b=2")])
-def test_a_redirect_keeps_the_address_as_it_was_asked(monkeypatch, path, query):
-    """A page asked at the sync door goes to the pages: the address it is sent to says what was asked."""
-    machine(monkeypatch)
-    s, hd, _ = ask(a_host("iostart", "iocalendar"), path, port=8443, query=query)
-    assert s == 307 and hd["location"].startswith("http://home.example.com/calendar/") and " " not in hd["location"]
-    assert hd["location"].endswith("?" + query if query else "/")
-
-
 def test_the_copy_says_whether_it_is_serving(monkeypatch):
     machine(monkeypatch)
     h = a_host("iostart", "iocalendar")
@@ -615,11 +733,7 @@ def test_a_request_at_the_wrong_door_goes_to_https_when_the_certificate_holds_fo
     # a CalDAV address asked with the pages over HTTPS is answered there, by the rules of the door for devices
     s, _, b = ask(h, "/calendar/dav/alex/", port=443, scheme="https", method="PROPFIND", headers=[("cookie", "s=1")])
     assert s == 200 and b["door"] == "sync" and b["cookie"] is None
-    # a page asked at the door for devices: to the pages, at their HTTPS port
-    s, hd, _ = ask(h, "/calendar/", port=8443, scheme="https")
-    assert s in (302, 307) and hd["location"] == "https://home.example.com/calendar/"
-    s, hd, _ = ask(h, "/calendar/", port=8443, name="192.168.1.151")
-    assert hd["location"] == "http://192.168.1.151/calendar/"
+    assert ask(h, "/calendar/", port=8443, scheme="https")[0] == 404  # a page is not this port's, and is not sent on
 
 
 def test_the_authority_s_check_is_answered_at_any_door_by_any_copy(monkeypatch):

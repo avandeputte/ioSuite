@@ -17,9 +17,15 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
                            suite's list of apps ("Calendar"); tag: one line for the website
   color                    its colour (#963522)
   folder                   its folder on an address the suite shares (/calendar/; none for the start page)
-  sync                     the path prefixes it serves at the sync door, beside /api/ (iosuite_shared.doors): ["/dav", "/ics/"]
-  media                    the path prefixes it serves at both doors as it does /api/, read only: what its pages and a
-                           native app both show (ioPix: ["/thumb/", "/preview/"])
+  sync                     the path prefixes it serves at the sync door (iosuite_shared.doors): ["/dav", "/ics/"]
+  devices                  the calls of its API (/api/) the sync door serves as well: the ones its native apps make,
+                           each named with its methods, * for one part of the path
+                           (["GET /api/sync", "GET,PUT /api/notes/*/image"]). Nothing else of /api/ is served there.
+  homeOnly                 of its sync prefixes, the ones the port for devices does not serve (the pages' port only):
+                           links whose secret in the address is their only sign-in, lookups a profile never needs
+                           (["/.well-known/", "/ics/"])
+  media                    the path prefixes it serves at both doors, read only: what its pages and a native app both
+                           show (ioPix: ["/thumb/", "/preview/"])
   order                    where it comes in lists (the website, the builder, the installer)
   adminTool                for suite admins only (ioDNS, ioBackup)
   heavy                    installed last (ioPix: a large image, the AI models)
@@ -51,6 +57,11 @@ MANIFEST = "app.json"
 KEY = re.compile(r"^io[a-z]{2,20}$")
 KIND = re.compile(r"^[a-z_]{2,30}$")
 COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+# a call the sync door serves: its methods, then its path under /api/ with * for one part ("GET,PUT /api/notes/*/image")
+CALL = re.compile(r"^(GET|POST|PUT|PATCH|DELETE)(,(GET|POST|PUT|PATCH|DELETE))* /api(/(\*|[A-Za-z0-9._~-]+))+$")
+# of an account (/api/auth/), the sync door serves a native app's own sign-in and what it reads and keeps of its person,
+# never what makes or changes an account (a password, a passkey, an app password for something else, a person)
+ACCOUNT_CALLS = {"/api/auth/device": {"POST", "DELETE"}, "/api/auth/me": {"GET"}, "/api/auth/settings": {"POST"}}
 
 
 def validate(apps: list[dict]) -> list[dict]:
@@ -68,7 +79,17 @@ def validate(apps: list[dict]) -> list[dict]:
         for pre in m.get("sync") or []:
             if not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static")):
                 raise ValueError(f"{k}/{MANIFEST}: sync {pre!r} is not a path prefix of its own (/dav, /ics/)")
-        for pre in m.get("media") or []:  # served at both doors, as /api/ is
+        for pre in m.get("homeOnly") or []:
+            if not any(str(pre).startswith(str(s)) for s in m.get("sync") or []):
+                raise ValueError(f"{k}/{MANIFEST}: homeOnly {pre!r} is not below one of its sync prefixes")
+        for call in m.get("devices") or []:
+            if not isinstance(call, str) or not CALL.fullmatch(call):
+                raise ValueError(f"{k}/{MANIFEST}: devices {call!r} is not methods and a path of its API (\"GET,PUT /api/notes/*/image\")")
+            methods, path = call.split(" ")
+            if path.startswith("/api/auth/") and not set(methods.split(",")) <= ACCOUNT_CALLS.get(path, set()):
+                raise ValueError(f"{k}/{MANIFEST}: devices {call!r}: of an account, the port for devices serves a native app's "
+                                 f"sign-in and its person's own settings, nothing that changes an account")
+        for pre in m.get("media") or []:  # served at both doors
             if (not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static"))
                     or any(str(pre).startswith(str(s).rstrip("/")) or str(s).startswith(str(pre).rstrip("/")) for s in m.get("sync") or [])):
                 raise ValueError(f"{k}/{MANIFEST}: media {pre!r} is not a path prefix of its own, apart from its sync prefixes (/thumb/)")

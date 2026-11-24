@@ -75,14 +75,14 @@ A copy listens on three ports, so a firewall or a reverse proxy can treat each k
 | Door | Port | What comes in |
 |---|---|---|
 | pages | 80 (`PORT`) | the pages people open and what the pages ask for (the session cookie, passkeys, a reverse proxy's sign-in) |
-| devices | 8443 (`SYNC_PORT`) | phones, native apps and devices: CalDAV, CardDAV, calendar subscriptions, bookmark sync, ioHealth's uploads, each app's API for native apps and widgets. App passwords and tokens only: no cookies, no sign-in, no pages |
+| devices | 8443 (`SYNC_PORT`) | phones and native apps, and nothing else: CalDAV, CardDAV, the birthday calendar of a contacts profile, bookmark sync, ioHealth's uploads, and of each app's API the calls its native apps make (its manifest's `devices`). Nothing without an app password but a native app's sign-in (`/api/auth/device`); no cookies, no pages, no reference of the API, no subscription links |
 | MCP | 8444 (`MCP_PORT`) | MCP clients: `/mcp` and nothing else |
 
 On every port an app answers both at a name of its own (`https://calendar.example.com/`) and in its folder at the
-suite's address (`https://home.example.com/calendar/`). A request that comes in by the wrong port is sent to the
-right one. A device that was given the pages' address (a wall display, a widget, an e-ink screen, a script) is
-answered there: an app password is taken for an app's `/api/` at the pages' port too, from inside the network and
-from outside; signing in or changing an account with one from outside is not.
+suite's address (`https://home.example.com/calendar/`). The pages' port answers the other two's paths as well; the
+other two refuse what is not theirs. A wall display, an e-ink screen or a script is given the pages' address: an app
+password is taken for an app's `/api/` there, from inside the network and from outside; signing in by a session or
+changing an account with one from outside is not.
 
 For HTTPS, put a reverse proxy in front, or let the suite do it: under **Settings › Servers › Certificate**
 (or `iosuite cert --on`) it asks Let's Encrypt for a certificate for its names, renews it, and answers HTTPS itself,

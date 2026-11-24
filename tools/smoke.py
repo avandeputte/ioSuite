@@ -5,7 +5,7 @@
     python3 tools/smoke.py --web 8080 --sync 8443 --apps iostart,iotask
 
 Waits for the copy to say it has started (/-/status), then asks every app for its page and its status, and the sync
-port for an answer that is not a page. Says what it found, a line per app; exit code 1 when something is missing.
+port for a refusal: nothing there without a password, and never a page. Says what it found, a line per app; exit code 1 when something is missing.
 Not part of the program: nothing imports it. The checks on GitHub run it (.github/workflows/tests.yml).
 """
 import argparse
@@ -27,9 +27,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 OPENER = urllib.request.build_opener(NoRedirect)
 
 
-def ask(url: str, timeout: float = 15, cookie: str = None):
+def ask(url: str, timeout: float = 15, cookie: str = None, authorization: str = None):
     """(status, content type, body, Location) of a GET; status 0 when nothing answers."""
-    headers = {"User-Agent": "iosuite-smoke", **({"Cookie": cookie} if cookie else {})}
+    headers = {"User-Agent": "iosuite-smoke", **({"Cookie": cookie} if cookie else {}), **({"Authorization": authorization} if authorization else {})}
     try:
         with OPENER.open(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
             return r.status, r.headers.get("Content-Type", ""), r.read(), ""
@@ -101,13 +101,15 @@ def main() -> int:
         if code != 200 or "javascript" not in kind or b"onChange" not in body:
             notes.append(f"live.js {code} {kind}")
         if a.sync:
-            code, kind, body, where = ask(f"{sync}{folder}/api/status")
-            if code != 200:
-                notes.append(f"sync port: status {code}")
-            code, kind, body, where = ask(f"{sync}{folder}/")
-            # sent on to the pages: their port at the address asked, or the address stored for them (PUBLIC_URL)
-            if code not in (301, 302, 307, 308) or where.startswith(sync):
-                notes.append(f"sync port: the page was not sent to the web port ({code} {where})")
+            # the port open to the internet: nothing without a password, whatever is asked; with one (a wrong one
+            # here), never a page and never a redirect to one
+            for path in ("/api/status", "/"):
+                code, kind, body, where = ask(f"{sync}{folder}{path}")
+                if code != 401 or where:
+                    notes.append(f"sync port: {path or '/'} without a password answered {code}")
+            code, kind, body, where = ask(f"{sync}{folder}/", authorization="Bearer iosuite-00000000-smoke")
+            if code not in (401, 404) or where:
+                notes.append(f"sync port: the page answered {code} {where}")
         bad += bool(notes)
         print(f"{key:12} {status.get('version', '?'):8} {'ok' if not notes else '; '.join(notes)}")
     print(f"{len(apps) - bad} of {len(apps)} apps answer as they should")

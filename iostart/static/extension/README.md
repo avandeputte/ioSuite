@@ -29,9 +29,12 @@ it. To update, replace the folder's contents and press the reload arrow on the e
 extensions Mozilla has signed; unsigned, it can be tried until the next restart from `about:debugging` › *This
 Firefox* › *Load Temporary Add-on* (pick `manifest.json`).
 
-Then type the start page's address, choose how the first sync goes, *Sign in*, and say yes in the tab that opens.
-The extension gets an app password of its own, for sync only (Settings › Account on the start page lists and removes
-it). The browser asks once whether the extension may reach that one address; it has no access to any other site.
+Then type the start page's address (or the address your server has for devices, when it has one of its own), your
+name and password there, choose how the first sync goes, and *Sign in*. An account with two-step sign-in is asked
+for its code as well. What you typed is sent once and not kept: the extension gets an app password of its own, for
+sync only (Settings › Account on the start page lists and removes it; *Sign out* here removes it too). The browser
+asks once whether the extension may reach that one address; it has no access to any other site.
+
 
 ## Signing and the stores
 

@@ -91,7 +91,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 | | |
 | --- | --- |
 | Address | `/health/` at the suite's address (`https://home.example.com/health/`), and a name of its own if you give it one |
-| Devices | the ioHealthSync iPhone app's uploads at `/health/v1/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| Devices | the ioHealthSync iPhone app's sign-in and its uploads at `/health/v1/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports); nothing else of ioHealth is served there |
 | Database | `iohealth`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 
 Accounts are the suite's: `iosuite admin NAME --app iohealth` makes someone an admin of ioHealth only (`iosuite admin NAME`: of
@@ -137,7 +137,7 @@ a name and HTTPS, for the whole suite at once, and can make people sign in first
 guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
 Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-The iPhone app allows plain `http://` only to addresses on the local network; anything else must be `https://`. Its uploads (`/health/v1/…`) go to the address for devices, which stays outside a sign-in at the proxy: the phone signs in there with the account's name and password, a script with an app password.
+The iPhone app allows plain `http://` only to addresses on the local network; anything else must be `https://`. Its uploads (`/health/v1/…`) go to the address for devices, which stays outside a sign-in at the proxy: the phone signs in there with the account's name and password.
 
 ## Users and permissions
 
@@ -162,10 +162,12 @@ cost a growing wait.
 
 ## API
 
-The paths below are ioHealth's own: at the suite's address they are inside its folder (`https://home.example.com/health/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/health/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+The paths below are ioHealth's own: at the suite's address they are inside its folder (`https://home.example.com/health/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/health/…` behind a reverse proxy) is the one to open to the internet for phones and native apps, and serves only what they use: the iPhone app's sign-in (`/api/auth/device`) and its uploads (`/v1/…`). Nothing else of the API is served there. MCP clients use the address for MCP (port 8444).
 
-Every `/v1` call except `/v1/health` needs the account's `Authorization: Basic <user:password>` (what the iPhone app
-sends) or `Bearer <app password>`, of a member or more; what is sent becomes that account's. Errors
+Every `/v1` call except `/v1/health` needs `Authorization: Bearer <app password>` (what the iPhone app sends, from
+its sign-in at `/api/auth/device`) or Basic with the user name and an app password, of a member or more; at the
+pages' address inside the network Basic with the account's own password still works. At the address for devices
+`/v1/health` too needs the app password; what is sent becomes that account's. Errors
 are JSON `{"detail": "…"}` with 400, 401, 403, 404 or 413.
 
 | request | body | reply |
@@ -183,7 +185,7 @@ resending anything is safe.
 
 Build and install it from [iohealth-apps](https://github.com/avandeputte/iosuite-apps/tree/main/iohealth), whose README has the steps.
 On the phone, enter the suite's address for devices with ioHealth's folder (`https://sync.example.com/health`, or `http://192.168.1.10:8443/health` at home) and your
-user name and password, then **Sync now**. Later syncs only send what's new or changed; with "Sync automatically" on
+user name and password (the app trades them once for an app password of its own and keeps only that), then **Sync now**. Later syncs only send what's new or changed; with "Sync automatically" on
 the phone also syncs in the background when new Health data arrives. The server has to be reachable at that moment; a
 missed or cut-short round costs nothing, because the phone only moves on for batches the server has acknowledged.
 

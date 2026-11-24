@@ -23,7 +23,8 @@ on the start page's Bookmarks page). Chrome, Edge, Vivaldi, Brave and Opera all 
   > within a minute.
   >
   > • The bookmarks bar, Other bookmarks and (in Firefox) the bookmarks menu line up the same way in every browser.
-  > • One-click sign-in: type your start page's address and say yes. No passwords to copy.
+  > • Sign in with your start page's address, your name and password, or without typing a password: say yes on the
+  >   start page. Either way the extension gets a password of its own, for bookmark sync only.
   > • The first sync brings both sides together without doubling or deleting anything, or takes the start page's
   >   bookmarks as they are.
   > • Works in Chrome, Edge, Vivaldi, Brave and other Chromium browsers.
@@ -50,7 +51,8 @@ on the start page's Bookmarks page). Chrome, Edge, Vivaldi, Brave and Opera all 
     known in advance. Nothing is granted at install; when the user signs in, access to that one address is requested
     and nothing else is ever requested.
 - **Remote code**: No, I am not using remote code.
-- **Data usage**: tick **Authentication information** (it keeps the sign-in made for it on your start page). The
+- **Data usage**: tick **Authentication information** (it keeps the sign-in made for it on your start page, and
+  passes the name and password typed at sign-in to that start page once, without keeping them). The
   form has no box for bookmarks; the nearest is **Web history**, and ticking it is the cautious choice. Leave the
   others unticked. Then certify the three statements (not sold, not used for anything but the single purpose, not
   used for creditworthiness). What it handles goes only to the server the user names (see the privacy policy).

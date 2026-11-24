@@ -133,7 +133,7 @@ The DNS servers, their passwords and keys, the views and dynamic DNS are set in 
 
 ## API
 
-The paths below are ioDNS's own: at the suite's address they are inside its folder (`https://home.example.com/dns/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/dns/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+The paths below are ioDNS's own: at the suite's address they are inside its folder (`https://home.example.com/dns/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443), the one to open to the internet for phones and native apps, serves nothing of ioDNS. MCP clients use the address for MCP (port 8444).
 
 Everything the web app does is a JSON API under `/api/` (documented at `/api/docs`), open to any client signed in with
 the user name and an app password (HTTP Basic or a bearer token): `GET /api/entries`, `POST /api/entries`,

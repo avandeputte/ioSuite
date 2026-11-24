@@ -6,8 +6,8 @@ app password and turns away a request whose app password is wrong before it reac
 | App | Paths | Devices |
 |---|---|---|
 | ioCalendar, ioContact | `/dav*` | Apple Calendar and Contacts, DAVx5, Thunderbird (HTTP Basic) |
-| ioSuite (the start page) | `/dav*` (not the sign-in flow for apps under `/dav/nextcloud/index.php/login/v2`, which answers before an app has a password) | the ioStart Bookmarks browser extension and the iPhone app: bookmark sync at `/dav/ext` (HTTP Basic) |
-| ioHealth | `/v1/*` (not `/v1/health`, which answers without a password) | the iPhone app's uploads (HTTP Basic, or Bearer) |
+| ioSuite (the start page) | `/dav*` | the ioStart Bookmarks browser extension and the iPhone app: bookmark sync at `/dav/ext` (HTTP Basic) |
+| ioHealth | `/v1/*` | the iPhone app's uploads (HTTP Basic, or Bearer) |
 
 Someone guessing passwords there then never touches the server, and a WAF rate limit on the DAV paths stops them
 trying fast.

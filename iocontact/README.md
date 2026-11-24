@@ -106,7 +106,7 @@ iOS and macOS want HTTPS for a CardDAV account outside the home network, and a p
 
 ## API
 
-The paths below are ioContact's own: at the suite's address they are inside its folder (`https://home.example.com/contacts/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/contacts/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+The paths below are ioContact's own: at the suite's address they are inside its folder (`https://home.example.com/contacts/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/contacts/…` behind a reverse proxy) is the one to open to the internet for phones and native apps, and serves only what they use: CardDAV (`/dav/`) and the birthday calendar a profile adds (`/cal/…`, which there also takes the profile's app password). Nothing is answered there without a password. Nothing else of the API is served there. MCP clients use the address for MCP (port 8444).
 
 | For | Standard | Where |
 | --- | --- | --- |

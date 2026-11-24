@@ -50,7 +50,7 @@ iosuite install --add iohealth
 | | |
 | --- | --- |
 | Address | `/health/` at the suite's address (`https://home.example.com/health/`), and a name of its own if you give it one |
-| Devices | the ioHealthSync iPhone app's uploads at `/health/v1/…`, at the [address for devices](../reference/configuration.md#the-three-ports) |
+| Devices | the ioHealthSync iPhone app's sign-in and its uploads at `/health/v1/…`, at the [address for devices](../reference/configuration.md#the-three-ports); nothing else of ioHealth is served there |
 | Source | [iohealth](https://github.com/avandeputte/iosuite/tree/main/iohealth) (server), [iohealth-apps](https://github.com/avandeputte/iosuite-apps/tree/main/iohealth) (the ioHealthSync iPhone app) |
 
 The iPhone app is built from [iosuite-apps/iohealth](https://github.com/avandeputte/iosuite-apps/tree/main/iohealth) with Xcode. See

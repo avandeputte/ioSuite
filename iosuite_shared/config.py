@@ -33,6 +33,7 @@ the database when the page cannot be reached. `declared(app)` lists the ones a p
 that command.
 """
 import os
+import time
 import sys
 from pathlib import Path
 
@@ -265,11 +266,42 @@ def standard(app: str, app_dir, stored: Settings = None) -> dict:
            "TLS_CERT_FILE": TLS_CERT_FILE, "TLS_KEY_FILE": TLS_KEY_FILE,
            "KEEP_DELETED_DAYS": max(1, s.int("KEEP_DELETED_DAYS", 90)), "MCP_USER": s.get("MCP_USER"),
            "ADMIN_USER": ADMIN_USER, "ADMIN_PASSWORD": ADMIN_PASSWORD}
-    for door in ("SYNC", "MCP"):  # the app's address at the other two doors (iosuite_shared.doors), the same way
+    out.update(_door_urls(s, folder))
+    OF_APP[app] = out
+    _FRESH[app] = time.monotonic()
+    return out
+
+
+def _door_urls(s: Settings, folder: str) -> dict:
+    """The app's address at the sync and MCP doors (iosuite_shared.doors), as PUBLIC_URL is: its own, else its folder
+    at the suite's."""
+    out = {}
+    for door in ("SYNC", "MCP"):
         mine, whole = s.own(f"{door}_URL").rstrip("/"), s.of_suite(f"{door}_URL").rstrip("/")
         both = [u for u in (mine, whole + folder if whole else "") if u]
         out.update({f"{door}_URL": both[0] if both else "", f"{door}_URLS": both, f"{door}_URL_OWN": mine})
-    OF_APP[app] = out
+    return out
+
+
+_FRESH: dict = {}
+FRESH_S = 15.0
+
+
+def door_urls_now(app: str) -> dict:
+    """OF_APP[app] with its addresses for devices and MCP as they are stored now (read again every FRESH_S seconds):
+    an address set in Settings › Suite is what the profiles and the connection details hand out at once, with no
+    restart. The rest of the app's settings take effect when it starts again."""
+    out = OF_APP.get(app)
+    if out is None:
+        return {}
+    now = time.monotonic()
+    if now - _FRESH.setdefault(app, now) < FRESH_S:
+        return out
+    _FRESH[app] = now
+    try:
+        out.update(_door_urls(settings(app), out.get("FOLDER") or ""))
+    except Exception:  # noqa: BLE001 - the database is away: the addresses as they were
+        pass
     return out
 
 

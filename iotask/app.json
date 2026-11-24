@@ -9,6 +9,9 @@
     "/dav",
     "/.well-known/"
   ],
+  "homeOnly": [
+    "/.well-known/"
+  ],
   "order": 50,
   "compose": {
     "name": "tasks",

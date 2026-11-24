@@ -5,28 +5,35 @@ firewall or a reverse proxy can treat each kind of traffic on its own:
 
     web   (80)     the pages people open and what the pages ask for: signed in by the session cookie, a passkey, or
                    the sign-in of a reverse proxy. An app password or a token in Authorization is taken here from
-                   inside the network (the apps calling each other) and, from outside, for what the sync door
-                   serves too (an app's /api/, asked by a device that was given the address people know); never
-                   from outside for signing in or changing an account (/api/auth/), or for a page.
-    sync  (8443)   what phones, native apps and devices talk to: CalDAV and CardDAV (/dav, /.well-known/), calendar
-                   subscriptions (/ics/, /cal/), the bookmark sync, ioHealth's uploads
-                   (/v1/) and each app's API (/api/) for native apps, widgets and e-ink screens. Signed in by an app
-                   password, a token or the secret in the address only: cookies and a proxy's sign-in are not read
-                   here, nobody signs in or makes an account here, and no page is served.
+                   inside the network (the apps calling each other) and, from outside, for an app's /api/ (a wall
+                   display, an e-ink screen, a widget or a script that was given the address people know); never
+                   from outside for changing an account (/api/auth/), or for a page.
+    sync  (8443)   what phones and native apps talk to, and nothing else: the port to open to the internet for them.
+                   CalDAV and CardDAV (/dav), the birthday calendar a contacts profile adds (/cal/), the bookmark
+                   sync (/dav/ext), ioHealth's uploads (/v1/), and of each app's API (/api/) the calls its native
+                   apps make, each one named in the app's manifest. Nothing is answered there without a password in
+                   Authorization (401 with the Basic challenge, whatever the address) but DEVICE_PATH, where a native
+                   app signs its person in with the name and password typed in it (and the code of two-step
+                   sign-in) for an app password of its own to keep; from then on only an app password of that app
+                   signs a request in there (never the account's own password, never the start page's suite-wide
+                   one). Cookies and a proxy's sign-in are not read, no account is made or changed, no page, script
+                   or reference of the API is served, and the paths a manifest calls "homeOnly" (the subscription
+                   links whose secret in the address is their only sign-in, /.well-known/) are left to the pages'
+                   port. at_device_port() is the host's check; the app's Auth refuses a wrong password there even
+                   where a route needs none.
     mcp   (8444)   MCP clients: /mcp and nothing else.
 
-What an app serves at the sync door is its manifest's "sync" list of path prefixes, plus /api/ and its manifest's
-"media" list (ioPix's pictures and videos, which a native app shows as its pages do).
+What an app serves at the sync door is its manifest's "sync" list of path prefixes (less its "homeOnly" ones), its
+"devices" list of calls of its API and its "media" list (ioPix's pictures and videos, which a native app shows as its
+pages do). An app whose manifest has none of the three serves nothing there.
 
 The port of the pages answers everything the suite serves: a device's path or /mcp asked there is answered by its own
 door's rules (served_as(): no session read, an app password or a token instead), whether or not the other two ports
 are opened at all. So a server behind a reverse proxy, a tunnel or a port forward needs one port, and the addresses
 the apps hand out (the CalDAV address for a phone, the MCP address) are still each door's own when one is stored.
 
-The other two ports serve their own and nothing else: a page asked at the sync door goes to the pages (a sync client
-that opens the app in a browser, or the screen where the person says yes to it: the manifest's "pages", below a sync
-prefix yet a page). So a phone, a native app or a browser extension can be given the sync door's address or the
-pages', and people the pages'.
+The other two ports serve their own and nothing else: what is not theirs is refused (404), whatever it is, and
+nothing is sent on to the pages (a manifest's "pages", below a sync prefix yet a page, would be: none has one now).
 
 With a certificate (iosuite_shared.certs) the copy answers HTTPS itself: the pages get a port more, HTTPS_PORT (443),
 and the ports for devices and MCP answer HTTPS as well as plain HTTP. Which door a request came in by is told by its
@@ -51,8 +58,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -63,10 +72,14 @@ log = logging.getLogger("iosuite_shared.doors")
 WEB, SYNC, MCP = "web", "sync", "mcp"
 NAMES = {WEB: "the pages", SYNC: "devices and native apps", MCP: "MCP"}
 SCOPE_DOOR = "iosuite.door"        # which door a request came in by (absent: the app was asked directly, as in its tests)
+SCOPE_PORT = "iosuite.port"        # the door of the port the request came in at (SCOPE_DOOR is whose rules answer it)
 SCOPE_ROUTED = "iosuite.routed"    # the host settled the app and its folder: the app's own middleware takes them as they are
 APP_HEADER = "x-iosuite-app"       # set by a copy passing a request across to the copy that runs the app
 DOOR_APP = "iostart"               # the app at the root of an address
 MCP_PATH = "/mcp"
+# where a native app signs its person in for an app password of its own, and gives it back when they sign out
+# (iosuite_shared.routers): the one path of /api/auth/ the sync door takes a write at
+DEVICE_PATH = "/api/auth/device"
 WELL_KNOWN = {"/.well-known/caldav": "iocalendar", "/.well-known/carddav": "iocontact"}
 REFRESH_S = 5.0
 # what belongs to one connection, never passed on (RFC 9110 §7.6.1)
@@ -125,7 +138,7 @@ def under(path: str, prefixes) -> bool:
 
 
 def sync_paths(app: str) -> tuple:
-    """The path prefixes an app serves at the sync door, beside /api/ (its manifest's "sync")."""
+    """The path prefixes an app serves at the sync door (its manifest's "sync")."""
     return tuple((catalog.APPS.get(app) or {}).get("sync") or ())
 
 
@@ -136,26 +149,87 @@ def page_paths(app: str) -> tuple:
 
 
 def media_paths(app: str) -> tuple:
-    """The path prefixes an app serves at both doors as it does /api/ (its manifest's "media"): what its pages show
-    and a native app shows as well, outside /api/ (ioPix's thumbnails, previews and videos). To a signed-in browser
-    with the pages, to an app password at the sync door."""
+    """The path prefixes an app serves at both doors, read only (its manifest's "media"): what its pages show and a
+    native app shows as well, outside /api/ (ioPix's thumbnails, previews and videos). To a signed-in browser with
+    the pages, to an app password at the sync door."""
     return tuple((catalog.APPS.get(app) or {}).get("media") or ())
+
+
+@lru_cache(maxsize=64)
+def _calls(listed: tuple) -> dict:
+    """{method: what matches the paths} of a manifest's "devices" list: * is one part of a path."""
+    by: dict = {}
+    for call in listed:
+        methods, path = call.split(" ", 1)
+        one = "/".join("[^/]+" if part == "*" else re.escape(part) for part in path.split("/"))
+        for m in methods.split(","):
+            by.setdefault(m, []).append(one)
+    return {m: re.compile("|".join(f"(?:{one})" for one in ones)) for m, ones in by.items()}
+
+
+def device_call(app: str, path: str, method: str = "GET") -> bool:
+    """Whether this call of an app's API is one its native apps make (its manifest's "devices"): what the sync door
+    serves of /api/. Of an account (/api/auth/) only what catalog.ACCOUNT_CALLS lets a manifest name, whatever a
+    list says."""
+    method = "GET" if method == "HEAD" else method
+    if path.startswith("/api/auth/") and method not in catalog.ACCOUNT_CALLS.get(path, ()):
+        return False
+    listed = (catalog.APPS.get(app) or {}).get("devices")
+    if not listed:
+        return False
+    match = _calls(tuple(listed)).get(method)
+    return bool(match and match.fullmatch(path))
 
 
 def home(app: str, path: str, method: str = "GET") -> tuple:
     """The doors that serve a path of an app, the first being where one that came in elsewhere is sent: MCP for
-    /mcp; the sync door for the app's sync paths; both the pages' and the sync door for /api/ (but for signing in
-    and changing an account, which is the pages' alone) and for the app's media paths, which are read only; the
-    pages' door for everything else."""
+    /mcp; the sync door for the app's sync paths; both the pages' and the sync door for the calls of its API that
+    its native apps make (device_call()) and for its media paths, which are read only; the pages' door for
+    everything else, the rest of /api/ included."""
     if path == MCP_PATH or path.startswith(MCP_PATH + "/"):
         return (MCP,)
     if under(path, sync_paths(app)) and not under(path, page_paths(app)):
         return (SYNC,)
-    if path.startswith("/api/") and not (path.startswith("/api/auth/") and method not in ("GET", "HEAD", "OPTIONS")):
-        return (WEB, SYNC)
+    if path.startswith("/api/"):
+        return (WEB, SYNC) if device_call(app, path, method) else (WEB,)
     if method in ("GET", "HEAD", "OPTIONS") and under(path, media_paths(app)):
         return (WEB, SYNC)
     return (WEB,)
+
+
+def home_only_paths(app: str) -> tuple:
+    """The path prefixes of an app's sync paths that the port for devices does not serve, only the pages' port by the
+    sync door's rules (its manifest's "homeOnly"): the calendar links whose secret in the address is all the sign-in
+    they take, and the lookups (/.well-known/) a device set up by a profile never needs."""
+    return tuple((catalog.APPS.get(app) or {}).get("homeOnly") or ())
+
+
+def at_device_port(app: str, path: str, method: str, authorization: bool) -> tuple:
+    """(status, what to say) for a request that came in at the port for devices, the port open to the internet:
+    (0, "") when it goes on to the app. Not one of the app's home-only paths (404), and nothing without a password
+    in Authorization (401, with the challenge that makes a sync client send one) but the one call that gets a device
+    its app password, DEVICE_PATH."""
+    if under(path, home_only_paths(app)):
+        return 404, "This address is not served at this port."
+    if not authorization and not (path == DEVICE_PATH and method in ("POST", "OPTIONS")):
+        return 401, "Sign in with an app password."
+    return 0, ""
+
+
+def port_of_request(request) -> str:
+    """The door of the port a request came in at (web, sync, mcp); "" when the app was asked directly."""
+    return request.scope.get(SCOPE_PORT) or ""
+
+
+def password_from_outside(app: str, path: str, method: str = "GET") -> bool:
+    """Whether the pages' door takes an app password or a token for this path from outside the network. An app's
+    /api/ and its media: a wall display, an e-ink screen, a widget or a script is given the address people know. Not
+    signing in by a session or changing an account (/api/auth/, but a native app's own sign-in, DEVICE_PATH), and
+    never a page. (A sync path or /mcp asked at the pages' door is answered by its own door's rules: served_as().)"""
+    read = method in ("GET", "HEAD", "OPTIONS")
+    if path.startswith("/api/"):
+        return read or path == DEVICE_PATH or not path.startswith("/api/auth/")
+    return read and under(path, media_paths(app))
 
 
 def allowed(door: str, app: str, path: str, method: str = "GET") -> bool:
@@ -167,7 +241,7 @@ def served_as(door: str, app: str, path: str, method: str = "GET") -> str:
     """Which door's rules answer this request. The port of the pages answers everything the suite serves: a device's
     path or /mcp asked there is answered by its own door's rules (no session, an app password or a token instead), so
     one port is enough for a whole server, with or without the other two opened. The ports for devices and MCP serve
-    their own and nothing else: a page asked there goes to the pages (elsewhere())."""
+    their own and nothing else."""
     if door == WEB and not allowed(WEB, app, path, method):
         return home(app, path, method)[0]
     return door
@@ -223,7 +297,7 @@ def base(door: str, request, app: str) -> str:
     The address stored for the app at that door (PUBLIC_URL, SYNC_URL, MCP_URL: its own, else its folder at the
     suite's), in the style the request came in on; failing that, the address this request asked: as it is when it
     came in by that door, else with that door's port."""
-    mine = config.OF_APP.get(app) or {}
+    mine = config.door_urls_now(app)
     here = of(request)
     if not here:  # the app asked directly (no host in front, as in its tests): one address for everything
         return prefix.base_url(request, _named(request, mine, WEB))
@@ -402,11 +476,12 @@ async def plain(send, status: int, text: str, headers=()) -> None:
     await send({"type": "http.response.body", "body": body})
 
 
-async def json_answer(send, status: int, detail: str, **more) -> None:
+async def json_answer(send, status: int, detail: str, headers: list | None = None, **more) -> None:
     import json
     body = json.dumps({"detail": detail, **more}).encode()
     await send({"type": "http.response.start", "status": status,
-                "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode()), (b"cache-control", b"no-store")]})
+                "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode()), (b"cache-control", b"no-store")]
+                + (headers or [])})
     await send({"type": "http.response.body", "body": body})
 
 
@@ -608,14 +683,14 @@ def address_of(door: str, scope: dict, app: str, folder: str) -> str:
 
 def elsewhere(door: str, scope: dict, app: str, path: str, folder: str) -> tuple:
     """(status, address) to send a request to that came in by a door which does not serve its path, or (0, "") when
-    it is refused where it is. From the pages' door, a sync or MCP path goes to its own door whatever the method
-    (307: the request is made again as it was). From the sync door, a page a person's browser asked for goes to the
-    pages' door. A phone looking an account up (/.well-known/caldav) is sent to where it syncs."""
+    it is refused where it is. The sync door sends one thing on, to the pages: the screen a sync client opens for
+    its person to say yes on (the manifest's "pages"), asked at the address the client was given. Everything else
+    that is not the door's own is refused there: the port tells nothing of where the pages are."""
     method = scope.get("method", "GET")
     to = home(app, path, method)[0]
     if to == door or (not port_of(to) and not (config.OF_APP.get(app) or {}).get(f"{'PUBLIC' if to == WEB else to.upper()}_URLS")):
         return 0, ""
-    if door == MCP or (door == SYNC and method not in ("GET", "HEAD")):
+    if door == MCP or (door == SYNC and (method not in ("GET", "HEAD") or not under(path, page_paths(app)))):
         return 0, ""
     where = address_of(to, scope, app, folder)
     if path in WELL_KNOWN:
@@ -630,6 +705,8 @@ def refusal(door: str, app: str, path: str) -> tuple:
     if door == WEB:
         other = MCP if (path == MCP_PATH or path.startswith(MCP_PATH + "/")) else SYNC
         return 404, f"{name} serves this at its door for {NAMES[other]} (port {port_of(other) or 'not opened on this server'}), not with the pages."
+    if door == SYNC:  # the port open to the internet: the same few words for every address it does not serve
+        return 404, "This address is not served at this port."
     return 404, f"This port is {name}'s door for {NAMES[door]}: this address is not served here."
 
 

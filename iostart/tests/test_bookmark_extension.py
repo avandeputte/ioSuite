@@ -93,13 +93,21 @@ def test_a_viewer_reads_but_does_not_change(client):
     assert anon.post(EXT + "/sync", headers=auth, json={"base": 0, "ops": []}).status_code == 403
 
 
-def test_the_extension_names_itself_when_it_signs_in(client):
-    anon = _anon()
-    f = anon.post("/dav/nextcloud/index.php/login/v2?client=ioStart%20Bookmarks%20in%20Firefox", headers={"Host": "start.example.com"}).json()
-    page = f["login"].replace("http://start.example.com", "")
-    assert "ioStart Bookmarks in Firefox" in client.get(page).text
-    client.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": page.rsplit("/", 1)[-1]})
-    assert [p["label"] for p in client.get("/api/auth/app-passwords").json()["items"]] == ["Bookmark sync: ioStart Bookmarks in Firefox"]
+def test_the_extension_signs_in_with_a_name_and_password_typed_in_it(client):
+    """Its settings page sends them once, from its own origin, and keeps the app password it gets: for sync only,
+    named after the browser, and given back when it signs out."""
+    testing.add_account(client, {"name": "vera", "password": "secret123", "role": "member"})
+    anon, origin = _anon(), {"Origin": "chrome-extension://abcdefghijklmnop"}
+    wrong = anon.post("/api/auth/device", headers=origin, json={"name": "vera", "password": "nope", "scope": "dav"})
+    assert wrong.status_code == 401
+    r = anon.post("/api/auth/device", headers=origin, json={"name": "vera", "password": "secret123", "scope": "dav", "label": "ioStart Bookmarks in Vivaldi"})
+    assert r.status_code == 200 and r.json()["name"] == "vera" and r.json()["scope"] == "dav"
+    auth = {**_basic("vera", r.json()["password"]), **origin}
+    assert anon.get(EXT, headers=auth).json()["canWrite"] is True
+    assert anon.post(EXT + "/sync", headers=auth, json={"base": 0, "ops": []}).status_code == 200
+    assert anon.get("/api/bookmarks", headers=auth).status_code == 403      # for sync only: not the rest of the start page
+    assert anon.delete("/api/auth/device", headers=auth).status_code == 200  # Sign out in the extension
+    assert anon.get(EXT, headers=auth).status_code == 401
 
 
 def test_the_extension_itself_syncs_browsers_both_ways(client, app):

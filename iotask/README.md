@@ -110,7 +110,7 @@ iOS and macOS want HTTPS for a CalDAV account outside the home network, and a pa
 
 ## API
 
-The paths below are ioTask's own: at the suite's address they are inside its folder (`https://home.example.com/tasks/api/…`), at a name of its own they are as written. Phones, native apps and scripts use the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/tasks/api/…` behind a reverse proxy), which takes app passwords and tokens and nothing else; from inside the home network an app password also works at the pages' address. MCP clients use the address for MCP (port 8444).
+The paths below are ioTask's own: at the suite's address they are inside its folder (`https://home.example.com/tasks/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443; `https://sync.example.com/tasks/…` behind a reverse proxy) is the one to open to the internet for phones and native apps, and serves only what they use: CalDAV (`/dav/`, `/.well-known/caldav`). Nothing else of the API is served there. MCP clients use the address for MCP (port 8444).
 
 | For | Standard | Where |
 | --- | --- | --- |

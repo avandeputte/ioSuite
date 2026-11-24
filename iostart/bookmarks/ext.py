@@ -13,8 +13,8 @@ changes in one request, applied together.
 ioStart, the iPhone and iPad app (the repository avandeputte/iosuite-apps), speaks the same API: it shows the tree,
 sends what is changed in it as ops, and draws the links with the icons.
 
-The extension signs in with the sign-in flow for apps (iostart/appsignin.py: one click, a sync-only app password in the
-Shared ioSuite database) and then HTTP Basic; under /dav, so the Cloudflare Worker checks the app password as for the
+The extension and the iPhone app sign in with the name and password typed in them (POST /api/auth/device, which gives
+them an app password of their own in the Shared ioSuite database) and then send that app password with every request; under /dav, so the Cloudflare Worker checks the app password as for the
 other apps' devices. The extension keeps the tree as it last saw it, works out what the browser changed since
 (made, renamed, moved, reordered, deleted), sends that, and makes the browser's bookmarks the tree it gets back: what
 was deleted here goes from every browser at their next sync.

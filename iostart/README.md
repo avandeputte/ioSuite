@@ -191,7 +191,7 @@ what the app will show on the start page later (today's events, the newest photo
   `iostart/`): the tree with search and editing, a share sheet entry that bookmarks the page open in any browser, and a
   built-in browser (WebKit) for opening bookmarks inside the app, plus home screen widgets (today, the next event,
   favourite bookmarks) and Siri / Shortcuts actions to add a task or an event. It speaks the extension's API
-  (`/dav/ext`) and signs in with the same one-tap flow, asking for a full app password (`?scope=full`) because its
+  (`/dav/ext`) and signs in the same way (`POST /api/auth/device`), for a full app password because its
   widgets and Siri read and add in ioCalendar and ioTask as the person (`/dav/ext/today`, `/dav/ext/calendars`,
   `/dav/ext/tasks`, `/dav/ext/events`); a sync-only password is told to sign in again for those.
 - **Bookmark sync with browsers**: everything in the tree syncs, on the start page or not.
@@ -200,7 +200,7 @@ what the app will show on the start page later (today's events, the newest photo
     bar is the top-level folder "Bookmarks bar", Firefox's bookmarks menu the folder "Bookmarks menu", Other bookmarks
     everything else at the top, so every browser shows the same. It sends what changed in the browser in one request
     (`/dav/ext`, `iostart/bookmarks/ext.py`) and makes the browser the tree that comes back, so a delete here or in another
-    browser goes everywhere. One-click sign-in (`iostart/appsignin.py`: an app password of its own, for sync only).
+    browser goes everywhere. It signs in with the name and password typed in it (`POST /api/auth/device`, as every native app does) for an app password of its own, for sync only.
     Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe) (Chrome, Edge, Vivaldi, Brave, Opera); Firefox and builds of your own
     from Settings › Bookmarks or a release. `.github/workflows/extension.yml` packages each version as a release and,
     with an addons.mozilla.org API key in the repository's secrets, has Mozilla sign the Firefox file.
@@ -250,7 +250,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 | | |
 | --- | --- |
 | Address | the suite's address itself (`https://home.example.com/`) |
-| Devices | bookmark sync at `/dav/…` (the browser extension, the iPhone app), widgets, e-ink screens and the wall display at `/api/…`, at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports) |
+| Devices | bookmark sync and the iPhone app's widgets at `/dav/…` (the browser extension, the iPhone app), at the [address for devices](../docs/docs/reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
 | MCP | `/mcp` at the address for MCP ([AI assistants](../docs/docs/run/assistants.md)) |
 | Database | `iostart`, beside the Shared ioSuite database (the accounts and every setting), both under the suite's one login; the tables are made on the first start and brought up to date by later versions by themselves |
 
@@ -306,7 +306,7 @@ a name and HTTPS, for the whole suite at once, and can make people sign in first
 guide have the set-up, with Caddy and nginx examples, sign-in at the proxy and the optional check of app passwords at
 Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
-The browser extension, the iPhone app, the widgets, the e-ink screens and the wall display use the address for devices, which stays outside a sign-in at the proxy.
+The browser extension, the iPhone app and its widgets use the address for devices, which stays outside a sign-in at the proxy and serves nothing but their sign-in and the bookmark sync. E-ink screens and the wall display are given the start page's address inside the network (the pages' port), where they sign in with a key or an app password of their own.
 
 ## Tests
 
@@ -341,7 +341,6 @@ weather.py         AccuWeather: the settings, the place search, the cached condi
 timers.py          kitchen timers: the family's, from the search box; the "timer done" notification, one of the copy's jobs
 rates.py           the exchange rates for the search box's currency conversions (ECB, through Frankfurter)
 wall.py            the wall display on a device: its feed, its photos, pairing
-appsignin.py       how the browser extension and the iPhone app sign in (/dav/nextcloud/index.php/login/v2)
 bookmarks/         the bookmarks: __init__.py the groups and links; api.py their routes; check.py Tidy up (addresses that no longer
                    answer, the same address kept twice); icons.py a site's own icon; files.py import and export; sync.py and ext.py
                    what the browser extension and the iPhone app sync with (/dav/ext)

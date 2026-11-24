@@ -18,7 +18,7 @@ button.primary { background: var(--brand); border-color: var(--brand); color: #f
 button.primary:hover { filter: brightness(1.1); }
 button:disabled { opacity: .55; cursor: default; }
 button.link { border: 0; padding: 0; background: none; color: var(--accent); border-radius: 0; }
-input[type="text"], input[type="url"] { font: inherit; width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+input[type="text"], input[type="url"], input[type="password"] { font: inherit; width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--fg2); margin-right: 7px; }
 .dot.ok { background: var(--ok); } .dot.bad { background: var(--danger); }

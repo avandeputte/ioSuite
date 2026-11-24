@@ -11,16 +11,14 @@
 //   MODE  "monitor" (default): check and log, but let everything through; "enforce": turn away what fails.
 
 const REALMS = { iocalendar: "ioCalendar", iocontact: "ioContact", iotask: "ioTask", iohealth: "ioHealth", iostart: "ioStart bookmarks" };
-// what each app's devices sign in on, and what stays open there (ioHealth's /v1/health answers without a password)
+// what each app's devices sign in on
 const GUARDED = {
   iocalendar: { paths: [/^\/dav(\/|$)/] },
   iocontact: { paths: [/^\/dav(\/|$)/] },
   iotask: { paths: [/^\/dav(\/|$)/] },
-  iohealth: { paths: [/^\/v1\//], open: [/^\/v1\/health\/?$/] },
-  // the start page's bookmark sync (the ioStart Bookmarks extension, the iPhone app). Open: the sign-in flow for apps,
-  // which is how one gets its password: the app starts it and polls without credentials, and the page in between is
-  // the browser's, signed in with the session cookie
-  iostart: { paths: [/^\/dav(\/|$)/], open: [/^\/dav\/nextcloud\/index\.php\/login\/v2(\/|$)/] },
+  iohealth: { paths: [/^\/v1\//] },
+  // the start page's bookmark sync (the ioStart Bookmarks extension, the iPhone app), which signs in at /api/auth/device
+  iostart: { paths: [/^\/dav(\/|$)/] },
 };
 const DEFAULT = { paths: [/^\/dav(\/|$)/] };
 

@@ -8,6 +8,9 @@
   "sync": [
     "/v1/"
   ],
+  "devices": [
+    "POST,DELETE /api/auth/device"
+  ],
   "order": 100,
   "compose": {
     "name": "health",

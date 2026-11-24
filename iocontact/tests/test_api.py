@@ -138,6 +138,19 @@ def test_apple_profile(client):
     assert client.get("/api/auth/app-passwords", auth=("alex", dav["CardDAVPassword"])).status_code == 403
     assert client.post("/api/auth/login", json={"name": "alex", "password": dav["CardDAVPassword"]}).status_code == 401
     assert client.post("/api/auth/login", json={"name": "alex", "password": "secret123"}).status_code == 200
+    # the birthday calendar takes the profile's password too: at the port for devices the secret link alone is not enough
+    assert cal["SubCalAccountUsername"] == "alex" and cal["SubCalAccountPassword"] == dav["CardDAVPassword"]
+    from fastapi.testclient import TestClient
+    from iosuite_shared import doors
+    from iocontact.main import app
+
+    async def device_port(scope, receive, send):
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.SYNC}) if scope["type"] == "http" else scope, receive, send)
+    d = TestClient(device_port)
+    feed = cal["SubCalAccountHostName"].split("testserver")[1]
+    assert d.get(feed, auth=("alex", dav["CardDAVPassword"])).status_code == 200
+    assert d.get(feed).status_code == 404
+    assert d.get(feed, auth=("alex", "secret123")).status_code == 401  # the account's own password signs nothing in there
     items = client.get("/api/auth/app-passwords").json()["items"]
     assert [x["scope"] for x in items if x["label"] == "Alex iPhone (profile)"] == ["dav"]
     ask = plistlib.loads(client.post("/api/apple-profile", data={"password": "ask", "calendar": "none"}).content)

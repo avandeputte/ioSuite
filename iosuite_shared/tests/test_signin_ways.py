@@ -253,3 +253,100 @@ def test_a_passkey_that_counts_never_goes_back_and_another_address_has_its_own()
     other = Phone()
     other.cid = b"another credential"
     assert s.post("/api/auth/passkeys", json=other.create(options)).status_code == 400
+
+
+def at_the_door_for_devices(app):
+    """The app as iosuite_shared.host hands it a request of the port for devices, asked from outside the network."""
+    from iosuite_shared import doors
+
+    async def door(scope, receive, send):
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.SYNC}) if scope["type"] == "http" else scope, receive, send)
+    return TestClient(door, base_url="https://devices.example.com", headers={"cf-connecting-ip": "203.0.113.9"})
+
+
+def test_a_native_app_signs_its_person_in_for_an_app_password_of_its_own():
+    """The name and password typed in a native app, at the door for devices: no session and no cookie, an app
+    password the app keeps and sends from then on, listed under the label it gave, and given back when it signs out."""
+    app, _ = make_app()
+    uid = users.create("alex", "secret123", "admin", "iopix", suite_admin=True)["id"]
+    users.db.set_setting("require_login", "1", "iopix")
+    d = at_the_door_for_devices(app)
+    assert d.post("/api/auth/device", json={"name": "alex", "password": "nope"}).status_code == 401
+    assert d.post("/api/auth/device", json={"name": "alex", "password": "secret123", "scope": "everything"}).status_code == 400
+    r = d.post("/api/auth/device", json={"name": "Alex", "password": "secret123", "label": "  ioPix on\n the  iPad "})
+    made = r.json()
+    assert r.status_code == 200 and "set-cookie" not in r.headers
+    assert made["name"] == "alex" and made["password"].startswith("iopix-") and made["scope"] == "" and made["user"]["role"] == "admin"
+    assert [x["label"] for x in apppasswords.list_for(uid, "iopix")] == ["ioPix on the iPad"]
+    bearer = {"authorization": "Bearer " + made["password"]}
+    assert d.get("/api/private").status_code == 401
+    assert d.get("/api/private", headers=bearer).status_code == 200
+    assert d.get("/api/private", headers=basic("alex", made["password"])).status_code == 200
+    assert d.get("/api/auth/me", headers=bearer).json()["user"]["name"] == "alex"
+    # signing out gives the password back: it is gone from the list and signs nothing in any more
+    assert d.delete("/api/auth/device").status_code == 401
+    assert d.delete("/api/auth/device", headers=bearer).json() == {"ok": True}
+    assert apppasswords.list_for(uid, "iopix") == [] and d.get("/api/private", headers=bearer).status_code == 401
+    # a browser's session is not a device: there is no app password to give back
+    c = TestClient(app, base_url=HOST)
+    c.post("/api/auth/login", json={"name": "alex", "password": "secret123"})
+    assert c.delete("/api/auth/device", headers={"origin": HOST}).status_code == 400
+
+
+def test_at_the_port_for_devices_only_an_app_password_signs_a_request_in():
+    """The account's own password signs nothing in at the port open to the internet (a device signs in once for an app
+    password of its own), and neither does the start page's suite-wide one. At the pages' port both work as before."""
+    app, _ = make_app()
+    users.create("alex", "secret123", "admin", "iopix", suite_admin=True)
+    users.db.set_setting("require_login", "1", "iopix")
+    d = at_the_door_for_devices(app)
+    assert d.get("/api/private", headers=basic("alex", "secret123")).status_code == 401
+    made = d.post("/api/auth/device", json={"name": "alex", "password": "secret123"}).json()["password"]
+    assert d.get("/api/private", headers=basic("alex", made)).status_code == 200
+    from iosuite_shared import doors
+
+    async def pages(scope, receive, send):  # the same device path asked at the pages' port: answered by the device rules
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.WEB}) if scope["type"] == "http" else scope, receive, send)
+    p = TestClient(pages, base_url="http://192.168.1.5")
+    assert p.get("/api/private", headers=basic("alex", "secret123")).status_code == 200
+    # a wrong password is refused there even where the route asks for none, and so is an account with no access here
+    assert d.get("/api/status", headers=basic("alex", "nope")).status_code == 401
+    assert d.get("/api/status", headers=basic("alex", made)).status_code == 200
+    users.create("guest", "longenough", "none", "iopix")
+    guest = apppasswords.create(users.find("guest")["id"], "iopix", "x", "")
+    assert d.get("/api/status", headers=basic("guest", guest)).status_code == 403
+
+
+def test_a_device_signing_in_is_asked_for_the_code_of_two_step_sign_in():
+    app, _ = make_app()
+    c = signed_in(app)
+    secret = c.post("/api/auth/two-step/begin", json={"password": "secret123"}).json()["secret"]
+    c.post("/api/auth/two-step", json={"code": now_code(secret)})
+    d = at_the_door_for_devices(app)
+    r = d.post("/api/auth/device", json={"name": "alex", "password": "secret123"})
+    assert r.status_code == 401 and r.json()["twoStep"] is True and "password" not in r.json()
+    r = d.post("/api/auth/device", json={"name": "alex", "password": "secret123", "code": "000000"})
+    assert r.status_code == 401 and r.json()["twoStep"] is True
+    assert d.post("/api/auth/device", json={"name": "alex", "password": "wrong", "code": now_code(secret, 1)}).status_code == 401
+    r = d.post("/api/auth/device", json={"name": "alex", "password": "secret123", "code": now_code(secret, 1), "label": "Phone"})
+    assert r.status_code == 200
+    assert d.get("/api/private", headers={"authorization": "Bearer " + r.json()["password"]}).status_code == 200
+
+
+def test_who_cannot_sign_a_device_in_and_what_a_limited_one_may_do():
+    app, _ = make_app()
+    users.create("alex", "secret123", "admin", "iopix", suite_admin=True)
+    users.create("kid", "", "viewer", "iopix")              # one click, at home: no password to check
+    users.create("guest", "longenough", "none", "iopix")    # an account of the suite with no access to this app
+    d = at_the_door_for_devices(app)
+    assert d.post("/api/auth/device", json={"name": "kid", "password": ""}).status_code in (401, 403)
+    assert d.post("/api/auth/device", json={"name": "guest", "password": "longenough"}).status_code == 403
+    assert apppasswords.list_for(users.find("kid")["id"], "iopix") == [] and apppasswords.list_for(users.find("guest")["id"], "iopix") == []
+    # a browser extension asks from its own origin: nothing here rests on a cookie, so that is not another site's write
+    r = d.post("/api/auth/device", json={"name": "alex", "password": "secret123", "scope": "dav"}, headers={"origin": "chrome-extension://abc"})
+    assert r.status_code == 200 and r.json()["scope"] == "dav"
+    sync_only = {"authorization": "Bearer " + r.json()["password"]}
+    assert d.get("/api/private", headers=sync_only).status_code == 403            # for the sync protocols only
+    assert d.put("/dav/x", headers=sync_only).status_code == 200
+    assert d.delete("/api/auth/device", headers=sync_only).json() == {"ok": True}  # yet it can give itself back
+    assert d.put("/dav/x", headers=sync_only).status_code == 401

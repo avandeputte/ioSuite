@@ -1,6 +1,6 @@
 """Kitchen timers (iostart/timers.py), the exchange rates for the search box's conversions (iostart/rates.py), and what the
 iPhone app's widgets and Siri read and add (/dav/ext/today and friends, iostart/bookmarks/ext.py) with a full app password
-from the sign-in flow (?scope=full, iostart/appsignin.py)."""
+from the device sign-in (POST /api/auth/device)."""
 import base64
 import time
 
@@ -125,26 +125,23 @@ def test_rates_without_any_yet(client, monkeypatch):
 # ------------------------------------------------------------------ the iPhone app's widgets and Siri
 
 def _flow(client, scope=""):
+    """The iPhone app signs in as every native app does (POST /api/auth/device): with scope "" a full app password."""
     anon = _anon()
-    f = anon.post(f"/dav/nextcloud/index.php/login/v2?client=ioStart%20on%20aphone{'&scope=' + scope if scope else ''}", headers={"Host": "start.example.com"}).json()
-    page = f["login"].replace("http://start.example.com", "")
-    text = client.get(page).text
-    client.post("/dav/nextcloud/index.php/login/v2/grant", data={"page": page.rsplit("/", 1)[-1]})
-    got = anon.post("/dav/nextcloud/index.php/login/v2/poll", json={"token": f["poll"]["token"]}).json()
-    return text, got["appPassword"], anon
+    got = anon.post("/api/auth/device", json={"name": "alex", "password": "secret123", "label": "ioStart on aphone",
+                                              **({"scope": "dav"} if scope != "full" else {})}).json()
+    return got, got["password"], anon
 
 
-def test_the_iphone_app_asks_for_a_full_app_password(client):
-    text, pw, anon = _flow(client, "full")
-    assert "full access" in text and "ioStart on aphone" in text
+def test_the_iphone_app_signs_in_for_a_full_app_password(client):
+    got, pw, anon = _flow(client, "full")
+    assert got["scope"] == ""
     items = client.get("/api/auth/app-passwords").json()["items"]
-    assert [(p["label"], p.get("scope", "")) for p in items] == [("App: ioStart on aphone", "")]
-    assert anon.get("/dav/ext", headers=_basic("alex", pw)).json()["full"] is True
+    assert [(p["label"], p.get("scope", "")) for p in items] == [("ioStart on aphone", "")]
+    assert anon.get("/dav/ext", headers={"Authorization": "Bearer " + pw}).json()["full"] is True
 
 
 def test_a_sync_only_password_is_told_to_sign_in_again(client):
-    text, pw, anon = _flow(client)
-    assert "sync only" in text
+    _, pw, anon = _flow(client)
     h = _basic("alex", pw)
     assert anon.get("/dav/ext", headers=h).json()["full"] is False
     r = anon.get("/dav/ext/today", headers=h)

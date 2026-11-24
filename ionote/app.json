@@ -5,6 +5,15 @@
   "tag": "Notes, clipboard snippets and screenshots",
   "color": "#1c5a5e",
   "folder": "notes",
+  "devices": [
+    "GET /api/status",
+    "POST,DELETE /api/auth/device",
+    "GET /api/auth/me",
+    "GET /api/sync",
+    "POST /api/sync/push",
+    "GET,PUT /api/notes/*/image",
+    "GET,PUT,DELETE /api/notes/*/attachments/*"
+  ],
   "order": 30,
   "system": [
     "libheif1",
