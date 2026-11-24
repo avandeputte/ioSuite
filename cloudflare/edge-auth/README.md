@@ -59,7 +59,7 @@ the top of the script.
 ```
 export CLOUDFLARE_API_TOKEN=…  CLOUDFLARE_ACCOUNT_ID=…
 python3 setup.py --host calendar.example.com=iocalendar --host contacts.example.com=iocontact \
-    --host start.example.com=iosuite --deploy --rate-limit --app-token-file ~/.iosuite-edge-kv-token
+    --host start.example.com=iostart --deploy --rate-limit --app-token-file ~/.iosuite-edge-kv-token
 ```
 
 Then step 3 with the ids it prints and that token file. By hand:

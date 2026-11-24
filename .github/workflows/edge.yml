@@ -5,6 +5,11 @@ name: edge
 # It uses the two repository secrets the website's deploy uses (docs/CLOUDFLARE.md); without them it only says so.
 on:
   workflow_dispatch:
+    inputs:
+      look:
+        description: "Only look at the Worker (its namespace, APPS, MODE); send nothing"
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency: edge
@@ -28,4 +33,4 @@ jobs:
             echo "::warning::Nothing was sent: the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (docs/CLOUDFLARE.md)."
             exit 0
           fi
-          python3 deploy.py
+          python3 deploy.py ${{ inputs.look && '--dry-run' || '' }}
