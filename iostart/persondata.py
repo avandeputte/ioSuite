@@ -2,7 +2,7 @@
 their own bookmarks (with what is in their own folders), their choices of shared bookmarks for their start page,
 their home page layout, the TRMNL screens
 the start page pushes for them (their webhook addresses and app password, kept with the keys and tokens) and their
-TRMNL devices (each with its key) the kitchen timers they started, and the feeds they follow with what they read and starred. Shared bookmarks stay, whoever added them: they are everyone's."""
+TRMNL devices (each with its key) the kitchen timers they started, and the feeds they follow with what they read and starred, and their mail in the suite inbox. Shared bookmarks stay, whoever added them: they are everyone's."""
 from iostart import db
 
 
@@ -18,6 +18,8 @@ def of(user_id: int, remove: bool) -> list:
     running = timers.person_data(user_id, remove)
     from iostart import news
     feeds = news.person_data(user_id, remove)
+    from iostart import inbox
+    mails = inbox.person_data(user_id, remove)
     if remove:
         trmnlserver.forget_person(user_id)  # their TRMNL devices and each one's key
         trmnlpush.stop(user_id)  # the TRMNL webhook addresses and the app password they were read with (keys and tokens)
@@ -33,4 +35,5 @@ def of(user_id: int, remove: bool) -> list:
             {"what": "TRMNL devices", "one": "TRMNL device", "count": devices},
             {"what": "kitchen timers", "one": "kitchen timer", "count": running},
             {"what": "feeds followed", "one": "feed followed", "count": feeds},
+            {"what": "messages in the suite inbox", "one": "message in the suite inbox", "count": mails},
             {"what": "shared bookmarks they added", "one": "shared bookmark they added", "count": shared, "kept": True}]

@@ -8,7 +8,7 @@ from iostart import config
 
 from iosuite_shared import db as shared_db
 
-SCHEMA_VERSION = 10  # 10: feeds, the reader (prt_feeds, prt_feed_items, prt_feed_subs, prt_feed_marks: iostart/news/__init__.py); 9: kitchen timers (prt_timers); 8: TRMNL devices (prt_trmnl_devices); 7: shared and personal bookmarks (owner, shared; prt_bookmark_starts)
+SCHEMA_VERSION = 11  # 11: the suite inbox by email (prt_inbox, prt_inbox_files: iostart/inbox/__init__.py); 10: feeds, the reader (prt_feeds, prt_feed_items, prt_feed_subs, prt_feed_marks: iostart/news/__init__.py); 9: kitchen timers (prt_timers); 8: TRMNL devices (prt_trmnl_devices); 7: shared and personal bookmarks (owner, shared; prt_bookmark_starts)
 PREFIX = "prt"
 
 # Every table is InnoDB/utf8mb4. Accounts and app passwords live in the Shared ioSuite database (iosuite_shared,
@@ -110,8 +110,8 @@ SCHEMA = [
 
 
 def _tables() -> list:
-    from iostart import news  # the reader's tables are written where they are explained (iostart/news/__init__.py)
-    return SCHEMA + news.SCHEMA
+    from iostart import inbox, news  # the reader's and the inbox's tables are written where they are explained
+    return SCHEMA + news.SCHEMA + inbox.SCHEMA
 
 
 # Where the database is, its pool, the transaction nested calls share, q / one / ex / many, the settings table and the

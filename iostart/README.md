@@ -52,6 +52,18 @@ what the app will show on the start page later (today's events, the newest photo
   inside an article do load from their site when the article is opened. Import and export as OPML, the file every
   reader exchanges. The **Headlines** card on the start page lists the newest unread articles of the feeds you keep
   on it (a switch on each feed); it is there once you follow one.
+- **Inbox** (the gear › Inbox, or `#/inbox`): the suite's inbox by email. A suite admin gives it a mailbox of its own
+  (Inbox › the settings button: IMAP host, port, user name, folder; the password is kept with the suite's keys and
+  tokens), read every five minutes. Mail sent or forwarded to it is its sender's (their account's address, or another
+  one they add under Your addresses) and nobody else's. A receipt goes on the matching ioMoney transaction (money out
+  of its amount, a few days around the mail; one that has not come from the bank yet is tried again every hour for
+  ten days), a PDF or a scan into ioDocs as a private document, an invitation into ioCalendar. That happens by itself
+  only when the mail server vouched for the sender (DMARC or DKIM passed in its Authentication-Results line), since
+  anyone can write any From line; everything else waits on the page, with why, to be filed with a tap or let go.
+  Filing is done as the person, so each app's own rules hold (private ioMoney accounts, the calendars they may
+  write). `+money`, `+docs`, `+calendar` after the mailbox's name say where it goes, `+inbox` keeps it on the page.
+  Mail from an address nobody has waits for a suite admin to give to someone. Filed and let-go mail stays listed
+  for 30 days. A notification (Suite inbox) says what was filed or waits.
 - **Live**: every five minutes, and when the tab is shown again, the page brings the tiles, the cards, the weather
   and the dots up to date in place; at midnight it is drawn anew for the new day.
 - **A wall display** (the gear › Wall display, or `#/wall` as a tablet's home address): full screen, ioPix photos one
@@ -347,6 +359,8 @@ bookmarks/         the bookmarks: __init__.py the groups and links; api.py their
 news/              the reader: __init__.py feeds fetched once for everybody, each person's own subscriptions, read and starred, the
                    job; api.py its routes (/api/news); read.py RSS, Atom and JSON Feed as one shape, a site's feed found from its
                    page, an article's HTML made safe, OPML
+inbox/             the suite's inbox by email: __init__.py what is kept, what kind each message is, whose, filing it as its
+                   sender, the job; mail.py IMAP and a message taken apart; api.py its routes (/api/inbox)
 homeassistant/     Home Assistant: __init__.py the settings, the chosen entities and their state, switching them, the search, the
                    alerts; api.py its routes (/api/ha); feed.py its websocket: state changes folded into the copy, streamed to the pages
 trmnl/             TRMNL e-ink screens: __init__.py the screens and their data; api.py the routes; push.py the pushes to TRMNL's

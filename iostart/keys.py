@@ -1,6 +1,6 @@
 """The start page's keys and tokens, kept with every other app's in the Shared ioSuite database
-(iosuite_shared.credentials), so Settings › Keys lists them all. Settings › Home Assistant and
-Settings › Weather still set them."""
+(iosuite_shared.credentials), so Settings › Keys lists them all. Settings › Home Assistant,
+Settings › Weather and Inbox › Mailbox still set them."""
 import logging
 
 from iosuite_shared import credentials
@@ -13,6 +13,8 @@ KEYS = [
      "hint": "a long-lived access token (Home Assistant: your profile › Security)"},
     {"name": "accuweather_key", "label": "AccuWeather API key",
      "hint": "from developer.accuweather.com, for the weather card"},
+    {"name": "mail_password", "label": "Suite inbox mailbox password",
+     "hint": "the password of the mailbox the suite reads (Inbox › Mailbox); an app password for Gmail, Fastmail or iCloud"},
 ]
 
 
