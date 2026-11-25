@@ -10,6 +10,8 @@ def test_the_demo_data_goes_in_once(client):
     demo.at_start(config.APP)  # what the app does at start: seed, mark
     assert demo.seeded(config.APP)
     assert db.one("SELECT count(*) FROM hlt_workouts")[0] > 50
+    assert db.one("SELECT count(*) FROM hlt_medicines")[0] >= 5 and db.one("SELECT count(*) FROM hlt_medicine_doses")[0] > 50
+    assert db.one("SELECT count(*) FROM hlt_allergies WHERE severity = 'severe'")[0] == 3
     import iosuite_demo
     assert not iosuite_demo.seed(config.APP)  # once
     client.cookies.clear()

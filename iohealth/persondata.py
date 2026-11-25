@@ -1,10 +1,12 @@
 """What a person keeps in ioHealth, counted or removed when their account is deleted (iosuite_shared.persondata):
 everything, since all health data is its owner's alone: every hlt_ table with a user_id column (samples, workouts
-with their routes and heartbeats, activity rings, the hourly figures, settings, the sync log)."""
+with their routes and heartbeats, activity rings, the hourly figures, settings, the sync log, medicines and
+the doses ticked, allergies, the emergency card)."""
 from iohealth import db
 
 SHOWN = (("hlt_samples", "health samples", "health sample"), ("hlt_workouts", "workouts", "workout"),
-         ("hlt_activity_summaries", "days of activity rings", "day of activity rings"))
+         ("hlt_activity_summaries", "days of activity rings", "day of activity rings"),
+         ("hlt_medicines", "medicines", "medicine"), ("hlt_allergies", "allergies", "allergy"))
 
 
 def _tables() -> list:
@@ -22,7 +24,7 @@ def of(user_id: int, remove: bool) -> list:
     count = {t: int(db.one(f"SELECT count(*) FROM {t} WHERE user_id = %s", (uid,))[0]) for t in tables}
     out = [{"what": what, "one": one, "count": count.get(t, 0)} for t, what, one in SHOWN]
     rest = sum(n for t, n in count.items() if t not in {s[0] for s in SHOWN})
-    out.append({"what": "other records (workout details, hourly figures, settings, sync log)", "one": "other record", "count": rest})
+    out.append({"what": "other records (workout details, hourly figures, doses ticked, settings, sync log)", "one": "other record", "count": rest})
     if remove:
         for t in tables:
             db.ex(f"DELETE FROM {t} WHERE user_id = %s", (uid,))

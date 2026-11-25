@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import iosuite_demo as demo
 
-from iohealth import db, rollup, upload
+from iohealth import db, emergency, meds, rollup, upload
 
 DAYS = 90
 NS = uuidlib.UUID("6f1c3a52-6e0d-4f4e-9b77-2b0f3c1d0a11")  # the demo's ids are the same every time it is made
@@ -159,3 +159,51 @@ def seed(people: dict) -> None:
             cur.execute("INSERT INTO hlt_sync_log (started_at, finished_at, device, os, full_resync, items, user_id, applied) "
                         "VALUES (UTC_TIMESTAMP(3), UTC_TIMESTAMP(3), %s, %s, 1, %s, %s, %s)",
                         (f"{p['first']}'s iPhone (demo)", "iOS", len(lines), p["id"], b.applied))
+    _medicines(people)
+
+
+# medicines (name, dose, what for, note, times, as needed when no times), allergies (name, reaction, severity, note),
+# and what the emergency card says; the doctors and people to call are picked on the card itself (ioContact's ids are
+# not known here)
+MEDICINES = {
+    "morgan": [("Levothyroxine", "50 mcg", "Thyroid", "On an empty stomach", ["07:00"]), ("Vitamin D3", "1000 IU", "", "", ["08:00"]),
+               ("Cetirizine", "10 mg", "Hay fever", "", [])],
+    "riley": [("Atorvastatin", "20 mg", "Cholesterol", "", ["21:00"]), ("Ibuprofen", "400 mg", "Back pain", "With food", [])],
+    "ava": [("Albuterol inhaler", "2 puffs", "Asthma", "Before swimming too", [])],
+    "theo": [],
+}
+ALLERGIES = {
+    "morgan": [("Penicillin", "Hives", "severe", "")],
+    "riley": [("Bee stings", "Anaphylaxis", "severe", "EpiPen in the car and the backpack"), ("Cats", "Sneezing, itchy eyes", "mild", "")],
+    "ava": [("Peanuts", "Swelling of the lips and throat", "severe", "EpiPen in the school bag")],
+    "theo": [("Amoxicillin", "Rash", "moderate", "")],
+}
+CARD = {"morgan": {"bloodType": "O+", "organDonor": "yes", "conditions": "Hypothyroidism"},
+        "riley": {"bloodType": "A+", "organDonor": "yes", "conditions": ""},
+        "ava": {"bloodType": "O+", "conditions": "Mild asthma"},
+        "theo": {"bloodType": "A-"}}
+
+
+def _medicines(people: dict) -> None:
+    today = demo.today()
+    for key, items in MEDICINES.items():
+        uid = people[key]["id"]
+        rnd = random.Random(f"meds-{key}")
+        start = (today - dt.timedelta(days=200)).isoformat()
+        for name, dose, reason, note, times in items:
+            m = meds.add(uid, {"name": name, "dose": dose, "reason": reason, "note": note, "times": times, "startOn": start})
+            for back in range(30, 0, -1):  # the last month ticked, now and then forgotten
+                day = today - dt.timedelta(days=back)
+                for slot in times:
+                    if rnd.random() < 0.9:
+                        hh, mm = (int(x) for x in slot.split(":"))
+                        at = dt.datetime(day.year, day.month, day.day, hh, mm) + dt.timedelta(minutes=rnd.randint(0, 40))
+                        db.ex("INSERT INTO hlt_medicine_doses (medicine_id, day, slot, taken_at, user_id) VALUES (%s, %s, %s, %s, %s)",
+                              (m["id"], day, slot, db.naive(at.replace(tzinfo=ZoneInfo(demo.HOME["tz"]))), uid))
+                if not times and rnd.random() < 0.12:
+                    db.ex("INSERT INTO hlt_medicine_doses (medicine_id, day, slot, taken_at, user_id) VALUES (%s, %s, %s, %s, %s)",
+                          (m["id"], day, "18:30:00", db.naive(dt.datetime(day.year, day.month, day.day, 18, 30, tzinfo=ZoneInfo(demo.HOME["tz"]))), uid))
+        for name, reaction, severity, note in ALLERGIES[key]:
+            db.ex("INSERT INTO hlt_allergies (name, reaction, severity, note, user_id) VALUES (%s, %s, %s, %s, %s)", (name, reaction, severity, note, uid))
+        emergency.save(uid, CARD[key])
+

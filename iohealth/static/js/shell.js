@@ -19,6 +19,8 @@ export const ICONS = {
   pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
   close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   more: 'M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+  pill: 'M4.22 11.29l5.07-5.07a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-5.07 5.07a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07zm1.42 1.42a2.98 2.98 0 0 0 0 4.24 2.98 2.98 0 0 0 4.24 0l2.12-2.12-4.24-4.24-2.12 2.12z',
+  badge: 'M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm-9 12H8v-3H5v-3h3V7h3v3h3v3h-3v3zm8-1h-4v-2h4v2zm0-4h-4V9h4v2z',
   print: 'M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z',
 };
 export function icon(name) {
@@ -33,7 +35,7 @@ for (const el of document.querySelectorAll('.ic[data-ic]')) el.innerHTML = icon(
 export const NAV = [
   ['dashboard', 'Dashboard', 'dashboard', 'purple'], ['day', 'Day', 'calendar', 'amber'], ['metrics', 'Metrics', 'chart', 'blue'], ['workouts', 'Workouts', 'run', 'orange'],
   ['correlations', 'Correlations', 'scatter', 'teal'], ['map', 'Map', 'map', 'cyan'], ['records', 'Records', 'trophy', 'green'],
-  ['sleep', 'Sleep', 'bed', 'indigo'], ['glucose', 'Glucose', 'drop', 'rose'],
+  ['sleep', 'Sleep', 'bed', 'indigo'], ['glucose', 'Glucose', 'drop', 'rose'], ['medicines', 'Medicines', 'pill', 'green'], ['emergency', 'Emergency card', 'badge', 'rose'],
 ];
 export const NAV_GROUPS = { correlations: 'Analysis', sleep: 'Health' };  // the first page of each group after the first
 export const NAV_FOOT = [['settings', 'Settings', 'gear', 'slate']];

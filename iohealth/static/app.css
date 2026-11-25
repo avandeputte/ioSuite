@@ -107,6 +107,7 @@ body.side-docked { --nav: var(--side); }
 #nav a[data-page="dashboard"] { --hue: var(--c-purple); } #nav a[data-page="day"] { --hue: var(--c-amber); } #nav a[data-page="metrics"] { --hue: var(--c-blue); }
 #nav a[data-page="correlations"] { --hue: var(--c-teal); } #nav a[data-page="workouts"] { --hue: var(--c-orange); } #nav a[data-page="map"] { --hue: var(--c-cyan); }
 #nav a[data-page="records"] { --hue: var(--c-green); } #nav a[data-page="sleep"] { --hue: var(--c-indigo); } #nav a[data-page="glucose"] { --hue: var(--c-rose); }
+#nav a[data-page="medicines"] { --hue: var(--c-green); } #nav a[data-page="emergency"] { --hue: var(--c-rose); }
 #nav a[data-page="settings"] { color: var(--muted); }
 .navgap { flex: none; height: 14px; }
 .navsec { flex: none; padding: 0 12px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -278,6 +279,90 @@ table.grid td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); }
 
 /* PDF export (print): no menus or buttons, light colours, cards kept whole, charts scaled to the paper. */
 @page { margin: 12mm; }
+/* ---- medicines (static/js/medicines.js): the doses of a day, the dialogs, the last 30 days */
+.doses { display: flex; flex-direction: column; margin-top: 10px; }
+.dose { display: grid; grid-template-columns: minmax(56px, max-content) 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.dose:last-child { border-bottom: 0; }
+.dose-time { font-weight: 700; font-size: 15px; white-space: nowrap; }
+.dose.late .dose-time { color: var(--bad); }
+.dose.taken .dose-what, .dose.skipped .dose-what { opacity: .65; }
+.dose-state { font-size: 13px; white-space: nowrap; }
+.dose-state.good { color: var(--good); font-weight: 600; }
+.dose button.primary { white-space: nowrap; }
+.record.click { cursor: pointer; align-items: center; }
+.record.click:hover { background: var(--bg); }
+details > summary { cursor: pointer; padding: 4px 0; }
+.sev { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--bg); color: var(--muted); }
+.sev-severe { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+.sev-moderate { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+.form { display: grid; gap: 10px; }
+.form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fld { display: grid; gap: 4px; }
+.fld .fl { font-size: 12px; font-weight: 600; color: var(--muted); }
+.fld .seg { justify-self: start; }
+.fld input[type=text], .fld input[type=date], .fld input[type=search], .fld select, .fld textarea, .picks input[type=search] { width: 100%; }
+textarea { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; resize: vertical; }
+.row.check { gap: 8px; flex-wrap: nowrap; }
+.times { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.timechip { display: inline-flex; gap: 2px; align-items: center; }
+.hist { display: flex; flex-direction: column; gap: 6px; overflow-x: auto; }
+.hrow { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 44px; gap: 10px; align-items: center; }
+.hname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcells { display: grid; grid-template-columns: repeat(30, minmax(6px, 1fr)); gap: 2px; }
+.hc { display: inline-block; height: 16px; min-width: 6px; border-radius: 3px; background: var(--line); }
+.legend .hc { width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.hc.none { background: transparent; border: 1px dashed var(--line); }
+.hc.all { background: var(--good); } .hc.some { background: #f59e0b; } .hc.miss { background: var(--bad); opacity: .75; } .hc.skip { background: var(--muted); }
+.hpct { text-align: right; }
+@media (max-width: 640px) {
+  .dose { grid-template-columns: max-content 1fr; }
+  .dose > .dose-state, .dose > button, .dose > .row { grid-column: 2; justify-self: start; }
+  .form .two { grid-template-columns: 1fr; }
+  .hcells { grid-template-columns: repeat(30, 1fr); gap: 1px; }
+  .hc { min-width: 0; }
+}
+
+/* ---- the emergency card (static/js/emergency.js): 85.6 x 54 mm a side, both sides next to each other to cut out
+   and fold; light on any theme, since it is printed */
+.ec-preview { overflow-x: auto; padding: 4px 0; }
+.ec-card { display: flex; width: 171.2mm; height: 54mm; border: 0.3mm solid #222; border-radius: 3mm; background: #fff; color: #111; overflow: hidden;
+  font: 6.6pt/1.28 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0 auto; }
+.ec-side { width: 85.6mm; height: 54mm; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.ec-front { border-right: 0.3mm dashed #999; }
+.ec-band { background: #c62828; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; font-size: 6.4pt; padding: 1.4mm 3mm; display: flex; align-items: center; gap: 1.6mm; }
+.ec-cross { display: inline-flex; width: 3.6mm; height: 3.6mm; border-radius: 50%; background: #fff; color: #c62828; font-weight: 900; font-size: 8pt; align-items: center; justify-content: center; line-height: 1; }
+.ec-body { flex: 1; padding: 2mm 3mm 1.6mm; overflow: hidden; min-height: 0; }
+.ec-name { font-size: 10.5pt; font-weight: 800; line-height: 1.1; }
+.ec-facts { display: flex; flex-wrap: wrap; gap: 0 2.4mm; margin: .6mm 0 1mm; color: #333; }
+.ec-sec { margin-top: 1.1mm; }
+.ec-h { font-size: 5.4pt; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #c62828; border-bottom: 0.2mm solid #e3a1a1; margin-bottom: .4mm; }
+.ec-line { overflow-wrap: anywhere; }
+.ec-bad { color: #b71c1c; }
+.ec-dim { color: #555; }
+.ec-tel { white-space: nowrap; }
+.ec-foot { position: absolute; right: 3mm; bottom: 1.2mm; font-size: 5pt; color: #777; background: #fff; padding-left: 1mm; }
+@media screen and (max-width: 720px) {  /* a phone: the two sides one under the other (printed, they stay side by side) */
+  .ec-card { flex-direction: column; width: 85.6mm; height: auto; }
+  .ec-front { border-right: 0; border-bottom: 0.3mm dashed #999; }
+  .ec-preview { margin: 0 -8px; }
+}
+.ec-how { text-align: center; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.picks { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.picks h3 { margin: 4px 0 0; }
+.pick { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.pick.gone { border-style: dashed; }
+.results { display: flex; flex-direction: column; gap: 2px; }
+.result { text-align: left; border: 0; background: var(--bg); }
+.pickdoc { align-items: baseline; }
+:root.print-card #print-head { display: none !important; }
+@media print {
+  :root.print-card body * { visibility: hidden; }
+  :root.print-card .ec-sheet, :root.print-card .ec-sheet * { visibility: visible; }
+  :root.print-card .ec-sheet { position: fixed; left: 0; top: 0; width: 100%; padding: 12mm 0 0; }
+  :root.print-card .card { border: 0; box-shadow: none; }
+  .ec-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: avoid; }
+}
+
 @media print {
   :root, :root[data-theme="dark"] { --bg: #fff; --card: #fff; --text: #1b1e24; --muted: #6b7280; --line: #e5e7eb; --link: #2563eb; --shadow: none; color-scheme: light; }
   #topbar, #nav, #navscrim, .toolbar, .zoombar, .noprint, button, .type-picker, .hint, .leaflet-control-container, .stabs { display: none !important; }
@@ -311,7 +396,8 @@ table.grid td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); }
   #nav a, #nav .navmore { min-width: 0; flex: 1; width: auto; border-radius: 0; height: auto; flex-direction: column; gap: 2px; padding: 8px 0 6px; font-size: 12px; color: var(--muted); }
   #nav a .ic { width: 24px; height: 24px; }
   #nav a.on { background: color-mix(in srgb, var(--hue, var(--accent)) var(--mix), transparent); }
-  #nav a[data-page="correlations"], #nav a[data-page="map"], #nav a[data-page="records"], #nav a[data-page="sleep"], #nav a[data-page="glucose"] { display: none; }
+  #nav a[data-page="correlations"], #nav a[data-page="map"], #nav a[data-page="records"], #nav a[data-page="sleep"], #nav a[data-page="glucose"],
+  #nav a[data-page="medicines"], #nav a[data-page="emergency"] { display: none; }
   #nav .navmore { display: flex; align-items: center; background: none; border: 0; font-family: inherit; }
   #nav .navmore .ic { width: 24px; height: 24px; }
   #nav .navmore.on { color: var(--accent); font-weight: 600; }
