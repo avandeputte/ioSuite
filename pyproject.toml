@@ -60,7 +60,8 @@ all = [
   "pillow-heif<2", "orjson<4", "rapidocr>=2,<4", "onnxruntime<2", "numpy<3",
   "monarchmoneycommunity>=1.7,<2", "zxing-cpp>=2.2,<4",
 ]
-test = ["pytest<10", "httpx<1", "pyflakes<4", "ldap3<3"]  # httpx: what FastAPI's test client needs
+# httpx: what FastAPI's test client needs; icalendar: iosuite_shared.ical, which only ioCalendar and ioTask ask for, has its tests with the shared ones
+test = ["pytest<10", "httpx<1", "pyflakes<4", "ldap3<3", "icalendar>=6,<8"]
 
 [project.scripts]
 iosuite = "iosuite_shared.cli:main"

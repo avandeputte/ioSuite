@@ -14,7 +14,6 @@ import gzip
 import hashlib
 from urllib.parse import quote
 
-import orjson
 from fastapi import HTTPException, Request
 from fastapi.responses import Response
 
@@ -36,6 +35,7 @@ def json_body(request: Request):
 def jresp(request: Request, data) -> Response:
     """JSON, gzipped when large, with an ETag: a client that sends it back (If-None-Match) gets 304 and no body while
     the answer is unchanged (what the pages reload again and again)."""
+    import orjson  # here, not at the top: only the apps that answer this way install it (pyproject.toml's extras)
     body = orjson.dumps(data)
     etag = 'W/"' + hashlib.blake2b(body, digest_size=12).hexdigest() + '"'
     headers = {"Cache-Control": "private, no-cache", "ETag": etag, "Vary": "Accept-Encoding, Cookie"}
