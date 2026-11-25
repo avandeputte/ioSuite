@@ -52,6 +52,13 @@ what the app will show on the start page later (today's events, the newest photo
   inside an article do load from their site when the article is opened. Import and export as OPML, the file every
   reader exchanges. The **Headlines** card on the start page lists the newest unread articles of the feeds you keep
   on it (a switch on each feed); it is there once you follow one.
+- **Weather extras**: beside the conditions and the forecast, the weather shows the next sunrise or sunset, and the
+  pollen or the air when it is bad today; a warning in force (wind, flood, winter storm…) gets a line of its own under
+  the weather, coloured as serious as it is. A click on the weather shows the warnings in full, the next hours, today's
+  sunrise, sunset and daylight (and how it changes tomorrow), the air quality and the pollen (tree, grass, ragweed,
+  mold). These cost no extra AccuWeather calls: they come with the 5-day forecast. Warnings come from the US National
+  Weather Service (free, no key, places in the United States only), asked at most every 10 minutes while someone looks.
+  Each person switches any of the four off in Customize › Page.
 - **Live**: every five minutes, and when the tab is shown again, the page brings the tiles, the cards, the weather
   and the dots up to date in place; at midnight it is drawn anew for the new day.
 - **A wall display** (the gear › Wall display, or `#/wall` as a tablet's home address): full screen, ioPix photos one
@@ -117,7 +124,7 @@ what the app will show on the start page later (today's events, the newest photo
   week, the photo strip, the bookmarks) in your order, and pick your own photo strip ("Default" is the admin's
   choice). Also yours: each app as a full card or a low tile with one line (or by itself), what the Today card holds
   (events, tasks, birthdays, bills, Health and On this day beside it, how many days ahead), the weather in °C or °F
-  (the wall and the TRMNL weather follow), the page's colour and the size of its type (the start page only), and the
+  (the wall and the TRMNL weather follow) and which weather extras it shows, the page's colour and the size of its type (the start page only), and the
   bookmarks as the full list, icons only, or folders shut until tapped.
 - **A setup per device**: Customize the page › "This device only" gives the phone or the kitchen tablet a page of
   its own, with a name; the other devices keep the account's. Three places a setup comes from, the nearest first:
