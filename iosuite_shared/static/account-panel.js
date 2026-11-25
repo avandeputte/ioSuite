@@ -440,7 +440,7 @@ export async function mountSignInWays(el, opts = {}) {
       row('Passkeys', !passkeysWork() ? 'Sign in with Face ID, Touch ID or a fingerprint instead of your password. Passkeys need an https address; this one is not.'
         : here ? 'On: the sign-in screen offers “Sign in with a passkey”.' : 'Off. Sign in with Face ID, Touch ID, a fingerprint or a security key instead of typing your password.',
       passkeysWork() ? h('button', { class: 'sv-btn', onclick: () => addPasskey().catch(fail) }, 'Add a passkey') : null),
-      list,
+      ...(list ? [list] : []),  // replaceChildren writes a null out as the word "null"
       row('Two-step sign-in', two.on ? `On since ${when(two.since)}: a code from your code app after your password. ${two.recoveryLeft} recovery code${two.recoveryLeft === 1 ? '' : 's'} left. Calendar, contacts and other sync apps sign in with an app password.`
         : 'Off. A 6-digit code from a code app after your password. Sync apps (calendar, contacts) then need an app password instead of your password.',
       two.on ? h('button', { class: 'sv-btn', onclick: () => turnOff().catch(fail) }, 'Turn off') : h('button', { class: 'sv-btn', onclick: () => turnOn().catch(fail) }, 'Turn on')));

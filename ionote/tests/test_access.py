@@ -117,7 +117,7 @@ def test_suite_apps_for_the_app_switcher(client):
     from iosuite_shared import suite
     html = client.get("/").text
     assert 'id="suitebtn"' in html and "img-src 'self' data: blob: https:" in html
-    assert client.get("/static/js/suite.js").status_code == 200
+    assert client.get("/api/auth/frame.js").status_code == 200  # the menu itself is the suite's (iosuite_shared/static/frame.js)
     client.get("/api/notes")
     suite.register("iopix", name="ioPix", url="https://photo.example.net", color="#123456")
     r = client.get("/api/auth/suite").json()

@@ -1,5 +1,6 @@
 /** What the whole app shares: user and settings, the library's metadata, the route and the navigation, status polling. */
 import { $, DOCK_MIN, PREF, api, fill, h, main, norm, store } from './core.js';
+import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
 import { applyTheme as suiteTheme, themeChoice, themeFromAccount as suiteFromAccount } from '../../api/auth/frame.js';  // the appearance: the suite's one choice, kept with the account
 import { crumbs, renderChips } from './search.js';
 import { G, keepPlace, removeScrubber, showPhotos } from './grid.js';
@@ -142,6 +143,33 @@ export function brandName(el = h('span', { class: 'brand-name' })) {
   else el.textContent = n;
   return el;
 }
+// ------------------------------------------------------------------ the suite's other apps
+/* The suite (iosuite_shared's suite_apps, frame.loadSuite): when other apps are registered, the mark top left (in the
+   sidebar; in the top bar on a phone) opens a menu of them. Alone, the mark and the name are the link to Explore.
+   The list is per account, so it is asked for again when the account changes. */
+let suiteFor;  // the account the list was loaded for
+export async function loadSuite() {
+  const who = S.USER ? S.USER.id : null;
+  if (who === suiteFor) return;
+  suiteFor = who;
+  if (who == null) frame.suite.items = [];  // the list needs a signed-in account
+  else await frame.loadSuite(api);
+  drawBrand();
+}
+/** The sidebar's mark: a button that opens the menu where there are other apps, with the name beside it as the link
+ *  to Explore; alone, mark and name are one link. */
+export function drawBrand() {
+  frame.closeSuite();
+  const old = document.querySelector('#nav .navhead .brand');
+  if (!old) return;
+  const mark = () => h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' });
+  old.replaceWith(frame.suite.items.length
+    ? h('div', { class: 'brand' },
+      h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => frame.toggleSuite(e.currentTarget) }, mark()),
+      h('a', { class: 'brand-home', href: '#/explore', title: 'Home' }, brandName()))
+    : h('a', { class: 'brand', href: '#/explore', title: 'Home' }, mark(), brandName()));
+}
+
 export function applyAppName() {
   document.querySelectorAll('.brand-name').forEach((b) => brandName(b));
   document.title = S.APP_NAME;

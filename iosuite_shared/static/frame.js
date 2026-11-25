@@ -14,6 +14,7 @@ import { h, passkeyButton, signIn } from './ui.js';
 
 // ------------------------------------------------------------------ the page
 export const $ = (s, el = document) => el.querySelector(s);
+export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 /** replaceChildren that leaves out null and false (as h() does) and flattens lists. */
 export const fill = (el, ...kids) => el.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false));
 /** append with the same manners. */
@@ -49,6 +50,7 @@ export const ICONS = {
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
+  more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
   menuOpen: 'M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z',
   minus: 'M19 13H5v-2h14v2z',
   money: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
@@ -67,6 +69,8 @@ export const ICONS = {
   upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
 };
 export function addIcons(more) { Object.assign(ICONS, more); }
+/** The icons the page itself names (<span class="ic" data-ic="menu">), drawn once the page's script is in. */
+export function paintIcons(root = document) { root.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic))); }
 export const icon = (n, cls = '') => { const s = document.createElement('span'); s.className = 'ic ' + cls; s.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ICONS[n] || ''}"/></svg>`; return s; };
 
 // ------------------------------------------------------------------ the note at the foot of the page
@@ -166,12 +170,13 @@ function appTile(a) {
   return el;
 }
 function suiteOutside(e) { if (suitePop && !suitePop.contains(e.target) && !e.target.closest('.suitebtn')) closeSuite(); }
-function suiteKey(e) { if (e.key === 'Escape') closeSuite(); }
+function suiteKey(e) { if (e.key === 'Escape' && suitePop) { closeSuite(); e.stopPropagation(); } }
 export function closeSuite() {
   if (!suitePop) return;
   suitePop.remove(); suitePop = null;
+  document.querySelectorAll('.suitebtn[aria-expanded]').forEach((b) => b.removeAttribute('aria-expanded'));
   document.removeEventListener('click', suiteOutside, true);
-  document.removeEventListener('keydown', suiteKey);
+  document.removeEventListener('keydown', suiteKey, true);
   removeEventListener('resize', closeSuite);
 }
 /** The menu under the button with the suite's mark: the apps, then the admin tools in a section of their own (the
@@ -183,10 +188,14 @@ export function toggleSuite(btn) {
   suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
+  btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect();
   suitePop.style.top = `${Math.round(r.bottom + 6)}px`;
   suitePop.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - suitePop.offsetWidth - 8)))}px`;
-  setTimeout(() => { document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey); addEventListener('resize', closeSuite); }, 0);
+  suitePop.querySelector('a')?.focus({ preventScroll: true });
+  // at once, not after a timer: a busy page runs a tap before a timer, so a quick tap outside left the menu open (the
+  // click that opened it has passed the document already, and suiteOutside ignores the button anyway)
+  document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey, true); addEventListener('resize', closeSuite);
 }
 /** Settings › People, Apps, Servers and Keys: the suite's panel (api/suite-admin/ui.js), in the app's Settings page. */
 export async function suitePanel(el, r, cls = 'warn') {
@@ -326,6 +335,17 @@ export function applySidebar(store) {
   if (!btn) return;
   const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : innerWidth >= DOCK_MIN ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
   btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
+}
+/** The sidebar's own buttons, the same in every app: the menu button slides it over the page, the dimmed page and
+    choosing a row put it away (while it is not docked), and a window resized docks or undocks it. `rows`: which rows
+    put it away (ioCalendar keeps its calendar links from doing so). Escape stays with the app: what it answers to
+    first differs (a menu, a dialog, then the sidebar). */
+export function wireSidebar(store, { rows = 'a' } = {}) {
+  $('#menubtn').onclick = openNav;
+  $('#navscrim').onclick = closeNav;
+  $('#nav').addEventListener('click', (e) => { if (e.target.closest(rows) && !document.body.classList.contains('side-docked')) closeNav(); });
+  addEventListener('resize', () => applySidebar(store));
+  applySidebar(store);
 }
 /** What #sidebtn does: put a docked sidebar away, dock it on a wide screen, close it on a narrow one. */
 export function sidebarButton(store) {

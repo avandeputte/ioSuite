@@ -151,7 +151,7 @@ pages.metrics = async (main, _, params) => {
         if (shift) series.push({ label: cmpLabel, color: d.color + 'aa', width: 1.5, dash: [6, 4], unit, dec, values: cols[cols.length - 1] });
         const goal = goalFor(d.t);
         const goalHook = goal ? { draw: [u => { const y = u.valToPos(+goal.value, 'y', true); if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) return;
-          const ctx = u.ctx; ctx.save(); ctx.strokeStyle = cssVar('--good'); ctx.lineWidth = 1.5 * devicePixelRatio; ctx.setLineDash([6 * devicePixelRatio, 4 * devicePixelRatio]);
+          const ctx = u.ctx; ctx.save(); ctx.strokeStyle = cssVar('--ok'); ctx.lineWidth = 1.5 * devicePixelRatio; ctx.setLineDash([6 * devicePixelRatio, 4 * devicePixelRatio]);
           ctx.beginPath(); ctx.moveTo(u.bbox.left, y); ctx.lineTo(u.bbox.left + u.bbox.width, y); ctx.stroke(); ctx.restore(); }] } : {};
         const u = chart(el, { xs: cols[0], series, bands, hooks: { ...hooks, ...goalHook }, zoom: false, height: defs.length > 2 ? 200 : 260, sync: 'metrics',
           yRange: !goal ? undefined : isBars(d) ? (u, mn, mx) => [0, Math.max(mx || 1, +goal.value) * 1.08]

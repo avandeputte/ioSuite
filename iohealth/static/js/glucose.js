@@ -314,7 +314,7 @@ export function responseCard(readings, workouts, carbPoints) {
       ...(rows.length > 60 ? [h('p', { class: 'small muted' }, `Latest 60 of ${rows.length}; the chart uses all of them.`)] : []));
     chart(chartEl, { xs: mins.map(m => m * 60), xTime: false, height: 260, xIncrs: [1800, 3600, 7200, 10800], xSpace: 64, xFmt: (u, vals) => vals.map(v => fmtMin(v / 60)), series,
       axisFmt: v => (v > 0 ? '+' : '') + fmtNum(v, mmol() ? 1 : 0),
-      hooks: { drawClear: [u => { const ctx = u.ctx, x = u.valToPos(0, 'x', true), y = u.valToPos(0, 'y', true); ctx.save(); ctx.strokeStyle = cssVar('--muted'); ctx.setLineDash([4, 4]);
+      hooks: { drawClear: [u => { const ctx = u.ctx, x = u.valToPos(0, 'x', true), y = u.valToPos(0, 'y', true); ctx.save(); ctx.strokeStyle = cssVar('--fg2'); ctx.setLineDash([4, 4]);
         ctx.beginPath(); ctx.moveTo(x, u.bbox.top); ctx.lineTo(x, u.bbox.top + u.bbox.height); ctx.moveTo(u.bbox.left, y); ctx.lineTo(u.bbox.left + u.bbox.width, y); ctx.stroke(); ctx.restore(); }] } });
   }
   function exportCsv() {

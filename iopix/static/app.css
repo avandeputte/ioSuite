@@ -845,7 +845,7 @@ button.lnk:hover { text-decoration: underline; }
   :root { --topbar: 48px; --nav: 0px; }
   #menubtn, #navscrim, .navhead, .navgap, .navsec, .navmanage, .navfoot, #nav a[data-v="settings"] { display: none; }  /* Settings is under More */
   #topbar { gap: 8px; padding: 0 8px; left: 0; }
-  #suitebtn { display: inline-flex; margin: 0; }  /* the sidebar is the bottom bar here: the logo that opens the other apps is in the top bar */
+  #suitebtn:not([hidden]) { display: inline-flex; margin: 0; }  /* the sidebar is the bottom bar here: the logo that opens the other apps is in the top bar */
   #filterbtn span:last-child { display: none; }
   #filterbtn { padding: 0 8px; border: 0; }
   #nav { top: auto; bottom: 0; left: 0; right: 0; width: auto; height: 56px; flex-direction: row; justify-content: flex-start; overflow-x: auto; padding: 0; gap: 0;

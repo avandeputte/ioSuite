@@ -1,4 +1,5 @@
 /** Startup: metadata, state, the first route. */
+import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
 import { $, DOCK_MIN, NET, NO_CONNECTION, PREF, SETTINGS, api, fmtWhen, h, healSoon, icon, main, nf, norm, plural, sleep, store } from './core.js';
 import { FILTER_VIEWS, NAV, NAV_LIBRARY, NAV_MANAGE, S, ST, applyAppName, applyBadgePref, loadState, onRoute, parseHash, pollSoon, themeFromAccount } from './state.js';
 import { initSearch } from './search.js';
@@ -208,34 +209,17 @@ function setupDatabasePage(st) {
     h('div', { class: 'muted intro' }, `${st.appName || 'ioPix'} keeps its own data (settings, albums, the edit log, AI results) in a database beside the Shared ioSuite database${st.databaseError ? ` (${st.databaseError})` : ''}.`),
     h('div', { class: 'srow' }, viewerDbPanel({ setup: true }))));
 }
-/** The sidebar docks beside the page on a wide screen, unless its button put it away (remembered). Put away, or on a
- *  narrower screen, it hides off the left edge and the menu button in the top bar slides it over the page; choosing a
- *  destination, the dimmed page or Escape puts it away again. Phones keep the bottom bar instead. */
+/* The sidebar docks beside the page on a wide screen, unless its button put it away; the suite's own wiring
+   (iosuite_shared/static/frame.js). What ioPix keeps is that the stored choice can change with the account
+   (signed-in users keep their settings on the server). */
+const navStore = { get: (k) => store.get(k, '1'), set: (k, v) => store.set(k, v) };
 function initSidebar() {
-  const body = document.body, btn = $('#sidebtn');
-  const canDock = () => innerWidth >= DOCK_MIN;
-  const setOpen = (on) => { body.classList.toggle('side-open', on); $('#navscrim').hidden = !on; };
-  const apply = () => {
-    const docked = canDock() && store.get(PREF.sidebar, '1') === '1';
-    body.classList.toggle('side-docked', docked);
-    if (docked) setOpen(false);
-    const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : canDock() ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
-    btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
-  };
-  btn.onclick = () => {
-    if (body.classList.contains('side-docked')) store.set(PREF.sidebar, '0');
-    else if (canDock()) store.set(PREF.sidebar, '1');
-    else { setOpen(false); return; }
-    apply();
-  };
-  $('#menubtn').onclick = () => setOpen(true);
-  $('#navscrim').onclick = () => setOpen(false);
-  $('#nav').addEventListener('click', (e) => { if (e.target.closest('a') && !body.classList.contains('side-docked')) setOpen(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && body.classList.contains('side-open')) { setOpen(false); e.stopPropagation(); } }, true);
-  addEventListener('resize', apply);
-  S.applySidebar = apply;  // the stored choice can change with the account (signed-in users keep it on the server)
-  apply();
+  frame.wireSidebar(navStore);
+  $('#sidebtn').onclick = () => frame.sidebarButton(navStore);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('side-open')) { frame.closeNav(); e.stopPropagation(); } }, true);
+  S.applySidebar = () => frame.applySidebar(navStore);
 }
+
 /** Load the library and show the first view; once per page load, after sign-in when that is required. */
 export async function boot() {
   S.BOOTED = true; document.body.classList.remove('locked');

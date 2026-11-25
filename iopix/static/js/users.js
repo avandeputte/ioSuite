@@ -2,10 +2,9 @@
  *  and setup dialogs, and the suite's own tabs of Settings (People, Apps, Servers, Keys). */
 import { $, SETTINGS, api, errorBox, fill, h, icon, post } from './core.js';
 const suiteUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);  // the suite's sign-in (the two-step code, passkeys), fetched when someone signs in
-import { S, applyBadgePref, applyTheme, avatarOf, brandName, hashFor, onRoute, themeFromAccount, toast, toastError } from './state.js';
+import { S, applyBadgePref, applyTheme, avatarOf, brandName, hashFor, loadSuite, onRoute, themeFromAccount, toast, toastError } from './state.js';
 import { modal } from './actions.js';
 import { boot, pollStatus } from './main.js';
-import { loadSuite } from './suite.js';
 import { LB, details, popMenu, showItem } from './lightbox.js';
 
 // ---- users: sign in / out, own password, first-admin setup, admin user management

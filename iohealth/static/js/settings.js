@@ -28,7 +28,7 @@ export function tabbedPage(main, view, ic, title, tabs, arg) {
 
 pages.settings = async (main, arg, params) => {
   const [t, sub] = (arg || '').split('/');  // #/settings/people/<part>
-  const { tab, body } = tabbedPage(main, 'settings', 'gear', 'Settings', SETTINGS_TABS(), t);
+  const { tab, body } = tabbedPage(main, 'settings', 'settings', 'Settings', SETTINGS_TABS(), t);
   const els = await ({ account: setAccount, display: setDisplay, health: setHealth, goals: setGoals,
     people: () => suitePanel(tab, sub), apps: () => suitePanel(tab, sub), servers: () => suitePanel(tab, sub),
     keys: () => suitePanel(tab, sub) }[tab])(body);

@@ -15,12 +15,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="static/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="api/auth/base.css">
 <link rel="stylesheet" href="static/app.css">
 </head>
 <body>
 <header id="topbar">
   <button id="menubtn" class="iconbtn" title="Show the sidebar" aria-label="Show the sidebar"><span class="ic" data-ic="menu"></span></button>
-  <a class="brand topbrand" href="#/" title="Dashboard"><img src="static/icons/mark.svg" alt="" width="24" height="24"><span class="brand-name"><span class="io">io</span><span class="nm">Health</span></span></a>
+  <button id="suitebtn" class="suitebtn" title="ioSuite apps" aria-label="ioSuite apps" aria-haspopup="menu" hidden><img src="static/icons/mark.svg" alt=""></button>
   <span id="sync-status" class="muted small"></span>
   <button id="print-btn" class="iconbtn" title="Save this page as a PDF (through the print dialog)" aria-label="Save as PDF"><span class="ic" data-ic="print"></span></button>
   <span id="usermenu"></span>
@@ -29,6 +30,7 @@
 <div id="navscrim" hidden></div>
 <div id="print-head"></div>
 <main id="app"><p class="muted">Loading…</p></main>
+<div id="toast" hidden role="status" aria-live="polite"></div>
 <script type="module" src="static/app.js"></script>
 </body>
 </html>

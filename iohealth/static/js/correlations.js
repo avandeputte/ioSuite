@@ -66,7 +66,7 @@ export function scatterPlot(pairs, fit, xLabel, yLabel, xDec, yDec) {
   const pad = (a, b) => { const d = (b - a) * 0.05 || 1; return [a - d, b + d]; };
   const [x0, x1] = pad(Math.min(...xs), Math.max(...xs)), [y0, y1] = pad(Math.min(...ys), Math.max(...ys));
   const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => H - B - (v - y0) / (y1 - y0) * (H - T - B);
-  const muted = cssVar('--muted'), line = cssVar('--line');
+  const muted = cssVar('--fg2'), line = cssVar('--line');
   const svg = s('svg', { class: 'scatter', viewBox: `0 0 ${W} ${H}` });
   for (const v of niceTicks(x0, x1)) svg.append(s('line', { x1: X(v), x2: X(v), y1: T, y2: H - B, stroke: line }), s('text', { x: X(v), y: H - B + 16, 'font-size': 11, fill: muted, 'text-anchor': 'middle' }, fmtCompact(v)));
   for (const v of niceTicks(y0, y1)) svg.append(s('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: line }), s('text', { x: L - 6, y: Y(v) + 4, 'font-size': 11, fill: muted, 'text-anchor': 'end' }, fmtCompact(v)));
@@ -79,7 +79,7 @@ export function scatterPlot(pairs, fit, xLabel, yLabel, xDec, yDec) {
   if (fit) {
     const ya = fit.intercept + fit.slope * x0, yb = fit.intercept + fit.slope * x1;
     svg.append(s('defs', {}, s('clipPath', { id: 'scatter-clip' }, s('rect', { x: L, y: T, width: W - L - R, height: H - T - B }))),
-      s('line', { x1: X(x0), y1: Y(ya), x2: X(x1), y2: Y(yb), stroke: cssVar('--text'), 'stroke-width': 2, 'stroke-dasharray': '6 4', 'clip-path': 'url(#scatter-clip)' }));
+      s('line', { x1: X(x0), y1: Y(ya), x2: X(x1), y2: Y(yb), stroke: cssVar('--fg'), 'stroke-width': 2, 'stroke-dasharray': '6 4', 'clip-path': 'url(#scatter-clip)' }));
   }
   return svg;
 }

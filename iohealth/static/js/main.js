@@ -17,7 +17,7 @@ import './settings.js';
 
 loadMe().then(async () => {
   renderUserMenu();
-  if (!me.user) { signIn(true); return; }
+  if (!me.user) { signIn(); return; }
   buildNav();
   loadSuite();
   await loadSettings();
