@@ -63,7 +63,7 @@ the database server for more than it gives: MariaDB allows 151 in all, by defaul
 error. A request that waited in vain is answered `503` with `Retry-After`.
 
 Idle connections are closed after two minutes, and an app that needs one while the copy is at its allowance gets the
-longest-idle one of another app. The helper process and ioPix's job process are processes of their own, each with a
+longest-idle one of another app. The helper processes are processes of their own, each with a
 quarter of that allowance beside the copy's. With several copies on one database server, their allowances add up: keep the sum
 under the server's `max_connections`, or raise that.
 
@@ -84,7 +84,12 @@ helper process beside the copy:
   server and others on another works as before.
 
 It reads the same machine's file and settings as the copy, and its log lines go to the copy's log. `HELPER=off` runs
-the work inside the copy, as before. ioPix keeps its own job process for its AI models and makes its thumbnails itself.
+the work inside the copy, as before.
+
+ioPix's AI jobs take the same helper's other lane: one process that stays between jobs, so a model loaded for one
+job serves the next, with ioPix's own memory numbers (`JOBS_MEMORY_MB`, `MEMORY_RESERVE_MB`) instead of
+`HELPER_MEMORY_MB`, and no time limit. It ends when ioPix's queue runs dry, which gives the models' memory back.
+`JOBS_PROCESS=0` runs those jobs inside the copy. ioPix makes its thumbnails itself, as before.
 
 ## The three ports
 

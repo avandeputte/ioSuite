@@ -1,4 +1,5 @@
-"""The job process (iopix/jobproc.py, iopix/jobworker.py): offloaded functions run in a second process, their Progress
+"""The job process (iopix/jobproc.py, the heavy lane of iosuite_shared/helper.py): offloaded functions run in a
+second process, their Progress
 stays in step both ways, a process that is lost or too large is reported and not fatal, and jobs.py retries a lost
 job once and then holds it. Also memwatch's numbers (how the server's memory is read: iosuite_shared/tests/test_memory.py)."""
 import os
@@ -9,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from helpers import wait_for as _wait
+from iosuite_shared import helper
+
 from iopix import config, jobproc, jobs, memwatch
 import jobproc_helpers as hp
 
@@ -100,7 +103,7 @@ def test_a_process_that_dies_is_a_lost_job_not_a_crash(proc):
 def test_a_process_over_its_ceiling_is_stopped(proc, monkeypatch):
     real = memwatch.budget
     monkeypatch.setattr(memwatch, "budget", lambda: {**real(), "ceiling": 150 * memwatch.MB, "reserve": None})
-    monkeypatch.setattr(jobproc, "CHECK_EVERY", 0.1)
+    monkeypatch.setattr(helper, "CHECK_EVERY", 0.1)
     t0 = time.time()
     with pytest.raises(jobs.WorkerLost, match="more memory than analysis may use") as e:
         jobs.offload(hp.hog, 400)
@@ -112,8 +115,8 @@ def test_a_server_short_of_memory_stops_the_process_and_holds_the_next_call(proc
     state = {"free": 10_000 * memwatch.MB}
     monkeypatch.setattr(memwatch, "budget", lambda: {"limit": 16_000 * memwatch.MB, "used": 16_000 * memwatch.MB - state["free"], "free": state["free"],
                                                      "reserve": 1000 * memwatch.MB, "ceiling": 9000 * memwatch.MB})
-    monkeypatch.setattr(jobproc, "CHECK_EVERY", 0.1)
-    monkeypatch.setattr(jobproc, "WAIT_EVERY", 0.1)
+    monkeypatch.setattr(helper, "CHECK_EVERY", 0.1)
+    monkeypatch.setattr(helper, "WAIT_EVERY", 0.1)
     out = {}
 
     def run():

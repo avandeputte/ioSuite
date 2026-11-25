@@ -1,12 +1,15 @@
 """The helper process: work goes there and comes back; a crash, a timeout or too much memory there costs the call,
-never the copy; with the helper off the work runs here."""
+never the copy; with the helper off the work runs here. Also its heavy lane (helper.Heavy), the process that stays
+between calls and talks both ways while one runs (ioPix's analysis jobs; iopix/tests/test_jobproc.py has those)."""
 import logging
 import os
+import threading
+import time
 
 import pytest
 
 from iosuite_shared import helper
-from iosuite_shared.tests import helperwork
+from iosuite_shared.tests import heavywork, helperwork
 
 pytestmark = pytest.mark.skipif(os.name != "posix", reason="the helper runs on Linux and macOS")
 
@@ -95,3 +98,53 @@ def test_lost_is_said_to_the_person_not_as_a_server_error(on):
     from iosuite_shared.errors import Invalid
     with pytest.raises(Invalid, match="could not be finished"):
         helper.call(helperwork.crash)
+
+
+# ---- the heavy lane
+
+NO_LIMITS = {"limit": None, "used": None, "free": None, "reserve": None, "ceiling": None}
+
+
+@pytest.fixture
+def lane():
+    """A lane of its own for the test, with no memory limits applied, and its process ended afterwards."""
+    one = helper.Heavy("iosuite_shared.tests.heavywork", lambda: dict(NO_LIMITS), name="test", what="the test's work")
+    yield one
+    one.release()
+
+
+def test_the_heavy_lane_keeps_its_process_between_calls(lane):
+    heard = []
+    setup, there, arg = lane.call(heavywork.what, ("x",), setup={"n": 1}, on_message=heard.append)
+    assert there != os.getpid() and arg == "x"
+    assert setup == {"n": 1}            # it reached the helper's before_call, with the call
+    assert heard == [("after", {"n": 1})]  # and after_call had the last word before the answer
+    assert lane.call(heavywork.what, ("y",))[1] == there  # the same process serves the next call
+    lane.release()
+    assert lane.call(heavywork.what, ("z",))[1] != there  # and a new one once it has been let go
+
+
+def test_a_note_reaches_the_call_while_it_runs(lane):
+    out = {}
+    t = threading.Thread(target=lambda: out.update(notes=lane.call(heavywork.until_told)))
+    t.start()
+    end = time.time() + 15
+    while time.time() < end and not lane.running:
+        time.sleep(0.02)
+    lane.note("stop")
+    t.join(20)
+    assert out["notes"] == ["stop"]
+
+
+def test_what_the_function_raised_is_raised_here_unless_the_lane_says_otherwise(lane):
+    with pytest.raises(ValueError, match="no good"):
+        lane.call(heavywork.boom)
+    with pytest.raises(helper.HelperError, match="no good"):
+        lane.call(heavywork.boom, failed_as=lambda text, _tb: helper.HelperError(text))
+
+
+def test_a_process_over_its_ceiling_is_stopped_and_named(lane, monkeypatch):
+    lane.budget = lambda: {**NO_LIMITS, "limit": 16_000 * helper.MB, "used": 0, "free": 16_000 * helper.MB, "ceiling": 150 * helper.MB}
+    monkeypatch.setattr(helper, "CHECK_EVERY", 0.1)
+    with pytest.raises(helper.HelperLost, match="more memory than the test's work may use"):
+        lane.call(helperwork.hog, (400,))
