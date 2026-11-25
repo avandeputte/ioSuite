@@ -181,16 +181,16 @@ def test_check_conventions(tmp_path):
     (root / "static").mkdir(parents=True)
     (root / "app.json").write_text('{"key": "iocalendar"}')
     (root / "static" / "app.js").write_text("fetch('api/events')\n")
-    testing.check_conventions(root, "iocalendar", iosuite_shared.__version__, None)
+    testing.check_conventions(root, "iocalendar", iosuite_shared.__version__)
     with pytest.raises(AssertionError):
-        testing.check_conventions(root, "iocalendar", "0.0.1", None)
+        testing.check_conventions(root, "iocalendar", "0.0.1")
     (root / "config.env.example").write_text("PORT=8620\n")
     with pytest.raises(AssertionError):
-        testing.check_conventions(root, "iocalendar", iosuite_shared.__version__, None)
+        testing.check_conventions(root, "iocalendar", iosuite_shared.__version__)
     (root / "config.env.example").unlink()
     (root / "static" / "app.js").write_text("fetch('/api/events')\n")
     with pytest.raises(AssertionError):
-        testing.check_conventions(root, "iocalendar", iosuite_shared.__version__, None)
+        testing.check_conventions(root, "iocalendar", iosuite_shared.__version__)
 
 
 def test_clean_shared_tables():

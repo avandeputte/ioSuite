@@ -60,7 +60,7 @@ def router(auth, addresses):
     from fastapi import APIRouter, HTTPException, Request
     from starlette.concurrency import run_in_threadpool
 
-    from iosuite_shared.access import json_body
+    from iosuite_shared.http import json_body
     r = APIRouter()
     app = auth.app
 

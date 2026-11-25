@@ -9,7 +9,7 @@ import urllib.parse
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iodocs import access, files, model, ocr
 

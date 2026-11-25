@@ -9,7 +9,8 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from iosuite_shared import admin as suite_admin, apppasswords, doors, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
-from iosuite_shared.access import UNCLAIMED, json_body, public_user
+from iosuite_shared.access import UNCLAIMED, public_user
+from iosuite_shared.http import json_body
 from iosuite_shared.proxyauth import authlog, peer_of
 
 STATUS_PATH = "/api/status"

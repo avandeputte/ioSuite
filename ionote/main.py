@@ -10,9 +10,9 @@ import logging
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from iosuite_shared import application, chores, users
+from iosuite_shared import application, chores, config as shared_config, users
 
-from ionote import auth, config, db, mcp, suite_app, suitedb
+from ionote import auth, config, db, mcp, suite_app
 from ionote import notes as notes_mod
 from ionote.routes import notes as notes_routes, settings
 
@@ -33,7 +33,7 @@ def _jobs() -> list:
 
 
 def _where() -> str:
-    c, sd = db.settings(), suitedb.public()
+    c, sd = db.settings(), shared_config.shared_db_public()
     return "on MariaDB/MySQL %s:%s/%s (%s); Shared ioSuite database (accounts, suite settings): %s@%s:%s/%s" % (
         c["host"], c["port"], c["database"],
         "accounts exist" if users.any_users() else "no accounts yet: open to everyone until one is made",

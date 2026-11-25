@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
 from iomoney import access, forecast, model, payoff

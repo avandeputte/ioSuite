@@ -345,6 +345,11 @@ def of_app(package: str) -> dict:
     return out
 
 
+def shared_db_public() -> dict:
+    """Where the Shared ioSuite database is, without its password (a start-up log line, a diagnostics answer)."""
+    return {"host": DB_HOST, "port": DB_PORT, "database": DB_NAME, "user": DB_USER}
+
+
 # ---- what a person may set: Settings › Apps › All settings, and `iosuite set`
 # {name, label, hint, type: text | number | switch | choice, default?, choices?}; an app's own are in its app.json ("settings")
 COMMON = [

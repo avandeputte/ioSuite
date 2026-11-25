@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from iosuite_shared import users as shared_users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iomoney import access, categories, model, receipts, review, splits, transfers
 from iomoney.routes.common import month_bounds, _u

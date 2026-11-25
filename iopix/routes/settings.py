@@ -16,7 +16,7 @@ from iopix.photos import edits, scanner
 from iopix.data import index, state as appstate, appdb
 from iopix.geo import geocode, maps
 from iopix.ai.semantic import ready as semantic_ready, ENGINES, semantic
-from iopix.http import json_body
+from iosuite_shared.http import json_body
 from iopix.runtime import start_prewarm
 from iosuite_shared import serve
 

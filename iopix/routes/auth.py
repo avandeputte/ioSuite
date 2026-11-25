@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from iopix import access, users
 from iopix.hooks import person_tag
-from iopix.http import json_body
+from iosuite_shared.http import json_body
 
 router = APIRouter()  # beside the routes every app has (iosuite_shared.fastapi.Auth.router)
 

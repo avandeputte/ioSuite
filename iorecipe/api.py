@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from iosuite_shared import helper, stamp
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iorecipe import access, ai, config, model, ocr, portable, scrape, shopping, textimport
 

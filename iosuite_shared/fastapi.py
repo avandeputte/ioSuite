@@ -24,7 +24,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from iosuite_shared import apppasswords, catalog, config, db, routers, sessions, stamp, suite, users
-from iosuite_shared.access import ACCESS_ROLES, UNCLAIMED, Access, BodyCap, TooLarge, content_type, json_body, public_user
+from iosuite_shared.access import ACCESS_ROLES, UNCLAIMED, Access, BodyCap, TooLarge, content_type, public_user
+from iosuite_shared.http import json_body
 from iosuite_shared.proxyauth import Forwarded, Proxy, authlog, peer_of, seen
 from iosuite_shared.errors import Invalid
 

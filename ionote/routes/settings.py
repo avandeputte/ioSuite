@@ -5,11 +5,11 @@ import time
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from iosuite_shared import users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from starlette.concurrency import run_in_threadpool
 
 from ionote import access, backup, config, db, notes
-from ionote.http import attachment, user_name
+from iosuite_shared.http import attachment, user_name
 
 router = APIRouter()
 TEXTS = ("app_name",)  # the MCP switch is the suite's: Settings › Apps (iosuite_shared.mcp.set_for)

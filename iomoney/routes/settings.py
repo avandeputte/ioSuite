@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
 from iomoney import access, db, model, monarch, quotes

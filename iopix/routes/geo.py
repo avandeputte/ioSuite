@@ -7,7 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from iopix import access, thumbs, users
 from iopix.geo import geocode, maps, placeguess
-from iopix.http import jresp, json_body
+from iosuite_shared.http import jresp, json_body
 from iopix.runtime import db
 
 

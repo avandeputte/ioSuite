@@ -17,7 +17,8 @@ from iopix.ai import clothing, dateclues, dismissed, jerseys, neardups
 from iopix.ai.semantic import enabled as semantic_enabled
 from iopix.data import state as appstate
 from iopix.guards import face_detect_allowed
-from iopix.http import IMG_CACHE, jresp, json_body, photo_row
+from iosuite_shared.http import jresp, json_body
+from iopix.http import IMG_CACHE, photo_row
 from iopix.runtime import DB_ERRORS, db
 
 

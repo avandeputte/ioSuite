@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse, Response
 from iotask import auth
 from iotask import access, config, ical, members, model, quick
 from iosuite_shared import appleprofile, users as shared_users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 router = APIRouter()
 

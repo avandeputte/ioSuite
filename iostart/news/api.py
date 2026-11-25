@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iostart import access, news
 

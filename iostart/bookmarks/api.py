@@ -8,7 +8,7 @@ import json
 import os
 import zipfile
 
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iostart import auth
 from iostart import access, config, bookmarks, status as appstatus

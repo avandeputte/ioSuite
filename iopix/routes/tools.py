@@ -18,7 +18,7 @@ from iopix.data import index, state as appstate
 from iopix.geo import maps
 from iopix.ai.semantic import ready as semantic_ready, enabled as semantic_enabled, ENGINES, semantic
 from iopix.guards import face_detect_allowed
-from iopix.http import json_body
+from iosuite_shared.http import json_body
 from iopix.runtime import DB_ERRORS, app_name, compute_tag_covers, db, start_prewarm, state
 
 from iopix.routes.settings import db_settings_public

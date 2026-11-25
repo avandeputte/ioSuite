@@ -12,7 +12,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from iosuite_shared import appleprofile, doors, feeds, prefix, stamp, users as shared_users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iocontact import access, calendar, config, csvio, db, enrich, iopix, limits, model, quality, relations as rel, users, vcard
 from iocontact import auth

@@ -211,10 +211,11 @@ def clean_shared_tables(auth=None) -> None:
         auth._registered = False
 
 
-def check_conventions(root, app: str, version: str, config) -> None:
-    """The conventions every app follows (one test per app calls this with its package folder): the suite's version as
-    the app's, a manifest that names it, no settings file of its own, and a page that asks for everything with relative
-    addresses (check_relative: the app is served in a folder of an address as well as at a name of its own)."""
+def check_conventions(root, app: str, version: str) -> None:
+    """The conventions every app follows: the suite's version as the app's, a manifest that names it, no settings file
+    of its own, and a page that asks for everything with relative addresses (check_relative: the app is served in a
+    folder of an address as well as at a name of its own). One test over every app calls this
+    (iosuite_shared/tests/test_conventions.py), so an app's own tests do not repeat it."""
     import json
     from pathlib import Path
     import iosuite_shared

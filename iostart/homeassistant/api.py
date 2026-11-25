@@ -6,7 +6,7 @@ from fastapi.concurrency import run_in_threadpool
 import asyncio
 import json
 
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iostart import access, homeassistant as ha
 

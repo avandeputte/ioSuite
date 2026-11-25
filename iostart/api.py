@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from fastapi.concurrency import run_in_threadpool
 
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iostart import access, apps, config, layout, status as appstatus, rates, timers, wall, weather, widgets
 from iostart import search as suitesearch

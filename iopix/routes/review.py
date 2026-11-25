@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from iopix import access, config, events
 from iopix.digikam import dbsync
 from iopix.photos import filecheck, history, picklabels
-from iopix.http import json_body
+from iosuite_shared.http import json_body
 from iopix.runtime import DB_ERRORS
 from iopix.faces import facequality
 from iopix.ai import rotation
