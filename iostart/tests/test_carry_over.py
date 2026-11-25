@@ -77,9 +77,10 @@ def test_what_was_written_since_is_kept_but_a_counter_never_goes_back(before, to
     db.set_state("user:7:layout", json.dumps({"hidden": []}))
     db.set_state("bookmarks_highest_id", "3")
     db.set_state("bookmarks_rev", "500")
+    db.set_state("rates", json.dumps({"at": 2, "USD": 1}))   # asked again since: the newer answer stays
     assert tool.main(["--write", "--app", "iostart"]) == 0
     said = capsys.readouterr().out
-    assert "2 left alone" in said and "--overwrite takes the old value" in said, said
+    assert "3 left alone" in said and "--overwrite takes the old value" in said, said
     assert _live("WEATHER_LOCATION") == "999" and json.loads(db.get_state("user:7:layout")) == {"hidden": []}
     assert db.get_state("bookmarks_highest_id") == "97" and db.get_state("bookmarks_rev") == "500"
     assert tool.main(["--write", "--overwrite", "--app", "iostart"]) == 0

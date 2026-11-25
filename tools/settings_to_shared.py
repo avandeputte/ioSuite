@@ -11,7 +11,8 @@ program reads it now: a setting in the one home under its new name, and everythi
 start page, where a sync got to, the highest bookmark id ever given) in the app's <prefix>_state under the name it
 had. It is not part of the program: nothing in the suite runs it, and running it twice does no harm (the second run
 finds everything the same). A value that is already there and differs is left alone unless --overwrite is given,
-except a number both have (a counter, a high-water mark), where the larger one is kept.
+except a counter or a high-water mark (LARGER), where the larger one stands, and the day something began (FIRST),
+where the one from before stands.
 
     cd /opt/iosuite
     .venv/bin/python tools/settings_to_shared.py            # say what would be carried over
@@ -57,6 +58,12 @@ PREFIX = {"iocalendar": "cal", "iocontact": "con", "iodns": "dns", "iodocs": "do
           "iopix": "pix", "iorecipe": "rcp", "iostart": "prt", "iothings": "thg", "iotask": "tsk"}
 # what an app wrote down for itself keeps its name, but for these
 STATE_NAME = {"iostart": {"accuweather_location_geo": "weather_location_geo"}}
+# what only ever goes up (a counter, a high-water mark), by the start of its name: where the app has written one again
+# since, the larger stands, so a counter that began again from nothing never hands out a number that is in use
+LARGER = {"iostart": ("bookmarks_rev", "bookmarks_highest_id"), "iocalendar": ("purged_token:",),
+          "iocontact": ("purged_token:",), "iotask": ("purged_token:",), "ionote": ("standard_templates:",)}
+# what says when something began: the one from before stands, whatever was written since
+FIRST = {"iomoney": ("review_since",)}
 # rows that are not carried: a lock row the app makes again
 NOT_CARRIED = {"ionote": {"write_lock"}}
 
@@ -177,11 +184,13 @@ def carry(app: str, write: bool, overwrite: bool, say=print) -> tuple:
             continue
         if cur is not None and str(cur) != "":
             a, b = _number(v), _number(cur)
-            if a is not None and b is not None:   # a counter or a high-water mark: it only ever goes up
+            if n.startswith(LARGER.get(app) or ("\0",)) and a is not None and b is not None:
                 if a <= b:
                     same += 1
                     continue
-                say(f"{app}: {n} = {a} (it is {b} here: the larger is kept)")
+                say(f"{app}: {n} = {a} (it is {b} here: the larger stands)")
+            elif n.startswith(FIRST.get(app) or ("\0",)):
+                say(f"{app}: {n} = {_short(v)} (it is {_short(cur)} here: the one from before stands)")
             elif not overwrite:
                 say(f"{app}: {n} was written again since ({_short(cur)}); left alone, it was {_short(v)}")
                 left += 1
