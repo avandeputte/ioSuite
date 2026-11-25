@@ -20,28 +20,91 @@ export async function drawWeather(el, again = false) {
   const t = (v) => fmtTemp(imp ? degF(v) : v);  // the forecasts come in °C
   const rain = rainNote(w);
   const hours = nextHours(w);
+  const extra = wxExtras(w);
   let pop = null;
   const closePop = () => { if (pop) { pop.remove(); pop = null; document.removeEventListener('click', outside); } };
-  const outside = (e) => { if (pop && !pop.contains(e.target) && !now.contains(e.target)) closePop(); };
+  const outside = (e) => { if (pop && !pop.contains(e.target) && !now.contains(e.target) && !(warn && warn.contains(e.target))) closePop(); };
+  const openPop = () => {
+    if (pop) return closePop();
+    pop = h('div', { class: 'wxpop' },
+      extra.warnings.length ? h('div', { class: 'wxsect' }, extra.warnings.map(warnBlock), extra.warnLink ? h('a', { class: 'lnk small', href: extra.warnLink, target: '_blank', rel: 'noreferrer' }, 'At the National Weather Service') : null) : null,
+      h('div', { class: 'wghead' }, h('span', null, 'Next hours'), w.location ? h('span', { class: 'muted' }, w.location) : null),
+      hours.length ? hourRow(w, hours) : h('div', { class: 'muted small' }, 'No hourly forecast from AccuWeather'),
+      extra.sun ? h('div', { class: 'wxsect' }, h('div', { class: 'wghead' }, h('span', null, 'Sun')), h('div', { class: 'wxsun small' },
+        h('span', null, `Sunrise ${clock(extra.sun.rise)}`), h('span', null, `Sunset ${clock(extra.sun.set)}`),
+        h('span', { class: 'muted' }, `${hm(extra.sun.length)} of daylight${extra.sun.change ? `, ${extra.sun.change}` : ''}`))) : null,
+      extra.air || extra.pollen.length ? h('div', { class: 'wxsect' }, h('div', { class: 'wghead' }, h('span', null, [extra.air ? 'Air quality' : null, extra.pollen.length ? 'pollen' : null].filter(Boolean).join(' and ').replace(/^p/, 'P')), h('span', { class: 'muted small' }, 'today')),
+        h('div', { class: 'wxair' }, extra.air ? levelPill('Air', extra.air, extra.air.value != null ? `Air quality index ${extra.air.value}${extra.air.kind ? ` (${extra.air.kind})` : ''}` : '') : null,
+          extra.pollen.map((p) => levelPill(p.name, p, p.value != null ? `${p.name} pollen: ${p.value} grains per cubic metre` : '')))) : null,
+      c.link ? h('a', { class: 'lnk small', href: c.link, target: '_blank', rel: 'noreferrer' }, 'More at AccuWeather') : null);
+    el.append(pop);
+    setTimeout(() => document.addEventListener('click', outside), 0);
+  };
+  // under the conditions, one short line: the next sunrise or sunset, and the pollen or the air when it is bad today
+  const note = [extra.sun && extra.sun.next, ...extra.bad].filter(Boolean).join(' · ');
   const now = h('button', { class: 'wxnow', 'aria-expanded': 'false',
     title: [w.location, c.feels[u] != null ? `feels ${fmtTemp(c.feels[u])}` : null, c.humidity != null ? `${c.humidity}% humidity` : null,
       c.wind[u] != null ? `wind ${Math.round(c.wind[u])} ${imp ? 'mph' : 'km/h'}` : null].filter(Boolean).join(' · '),
-    onclick: () => {
-      if (pop) return closePop();
-      pop = h('div', { class: 'wxpop' }, h('div', { class: 'wghead' }, h('span', null, 'Next hours'), w.location ? h('span', { class: 'muted' }, w.location) : null),
-        hours.length ? hourRow(w, hours) : h('div', { class: 'muted small' }, 'No hourly forecast from AccuWeather'),
-        c.link ? h('a', { class: 'lnk small', href: c.link, target: '_blank', rel: 'noreferrer' }, 'More at AccuWeather') : null);
-      el.append(pop);
-      setTimeout(() => document.addEventListener('click', outside), 0);
-    } },
+    onclick: openPop },
     wxIcon(c.icon, 'big'),
     h('div', null, h('div', { class: 'wxtemp' }, fmtTemp(c.temp[u])), h('div', { class: 'wxtext small' }, c.text),
-      rain ? h('div', { class: 'wxrain small' }, rain) : null));
+      rain ? h('div', { class: 'wxrain small' }, rain) : null, note ? h('div', { class: 'wxnote small' }, note) : null));
+  // a warning in force: a line of its own under the weather, coloured as serious as it is; a click shows what it says
+  const w0 = extra.warnings[0];
+  const warn = w0 ? h('button', { class: `wxwarn ${sevClass(w0.severity)}`, title: w0.headline || w0.event, onclick: openPop },
+    icon('warn', 's'), h('span', null, w0.event), w0.ends ? h('span', { class: 'wxwhen' }, `until ${when(w0.ends)}`) : null,
+    extra.warnings.length > 1 ? h('span', { class: 'wxmore' }, `+${extra.warnings.length - 1}`) : null) : null;
   el.replaceChildren(now,
     w.forecast && w.forecast.days && w.forecast.days.length ? h('div', { class: 'wxdays' }, w.forecast.days.map((d) =>
       h('div', { class: 'wxday', title: `${d.text || ''}${d.rain != null ? ` · ${d.rain}% chance of rain` : ''}` }, h('span', { class: 'muted small' }, day(d)), wxIcon(d.icon), h('span', { class: 'small wxhi' }, t(d.max)), h('span', { class: 'muted small' }, t(d.min))))) : null,
-    w.stale ? h('span', { class: 'muted small', title: w.error || 'AccuWeather did not answer' }, 'older') : h('span'));
+    w.stale ? h('span', { class: 'muted small', title: w.error || 'AccuWeather did not answer' }, 'older') : h('span'), warn);
 }
+/** The weather's extras the person keeps (Customize, layout weatherOff), worked out for today: {warnings, warnLink,
+    sun: {rise, set, length (minutes), change, next}, air, pollen, bad: short notes for the line under the conditions}. */
+export function wxExtras(w) {
+  const off = (S.layout && S.layout.weatherOff) || [], on = (k) => !off.includes(k);
+  const days = (w.forecast && w.forecast.days) || [];
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const i = Math.max(0, days.findIndex((d) => d.date === iso(new Date())));
+  const today = days[i] || {}, tomorrow = days[i + 1] || {};
+  const out = { warnings: [], warnLink: '', sun: null, air: null, pollen: [], bad: [] };
+  if (on('warnings') && w.warnings) { out.warnings = w.warnings.items || []; out.warnLink = w.warnings.link || ''; }
+  if (on('sun') && today.sunrise && today.sunset) {
+    const len = (d) => (d.sunrise && d.sunset ? Math.round((new Date(d.sunset) - new Date(d.sunrise)) / 60000) : null);
+    const length = len(today), next = len(tomorrow), diff = next == null ? 0 : next - length;
+    const t = Date.now();
+    out.sun = { rise: today.sunrise, set: today.sunset, length,
+      change: diff ? `${Math.abs(diff)} min ${diff > 0 ? 'more' : 'less'} tomorrow` : next != null ? 'the same tomorrow' : '',
+      next: t < new Date(today.sunrise) ? `Sunrise ${clock(today.sunrise)}` : t < new Date(today.sunset) ? `Sunset ${clock(today.sunset)}`
+        : tomorrow.sunrise ? `Sunrise ${clock(tomorrow.sunrise)}` : '' };
+  }
+  if (on('air') && today.air && today.air.category) {
+    out.air = today.air;
+    if (today.air.level >= 3) out.bad.push(`Air ${today.air.category.toLowerCase()}`);
+  }
+  if (on('pollen')) {
+    out.pollen = (today.pollen || []).filter((p) => p.category);
+    const worst = out.pollen.filter((p) => p.level >= 3).sort((a, b) => b.level - a.level);
+    if (worst.length) out.bad.push(`${worst.map((p) => p.name).slice(0, 2).join(' and ')} pollen ${worst[0].category.toLowerCase()}`);
+  }
+  return out;
+}
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const hm = (min) => `${Math.floor(min / 60)} h ${min % 60} min`;
+/** A warning's end: the time today, else the day and the time. */
+const when = (iso) => { const d = new Date(iso); return d.toDateString() === new Date().toDateString() ? clock(iso) : `${d.toLocaleDateString([], { weekday: 'short' })} ${clock(iso)}`; };
+const sevClass = (s) => ({ Extreme: 'sev4', Severe: 'sev3', Moderate: 'sev2' })[s] || 'sev1';
+/** One warning in the panel: what, until when, the headline; what it says and what to do folded under it. */
+function warnBlock(x) {
+  return h('details', { class: `wxalert ${sevClass(x.severity)}` },
+    h('summary', null, icon('warn', 's'), h('span', { class: 'wxaev' }, x.event), x.ends ? h('span', { class: 'muted small' }, `until ${when(x.ends)}`) : null),
+    x.headline ? h('div', { class: 'small' }, x.headline) : null,
+    x.text ? h('p', { class: 'small wxatext' }, x.text) : null,
+    x.instruction ? h('p', { class: 'small wxatext' }, h('b', null, 'What to do: '), x.instruction) : null,
+    x.source ? h('div', { class: 'muted small' }, x.source) : null);
+}
+/** Air quality or one pollen: its name and AccuWeather's category, coloured by level (1 good … 6 hazardous). */
+const levelPill = (name, x, title) => h('span', { class: `wxlvl lvl${Math.min(6, Math.max(1, x.level || 1))}`, title: title || null }, h('span', null, name), h('b', null, x.category));
 /** °F and mph, or °C and km/h: the person's own choice (Customize, layout units), else what the weather is set up with. */
 export const wxImperial = (w) => ((S.layout && S.layout.units) || w.units) === 'imperial';
 /** The hours still ahead in AccuWeather's 12-hour forecast (the server's copy can be up to 90 minutes old). */
