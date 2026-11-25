@@ -182,6 +182,27 @@ SCHEMA = [
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         user_id INT NOT NULL DEFAULT 0,
         PRIMARY KEY (user_id, name))""",
+    # medicines and allergies, and the emergency card (meds.py, emergency.py): times are local "HH:MM" in the person's
+    # zone, days Python's weekday digits; a dose has a row once it is ticked taken or skipped
+    f"""CREATE TABLE IF NOT EXISTS hlt_medicines (
+        id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, dose VARCHAR(64) NOT NULL DEFAULT '',
+        reason VARCHAR(128) NOT NULL DEFAULT '', note VARCHAR(255) NOT NULL DEFAULT '', times VARCHAR(255) NOT NULL DEFAULT '',
+        days VARCHAR(7) NOT NULL DEFAULT '0123456', start_on DATE NULL, end_on DATE NULL, stopped_on DATE NULL,
+        remind BOOL NOT NULL DEFAULT 1, on_card BOOL NOT NULL DEFAULT 1, {_STAMPS},
+        INDEX idx_hlt_medicines_user (user_id))""",
+    f"""CREATE TABLE IF NOT EXISTS hlt_medicine_doses (
+        id INT AUTO_INCREMENT PRIMARY KEY, medicine_id INT NOT NULL, day DATE NOT NULL, slot VARCHAR(8) NOT NULL,
+        taken_at DATETIME(3) NULL, skipped BOOL NOT NULL DEFAULT 0, {_STAMPS},
+        UNIQUE KEY uq_hlt_medicine_doses (medicine_id, day, slot),
+        INDEX idx_hlt_medicine_doses_user_day (user_id, day))""",
+    f"""CREATE TABLE IF NOT EXISTS hlt_allergies (
+        id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, reaction VARCHAR(255) NOT NULL DEFAULT '',
+        severity VARCHAR(16) NOT NULL DEFAULT '', note VARCHAR(255) NOT NULL DEFAULT '', {_STAMPS},
+        INDEX idx_hlt_allergies_user (user_id))""",
+    f"""CREATE TABLE IF NOT EXISTS hlt_emergency (
+        blood_type VARCHAR(8) NOT NULL DEFAULT '', organ_donor VARCHAR(8) NOT NULL DEFAULT '', conditions TEXT NULL,
+        notes TEXT NULL, doctors TEXT NULL, contacts TEXT NULL, documents TEXT NULL, {_STAMPS},
+        PRIMARY KEY (user_id))""",
 ]
 
 

@@ -306,9 +306,9 @@ def ask_again(app: str = None) -> None:
 
 def as_viewer(request, app: str, path: str, params: dict = None, body: dict = None, method: str = None, raw: bool = False,
               timeout: float = 5, user_agent: str = "ioSuite", accept: str = None, patient: bool = False, public: bool = False,
-              limit: int = 64 << 20):
+              limit: int = 64 << 20, data: bytes = None, content_type: str = None):
     """Ask the app on the viewer's behalf (viewer_headers): GET path, with params as its query; with body, POST that
-    JSON; method for another one. The answer's JSON, or with raw (the body, its content type).
+    JSON (with data instead: POST those bytes, of content_type); method for another one. The answer's JSON, or with raw (the body, its content type).
 
     The app's addresses are asked in turn (addresses(); public: the address it is known by when it recorded no other),
     the one that answered last first. An answer that is not a 2xx is urllib's HTTPError, as the app gave it (so is a
@@ -327,15 +327,16 @@ def as_viewer(request, app: str, path: str, params: dict = None, body: dict = No
     if last in bases:
         bases = [last] + [b for b in bases if b != last]
     h = viewer_headers(request, user_agent, accept or ("*/*" if raw else "application/json"))
-    data = None
     if body is not None:
         data, h["Content-Type"] = _json.dumps(body).encode(), "application/json"
+    elif data is not None:
+        h["Content-Type"] = content_type or "application/octet-stream"
     query = "?" + urllib.parse.urlencode(params) if params else ""
     why = None
     name = _asked_host(request)
     for base in bases:
         try:
-            with send(base, app, path + query, h, timeout, data, method or ("POST" if body is not None else "GET"), host=name, limit=limit) as r:
+            with send(base, app, path + query, h, timeout, data, method or ("POST" if body is not None or data is not None else "GET"), host=name, limit=limit) as r:
                 got = r.read(limit)
                 out = (got, r.headers.get("Content-Type") or "application/octet-stream") if raw else _json.loads(got or b"null")
         except urllib.error.HTTPError:

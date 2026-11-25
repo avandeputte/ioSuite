@@ -10,6 +10,8 @@ import './workouts.js';
 import './sleep.js';
 import './glucose.js';
 import './records.js';
+import './medicines.js';
+import './emergency.js';
 import './day.js';
 import './settings.js';
 

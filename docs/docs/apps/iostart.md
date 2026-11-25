@@ -51,6 +51,26 @@ and sign in: it gets an app password of its own, for bookmark sync only, and doe
 start page instead* signs in without a password typed there: you say yes in a tab at the start page (for an account
 that signs in with a passkey or through a proxy; it needs the pages' address to be reachable). What it sends and keeps: [privacy policy](../privacy/iostart-bookmarks.md).
 
+## The suite's inbox by email
+
+Give the suite a mailbox of its own (a new Gmail, Fastmail or iCloud address will do) and forward mail to it. A
+suite admin sets it up from the gear › **Inbox** › the settings button: the IMAP server, port 993, the user name and
+an app password, which is kept with the suite's keys and tokens. The suite reads it every five minutes and leaves the
+messages there, marked read.
+
+- A **receipt** goes on the matching ioMoney transaction: money out of the same amount, a few days around the mail.
+  If the bank has not sent the transaction yet, the suite tries again every hour for ten days.
+- A **PDF or a scan** becomes a new ioDocs document that only you see, until you share it there.
+- An **invitation** goes into your own ioCalendar calendar, or the one you pick under Your addresses.
+- Anything else waits on the Inbox page, with the reason it waits, to be filed with a tap or let go.
+
+Mail is yours when it comes from your account's address or from another address you add under **Your addresses**.
+Nobody else sees it, admins included. Mail from an address nobody has waits for a suite admin to give it to
+someone. Filing happens as you, so ioMoney's private accounts and the calendars you may write work as they always do.
+The suite files mail by itself only when the mail server says the sender really is who the From line says (DMARC or
+DKIM passed). Otherwise you file it with a tap. To say where something goes, send to `inbox+money@…`, `+docs` or
+`+calendar`. To keep it on the page, use `+inbox`.
+
 ## With the other apps
 
 ioStart is all about them: it shows a tile and widgets for each app it finds, asks each app with the viewer's own
@@ -63,6 +83,6 @@ ioStart is the suite's start page, and it answers at the suite's address itself.
 | | |
 | --- | --- |
 | Address | the suite's address itself (`https://home.example.com/`) |
-| Devices | bookmark sync and the iPhone app's widgets at `/dav/…` (the browser extension, the iPhone app), at the [address for devices](../reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
+| Devices | bookmark sync and the iPhone app's Today screen and widgets at `/dav/…` (the browser extension, the iPhone app), and the iPhone app's feed reader at `/api/news…`, at the [address for devices](../reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
 | MCP | `/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
 | Source | [iosuite/iostart](https://github.com/avandeputte/iosuite/tree/main/iostart) |

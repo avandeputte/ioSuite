@@ -17,4 +17,5 @@ HA_FEED = env_flag("HA_FEED", True)   # HA_FEED=0: no websocket to Home Assistan
 SITE_ICONS = env_flag("SITE_ICONS", True)   # SITE_ICONS=0: the server does not fetch the bookmarked sites' icons
 TIMERS_LOOP = env_flag("TIMERS_LOOP", True)   # TIMERS_LOOP=0: no job that sends "timer done" notifications (timers.py; the tests call tick())
 NEWS_LOOP = env_flag("NEWS_LOOP", True)   # NEWS_LOOP=0: the server does not fetch the feeds people follow by itself (news.py; the tests call tick())
+INBOX_LOOP = env_flag("INBOX_LOOP", True)   # INBOX_LOOP=0: the suite's mailbox is not read by itself (inbox/__init__.py; the tests call tick())
 TRMNL_PUSH = env_flag("TRMNL_PUSH", True)   # TRMNL_PUSH=0: the start page does not push anyone's TRMNL screens (trmnl/push.py)

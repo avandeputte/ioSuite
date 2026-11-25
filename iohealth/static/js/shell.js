@@ -19,6 +19,8 @@ addIcons({
   trophy: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z',
   bed: 'M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z',
   drop: 'M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z',
+  pill: 'M4.22 11.29l5.07-5.07a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-5.07 5.07a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07zm1.42 1.42a2.98 2.98 0 0 0 0 4.24 2.98 2.98 0 0 0 4.24 0l2.12-2.12-4.24-4.24-2.12 2.12z',
+  badge: 'M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm-9 12H8v-3H5v-3h3V7h3v3h3v3h-3v3zm8-1h-4v-2h4v2zm0-4h-4V9h4v2z',
 });
 paintIcons();
 
@@ -27,7 +29,7 @@ paintIcons();
 export const NAV = [
   ['dashboard', 'Dashboard', 'dashboard', 'purple'], ['day', 'Day', 'calendar', 'amber'], ['metrics', 'Metrics', 'chart', 'blue'], ['workouts', 'Workouts', 'run', 'orange'],
   ['correlations', 'Correlations', 'scatter', 'teal'], ['map', 'Map', 'map', 'cyan'], ['records', 'Records', 'trophy', 'green'],
-  ['sleep', 'Sleep', 'bed', 'indigo'], ['glucose', 'Glucose', 'drop', 'rose'],
+  ['sleep', 'Sleep', 'bed', 'indigo'], ['glucose', 'Glucose', 'drop', 'rose'], ['medicines', 'Medicines', 'pill', 'green'], ['emergency', 'Emergency card', 'badge', 'rose'],
 ];
 export const NAV_GROUPS = { correlations: 'Analysis', sleep: 'Health' };  // the first page of each group after the first
 export const NAV_FOOT = [['settings', 'Settings', 'settings', 'slate']];

@@ -284,7 +284,7 @@ function vendor(js, css) {
 }
 const charts = () => vendor('static/vendor/uPlot.iife.min.js', 'static/vendor/uPlot.min.css');
 const maps = () => vendor('static/vendor/leaflet/leaflet.js', 'static/vendor/leaflet/leaflet.css');  // the suite's one copy (iosuite_shared/static/public)
-const NEEDS = { settings: [], records: [], map: [maps], workout: [charts, maps] };  // every other page: the charts
+const NEEDS = { settings: [], records: [], medicines: [], emergency: [], map: [maps], workout: [charts, maps] };  // every other page: the charts
 
 export async function render(keep) {
   resetPage();

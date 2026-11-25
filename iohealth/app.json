@@ -35,6 +35,11 @@
       "kind": "health_usual",
       "label": "Outside your usual",
       "hint": "When your resting heart rate, heart rate variability or sleep leaves what is usual for you"
+    },
+    {
+      "kind": "health_meds",
+      "label": "Medicine reminders",
+      "hint": "At the time of each dose of your medicines, with a Taken button where the device shows one"
     }
   ],
   "settings": [

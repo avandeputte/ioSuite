@@ -22,6 +22,10 @@ your server.
   earlier, goal lines.
 - **Workouts** with their GPS routes on a map, splits, heart rate zones, training load; **Sleep** stages per night;
   **Glucose** from a CGM or meter; **Correlations** between any two metrics; **Records**.
+- **Medicines and allergies**: each medicine with its dose and times, a reminder at each time (with a Taken button
+  where the phone shows one), today's doses to tick taken or skipped, and the last 30 days at a glance.
+- **Emergency card**: a wallet-size card to print, cut out and fold, with your allergies, conditions, blood type,
+  medicines, doctor, the people to call and your health insurance.
 - **Per person**: everyone in the household syncs into their own account and sees only their own data.
 - CSV export of any chart, PDF of any page, and a JSON API with app passwords for scripts.
 
@@ -37,6 +41,8 @@ to addresses on your own network; anything else must be HTTPS.
 
 - **ioStart**: today's steps with the last seven days as bars, the move, exercise and stand rings, and last night's
   sleep on the ioHealth tile.
+- **ioContact** and **ioDocs**: the emergency card takes your doctor and the people to call from your contacts, and
+  your health insurance from your papers; it shows only what you see in those apps.
 - The same accounts as every other app: each person signs in to ioHealthSync with their suite account.
 
 ## Install

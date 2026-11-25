@@ -349,6 +349,32 @@ a.gday:hover { text-decoration: underline; }
 .wxhour .wx { width: 22px; height: 22px; }
 .wxhour.wet { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .wxpct { color: var(--accent); min-height: 1.3em; }
+/* the extras: a line under the conditions (next sunrise or sunset, bad air or pollen), a warning's line under the row,
+   and in the panel the warnings, the sun, the air and the pollen */
+.weather { flex-wrap: wrap; row-gap: 6px; }
+.wxnote { color: var(--fg2); }
+.wxwarn { flex-basis: 100%; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--r-m); font-size: var(--fs-s); font-weight: 600; text-align: left;
+  color: var(--sev); background: color-mix(in srgb, var(--sev) 12%, transparent); border: 1px solid color-mix(in srgb, var(--sev) 35%, transparent); }
+.wxwarn:hover { background: color-mix(in srgb, var(--sev) 20%, transparent); }
+.wxwarn .wxwhen { font-weight: 400; color: var(--fg2); }
+.wxwarn .wxmore { margin-left: auto; font-weight: 500; }
+.sev4 { --sev: #b4237a; } .sev3 { --sev: var(--danger); } .sev2 { --sev: var(--warn); } .sev1 { --sev: var(--fg2); }
+.wxsect { display: flex; flex-direction: column; gap: 6px; }
+.wxalert { border-left: 3px solid var(--sev); padding: 2px 0 2px 10px; }
+.wxalert summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; }
+.wxalert summary::-webkit-details-marker { display: none; }
+.wxalert summary .ic { color: var(--sev); }
+.wxaev { font-weight: 600; color: var(--sev); }
+.wxalert[open] summary { margin-bottom: 4px; }
+.wxatext { white-space: pre-line; margin: 4px 0; max-height: 14em; overflow-y: auto; }
+.wxsun { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.wxair { display: flex; flex-wrap: wrap; gap: 6px; }
+.wxlvl { display: inline-flex; gap: 6px; align-items: baseline; padding: 2px 9px; border-radius: 999px; font-size: var(--fs-s);
+  background: color-mix(in srgb, var(--lvl) 14%, transparent); border: 1px solid color-mix(in srgb, var(--lvl) 40%, transparent); }
+.wxlvl b { font-weight: 600; color: var(--lvl); }
+.lvl1 { --lvl: #2e7d32; } .lvl2 { --lvl: #9a7b00; } .lvl3 { --lvl: #d35400; } .lvl4 { --lvl: #c62828; } .lvl5 { --lvl: #8e24aa; } .lvl6 { --lvl: #6d1b1b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wxlvl b { filter: brightness(1.45); } :root:not([data-theme="light"]) .sev4 { --sev: #f06bb5; } }
+:root[data-theme="dark"] .wxlvl b { filter: brightness(1.45); } :root[data-theme="dark"] .sev4 { --sev: #f06bb5; }
 .qawhen { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin: 8px 0 0; }
 .qawhen + p { margin: 4px 0 0; }
 .qawhen.two { grid-template-columns: 1.4fr 1fr; }
@@ -959,3 +985,31 @@ body.arranging .dock .arr[data-arr="tile"] { outline-offset: -1px; }
 .nwline-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .nwline-by { font-size: var(--fs-s); flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nwline:hover .nwline-title { text-decoration: underline; }
+
+/* the Inbox page (static/js/inbox.js): the suite's mail, to file */
+.mi .micount { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--accent-bg); color: var(--accent); font-size: var(--fs-s); font-weight: 600; text-align: center; }
+.pagehead .ibtools { margin-left: auto; display: flex; gap: 4px; }
+.ibhint { margin: -6px 0 14px; line-height: 1.6; }
+.ibhint code { font-size: .95em; background: var(--bg2); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+.ibrows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ibrows:has(.empty) { border: 0; }
+.ibrow { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; cursor: pointer; width: 100%; }
+.ibrow:last-child { border-bottom: 0; }
+.ibrow:hover { background: var(--bg2); }
+.ibrow.nobody .ibic { color: var(--danger); }
+.ibic { color: var(--fg2); padding-top: 2px; }
+.ibmain { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ibsubj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ibfrom, .ibnote { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ibnote a { color: var(--accent); }
+.ibwhen { white-space: nowrap; padding-top: 2px; }
+.dialog.ibdialog { max-width: 720px; }
+.ibitem .ibwarn { display: flex; gap: 6px; align-items: center; }
+.ibfiles { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.ibtext { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: var(--fs-m); background: var(--bg2); border-radius: var(--r-s); padding: 12px 14px; max-height: 40vh; overflow: auto; margin: 10px 0; }
+.ibacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ibacts select { width: auto; }
+.ibact { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ibmatch { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-s); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ibmatch:hover { background: var(--accent-bg); }
+@media (max-width: 600px) { .ibrow { padding: 12px; } .ibhint code { display: inline-block; margin: 2px 0; } }

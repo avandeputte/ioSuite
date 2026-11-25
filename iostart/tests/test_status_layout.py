@@ -130,13 +130,14 @@ def test_my_layout(client):
     assert client.put("/api/me/layout", json=[]).status_code == 400
     # a size for each app, what the Today card holds, the top row, the look, the bookmarks
     for bad in ({"sizes": {"iopix": "huge"}}, {"sizes": {"Not an app!": "card"}}, {"sizes": ["iopix"]}, {"todayOff": ["weather"]}, {"todayDays": 9}, {"todayDays": True},
-                {"units": "kelvin"}, {"accent": "#ff0000"}, {"text": "tiny"}, {"bookmarks": "cloud"}):
+                {"units": "kelvin"}, {"weatherOff": ["rain"]}, {"accent": "#ff0000"}, {"text": "tiny"}, {"bookmarks": "cloud"}):
         assert client.put("/api/me/layout", json=bad).status_code == 400, bad
     r = client.put("/api/me/layout", json={"sizes": {"iohealth": "tile", "iomoney": "card"}, "todayOff": ["bills", "photos", "bills"], "todayDays": 0, "hidden": ["greeting", "weather", "search"],
                                            "units": "imperial", "accent": "teal", "text": "large", "bookmarks": "icons"}).json()
     assert r == {**layout.EMPTY, "sizes": {"iohealth": "tile", "iomoney": "card"}, "todayOff": ["bills", "photos"], "todayDays": 0, "hidden": ["greeting", "weather", "search"],
                  "units": "imperial", "accent": "teal", "text": "large", "bookmarks": "icons"}
     assert client.put("/api/me/layout", json={"todayDays": 2}).json()["todayDays"] == 2
+    assert client.put("/api/me/layout", json={"weatherOff": ["pollen", "sun", "pollen"]}).json()["weatherOff"] == ["pollen", "sun"]
     assert client.put("/api/me/layout", json={}).json() == layout.EMPTY
     # another account has its own
     testing.add_account(client, {"name": "kid", "password": "secret123", "role": "viewer"})

@@ -52,6 +52,25 @@ what the app will show on the start page later (today's events, the newest photo
   inside an article do load from their site when the article is opened. Import and export as OPML, the file every
   reader exchanges. The **Headlines** card on the start page lists the newest unread articles of the feeds you keep
   on it (a switch on each feed); it is there once you follow one.
+- **Inbox** (the gear › Inbox, or `#/inbox`): the suite's inbox by email. A suite admin gives it a mailbox of its own
+  (Inbox › the settings button: IMAP host, port, user name, folder; the password is kept with the suite's keys and
+  tokens), read every five minutes. Mail sent or forwarded to it is its sender's (their account's address, or another
+  one they add under Your addresses) and nobody else's. A receipt goes on the matching ioMoney transaction (money out
+  of its amount, a few days around the mail; one that has not come from the bank yet is tried again every hour for
+  ten days), a PDF or a scan into ioDocs as a private document, an invitation into ioCalendar. That happens by itself
+  only when the mail server vouched for the sender (DMARC or DKIM passed in its Authentication-Results line), since
+  anyone can write any From line; everything else waits on the page, with why, to be filed with a tap or let go.
+  Filing is done as the person, so each app's own rules hold (private ioMoney accounts, the calendars they may
+  write). `+money`, `+docs`, `+calendar` after the mailbox's name say where it goes, `+inbox` keeps it on the page.
+  Mail from an address nobody has waits for a suite admin to give to someone. Filed and let-go mail stays listed
+  for 30 days. A notification (Suite inbox) says what was filed or waits.
+- **Weather extras**: beside the conditions and the forecast, the weather shows the next sunrise or sunset, and the
+  pollen or the air when it is bad today; a warning in force (wind, flood, winter storm…) gets a line of its own under
+  the weather, coloured as serious as it is. A click on the weather shows the warnings in full, the next hours, today's
+  sunrise, sunset and daylight (and how it changes tomorrow), the air quality and the pollen (tree, grass, ragweed,
+  mold). These cost no extra AccuWeather calls: they come with the 5-day forecast. Warnings come from the US National
+  Weather Service (free, no key, places in the United States only), asked at most every 10 minutes while someone looks.
+  Each person switches any of the four off in Customize › Page.
 - **Live**: every five minutes, and when the tab is shown again, the page brings the tiles, the cards, the weather
   and the dots up to date in place; at midnight it is drawn anew for the new day.
 - **A wall display** (the gear › Wall display, or `#/wall` as a tablet's home address): full screen, ioPix photos one
@@ -117,7 +136,7 @@ what the app will show on the start page later (today's events, the newest photo
   week, the photo strip, the bookmarks) in your order, and pick your own photo strip ("Default" is the admin's
   choice). Also yours: each app as a full card or a low tile with one line (or by itself), what the Today card holds
   (events, tasks, birthdays, bills, Health and On this day beside it, how many days ahead), the weather in °C or °F
-  (the wall and the TRMNL weather follow), the page's colour and the size of its type (the start page only), and the
+  (the wall and the TRMNL weather follow) and which weather extras it shows, the page's colour and the size of its type (the start page only), and the
   bookmarks as the full list, icons only, or folders shut until tapped.
 - **A setup per device**: Customize the page › "This device only" gives the phone or the kitchen tablet a page of
   its own, with a name; the other devices keep the account's. Three places a setup comes from, the nearest first:
@@ -189,11 +208,15 @@ what the app will show on the start page later (today's events, the newest photo
   Cloudflare Access a home-screen app signs in once by itself (it keeps its own cookies, apart from the browser's).
 - **ioStart, the iPhone and iPad app** ([avandeputte/iosuite-apps](https://github.com/avandeputte/iosuite-apps), folder
   `iostart/`): the tree with search and editing, a share sheet entry that bookmarks the page open in any browser, and a
-  built-in browser (WebKit) for opening bookmarks inside the app, plus home screen widgets (today, the next event,
+  built-in browser (WebKit) for opening bookmarks inside the app, a Today screen (what the start page's Today card
+  lists: events, tasks to tick off, birthdays, the week's bills, with what you switched off in Customize left out), the
+  feed reader (the same feeds, read and starred as on the page), plus home screen widgets (today, the next event,
   favourite bookmarks) and Siri / Shortcuts actions to add a task or an event. It speaks the extension's API
-  (`/dav/ext`) and signs in the same way (`POST /api/auth/device`), for a full app password because its
-  widgets and Siri read and add in ioCalendar and ioTask as the person (`/dav/ext/today`, `/dav/ext/calendars`,
-  `/dav/ext/tasks`, `/dav/ext/events`); a sync-only password is told to sign in again for those.
+  (`/dav/ext`) and signs in the same way (`POST /api/auth/device`), for a full app password because its Today
+  screen, widgets and Siri read and add in the other apps as the person (`/dav/ext/today`, `/dav/ext/calendars`,
+  `/dav/ext/tasks`, `/dav/ext/tasks/<id>/done`, `/dav/ext/events`); a sync-only password is told to sign in again
+  for those. The reader asks the page's own `/api/news…` calls, the ones `app.json` "devices" lets the port for
+  devices serve.
 - **Bookmark sync with browsers**: everything in the tree syncs, on the start page or not.
   - *The ioStart Bookmarks extension* (`static/extension`, Chrome, Edge and Firefox; its own README there): keeps the
     browser's own bookmarks the same as the tree, both ways, with nothing to configure but the address. The bookmarks
@@ -354,6 +377,8 @@ bookmarks/         the bookmarks: __init__.py the groups and links; api.py their
 news/              the reader: __init__.py feeds fetched once for everybody, each person's own subscriptions, read and starred, the
                    job; api.py its routes (/api/news); read.py RSS, Atom and JSON Feed as one shape, a site's feed found from its
                    page, an article's HTML made safe, OPML
+inbox/             the suite's inbox by email: __init__.py what is kept, what kind each message is, whose, filing it as its
+                   sender, the job; mail.py IMAP and a message taken apart; api.py its routes (/api/inbox)
 homeassistant/     Home Assistant: __init__.py the settings, the chosen entities and their state, switching them, the search, the
                    alerts; api.py its routes (/api/ha); feed.py its websocket: state changes folded into the copy, streamed to the pages
 trmnl/             TRMNL e-ink screens: __init__.py the screens and their data; api.py the routes; push.py the pushes to TRMNL's

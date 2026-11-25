@@ -19,6 +19,7 @@ The old tables are not dropped: the new version simply stops using them, so an a
 them (DROP TABLE cal_settings, and so on for each app whose lines this printed).
 """
 import argparse
+import json
 import sys
 
 # the old key in the app's own table, and the name it has in the one home. Where a name is None the value was never
@@ -44,6 +45,9 @@ MOVED = {
               "db_port": "DIGIKAM_DB_PORT", "db_database": "DIGIKAM_DB_NAME", "db_user": "DIGIKAM_DB_USER",
               "db_backup": "DIGIKAM_DB_BACKUP"},
 }
+# one old row that held several settings as JSON: each of its fields is a setting of its own now
+SPLIT = {"iostart": {"inbox_mailbox": {"host": "MAIL_HOST", "port": "MAIL_PORT", "user": "MAIL_USER",
+                                       "folder": "MAIL_FOLDER", "on": "MAIL_ON"}}}
 # the digiKam password was a setting too; it belongs with the suite's keys and tokens now (written, never read back)
 SECRET = {"iopix": {"db_password": "digikam_db_password"}}
 TABLE = {"iocalendar": "cal_settings", "iodns": "dns_settings", "iomoney": "mny_settings", "ionote": "nts_settings",
@@ -89,8 +93,16 @@ def main(argv=None) -> int:
             print(f"{app}: nothing to read ({type(e).__name__}: {str(e)[:80]})")
             continue
         here = db.settings_of(app)
-        for old, new in MOVED[app].items():
-            v = (rows.get(old) or "").strip()
+        pairs = [(old, new, (rows.get(old) or "").strip()) for old, new in MOVED[app].items()]
+        for old, fields in (SPLIT.get(app) or {}).items():
+            try:
+                blob = json.loads(rows.get(old) or "{}")
+            except ValueError:
+                blob = {}
+            for field, new in fields.items():
+                v = blob.get(field)
+                pairs.append((f"{old}.{field}", new, "" if v is None else ("1" if v else "0") if isinstance(v, bool) else str(v).strip()))
+        for old, new, v in pairs:
             if not v:
                 continue
             if here.get(new) and not a.overwrite:

@@ -162,6 +162,12 @@ def apps_answer(monkeypatch):
             return {"today": [{"title": "Dentist", "start": "2026-11-20T15:00:00+01:00"}], "more": 0, "next": None}
         if key == "iotask" and path == "/api/suite/tile":
             raise widgets.Unavailable(502, "ioTask answered 500")
+        if key == "iocontact" and path == "/api/suite/tile":
+            return {"items": [{"id": 4, "name": "Ava Calloway", "label": "birthday", "turns": 9, "in": 2, "date": "2026-11-22"}], "more": 0}
+        if key == "iomoney" and path == "/api/suite/tile":
+            return {"currency": "EUR", "bills": [{"day": "2026-11-23", "name": "Rent", "amount": -900, "currency": "EUR"}], "more": 0, "total": -900, "low": [], "behind": []}
+        if key == "iotask" and path == "/api/tasks/7/complete":
+            return {"moved": False, "undo": "s1"}
         if path == "/api/calendars":
             return {"items": [{"id": 1, "name": "Family", "color": "#f00", "writable": True}]}
         if path == "/api/lists":
@@ -182,8 +188,54 @@ def test_widgets_read_the_day_as_the_person(client, apps_answer):
     assert d["links"]["iocalendar"].startswith("https://calendar.example.com")
     # asked with the app's own sign-in, passed on
     assert all(a[4] == h["Authorization"] for a in apps_answer)
+    # the app's Today screen: the birthdays, the bills and the coming days' tasks too, and what the person's Today card shows
+    assert d["birthdays"]["items"][0]["name"] == "Ava Calloway" and d["bills"]["bills"][0]["name"] == "Rent"
+    assert d["tasksWeek"] is None and "ioTask" in d["errors"]["tasksWeek"]
+    assert d["show"] == {"off": [], "days": None} and d["links"]["iocontact"] and d["links"]["iomoney"]
     c = anon.get("/dav/ext/calendars", headers=h).json()
     assert c["calendars"] == [{"id": 1, "name": "Family", "color": "#f00"}] and c["lists"] == [{"id": 2, "name": "Home", "color": "#0f0"}]
+
+
+def test_the_today_screen_follows_the_person_s_today_card(client, apps_answer):
+    """What is switched off on the start page's Today card (Customize) is not asked of its app, and the answer says so."""
+    assert client.put("/api/me/layout", json={"style": "today", "todayOff": ["bills", "tasks"], "todayDays": 2}).status_code == 200
+    _, pw, anon = _flow(client, "full")
+    d = anon.get("/dav/ext/today", headers=_basic("alex", pw)).json()
+    assert d["show"] == {"off": ["bills", "tasks"], "days": 2}
+    assert d["bills"] is None and d["tasksWeek"] is None and "bills" not in d["errors"] and "tasksWeek" not in d["errors"]
+    assert d["birthdays"]["items"] and not any(a[0] == "iomoney" for a in apps_answer)
+    assert "tasks" in d["errors"]  # the widgets' own parts are asked whatever the card shows
+
+
+def test_the_today_screen_ticks_a_task_off(client, apps_answer):
+    _, pw, anon = _flow(client, "full")
+    r = anon.post("/dav/ext/tasks/7/done", headers=_basic("alex", pw), json={"timezone": "Europe/Brussels"})
+    assert r.status_code == 200 and r.json() == {"ok": True, "moved": False, "undo": "s1"}
+    assert apps_answer[-1][:4] == ("iotask", "/api/tasks/7/complete", None, {"done": True, "tz": "Europe/Brussels"})
+    assert anon.post("/dav/ext/tasks/x/done", headers=_basic("alex", pw), json={}).status_code == 404
+    _, dav, anon2 = _flow(client)
+    assert anon2.post("/dav/ext/tasks/7/done", headers=_basic("alex", dav), json={}).status_code == 403
+
+
+def test_the_iphone_app_reads_the_feeds_at_the_port_for_devices(client):
+    """The reader's everyday calls are served at the port open to the internet (app.json "devices"), with the app's
+    password; managing OPML files is not."""
+    from fastapi.testclient import TestClient
+    from iosuite_shared import doors
+    from iostart.main import app
+
+    async def device_port(scope, receive, send):
+        await app(dict(scope, **{doors.SCOPE_DOOR: doors.SYNC, doors.SCOPE_PORT: doors.SYNC}) if scope["type"] == "http" else scope, receive, send)
+    _, pw, _anon_client = _flow(client, "full")
+    d, h = TestClient(device_port), {"Authorization": "Bearer " + pw}
+    assert d.get("/api/news").status_code == 401
+    got = d.get("/api/news", headers=h)
+    assert got.status_code == 200 and got.json()["feeds"] == []
+    assert d.get("/api/news/items?show=all", headers=h).json()["items"] == []
+    assert d.post("/api/news/items/mark", headers=h, json={"ids": [], "read": True}).status_code == 200
+    assert d.post("/api/news/read", headers=h, json={}).status_code == 200
+    assert doors.allowed(doors.SYNC, "iostart", "/api/news/items/12") and doors.allowed(doors.SYNC, "iostart", "/api/news/feeds/3", "PATCH")
+    assert not doors.allowed(doors.SYNC, "iostart", "/api/news/opml") and not doors.allowed(doors.SYNC, "iostart", "/api/me/layout")
 
 
 def test_siri_adds_a_task_and_an_event(client, apps_answer):

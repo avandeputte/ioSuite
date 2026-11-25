@@ -9,9 +9,10 @@ suite.
 from fastapi.responses import FileResponse, HTMLResponse
 from iosuite_shared import application, pages
 
-from iostart import api, auth, bookmarks, config, keys, mcp, news, suite_app, timers
+from iostart import api, auth, bookmarks, config, inbox, keys, mcp, news, suite_app, timers
 from iostart.bookmarks import api as bookmarksapi, ext as bookmarkext
 from iostart.homeassistant import api as haapi
+from iostart.inbox import api as inboxapi
 from iostart.news import api as newsapi
 from iostart.trmnl import api as trmnlapi, push as trmnlpush
 
@@ -26,8 +27,9 @@ def _device_asks(request) -> bool:
 
 def _jobs() -> list:
     """The copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds
-    people follow (iostart/news/__init__.py), the screens pushed to TRMNL's cloud (iostart/trmnl/push.py)."""
-    return [j for j in (timers.job(), news.job(), trmnlpush.job()) if j]
+    people follow (iostart/news/__init__.py), the suite's mailbox (iostart/inbox/__init__.py), the screens pushed to
+    TRMNL's cloud (iostart/trmnl/push.py)."""
+    return [j for j in (timers.job(), news.job(), inbox.job(), trmnlpush.job()) if j]
 
 
 app = application.create(
@@ -49,6 +51,7 @@ app = application.create(
              bookmarksapi.router,  # /api/bookmarks, /api/groups, /api/links: the bookmarks
              trmnlapi.router,      # /api/trmnl, and what a TRMNL device asks (/api/setup, /api/display...)
              newsapi.router,       # /api/news: the feed reader (the Feeds page) and the headlines card
+             inboxapi.router,      # /api/inbox: the suite's inbox by email (the Inbox page)
              bookmarkext.router),  # /dav/ext: the ioStart Bookmarks browser extension (static/extension/)
     page=False)  # two pages (the start page and Bookmarks), served below
 
