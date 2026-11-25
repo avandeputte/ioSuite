@@ -1,7 +1,7 @@
 import { empty, h, pages, showError } from './core.js';
 import { pageTitle } from './shell.js';
 import { card } from './charts.js';
-import { SEVERITY, fill, medApi, schedule } from './medicines.js';
+import { SEVERITY, fill, howOften, medApi } from './medicines.js';
 
 // ---------- the emergency card: a wallet-size card to print, cut out and fold ----------
 // Front: name, date of birth, blood type, allergies, conditions, organ donation. Back: medicines, doctors, people to
@@ -11,11 +11,6 @@ import { SEVERITY, fill, medApi, schedule } from './medicines.js';
 const MAX = 4;
 const BLOOD = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const fmtDay = (d) => new Date(d + 'T12:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
-function age(born) {
-  const b = new Date(born + 'T12:00'), n = new Date();
-  return n.getFullYear() - b.getFullYear() - (n < new Date(n.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
-}
 
 /** The card itself, both sides, at its printed size (85.6 × 54 mm a side). */
 export function cardSheet(c) {
@@ -28,7 +23,7 @@ export function cardSheet(c) {
     h('div', { class: 'ec-band' }, h('span', { class: 'ec-cross' }, '+'), 'Emergency medical information'),
     h('div', { class: 'ec-body' },
       h('div', { class: 'ec-name' }, c.person.name || ''),
-      h('div', { class: 'ec-facts' }, c.person.born ? h('span', {}, `Born ${fmtDay(c.person.born)} (${age(c.person.born)})`) : null,
+      h('div', { class: 'ec-facts' }, c.person.born ? h('span', {}, `Born ${fmtDay(c.person.born)}`) : null,
         c.bloodType ? h('span', {}, 'Blood type ', h('b', {}, c.bloodType)) : null,
         c.organDonor ? h('span', {}, `Organ donor: ${c.organDonor}`) : null),
       sec('Allergies', allergies),
@@ -38,7 +33,7 @@ export function cardSheet(c) {
   const who = (x, org = true) => h('div', { class: 'ec-line' }, h('b', {}, x.name), org && x.org ? `, ${x.org}` : '', x.relation ? `, ${x.relation.toLowerCase()}` : '', x.phone ? h('span', { class: 'ec-tel' }, ` ${x.phone}`) : null);
   const back = h('div', { class: 'ec-side ec-back' },
     h('div', { class: 'ec-body' },
-      sec('Medicines', c.medicines.length ? c.medicines.map((m) => h('div', { class: 'ec-line' }, h('b', {}, m.name), m.dose ? ` ${m.dose}` : '', h('span', { class: 'ec-dim' }, ` ${schedule(m).replace(', every day', '')}`)))
+      sec('Medicines', c.medicines.length ? c.medicines.map((m) => h('div', { class: 'ec-line' }, h('b', {}, m.name), m.dose ? ` ${m.dose}` : '', h('span', { class: 'ec-dim' }, ` ${howOften(m)}`)))
         : h('div', { class: 'ec-line' }, 'None')),
       found(c.doctors).length ? sec(found(c.doctors).length > 1 ? 'Doctors' : 'Doctor', found(c.doctors).map((x) => who(x))) : null,
       found(c.contacts).length ? sec('In an emergency, call', found(c.contacts).map((x) => who(x, false))) : null,

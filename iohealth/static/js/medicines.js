@@ -43,6 +43,17 @@ export function schedule(m) {
   return `${list(m.times.map(fmtSlot))}, ${days}`;
 }
 
+/** How often, without the hours, for the printed emergency card (the hours are for the reminders, and may change):
+    "once a day", "twice a day", "once a week", "once a day on weekdays", "when needed". */
+export function howOften(m) {
+  if (m.asNeeded) return 'when needed';
+  const n = m.times.length, times = n === 1 ? 'once' : n === 2 ? 'twice' : `${['three', 'four', 'five', 'six'][n - 3] || n} times`;
+  if (m.days.length === 7) return `${times} a day`;
+  if (m.days.length === 1) return n === 1 ? 'once a week' : `${times} a day, one day a week`;
+  const days = m.days.join('') === '01234' ? 'weekdays' : m.days.join('') === '56' ? 'weekends' : list(m.days.map((d) => WEEKDAYS[d]));
+  return `${times} a day on ${days}`;
+}
+
 export const stillTaken = (m, day = isoDate(new Date())) => (!m.startOn || m.startOn <= day) && (!m.endOn || day <= m.endOn) && (!m.stoppedOn || day < m.stoppedOn);
 
 pages.medicines = async (main, _arg, params) => {
