@@ -204,6 +204,18 @@ def test_the_emergency_card(client, admin, monkeypatch):
     assert [a["name"] for a in c["allergies"]] == ["Penicillin"] and [m["name"] for m in c["medicines"]] == ["Lisinopril"]
     assert c["doctors"] == [{"id": 11, "name": "Dr. Helen Park", "org": "Juniper Family Medicine", "title": "", "phone": "+1 541 555 0160", "found": True}]
     assert c["contacts"][0]["name"] == "Riley Calloway" and c["contacts"][1] == {"id": 99, "found": False}, "no longer seen: marked"
+    assert c["contacts"][0]["relation"] == "", "no card of their own in ioContact: nothing is said"
+    # with their own card there ("This is me"), what each person to call is to them: stated first, then what the family implies
+    from iosuite_shared import users as shared_users
+    contacts[5] = {**_contact(5, "Morgan Calloway", "+1 541 555 0101"), "relations": [{"type": "spouse", "relatedId": 12, "typeLabel": "Wife"},
+                                                                                 {"type": "emergency", "relatedId": 13, "typeLabel": "Emergency contact"}],
+                   "impliedRelations": [{"type": "parent", "relatedId": 12, "typeLabel": "Mother"}, {"type": "aunt_uncle", "relatedId": 13, "typeLabel": "Uncle"}]}
+    contacts[13] = _contact(13, "Sam Calloway", "+1 541 555 0170")
+    shared_users.set_value(admin["id"], "iocontact", "me_contact_id", 5)
+    client.put("/api/emergency", json={"contacts": [12, 13, 99]})
+    c = client.get("/api/emergency", params={"tz": TZ}).json()
+    assert [x.get("relation") for x in c["contacts"]] == ["Wife", "Uncle", None]
+    assert "relation" not in c["doctors"][0]
     assert c["documents"][0]["number"] == "WCH900217" and c["documents"][0]["fields"] == [{"name": "Group", "value": "GRP-55120"}]
     assert ("iodocs", "/api/documents/21", None) in asked, "asked as the viewer, one by one"
     found = client.get("/api/emergency/documents").json()["items"]

@@ -35,7 +35,7 @@ export function cardSheet(c) {
       c.conditions ? sec('Conditions', h('div', { class: 'ec-line' }, c.conditions)) : null,
       c.notes ? sec('Also', h('div', { class: 'ec-line' }, c.notes)) : null));
   const found = (xs) => xs.filter((x) => x.found);
-  const who = (x, org = true) => h('div', { class: 'ec-line' }, h('b', {}, x.name), org && x.org ? `, ${x.org}` : '', x.phone ? h('span', { class: 'ec-tel' }, ` ${x.phone}`) : null);
+  const who = (x, org = true) => h('div', { class: 'ec-line' }, h('b', {}, x.name), org && x.org ? `, ${x.org}` : '', x.relation ? `, ${x.relation.toLowerCase()}` : '', x.phone ? h('span', { class: 'ec-tel' }, ` ${x.phone}`) : null);
   const back = h('div', { class: 'ec-side ec-back' },
     h('div', { class: 'ec-body' },
       sec('Medicines', c.medicines.length ? c.medicines.map((m) => h('div', { class: 'ec-line' }, h('b', {}, m.name), m.dose ? ` ${m.dose}` : '', h('span', { class: 'ec-dim' }, ` ${schedule(m).replace(', every day', '')}`)))
@@ -105,14 +105,14 @@ pages.emergency = async (main) => {
     fill(peopleCard, h('h2', {}, 'Doctors and people to call'),
       problem ? h('p', { class: 'error small' }, problem.message) : null,
       picked('Doctors', 'doctors', c.doctors), picked('In an emergency, call', 'contacts', c.contacts),
-      h('p', { class: 'small muted' }, 'From ', app.url ? h('a', { href: app.url, target: '_blank', rel: 'noopener' }, 'ioContact') : 'ioContact', ': the name and first phone number of each contact you pick.'));
+      h('p', { class: 'small muted' }, 'From ', app.url ? h('a', { href: app.url, target: '_blank', rel: 'noopener' }, 'ioContact') : 'ioContact', ': the name and first phone number of each contact you pick, and for the people to call what they are to you, where your own card there says so.'));
   }
 
   function picked(title, key, items) {
     const ids = c.kept[key];
     const box = h('div', { class: 'picks' });
     box.append(h('h3', {}, title), ...items.map((x) => h('div', { class: 'pick' + (x.found ? '' : ' gone') },
-      x.found ? h('span', {}, h('b', {}, x.name), x.org ? `, ${x.org}` : '', x.phone ? h('span', { class: 'muted' }, ` · ${x.phone}`) : h('span', { class: 'muted' }, ' · no phone number'))
+      x.found ? h('span', {}, h('b', {}, x.name), x.org ? `, ${x.org}` : '', x.relation ? `, ${x.relation.toLowerCase()}` : '', x.phone ? h('span', { class: 'muted' }, ` · ${x.phone}`) : h('span', { class: 'muted' }, ' · no phone number'))
         : h('span', { class: 'muted' }, x.found === false ? 'A contact you no longer see in ioContact' : 'ioContact did not answer'),
       h('button', { class: 'small-btn', title: 'Take it off the card', onclick: () => save({ [key]: ids.filter((i) => i !== x.id) }) }, '×'))));
     if (ids.length < MAX) {
