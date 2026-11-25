@@ -220,30 +220,55 @@ export async function appSettings(el, { toast: say = toast } = {}) {
       say(st.value === '' ? 'Back to the default' : 'Saved');
     } catch (e) { say(e.message); if (back) back(); }
   };
+  const yes = (v) => /^(1|true|yes|on)$/i.test(v || '');
   const row = (st) => {
     const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
+    const id = `io-set-${st.name}`;
     let input;
-    if (st.byApp) input = h('div', { class: 'muted' }, st.value || fallback || 'not set');
-    else if (st.type === 'switch') {
-      const on = st.value !== '' ? /^(1|true|yes|on)$/i.test(st.value) : /^(1|true|yes|on)$/i.test(st.suite || st.default || '');
-      input = h('input', { type: 'checkbox', checked: on, onchange: (e) => save(st, e.target.checked, () => { e.target.checked = !e.target.checked; }) });
+    if (st.byApp) {   // its own screen is the editor for it (a list, a picker); here it is only shown
+      const now = st.value !== '' ? st.value : (st.suite || st.default || '');
+      input = h('div', { class: 'io-set-shown' }, st.type === 'switch' ? (yes(now) ? 'On' : 'Off') : st.value !== '' ? st.value.replace(/,(?=\S)/g, ', ') : now ? `${now} (default)` : 'not set');
+    } else if (st.type === 'switch') {
+      const on = st.value !== '' ? yes(st.value) : yes(st.suite || st.default);
+      input = h('input', { id, type: 'checkbox', checked: on, onchange: (e) => save(st, e.target.checked, () => { e.target.checked = !e.target.checked; }) });
     } else if (st.type === 'choice') {
       const opts = (st.choices || []).map((c) => (Array.isArray(c) ? c : [c, c]));
-      input = h('select', { class: 't', onchange: (e) => save(st, e.target.value) },
+      input = h('select', { id, class: 't', onchange: (e) => save(st, e.target.value) },
         h('option', { value: '', selected: st.value === '' ? true : null }, fallback || 'default'),
         opts.map(([k, l]) => h('option', { value: k, selected: st.value === String(k) ? true : null }, l)));
     } else {
-      input = h('input', { class: 't', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
+      input = h('input', { id, class: 't', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
         onchange: (e) => save(st, e.target.value.trim(), () => { e.target.value = st.value; }) });
     }
-    const note = st.byApp ? 'Changed on its own screen here.' : st.restart ? 'Applies when the app starts again.' : '';
-    return h('div', { class: 'setrow' }, h('label', null, st.label, h('span', { class: 'muted small' }, st.name)),
-      h('div', null, input, st.hint ? h('div', { class: 'muted small' }, st.hint) : null, note ? h('div', { class: 'muted small' }, note) : null));
+    // one line: the label (and the name `iosuite set` takes) on the left, the field on the right, what it does below it
+    const note = [st.hint, st.byApp ? '' : st.restart ? 'Applies when the app starts again.' : ''].filter(Boolean).join(' ');
+    return h('div', { class: 'io-set' }, h('label', { for: st.byApp ? null : id }, st.label, h('span', null, st.name)),
+      h('div', null, input, note ? h('div', { class: 'io-set-note' }, note) : null));
   };
+  if (!document.getElementById('io-set-css')) document.head.append(h('style', { id: 'io-set-css' }, SET_CSS));
+  const here = d.settings.filter((st) => !st.byApp), shown = d.settings.filter((st) => st.byApp);
   el.append(h('div', { class: 'box' }, h('h2', null, 'This app'),
     h('p', { class: 'muted small' }, 'Every setting of this app, kept with the suite in one place: the same values Settings › Apps › All settings shows. A field left empty takes the default.'),
-    d.settings.map(row)));
+    h('div', { class: 'io-sets' }, here.map(row)),
+    shown.length ? [h('h3', { class: 'io-set-head' }, 'Changed on their own screens'),
+      h('p', { class: 'muted small' }, 'These have a screen of their own in this app; here they are only shown.'),
+      h('div', { class: 'io-sets' }, shown.map(row))] : null));
 }
+/* Settings › This app: one line per setting, as Settings › Apps › All settings draws them. Carried here, not in a
+   stylesheet, so the block looks the same in an app with its own stylesheet (the start page, ioPix). */
+const SET_CSS = `
+.io-set { display: grid; grid-template-columns: minmax(160px, 260px) minmax(0, 1fr); gap: 2px 16px; align-items: start; padding: 7px 0; border-top: 1px solid var(--line, #8884); margin: 0; }
+.io-sets > .io-set:first-child { border-top: 0; }
+.io-set > label { min-height: 36px; display: flex; flex-direction: column; justify-content: center; gap: 0; margin: 0; font-size: inherit; font-weight: 500; color: inherit; overflow-wrap: anywhere; }
+.io-set > label > span { font-weight: 400; font-size: 11px; color: var(--fg2, #888); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.io-set > div { min-width: 0; }
+.io-set input.t, .io-set select.t { display: block; width: 100%; max-width: 420px; height: 36px; margin: 0; box-sizing: border-box; }
+.io-set input[type="checkbox"] { display: block; width: 18px; height: 18px; margin: 9px 0; }
+.io-set-shown { min-height: 36px; display: flex; align-items: center; color: var(--fg2, #888); overflow-wrap: anywhere; word-break: break-word; }
+.io-set-note { margin-top: 3px; max-width: 640px; font-size: 12px; color: var(--fg2, #888); }
+.io-set-head { margin: 22px 0 2px; font-size: 14px; font-weight: 600; }
+@media (max-width: 600px) { .io-set { grid-template-columns: minmax(0, 1fr); } .io-set > label { min-height: 0; } .io-set input.t, .io-set select.t { max-width: none; } }
+`;
 
 /** The account panels (api/auth/ui.js), asked for when Settings opens. */
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
