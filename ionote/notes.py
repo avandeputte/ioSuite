@@ -850,11 +850,11 @@ def ensure_standard_templates(user: str = "ioNote") -> int:
         return 0
     key = f"standard_templates:{o}"
     try:
-        if int(db.get_setting(key, "0") or 0) >= STANDARD_VERSION:
+        if int(db.get_state(key, "0") or 0) >= STANDARD_VERSION:
             _seeded.add(o)
             return 0
-        added = _add_standard(user, since=int(db.get_setting(key, "0") or 0))
-        db.set_setting(key, STANDARD_VERSION)
+        added = _add_standard(user, since=int(db.get_state(key, "0") or 0))
+        db.set_state(key, STANDARD_VERSION)
         _seeded.add(o)
         return added
     except Exception:  # never stand in the way of loading notes

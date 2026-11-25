@@ -1,5 +1,7 @@
-"""Settings: kept in the Shared ioSuite database and read once, as the app starts (Settings › Apps › All settings
-changes them; app.json lists the app's own). Everything stored
+"""Settings: kept in the Shared ioSuite database, the suite's one home for them (Settings › Apps › All settings and
+the app's own Settings page change them; app.json lists the app's own). The ones that say where the app answers and
+where it keeps what it keeps are read once, as it starts (`env`); every other is read as it is now (`live`), so a
+change takes hold without a restart. Everything stored
 lives in MariaDB. The settings every app of the suite shares come from iosuite_shared.config.standard.
 
 The Monarch Money sign-in and any other key are not settings: they are kept in the Shared ioSuite database with the
@@ -10,6 +12,7 @@ from iosuite_shared import config as shared
 # app.json's limits: iosuite_shared.config.of_app says what each is
 _own = shared.of_app(__package__)
 globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
 env_flag = _own["env_flag"]
 
 # the background work (iomoney/main.py): SYNC=0 stops it (Monarch, quotes and notifications then only run when asked)

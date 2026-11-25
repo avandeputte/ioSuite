@@ -42,6 +42,13 @@
       "type": "number",
       "default": "100",
       "hint": "One manual, receipt or photo as uploaded."
+    },
+    {
+      "name": "CURRENCY",
+      "label": "Currency",
+      "type": "text",
+      "default": "USD",
+      "hint": "The three-letter code prices and costs are in (USD, EUR). Settings › Things shows the same value."
     }
   ],
   "access": {

@@ -69,9 +69,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioCalendar has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioCalendar, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iocalendar        # what may be set, with the value stored now
@@ -86,6 +87,8 @@ iosuite set iocalendar PUBLIC_URL https://calendar.example.com    # no value: ba
 | `HOLIDAYS_COUNTRY` | public holidays: countries. Until Settings › Holidays and birthdays is chosen: a two-letter country code or several (BE,NL); off: none. Empty: the time zone's |
 | `HOLIDAYS_REGION` | public holidays: region. A state or province code of the first country |
 | `HOLIDAYS_LANGUAGE` | public holidays: language. The language of the holidays' names |
+| `HOLIDAYS` | the countries, regions and languages Settings › Holidays and birthdays picked, one Holidays calendar each (that screen writes it) |
+| `CONTACT_BIRTHDAYS` | keep a Birthdays calendar from the family's address books (`1` or `0`; on by default) |
 
 The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
 machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).

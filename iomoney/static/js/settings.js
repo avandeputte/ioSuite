@@ -13,11 +13,11 @@ export async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
     ...(adm ? [['money', 'Money']] : []),
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   put(page, h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div', { style: { maxWidth: '900px' } }); put(page, body);
-  await ({ account: setAccount, display: setDisplay, money: setMoney, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, money: setMoney, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 
 /** Settings › Money (admins): the household's currency, and Monarch Money: whether its sign-in is kept (in the
@@ -79,4 +79,7 @@ async function setDisplay(el) {
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 function setSuite(el, r) { return frame.suitePanel(el, r); }

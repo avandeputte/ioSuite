@@ -228,9 +228,9 @@ def test_what_is_kept_is_read_leniently(client):
     """A value that is no longer known (an older version's, a typo in the table) is left out, the rest stands."""
     from iostart import db
     me = client.get("/api/status").json()["user"]["id"]
-    db.set_setting(f"user:{me}:layout", '{"hidden": ["ionote", 7, "Not an app!"], "style": "mosaic", "sizes": {"iopix": "tile", "x y": "card", "iotask": "huge"}, "accent": "teal", "todayDays": 12}')
+    db.set_state(f"user:{me}:layout", '{"hidden": ["ionote", 7, "Not an app!"], "style": "mosaic", "sizes": {"iopix": "tile", "x y": "card", "iotask": "huge"}, "accent": "teal", "todayDays": 12}')
     assert client.get("/api/me/layout").json() == {**layout.EMPTY, "hidden": ["ionote"], "sizes": {"iopix": "tile"}, "accent": "teal"}
-    db.set_setting(f"user:{me}:layout", "not json")
+    db.set_state(f"user:{me}:layout", "not json")
     assert client.get("/api/me/layout").json() == layout.EMPTY
 
 

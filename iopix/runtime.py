@@ -19,10 +19,10 @@ from iopix import config, events, jobs, thumbs
 from iopix.digikam import dbsync, dkdb
 from iopix.photos import edits
 from iopix.faces import ages, facevecs
-from iopix.data import index, state as appstate, appdb
+from iopix.data import index, appdb
 from iopix.ai.semantic import enabled as semantic_enabled, semantic
 from iopix.data.query import build_where
-from iosuite_shared import live
+from iosuite_shared import admin as suite_admin, live
 
 CACHES: list = []  # lru caches cleared when the index changes (the browsing routes register theirs)
 
@@ -277,8 +277,8 @@ def models_arrived(keys: list):
     if keys:
         try:
             for k in ("siglip2", "jinaclip", "clip"):
-                if k in keys and not appstate.get_setting("search_model", ""):  # "": none chosen yet (the table default would say clip)
-                    appstate.set_setting("search_model", k)
+                if k in keys and not config.live("SEARCH_MODEL", ""):  # "": none chosen yet (the table default would say clip)
+                    suite_admin.set_setting(config.APP, "SEARCH_MODEL", k)
                     break
             start_prewarm()
         except Exception as e:  # no index yet (digiKam unreachable on a first start): the watcher starts the jobs later
@@ -291,7 +291,7 @@ APP_NAME_DEFAULT = "ioPix"
 
 def app_name() -> str:
     """What the viewer calls itself (Settings › Name): the top bar, the tab title, the installed app."""
-    name = (appstate.get_setting("app_name", "") or "").strip()[:40]
+    name = config.live("APP_NAME").strip()[:40]
     return APP_NAME_DEFAULT if not name or name.lower() == APP_NAME_DEFAULT.lower() else name  # "iopix" typed in any case shows as the wordmark ioPix
 
 

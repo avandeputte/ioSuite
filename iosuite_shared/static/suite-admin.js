@@ -739,14 +739,18 @@ async function settings(el, ctx) {
     const save = async (value) => {
       try {
         const n = await api(`settings/${encodeURIComponent(where)}/${encodeURIComponent(st.name)}`, { method: 'PUT', json: { value } });
-        st.value = n.value; changed.add(app); drawBar(); toast(n.value === '' ? 'Back to the default' : 'Saved');
+        st.value = n.value;
+        if (st.restart) { changed.add(app); drawBar(); }   // the rest is read as it is now: no restart
+        toast(n.value === '' ? 'Back to the default' : 'Saved');
         return true;
       } catch (e) { fail(e); return false; }
     };
     const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
     const id = `sa-set-${where}-${st.name}`;
     let input;
-    if (st.type === 'switch') {
+    if (st.byApp) {   // its own screen in the app is the editor for it (a list, a map); here it is only shown
+      input = h('div', { class: 'sa-muted', style: { wordBreak: 'break-word' } }, st.value || fallback || 'not set');
+    } else if (st.type === 'switch') {
       const on = st.value !== '' ? /^(1|true|yes|on)$/i.test(st.value) : /^(1|true|yes|on)$/i.test(st.suite || st.default || '');
       input = h('input', { id, type: 'checkbox', checked: on, onchange: async (e) => { if (!await save(e.target.checked)) e.target.checked = !e.target.checked; } });
     } else if (st.type === 'choice') {
@@ -759,12 +763,15 @@ async function settings(el, ctx) {
         onchange: async (e) => { if (!await save(e.target.value.trim())) e.target.value = st.value; } });
     }
     // one line: the label (and the name `iosuite set` takes) on the left, the field on the right, what it does below it
+    const note = st.byApp ? 'Changed on the app’s own Settings page.' : st.restart ? 'Applies when the app starts again.' : '';
     return h('div', { class: 'sa-set' },
       h('label', { for: id }, st.label, h('span', null, st.name)),
-      h('div', null, input, st.hint ? h('div', { class: 'sa-muted sa-small' }, st.hint) : null));
+      h('div', null, input,
+        st.hint ? h('div', { class: 'sa-muted sa-small' }, st.hint) : null,
+        note ? h('div', { class: 'sa-muted sa-small' }, note) : null));
   };
   el.append(box('apps', 'Settings',
-    h('p', { class: 'sa-muted' }, 'What the apps read as they start, kept in the Shared ioSuite database: no settings file per app. A field left empty takes the suite’s value or the default. Keys and passwords are under Keys and tokens.'),
+    h('p', { class: 'sa-muted' }, 'Every setting of the suite and of its apps, kept in the Shared ioSuite database: no settings file per app. A change takes hold at once, except for the few marked below, which the apps read as they start. A field left empty takes the suite’s value or the default. Keys and passwords are under Keys and tokens.'),
     bar,
     h('details', { open: true }, h('summary', { style: { cursor: 'pointer', fontWeight: 600, padding: '6px 0' } }, 'Whole suite'), d.suite.map((st) => field('', st))),
     d.apps.map((a) => h('details', { open: a.app === ctx.o.app ? true : null },

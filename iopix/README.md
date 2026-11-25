@@ -89,9 +89,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioPix has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioPix, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iopix        # what may be set, with the value stored now
@@ -109,9 +110,20 @@ iosuite set iopix PUBLIC_URL https://photos.example.com    # no value: back to t
 | `DIGIKAM_DB_HOST` | digiKam MySQL host (`127.0.0.1`) |
 | `DIGIKAM_DB_PORT` | digiKam MySQL port (`3306`) |
 | `DIGIKAM_DB_NAME` | digiKam MySQL database (`digikam`) |
-| `DIGIKAM_DB_USER` | digiKam MySQL user (`digikam`). Its password is set in ioPix under Settings › Library › digiKam database |
+| `DIGIKAM_DB_USER` | digiKam MySQL user (`digikam`). Its password is set under Settings › Library › digiKam database and kept with the suite's keys and tokens, written and never read back |
 | `DIGIKAM_DB_BACKUP` | back up digiKam's database before destructive operations (`auto`) |
 | `DIGIKAM_DB_DUMP` | command that dumps digiKam's MySQL database. Used instead of mysqldump, e.g. through docker exec |
+| `APP_NAME` | what it calls itself on its pages. Empty: ioPix |
+| `WRITE_FILES` | write metadata into the picture files as well, not only into the sidecars (`1` or `0`; off by default) |
+| `DIGIKAM_SYNC` | read and write digiKam's database (`1` or `0`; on by default). Off: ioPix works from its own copy of the library |
+| `FILE_SCANNER` | watch the album folders for files added, changed or removed outside ioPix. Empty: on where there is no digiKam |
+| `SCAN_INTERVAL` | minutes between folder passes (`15`) |
+| `SEARCH_MODEL` | the model behind search (`clip`, `siglip2`, `jinaclip`): Settings › Search picks one of those installed |
+| `FACE_DETECTOR`, `OBJECT_MODEL`, `CAPTION_MODEL`, `FACE_VECTORS`, `SPEECH_MODEL` | which model each feature runs on. Empty: the first one installed |
+| `NEAR_DUPS_LEVEL` | how alike near duplicates must be (`strict`, `normal`, `loose`) |
+| `IMPORT_LAYOUT` | the folder layout imports go into. Empty: the first one ioPix offers |
+| `MAP_PROVIDER` | who draws the map (`osm` or `google`; Google needs a key) |
+| `ALBUM_ROOTS`, `EDIT_TEMPLATES` | where digiKam's album roots are mounted here, and the owner name and contact the Edit panel offers: Settings › Library and Settings › Editing write them |
 | `DIGIKAM_CHECK` | how to tell that digiKam is closed (`pgrep`). none: digiKam runs on another machine and cannot be seen |
 | `DIGIKAM_MYSQL_DATES` | dates in a MySQL digiKam library. Empty: detected |
 | `SIDECAR_COMPAT` | name new sidecars photo.xmp (`1` or `0`; off by default) |

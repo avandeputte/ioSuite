@@ -26,7 +26,7 @@ WAIT_DAYS = 7    # a transaction this recent may not be in the bank's balance ye
 RUN_DAYS = 45    # weeks whose changes cancel out within this many days are a matter of dates, not a gap
 MAX_TRIED = 14   # of the latest ones, every combination is tried
 CENT = Decimal("0.01")
-OK = "balance_ok:"  # mny_settings: balance_ok:<account id> = the gap a person accepted
+OK = "balance_ok:"  # mny_state: balance_ok:<account id> = the gap a person accepted
 
 
 def _accounts(u: dict) -> list[dict]:
@@ -106,7 +106,7 @@ def _check(a: dict, days: int) -> dict:
             prev, last, mark = g, d, d
         return _settled(weeks)
     gap = gap_at(today, Decimal(a["balance"]))
-    accepted = db.get_setting(OK + str(a["id"]))
+    accepted = db.get_state(OK + str(a["id"]))
     # the past week's ones the balance does not show yet, when they are the whole of the gap
     waiting = _waiting([t for t in tx if (today - t["day"]).days <= WAIT_DAYS], gap, sign) if abs(gap) > CENT else []
     if abs(gap) <= CENT:
@@ -163,10 +163,10 @@ def accept(u: dict, a: dict, b: dict) -> dict:
     """{gap}: this account's gap was looked at and is fine as it is (null: flag it again)."""
     model._need(model.can_write(u, a))
     if b.get("gap") is None:
-        db.set_setting(OK + str(a["id"]), None)
+        db.set_state(OK + str(a["id"]), None)
     else:
         g = model.money(b.get("gap"), "The gap")
         if not g:
             raise Invalid("There is no gap to accept")
-        db.set_setting(OK + str(a["id"]), str(g))
+        db.set_state(OK + str(a["id"]), str(g))
     return {"ok": True}

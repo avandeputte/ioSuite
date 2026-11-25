@@ -240,14 +240,22 @@ def n2(d) -> float | None:
     return None if d is None else float(Decimal(d).quantize(CENT))
 
 
-# ---- the household's currency, and other settings of the app
+# ---- the household's currency, and the other settings of the app (the suite's one home for them: declared in
+# iomoney/app.json, in the Shared ioSuite database, read as they are now)
 
 def setting(name: str, default: str = "") -> str:
-    return db.get_setting(name, default) or default
+    """One of the app's settings as it is now (CURRENCY, MONARCH_AUTO, SYNC)."""
+    return config.live(name, default)
+
+
+def state(name: str, default: str = "") -> str:
+    """What the app wrote down for itself (mny_state): where the Monarch sync got to, when the household started
+    looking, a balance someone said was right."""
+    return db.get_state(name, default) or default
 
 
 def home_currency() -> str:
-    return setting("currency", "USD")
+    return setting("CURRENCY", "USD")
 
 
 def rate(cur: str | None) -> Decimal:

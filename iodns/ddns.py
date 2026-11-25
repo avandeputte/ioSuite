@@ -4,7 +4,7 @@ A record's source "publicip" holds the public IPv4 address (an A record), "publi
 minutes (Settings › Dynamic DNS) ioDNS finds the public address; when it changed, those records take the new one and
 every server holding them (Cloudflare…) is brought up to date at once, without anyone looking.
 
-Where the address comes from (the setting ddns_detect):
+Where the address comes from (the setting DDNS_DETECT, in the suite's one home for an app's settings):
 
     auto           an address-echo service: api.ipify.org / api64.ipify.org, then icanhazip.com, then ifconfig.co
     unifi:<id>     the WAN address the UniFi gateway reports (its health page), so nothing outside the house is asked
@@ -19,7 +19,9 @@ import time
 
 import httpx2
 
-from iodns import db, model
+from iosuite_shared import admin as suite_admin
+
+from iodns import config, db, model
 
 log = logging.getLogger("iodns")
 
@@ -31,10 +33,12 @@ _here = threading.local()
 
 
 def settings() -> dict:
-    return {"detect": db.get_setting("ddns_detect", "auto") or "auto",
-            "minutes": int(db.get_setting("ddns_minutes", "5") or 5),
-            "ipv4": db.get_setting("public_ipv4") or None, "ipv6": db.get_setting("public_ipv6") or None,
-            "checkedAt": db.get_setting("public_checked_at") or None, "error": db.get_setting("public_error") or None,
+    """How the public address is found and how often, with what was found last. The first two are settings, in the
+    suite's one home for them; the rest is what this app wrote down for itself."""
+    return {"detect": config.live("DDNS_DETECT", "auto"),
+            "minutes": config.live_int("DDNS_MINUTES", 5),
+            "ipv4": db.get_state("public_ipv4") or None, "ipv6": db.get_state("public_ipv6") or None,
+            "checkedAt": db.get_state("public_checked_at") or None, "error": db.get_state("public_error") or None,
             "records": db.one("SELECT count(*) AS n FROM dns_records WHERE source IN ('publicip', 'publicip6')")["n"]}
 
 
@@ -47,12 +51,12 @@ def save_settings(body: dict) -> dict:
             s = model.server(int(d.split(":", 1)[1]))
             if s["kind"] != "unifi":
                 raise ValueError(f"{s['name']} is not a UniFi gateway")
-        db.set_setting("ddns_detect", d)
+        suite_admin.set_setting(config.APP, "DDNS_DETECT", d)
     if "minutes" in body:
         m = int(body["minutes"])
         if not 0 <= m <= 1440:
             raise ValueError("Every 1 to 1440 minutes (0: never on its own)")
-        db.set_setting("ddns_minutes", str(m))
+        suite_admin.set_setting(config.APP, "DDNS_MINUTES", str(m))
     return settings()
 
 
@@ -108,9 +112,9 @@ def detect() -> dict:
 def address(source: str) -> str | None:
     """The public address a source stands for, as last found (None: not found yet)."""
     if source == "publicip":
-        return db.get_setting("public_ipv4") or None
+        return db.get_state("public_ipv4") or None
     if source == "publicip6":
-        return db.get_setting("public_ipv6") or None
+        return db.get_state("public_ipv6") or None
     return None
 
 
@@ -132,21 +136,21 @@ def running() -> bool:
 
 def _run(by: str | None, force_push: bool) -> dict:
     from iodns import sources, sync
-    before = (db.get_setting("public_ipv4"), db.get_setting("public_ipv6"))
+    before = (db.get_state("public_ipv4"), db.get_state("public_ipv6"))
     try:
         now = detect()
     except Exception as e:  # a gateway away, no network: try again next time
-        db.set_setting("public_error", str(e)[:500])
+        db.set_state("public_error", str(e)[:500])
         raise
-    db.set_setting("public_checked_at", str(int(time.time())))
+    db.set_state("public_checked_at", str(int(time.time())))
     if not now["ipv4"] and not now["ipv6"]:
-        db.set_setting("public_error", "No public address found")
+        db.set_state("public_error", "No public address found")
         return {**now, "changed": False, "pushed": []}
-    db.set_setting("public_error", None)
+    db.set_state("public_error", None)
     if now["ipv4"]:
-        db.set_setting("public_ipv4", now["ipv4"])
+        db.set_state("public_ipv4", now["ipv4"])
     if now["ipv6"]:
-        db.set_setting("public_ipv6", now["ipv6"])
+        db.set_state("public_ipv6", now["ipv6"])
     changed = (now["ipv4"] or before[0], now["ipv6"] or before[1]) != before
     pushed = []
     if changed:

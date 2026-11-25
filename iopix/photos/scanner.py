@@ -38,7 +38,6 @@ from iopix import config, jobs
 from iopix.digikam import dbsync, dkdb
 from iopix.photos import edits, folders, history, importer
 from iopix.digikam.dbsync import COLOR_TAGS, PICK_TAGS, SyncError, gps_text
-from iopix.data import state
 from iopix.faces.facemgr import rect_xml, special_tags, unrotate
 
 log = logging.getLogger("iopix.photos.scanner")
@@ -66,13 +65,13 @@ _wake = threading.Event()
 # ---- settings
 def enabled() -> bool:
     """Whether the file scanner runs (the setting; on by default only when there is no digiKam to find new photos)."""
-    return state.get_setting("file_scanner", "1" if dkdb.no_digikam() else "0") == "1"  # with no digiKam, nothing else finds new photos
+    return config.live_flag("FILE_SCANNER", dkdb.no_digikam())  # with no digiKam, nothing else finds new photos
 
 
 def interval() -> int:
     """Minutes between scans, from the setting, kept between 1 and a day."""
     try:
-        return max(1, min(1440, int(state.get_setting("scan_interval", "15"))))
+        return max(1, min(1440, config.live_int("SCAN_INTERVAL", 15)))
     except ValueError:
         return 15
 

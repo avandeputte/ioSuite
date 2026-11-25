@@ -116,7 +116,7 @@ def test_container_mode_writes_without_asking(client, dk):
     """DIGIKAM_CHECK=none (containers): the viewer cannot see digiKam, so it neither checks nor asks."""
     from iopix.data import state
     assert client.get("/api/status").json()["digikamCheck"] == "none"
-    state.set_setting("digikam_closed_until", "0")  # no vouch in force
+    state.set_state("digikam_closed_until", "0")  # no vouch in force
     r = client.post("/api/tags/op", json={"op": "add", "parent": 0, "name": "zz-ask-probe"})
     assert r.status_code == 200, r.text
 

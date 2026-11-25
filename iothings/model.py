@@ -12,10 +12,10 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 
-from iosuite_shared import family as suite_family, related, stamp, users as shared_users
+from iosuite_shared import admin as suite_admin, family as suite_family, related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
-from iothings import db
+from iothings import config, db
 
 
 class NotFound(Exception):
@@ -724,7 +724,8 @@ def duplicate(u: dict, it: dict) -> dict:
 # ---- the app's settings (admins)
 
 def currency() -> str:
-    return db.get_setting("currency") or "USD"
+    """The currency prices and costs are in, as it is now (the suite's one home for an app's settings)."""
+    return config.live("CURRENCY", "USD")
 
 
 def settings() -> dict:
@@ -736,5 +737,5 @@ def set_settings(data: dict) -> dict:
         c = str(data.get("currency") or "").strip().upper()
         if not re.fullmatch(r"[A-Z]{3}", c):
             raise Invalid("currency: a three-letter code such as USD or EUR")
-        db.set_setting("currency", c)
+        suite_admin.set_setting(config.APP, "CURRENCY", c)
     return settings()

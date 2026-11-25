@@ -37,8 +37,12 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
   ask                      [{name, question, also}]: settings of its own the installer asks for when the app is first
                            added to a suite (ioPix: the photos folder); an answer is stored, with the settings in
                            `also` beside it; no answer leaves the default
-  settings                 [{name, label, hint, type, default, choices}]: its own settings, kept in the Shared ioSuite
-                           database (iosuite_shared.config.declared), for Settings › Apps › All settings and `iosuite set`
+  settings                 [{name, label, hint, type, default, choices, restart, byApp}]: its own settings, kept in the
+                           Shared ioSuite database (iosuite_shared.config.declared), the suite's one home for them:
+                           Settings › Apps › All settings, the app's own Settings page (GET/PUT /api/app-settings)
+                           and `iosuite set`. Read as it is now (config.live) unless `restart`, which the app reads
+                           once as it starts; `byApp` says its own screen in the app is the editor for it (a list, a
+                           map), so All settings only shows the value
   items                    [{kind, label, plural, href, id}]: the kinds of items it has; href opens one in the app
                            ("#/event/{id}"); id "uuid" for UUIDs (default: a number)
   notifications            [{kind, label, hint, admin}]: what Account › Notifications offers from it
@@ -134,6 +138,8 @@ def validate(apps: list[dict]) -> list[dict]:
         for d in m.get("settings") or []:
             if not re.fullmatch(r"[A-Z][A-Z0-9_]{1,40}", str(d.get("name"))) or not d.get("label") or d.get("type") not in ("text", "number", "switch", "choice"):
                 raise ValueError(f"{k}/{MANIFEST}: a setting needs a NAME, a label and a type (text, number, switch, choice): {d}")
+            if set(d) - {"name", "label", "hint", "type", "default", "choices", "restart", "byApp"}:
+                raise ValueError(f"{k}/{MANIFEST}: a setting says name, label, hint, type, default, choices, restart, byApp: {d}")
             if d["type"] == "choice" and not d.get("choices"):
                 raise ValueError(f"{k}/{MANIFEST}: the choice {d['name']} has no choices")
         names = {d["name"] for d in m.get("settings") or []}

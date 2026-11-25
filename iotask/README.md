@@ -67,9 +67,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioTask has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioTask, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iotask        # what may be set, with the value stored now

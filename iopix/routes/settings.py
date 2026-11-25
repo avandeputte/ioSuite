@@ -1,4 +1,11 @@
-"""Settings: the Settings page, the databases, album roots and the map provider."""
+"""Settings: the Settings page, the databases, album roots and the map provider.
+
+Every setting below is kept in the suite's one home for them (declared in iopix/app.json, in the Shared ioSuite
+database), so Settings › Apps › All settings shows the same values, and each is read as it is now wherever ioPix
+uses it (config.live). This page is the editor people use; what the app writes down for itself (which models the
+stored face vectors came from, the near-duplicate generation, the last tags used) is in its own database
+(iopix/data/state.py: STATE).
+"""
 import json
 import os
 import time
@@ -18,7 +25,7 @@ from iopix.geo import geocode, maps
 from iopix.ai.semantic import ready as semantic_ready, ENGINES, semantic
 from iosuite_shared.http import json_body
 from iopix.runtime import start_prewarm
-from iosuite_shared import serve
+from iosuite_shared import admin as suite_admin, credentials, serve
 
 
 from iopix.routes.browse import photos_cached
@@ -38,12 +45,12 @@ def _settings_public() -> dict:
         "bg_threads": bgjobs.threads(),
         "require_login": users.require_login(),
         "digikam_sync": index.sync_enabled(),
-        "app_name": appstate.get_setting("app_name"),
+        "app_name": config.live("APP_NAME"),
         "database": db_settings_public(),
         "album_roots": dkdb.root_overrides(),
-        "map_provider": appstate.get_setting("map_provider"),
+        "map_provider": config.live("MAP_PROVIDER", "osm"),
         "google_maps_key_set": bool(maps.key()),
-        "templates": json.loads(appstate.get_setting("templates")),
+        "templates": json.loads(config.live("EDIT_TEMPLATES", "[]")),
     }
 
 
@@ -59,29 +66,34 @@ def api_settings_get(request: Request):
     return out
 
 
+def _save(name, value):
+    """One of ioPix's settings, in the suite's one home for them."""
+    suite_admin.set_setting(config.APP, name, value)
+
+
 def _switch(name):
     """A setting that is on or off."""
     def f(value, _body):
-        appstate.set_setting(name, "1" if value else "0")
+        _save(name, bool(value))
     return f
 
 
 def _text(name, limit=None):
     def f(value, _body):
-        appstate.set_setting(name, str(value or "").strip()[:limit])
+        _save(name, str(value or "").strip()[:limit])
     return f
 
 
 def _file_scanner(value, _body):
     """Watch the album folders for files added, changed or removed outside the viewer."""
-    appstate.set_setting("file_scanner", "1" if value else "0")
+    _save("FILE_SCANNER", bool(value))
     if value:
         scanner.run_soon()
 
 
 def _scan_interval(value, _body):
     try:
-        appstate.set_setting("scan_interval", str(max(1, min(1440, int(value)))))
+        _save("SCAN_INTERVAL", str(max(1, min(1440, int(value)))))
     except (TypeError, ValueError):
         raise HTTPException(400, "scan_interval: minutes between passes")
 
@@ -95,7 +107,7 @@ def _library_replace(value, _body):
 
 def _digikam_sync(value, _body):
     """Off: the viewer works from its own copy of the library and never opens digiKam's database."""
-    appstate.set_setting("digikam_sync", "1" if value else "0")
+    _save("DIGIKAM_SYNC", bool(value))
     if value:
         index.offline.update(since=None, error=None)
     events.kick()
@@ -104,24 +116,24 @@ def _digikam_sync(value, _body):
 def _digikam_closed(value, _body):
     """Docker: the owner vouches that digiKam is closed, for 10 minutes."""
     if value:
-        appstate.set_setting("digikam_closed_until", str(time.time() + 600))
+        appstate.set_state("digikam_closed_until", str(time.time() + 600))
 
 
 def _templates(value, _body):
     """Metadata templates: [{name, fields}]."""
     tpls = [{"name": str(t.get("name", ""))[:80], "fields": {k: str(v or "")[:1000] for k, v in (t.get("fields") or {}).items() if k in edits.TEMPLATE_FIELDS}}
             for t in value if isinstance(t, dict) and t.get("name")]
-    appstate.set_setting("templates", json.dumps(tpls))
+    _save("EDIT_TEMPLATES", json.dumps(tpls))
 
 
 def _database(value, _body):
     """The digiKam database connection; applies at once (the index rebuilds)."""
     d = value or {}
-    for k in dkdb.KEYS:
-        if k == "password" and not d.get("password"):
-            continue  # an empty password field means "keep the stored one"
+    if d.get("password"):   # an empty password field means "keep the stored one"
+        credentials.put(config.APP, dkdb.PASSWORD, str(d["password"]).strip())
+    for k, name in dkdb.SETTING.items():
         if k in d:
-            appstate.set_setting("db_" + k, str(d[k]).strip() if d[k] is not None else "")
+            _save(name, str(d[k]).strip() if d[k] is not None else "")
     events.kick()
 
 
@@ -130,7 +142,7 @@ def _album_roots(value, _body):
     d = value or {}
     if not isinstance(d, dict):
         raise HTTPException(400, "album_roots must be an object")
-    appstate.set_setting("album_roots", json.dumps({str(k): str(v).strip() for k, v in d.items() if str(v).strip()}))
+    _save("ALBUM_ROOTS", json.dumps({str(k): str(v).strip() for k, v in d.items() if str(v).strip()}))
     events.kick()
 
 
@@ -138,14 +150,14 @@ def _map_provider(value, _body):
     """osm or google; google needs a key (in the suite's keys and tokens)."""
     if value not in ("osm", "google"):
         raise HTTPException(400, "Unknown map provider")
-    appstate.set_setting("map_provider", value)
+    _save("MAP_PROVIDER", value)
     maps.reset_session()
     geocode.clear_cache()
 
 
 def _sidecar_compat(value, _body):
     """New sidecars as photo.xmp (digiKam's "compatible file name" option) instead of photo.jpg.xmp."""
-    appstate.set_setting("sidecar_compat", "1" if value else "0")
+    _save("SIDECAR_COMPAT", bool(value))
     maps.reset_session()
 
 
@@ -154,14 +166,14 @@ def _bg_threads(value, _body):
     n = int(value)
     if not 1 <= n < (os.cpu_count() or 4):
         raise HTTPException(400, "Choose between 1 and the number of cores minus one")
-    appstate.set_setting("bg_threads", str(n))
+    _save("BG_THREADS", str(n))
 
 
 def _search_model(value, _body):
     name = str(value)
     if name not in ENGINES or not semantic_ready(name):
         raise HTTPException(400, "That search model is not installed")
-    appstate.set_setting("search_model", name)
+    _save("SEARCH_MODEL", name)
     photos_cached.cache_clear()
     start_prewarm()  # starts indexing for the newly chosen model if needed
 
@@ -174,7 +186,7 @@ def _model(group):
             raise HTTPException(400, f"Unknown model for {dlmodels.CHOICES[group]['label'].lower()}")
         if not dlmodels.local(key)["installed"]:
             raise HTTPException(400, f"{dlmodels.REGISTRY[key]['label']} is not installed; download it first")
-        appstate.set_setting(group, key)
+        _save(group.upper(), key)
         dlmodels.reset(key)  # the next use loads the new model (its locks may be held by a loading job)
         if group == "face_vectors":
             facevecs.start()  # every face is embedded again with the new model
@@ -185,10 +197,10 @@ def _model(group):
 
 # every key the Settings page can post, applied in this order: {key: handler(value, body)}
 SETTINGS = {
-    "write_files": _switch("write_files"),  # also write metadata into image files (JPEG, PNG, TIFF, WebP), not just sidecars
+    "write_files": _switch("WRITE_FILES"),  # also write metadata into image files (JPEG, PNG, TIFF, WebP), not just sidecars
     "file_scanner": _file_scanner,
     "scan_interval": _scan_interval,
-    "app_name": _text("app_name", 40),  # how the viewer brands itself; empty puts the default back
+    "app_name": _text("APP_NAME", 40),  # how the viewer brands itself; empty puts the default back
     "library_replace": _library_replace,
     "digikam_sync": _digikam_sync,
     "digikam_closed": _digikam_closed,
@@ -221,6 +233,7 @@ async def api_settings(request: Request):
 
 
 def db_settings_public() -> dict:
+    """The digiKam connection as the Settings page shows it: never the password, only whether one is set."""
     c = dkdb.settings()
     return {k: c[k] for k in dkdb.KEYS if k != "password"} | {"password_set": bool(c["password"]), "env_type": dkdb.ENV["type"]}
 

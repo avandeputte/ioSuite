@@ -36,7 +36,6 @@ from email.utils import parsedate_to_datetime
 from importlib.metadata import PackageNotFoundError, version as package_version
 
 from iopix import config, jobs
-from iopix.data import state
 from iopix.geo import places
 
 MODEL_DIR = config.DATA_DIR / "models"
@@ -147,7 +146,7 @@ def options(group: str) -> list:
 def chosen(group: str) -> str:
     """The model key the owner picked for this feature (a setting), else the default."""
     try:
-        key = state.get_setting(group, "")
+        key = config.live(group.upper(), "")
     except Exception:
         key = ""
     return key if key in REGISTRY and REGISTRY[key].get("choice") == group else CHOICES[group]["default"]

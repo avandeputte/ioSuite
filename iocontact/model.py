@@ -629,7 +629,7 @@ def delete(cid: int) -> None:
 # and the uid, which is what a sync client needs to drop its copy.
 CLEARED = ("prefix", "given", "additional", "family", "suffix", "nickname", "maiden", "phonetic_given", "phonetic_family", "gender",
            "bday_year", "bday_month", "bday_day", "org", "department", "title", "role", "notes", "extra", "iopix_person_id", "iopix_person_name")
-PURGED = "purged_token:"  # con_settings: per address book, the newest change among the markers that were purged
+PURGED = "purged_token:"  # con_state: per address book, the newest change among the markers that were purged
 
 
 def purge_deleted(days: int | None = None) -> int:
@@ -641,7 +641,7 @@ def purge_deleted(days: int | None = None) -> int:
         old = db.q("SELECT address_book_id AS book, max(changed_token) AS tok FROM con_contacts WHERE deleted = 1 "
                    "AND updated_at < NOW() - INTERVAL %s DAY GROUP BY address_book_id", (days,))
         for r in old:
-            db.set_setting(f"{PURGED}{r['book']}", str(max(r["tok"], purged_before(r["book"]))))
+            db.set_state(f"{PURGED}{r['book']}", str(max(r["tok"], purged_before(r["book"]))))
         if not old:
             return 0
         gone = [r["id"] for r in db.q("SELECT id FROM con_contacts WHERE deleted = 1 AND updated_at < NOW() - INTERVAL %s DAY", (days,))]
@@ -652,7 +652,7 @@ def purge_deleted(days: int | None = None) -> int:
 
 def purged_before(book_id: int) -> int:
     """The sync token up to which this book's deletion markers are gone (0: none were purged)."""
-    return int(db.get_setting(f"{PURGED}{book_id}") or 0)
+    return int(db.get_state(f"{PURGED}{book_id}") or 0)
 
 
 def move(cid: int, new_book: int) -> None:

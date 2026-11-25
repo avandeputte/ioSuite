@@ -266,9 +266,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioStart has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioStart, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iostart        # what may be set, with the value stored now
@@ -281,6 +282,12 @@ iosuite set iostart HA_FEED 0    # no value: back to the default
 | `DATA_DIR` | where the app writes on its own (`iostart/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iostart`) |
 | `HA_FEED` | follow Home Assistant live (`1` or `0`; on by default). Off: no standing connection to Home Assistant; the page asks every few seconds instead |
+| `PHOTO_STRIP` | photos under the tiles for everyone (`rediscover`, `onthisday` or `off`); each person may pick another in Customize |
+| `WEATHER_UNITS` | the weather in `metric` or `imperial`; each person may pick their own in Customize |
+| `WEATHER_LOCATION`, `WEATHER_LOCATION_NAME` | the place Settings › Weather picked (AccuWeather's own key for it, and its name): that screen writes them |
+| `HA_URL` | where Home Assistant answers (`http://homeassistant.local:8123`); its token is under Settings › Keys |
+| `HA_NAME`, `HA_ENTITIES` | what Home Assistant calls the house and the things picked in Settings › Home Assistant: that screen writes them |
+| `HA_BUILTIN_ALERTS` | show the warnings Home Assistant itself raises (`1` or `0`; on by default) |
 | `SITE_ICONS` | fetch the bookmarked sites' icons (`1` or `0`; on by default) |
 | `TIMERS_LOOP` | send “timer done” notifications (`1` or `0`; on by default) |
 | `NEWS_LOOP` | fetch followed feeds in the background (`1` or `0`; on by default) |
@@ -352,7 +359,7 @@ homeassistant/     Home Assistant: __init__.py the settings, the chosen entities
 trmnl/             TRMNL e-ink screens: __init__.py the screens and their data; api.py the routes; push.py the pushes to TRMNL's
                    cloud; server.py the devices that ask this server; draw.py the screens drawn without a browser; markup/, fonts/
 auth.py            the shared accounts and the updater (iosuite_shared), as ioStart uses them
-db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
+db.py              MariaDB access and the schema (prt_state: what it wrote down for itself; the bookmarks)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
 static/            the web app: index.html, app.css, the icons (each app's tile shows the icon it registered, served by that app),
                    and the page's script in js/ (no build step; app.js only starts it): core.js (helpers, state),

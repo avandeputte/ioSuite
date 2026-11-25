@@ -680,7 +680,7 @@ def marks(n: int) -> str:
 class AppDatabase(Database):
     """An app's own database, beside the Shared ioSuite database: where it is (the app's config: DB_HOST, DB_PORT,
     DB_NAME, DB_USER, DB_PASSWORD, read at every connection), its tables (made and completed at start: schema.create),
-    its `<prefix>_settings` table, and Database's q / one / ex / many / tx. An app's db.py holds its SCHEMA and one of
+    its `<prefix>_state` table (what the app wrote down for itself; a person's settings are the suite's one home, ios_settings), and Database's q / one / ex / many / tx. An app's db.py holds its SCHEMA and one of
     these, and names what the rest of the app calls: `tx, q, one, ex, many = _db.tx, _db.q, ...`."""
 
     TABLE_OPTIONS = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
@@ -696,15 +696,19 @@ class AppDatabase(Database):
                                database=database if database is not None else c.DB_NAME, charset="utf8mb4",
                                cursorclass=DictCursor, autocommit=True, connect_timeout=8)
 
-    def get_setting(self, k: str, default: str | None = None) -> str | None:
-        r = self.one(f"SELECT value FROM {self.prefix}_settings WHERE name = %s", (k,))
+    def get_state(self, k: str, default: str | None = None) -> str | None:
+        """What the app wrote down for itself (<prefix>_state): where a sync got to, what it worked out last, an
+        answer it keeps for a while. A person's settings are not here: they are the suite's one home for them
+        (the Shared ioSuite database, declared in app.json; App.setting reads one as it is now)."""
+        r = self.one(f"SELECT value FROM {self.prefix}_state WHERE name = %s", (k,))
         return r["value"] if r else default
 
-    def set_setting(self, k: str, v: str | None) -> None:
+    def set_state(self, k: str, v: str | None) -> None:
+        """Write that down, or with None forget it."""
         if v is None:
-            self.ex(f"DELETE FROM {self.prefix}_settings WHERE name = %s", (k,))
+            self.ex(f"DELETE FROM {self.prefix}_state WHERE name = %s", (k,))
         else:
-            self.ex(f"INSERT INTO {self.prefix}_settings (name, value) VALUES (%s, %s) "
+            self.ex(f"INSERT INTO {self.prefix}_state (name, value) VALUES (%s, %s) "
                     "ON DUPLICATE KEY UPDATE value = VALUES(value)", (k, v))
 
     def schema_version(self) -> int:

@@ -12,7 +12,7 @@ from iosuite_shared.fastapi import Auth
 from iosuite_shared.updates import Updater
 
 TABLES = ["CREATE TABLE IF NOT EXISTS zap_things (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(80) NOT NULL)",
-          "CREATE TABLE IF NOT EXISTS zap_settings (name VARCHAR(64) PRIMARY KEY, value MEDIUMTEXT)"]
+          "CREATE TABLE IF NOT EXISTS zap_state (name VARCHAR(64) PRIMARY KEY, value MEDIUMTEXT)"]
 
 
 def _config(name="iosuite_shared_app_test"):
@@ -22,19 +22,20 @@ def _config(name="iosuite_shared_app_test"):
 
 # ------------------------------------------------------------------ an app's own database
 
-def test_an_app_s_database_makes_its_tables_keeps_its_settings_and_says_its_version():
+def test_an_app_s_database_makes_its_tables_keeps_its_own_notes_and_says_its_version():
     d = db.AppDatabase(_config(), "zap", TABLES, 3)
     seeded = []
     d.migrate(after=lambda cur: seeded.append(cur.execute("INSERT INTO zap_things (name) VALUES ('first')")))
     assert seeded == [1], "what an app cannot be without is written in the same transaction as its tables"
     assert d.schema_version() == 3
     assert d.one("SELECT name FROM zap_things")["name"] == "first"
-    assert d.get_setting("currency") is None and d.get_setting("currency", "EUR") == "EUR"
-    d.set_setting("currency", "USD")
-    d.set_setting("currency", "CHF")
-    assert d.get_setting("currency") == "CHF"
-    d.set_setting("currency", None)
-    assert d.get_setting("currency", "EUR") == "EUR"
+    # what the app wrote down for itself (zap_state); a person's settings are the suite's one home for them
+    assert d.get_state("synced") is None and d.get_state("synced", "never") == "never"
+    d.set_state("synced", "yesterday")
+    d.set_state("synced", "just now")
+    assert d.get_state("synced") == "just now"
+    d.set_state("synced", None)
+    assert d.get_state("synced", "never") == "never"
     d.migrate()  # a second start changes nothing
     assert d.q("SELECT count(*) AS n FROM zap_things")[0]["n"] == 1
 

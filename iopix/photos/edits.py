@@ -26,7 +26,7 @@ from pathlib import Path
 
 from iopix import config
 from iopix.digikam import dkdb
-from iopix.data import index, state as appstate
+from iopix.data import index
 from iopix.digikam.dkdb import chunked, in_chunks
 from iopix.photos import consistency, dateprecision, pixelguard
 # the pending store, the backups and the path helpers were split out of this module; callers keep
@@ -369,7 +369,7 @@ def _keep_exiv2_namespace(sidecar: str):
 
 def writes_files() -> bool:
     """User setting: also write into the image files, like digiKam's 'sidecar and file' mode."""
-    return appstate.get_setting("write_files", "0") == "1"
+    return config.live_flag("WRITE_FILES")
 
 
 def can_write_file(path: str) -> bool:

@@ -9,11 +9,11 @@ export { accountUi };
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['books', 'Address books'],
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, books: setBooks, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, devices: setDevices, books: setBooks, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
@@ -100,5 +100,8 @@ export async function setBooks(el) {
     too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
     iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 export function setSuite(el, r) { return frame.suitePanel(el, r); }
 

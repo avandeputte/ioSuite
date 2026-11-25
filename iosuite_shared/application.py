@@ -149,6 +149,7 @@ def create(suite_app, *, description: str, prepare=None, start=(), jobs=None, st
         app.include_router(auth.related_router())  # /api/related (+ ui.js, the "Linked" panel): items linked across the apps
     if suite is not None:
         app.include_router(auth.suite_router(suite))  # /api/suite: search, items, tile, as every app answers them (app.json)
+    app.include_router(auth.settings_router())   # /api/app-settings: the settings it declares (app.json), for its admins
     app.include_router(auth.status_router(updater, extra=status))  # /api/status: public, the same shape in every app
     for r in routers:
         app.include_router(r)

@@ -3,11 +3,11 @@ per root, from Settings; the single-root PHOTOS_ROOT default still applies other
 
 from iopix import config
 from iopix.digikam import dkdb
-from iopix.data import state
+from iopix.tests.helpers import pixsetting
 
 
 def test_default_single_root_uses_photos_root(client, lib):
-    state.set_setting("album_roots", "")
+    pixsetting("ALBUM_ROOTS", "")
     with dkdb.connect() as con:
         paths = dkdb.root_paths(con)
     assert list(paths.values()) == [str(config.PHOTOS_ROOT)]

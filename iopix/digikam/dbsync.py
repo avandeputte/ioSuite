@@ -65,7 +65,7 @@ def _confirmed_closed() -> bool:
     """In a container the host's processes are invisible, so the owner confirms instead
     (a short-lived flag set from the UI)."""
     try:
-        return float(appstate.get_setting("digikam_closed_until", "0")) > time.time()
+        return float(appstate.get_state("digikam_closed_until", "0")) > time.time()
     except Exception:
         return False
 

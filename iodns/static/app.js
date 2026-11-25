@@ -541,11 +541,11 @@ async function showHistory(page) {
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['views', 'Views'], ['data', 'Export and import'],
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, views: setViews, data: setData, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, views: setViews, data: setData, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 async function setAccount(el) {
   const ui = await accountUi();
@@ -591,6 +591,9 @@ async function setData(el) {
         try { const data = JSON.parse(await f.text()); const r = await api('api/import/file', { method: 'POST', json: { data, replace: replace.checked } }); offerPush(null, `${r.entries} entries imported${r.removed ? `, ${r.removed} removed` : ''}`); } catch (e) { fail(e); }
       } }, icon('upload', 's'), 'Import')))) : null);
 }
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 function setSuite(el, r) { return frame.suitePanel(el, r); }
 // ------------------------------------------------------------------ sign-in
 function showSignIn() { frame.signInScreen({ api, name: 'DNS', first: !S.status.usersExist }); }

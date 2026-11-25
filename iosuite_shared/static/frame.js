@@ -192,6 +192,48 @@ export async function suitePanel(el, r, cls = 'warn') {
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: cls }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
+/** Settings › This app (the app's admins): the settings the app declares (its app.json), kept in the suite's one
+    home for them and read as they are now, so a change takes hold without a restart. The same block in every app,
+    beside the app's own screens for the ones that need a picker or a list (those say so and are shown here only). */
+export async function appSettings(el, { toast: say = toast } = {}) {
+  const url = new URL('api/app-settings', document.baseURI).href;
+  let d;
+  try { d = await (await fetch(url, { headers: { Accept: 'application/json' } })).json(); } catch (e) { el.append(h('p', { class: 'warn' }, `The settings did not load: ${e.message}`)); return; }
+  if (!d || !d.settings) { el.append(h('p', { class: 'warn' }, (d && d.detail) || 'Only an admin of this app sees its settings.')); return; }
+  const save = async (st, value, back) => {
+    try {
+      const r = await fetch(`${url}/${encodeURIComponent(st.name)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value }) });
+      const n = await r.json();
+      if (!r.ok) throw new Error(n.detail || r.statusText);
+      st.value = (n.settings || []).find((x) => x.name === st.name)?.value ?? '';
+      say(st.value === '' ? 'Back to the default' : 'Saved');
+    } catch (e) { say(e.message); if (back) back(); }
+  };
+  const row = (st) => {
+    const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
+    let input;
+    if (st.byApp) input = h('div', { class: 'muted' }, st.value || fallback || 'not set');
+    else if (st.type === 'switch') {
+      const on = st.value !== '' ? /^(1|true|yes|on)$/i.test(st.value) : /^(1|true|yes|on)$/i.test(st.suite || st.default || '');
+      input = h('input', { type: 'checkbox', checked: on, onchange: (e) => save(st, e.target.checked, () => { e.target.checked = !e.target.checked; }) });
+    } else if (st.type === 'choice') {
+      const opts = (st.choices || []).map((c) => (Array.isArray(c) ? c : [c, c]));
+      input = h('select', { class: 't', onchange: (e) => save(st, e.target.value) },
+        h('option', { value: '', selected: st.value === '' ? true : null }, fallback || 'default'),
+        opts.map(([k, l]) => h('option', { value: k, selected: st.value === String(k) ? true : null }, l)));
+    } else {
+      input = h('input', { class: 't', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
+        onchange: (e) => save(st, e.target.value.trim(), () => { e.target.value = st.value; }) });
+    }
+    const note = st.byApp ? 'Changed on its own screen here.' : st.restart ? 'Applies when the app starts again.' : '';
+    return h('div', { class: 'setrow' }, h('label', null, st.label, h('span', { class: 'muted small' }, st.name)),
+      h('div', null, input, st.hint ? h('div', { class: 'muted small' }, st.hint) : null, note ? h('div', { class: 'muted small' }, note) : null));
+  };
+  el.append(h('div', { class: 'box' }, h('h2', null, 'This app'),
+    h('p', { class: 'muted small' }, 'Every setting of this app, kept with the suite in one place: the same values Settings › Apps › All settings shows. A field left empty takes the default.'),
+    d.settings.map(row)));
+}
+
 /** The account panels (api/auth/ui.js), asked for when Settings opens. */
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 

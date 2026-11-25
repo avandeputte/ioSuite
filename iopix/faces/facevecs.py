@@ -268,7 +268,7 @@ def _same_model():
     """Vectors from another model, or another revision of it, are useless now: forget them (once) when that changed."""
     kind = chosen()
     want = _built_key(kind)
-    have = state.get_setting("face_vectors_built", "sface")
+    have = state.get_state("face_vectors_built", "sface")
     if have == want:
         return
     if have != kind:  # the bare name is what versions before revisions wrote: those vectors came from the file installed then, adopted as is
@@ -276,7 +276,7 @@ def _same_model():
             con.execute("DELETE FROM pix_ai_face_embeddings")
             con.execute("DELETE FROM pix_ai_person_references")
         log.info("faces: embeddings recomputed with %s", want)
-    state.set_setting("face_vectors_built", want)
+    state.set_state("face_vectors_built", want)
 
 
 def _embed_all(gen: int, todo_p: list, todo: list, kind: str) -> bool:

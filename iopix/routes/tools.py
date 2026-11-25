@@ -89,10 +89,10 @@ def api_tools(request: Request):
         "photos": n, "indexBuilt": int(built[0]) if built else None, "digikamSaved": dk_mtime,
         "digikamRunning": dbsync.digikam_running(), "pendingEdits": edits.pending_count(),
         "paths": {"library": str(config.PHOTOS_ROOT), "digikamDb": dkdb.describe(), "data": str(config.DATA_DIR)},
-        "writeFiles": edits.writes_files(), "digikam": index.status(), "appName": app_name(), "appNameSet": appstate.get_setting("app_name", ""),
-        "database": db_settings_public(), "mapProvider": appstate.get_setting("map_provider", "osm"), "googleMapsKeySet": bool(maps.key()), "googleServerKeySet": maps.server_key_set(), "sidecarCompat": paths.compat_naming(), "searchModel": semantic.chosen(),
-        "templates": json.loads(appstate.get_setting("templates", "[]")), "templateFields": list(edits.TEMPLATE_FIELDS),
-        "recentTags": json.loads(appstate.get_setting("recent_tags", "[]")),
+        "writeFiles": edits.writes_files(), "digikam": index.status(), "appName": app_name(), "appNameSet": config.live("APP_NAME"),
+        "database": db_settings_public(), "mapProvider": config.live("MAP_PROVIDER", "osm"), "googleMapsKeySet": bool(maps.key()), "googleServerKeySet": maps.server_key_set(), "sidecarCompat": paths.compat_naming(), "searchModel": semantic.chosen(),
+        "templates": json.loads(config.live("EDIT_TEMPLATES", "[]")), "templateFields": list(edits.TEMPLATE_FIELDS),
+        "recentTags": json.loads(appstate.get_state("recent_tags", "[]")),
         "scanner": _scanner_state(),
     }
     if not users.is_admin(request.state.user):

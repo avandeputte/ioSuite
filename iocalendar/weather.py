@@ -6,7 +6,7 @@ Open-Meteo (open-meteo.com: free, no key, seven days and more, by the hour). The
 spent here: a free key's 50 calls a day already go to the start page, and it has five days only.
 
 An event's place is written by people ("Dentist, Kerkstraat 12, Gent"), so it is looked up with OpenStreetMap's
-Nominatim, as ioPix does: an identifying User-Agent, one request a second, and every answer kept (in cal_settings,
+Nominatim, as ioPix does: an identifying User-Agent, one request a second, and every answer kept (in cal_state,
 a place not found too, asked again after a month), so a place is looked up once. Only the place text leaves the
 server, never the event.
 
@@ -78,13 +78,13 @@ def geocode(place: str) -> dict | None:
     if not q or q.lower().startswith(("http://", "https://")):  # a meeting link is not a place
         return None
     key = "wx_place:" + hashlib.sha1(q.lower().encode()).hexdigest()
-    raw = db.get_setting(key)
+    raw = db.get_state(key)
     if raw:
         got = json.loads(raw)
         if got.get("lat") is not None or time.time() - got.get("at", 0) < MISS_TTL:
             return got if got.get("lat") is not None else None
     with _net_lock:
-        raw = db.get_setting(key)  # looked up meanwhile by another request
+        raw = db.get_state(key)  # looked up meanwhile by another request
         if raw:
             got = json.loads(raw)
             if got.get("lat") is not None or time.time() - got.get("at", 0) < MISS_TTL:
@@ -104,7 +104,7 @@ def geocode(place: str) -> dict | None:
     except (KeyError, TypeError, ValueError):
         got = {}
     got["at"] = int(time.time())
-    db.set_setting(key, json.dumps(got))
+    db.set_state(key, json.dumps(got))
     return got if got.get("lat") is not None else None
 
 

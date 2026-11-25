@@ -1,16 +1,21 @@
-"""The digiKam database connection is a setting the admin can change at runtime: settings
-override the environment, the password is stored but never shown, a test connection reports
-counts without saving, and saving kicks the index."""
+"""The digiKam database connection is a set of ioPix's own settings, in the suite's one home for them, which an
+admin changes at runtime and which take hold at once: the password is kept with the suite's keys and tokens and
+never shown, a test connection reports counts without saving, and saving kicks the index."""
+from iosuite_shared import credentials, testing
+
 from iopix.digikam import dkdb
-from iopix.data import state
+from iopix.tests.helpers import pixsetting
 
 
 def _clear():
-    for k in dkdb.KEYS:
-        state.set_setting("db_" + k, "")
+    """Back to the connection the tests start on (a digikam4.db of their own), and no password."""
+    for name in dkdb.SETTING.values():
+        pixsetting(name, "")
+    testing.restore_stored()
+    credentials.put("iopix", dkdb.PASSWORD, "")
 
 
-def test_settings_override_environment_and_hide_password(client):
+def test_the_settings_are_read_as_they_are_and_the_password_is_never_shown(client):
     _clear()
     assert dkdb.settings()["type"] == "sqlite" and dkdb.is_mysql() is False
     r = client.post("/api/settings", json={"database": {"type": "mysql", "host": "db.local", "port": "3307", "database": "dk", "user": "u", "password": "p@ss"}})

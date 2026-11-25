@@ -13,7 +13,7 @@ PREFIX = "dns"
 # answers for one view. So calendar.example.com can be 192.168.1.151 inside, a public address outside and 100.x on
 # the tailnet, and a name without an External record is never pushed to public DNS.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS dns_settings (
+    """CREATE TABLE IF NOT EXISTS dns_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -94,7 +94,7 @@ VIEWS = [("internal", "Internal", "The house: what the LAN's DNS servers answer"
 _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 marks = shared_db.marks
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 ensure_database, reset_all = _db.ensure_database, _db.reset_all
 
 

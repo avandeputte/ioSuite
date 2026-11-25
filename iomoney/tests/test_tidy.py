@@ -62,7 +62,7 @@ def test_needs_a_look(client, as_user):
     a = add(client)
     client.post("/api/rules", json={"pattern": "grocer", "setCategory": "Groceries"})
     # what was there before the household started looking counts as seen, unless it has no category
-    db.set_setting("review_since", str(int((dt.datetime.now() + dt.timedelta(seconds=-5)).timestamp())))
+    db.set_state("review_since", str(int((dt.datetime.now() + dt.timedelta(seconds=-5)).timestamp())))
     typed = tx(client, a, -20, "Grocer", 1)      # typed in by a person: looked at
     assert client.get("/api/summary").json()["review"] == 0
     # two that came in by themselves (a file): one the rules categorized, one without a category

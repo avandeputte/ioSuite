@@ -11,6 +11,7 @@ from iosuite_shared import config as shared
 # app.json's limits: iosuite_shared.config.of_app says what each is
 _own = shared.of_app(__package__)
 globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
 env = _own["env"]
 
 MAP_TILE_URL = env("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")

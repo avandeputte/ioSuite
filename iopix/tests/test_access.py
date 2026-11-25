@@ -31,7 +31,7 @@ def test_every_api_route_declares_its_access():
 
 # the panel every app of the suite serves (Settings › People, Apps, Servers and Keys, the Linked panel, the live
 # stream, /api/suite): the shared tests check those, and the table below is ioPix's own routes
-SUITE = ("/api/suite-admin", "/api/live", "/api/related", "/api/suite")
+SUITE = ("/api/suite-admin", "/api/app-settings", "/api/live", "/api/related", "/api/suite")
 
 
 def test_declared_access_matches_the_table():

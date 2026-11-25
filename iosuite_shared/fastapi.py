@@ -413,6 +413,11 @@ class Auth:
         """/api/suite-admin/*: everything in the Shared ioSuite database, for suite admins."""
         return routers.admin_router(self)
 
+    def settings_router(self) -> APIRouter:
+        """/api/app-settings: the settings the app declares (app.json), for its admins, with the values the suite panel
+        shows. One home for them (iosuite_shared.routers.settings_router)."""
+        return routers.settings_router(self)
+
     def status_router(self, updater=None, extra=None) -> APIRouter:
         """GET /api/status, open to everyone: the same shape in every app."""
         return routers.status_router(self, updater, extra)

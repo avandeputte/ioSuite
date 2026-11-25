@@ -111,8 +111,15 @@ for devices and MCP answer HTTPS as well as plain HTTP.
 
 ## Settings in the database
 
-Under **Settings › Apps › All settings** (suite admins), with a section for the whole suite and one per app.
-A change takes effect when the app starts again; the screen has a Restart button. The whole suite's:
+Under **Settings › Apps › All settings** (suite admins), with a section for the whole suite and one per app, and
+under **Settings › This app** in each app (its own admins), which shows that app's section. This is the one place an
+app's settings are kept: no settings file per app, and nothing of a person's settings in an app's own database.
+
+A change takes hold at once, because every setting is read as it is now. The few that say where an app answers and
+where it keeps what it keeps are read once, as it starts (the screen marks them, and has a Restart button): the
+three addresses, the data folder, the database name, the suite's address, the sign-in domain. A setting whose
+editor is a screen in the app (a list of countries, which lights to show) is marked too, and shown but not typed
+here. The whole suite's:
 
 | Setting | What it is |
 | --- | --- |
@@ -126,8 +133,13 @@ A change takes effect when the app starts again; the screen has a Restart button
 | `OCR_LANGUAGES` | the languages that text is in (`eng+nld+fra`), each needing its `tesseract-ocr-<lang>` package; empty: every language installed, English first |
 
 Every app has `PUBLIC_URL`, `SYNC_URL` and `MCP_URL` of its own (an address of its own beside its folder:
-`https://calendar.example.com`), `DATA_DIR` and `DB_NAME`, and then what only it needs: the photos folder and digiKam
-for ioPix, the LDAP port for ioContact, the backup folder for ioBackup. The screen lists them with what each is for.
+`https://calendar.example.com`), `DATA_DIR` and `DB_NAME`, and then what only it needs: the photos folder, digiKam
+and the models for ioPix, the LDAP port for ioContact, the backup folder for ioBackup, the household's currency for
+ioMoney, the public holidays for ioCalendar. The screen lists them with what each is for.
+
+Each app's own database holds what the app writes down for itself, in its `<prefix>_state` table: where a sync got
+to, what it worked out last, an answer it keeps for a while. That is not a setting and there is nothing to change
+there.
 
 `KEEP_DELETED_DAYS` is for the apps that phones and other devices sync with. A deleted event (ioCalendar), task
 (ioTask) or contact (ioContact) leaves a marker, so a device learns of the deletion at its next sync; the marker goes

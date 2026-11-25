@@ -575,11 +575,11 @@ async function onRoute() {
 // ------------------------------------------------------------------ settings
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 async function showSettings(page, r) {
-  const tabs = [['account', 'Account'], ['display', 'Display'], ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+  const tabs = [['account', 'Account'], ['display', 'Display'], ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 async function setAccount(el) {
   const ui = await accountUi();
@@ -593,6 +593,9 @@ async function setDisplay(el) {
   let t = 'system'; try { t = localStorage.getItem('iobackup.theme') || 'system'; } catch { /* */ }
   el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || t, (x) => { S.settings.theme = x; applyTheme(x); })));
 }
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 function setSuite(el, r) { return frame.suitePanel(el, r); }
 // ------------------------------------------------------------------ sign-in
 function showSignIn() { frame.signInScreen({ api, name: 'Backup', first: !S.status.usersExist }); }

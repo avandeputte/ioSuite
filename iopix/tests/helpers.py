@@ -33,6 +33,13 @@ def need_tool(name: str, available=None, module_level: bool = False):
     pytest.skip(msg, allow_module_level=module_level)
 
 
+def pixsetting(name: str, value):
+    """One of ioPix's settings, in the suite's one home for them (the Shared ioSuite database, declared in
+    iopix/app.json): what Settings and `iosuite set iopix NAME VALUE` write. '' puts the default back."""
+    from iosuite_shared import db as authdb
+    authdb.set_setting(name, value, "iopix")
+
+
 def clear_accounts(db_path=None):
     """Back to the open mode the app has before the first admin exists: every account in the Shared ioSuite database
     goes (the tests use a database of their own, iopix_test_auth). `db_path` is kept for the browser tests' server,

@@ -100,7 +100,7 @@ def _digikam_vouched_closed():
     import time
     from iopix.data import state
     state.init()  # the app's startup normally creates the tables; a test may run before any client exists
-    state.set_setting("digikam_closed_until", str(time.time() + 3600))
+    state.set_state("digikam_closed_until", str(time.time() + 3600))
     yield
 
 

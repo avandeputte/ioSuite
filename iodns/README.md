@@ -109,9 +109,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioDNS has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioDNS, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iodns        # what may be set, with the value stored now
@@ -125,6 +126,8 @@ iosuite set iodns PUBLIC_URL https://dns.example.com    # no value: back to the 
 | `DB_NAME` | the name of its database (`iodns`) |
 | `CHECK_MINUTES` | minutes between checks (`30`). How often the servers are compared with the master list on their own; 0: only when someone looks |
 | `BACKGROUND` | compare the servers and keep dynamic DNS current in the background (`1` or `0`; on by default). Off: nothing is compared and no address is updated until someone asks from the pages |
+| `DDNS_DETECT` | how the public address is found (`auto`). auto (a few public services), `unifi:<server id>` (a UniFi gateway), or the address of a page that answers with the IP |
+| `DDNS_MINUTES` | minutes between address checks (`5`); 0: only when someone asks |
 
 The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
 machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).

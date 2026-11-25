@@ -140,8 +140,8 @@ def writing():
         yield _w.rev
         return
     with db.tx():
-        db.ex("INSERT INTO prt_settings (name, value) VALUES ('bookmarks_rev', '1') ON DUPLICATE KEY UPDATE value = CAST(value AS UNSIGNED) + 1")
-        _w.rev = int(db.one("SELECT value FROM prt_settings WHERE name = 'bookmarks_rev'")["value"])
+        db.ex("INSERT INTO prt_state (name, value) VALUES ('bookmarks_rev', '1') ON DUPLICATE KEY UPDATE value = CAST(value AS UNSIGNED) + 1")
+        _w.rev = int(db.one("SELECT value FROM prt_state WHERE name = 'bookmarks_rev'")["value"])
         try:
             yield _w.rev
         finally:
@@ -149,21 +149,21 @@ def writing():
 
 
 def revision() -> int:
-    return int(db.get_setting("bookmarks_rev") or 0)
+    return int(db.get_state("bookmarks_rev") or 0)
 
 
 def highest_id() -> int:
     """The highest id ever handed out or seen from a sync client."""
-    return int(db.get_setting("bookmarks_highest_id") or 0)
+    return int(db.get_state("bookmarks_highest_id") or 0)
 
 
 def saw_id(n: int) -> None:
     """A sync client used ids up to n: ours start after it."""
-    db.ex("INSERT INTO prt_settings (name, value) VALUES ('bookmarks_highest_id', %s) ON DUPLICATE KEY UPDATE value = GREATEST(CAST(value AS UNSIGNED), %s)", (str(int(n)), int(n)))
+    db.ex("INSERT INTO prt_state (name, value) VALUES ('bookmarks_highest_id', %s) ON DUPLICATE KEY UPDATE value = GREATEST(CAST(value AS UNSIGNED), %s)", (str(int(n)), int(n)))
 
 
 def _new_id() -> int:
-    db.ex("INSERT INTO prt_settings (name, value) VALUES ('bookmarks_highest_id', '1') ON DUPLICATE KEY UPDATE value = CAST(value AS UNSIGNED) + 1")
+    db.ex("INSERT INTO prt_state (name, value) VALUES ('bookmarks_highest_id', '1') ON DUPLICATE KEY UPDATE value = CAST(value AS UNSIGNED) + 1")
     return highest_id()
 
 

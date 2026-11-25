@@ -19,7 +19,7 @@ _tmp = os.environ["DATA_DIR"]
 from ionote import db, notes  # noqa: E402
 from iosuite_shared import proxyauth  # noqa: E402
 
-TABLES = ["nts_notes", "nts_note_images", "nts_attachments", "nts_templates", "nts_folders", "nts_tag_colors", "nts_change_log", "nts_change_counter", "nts_settings"]
+TABLES = ["nts_notes", "nts_note_images", "nts_attachments", "nts_templates", "nts_folders", "nts_tag_colors", "nts_change_log", "nts_change_counter", "nts_state"]
 
 
 @pytest.fixture(scope="session")

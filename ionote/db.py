@@ -30,7 +30,7 @@ error = None  # why the configured database could not be used at start
 # and utf8mb4 (migrate() adds that). Accounts live in the Shared ioSuite database (iosuite_shared, ionote/auth.py)
 SCHEMA = [
     # accounts live in the Shared ioSuite database (iosuite_shared, ionote/auth.py)
-    ('CREATE TABLE IF NOT EXISTS nts_settings (name VARCHAR(191) PRIMARY KEY, value MEDIUMTEXT, '
+    ('CREATE TABLE IF NOT EXISTS nts_state (name VARCHAR(191) PRIMARY KEY, value MEDIUMTEXT, '
      'updated_at DATETIME(3) NULL)'),
     # one row per change: its id is the rev stamped on what changed
     ('CREATE TABLE IF NOT EXISTS nts_change_counter (rev BIGINT AUTO_INCREMENT PRIMARY KEY, created_at BIGINT)'),
@@ -194,9 +194,9 @@ def tx():
         init()
     with _db.tx() as raw:
         con = Conn(raw)
-        if not con.execute("SELECT value FROM nts_settings WHERE name = 'write_lock' FOR UPDATE").fetchone():
-            con.execute("INSERT IGNORE INTO nts_settings (name, value) VALUES ('write_lock', '')")
-            con.execute("SELECT value FROM nts_settings WHERE name = 'write_lock' FOR UPDATE")
+        if not con.execute("SELECT value FROM nts_state WHERE name = 'write_lock' FOR UPDATE").fetchone():
+            con.execute("INSERT IGNORE INTO nts_state (name, value) VALUES ('write_lock', '')")
+            con.execute("SELECT value FROM nts_state WHERE name = 'write_lock' FOR UPDATE")
         yield con
 
 
@@ -261,23 +261,24 @@ def init():
         ensure_database()
         with _db.tx() as con, con.cursor() as cur:
             schema.create(cur, SCHEMA, " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")
-            cur.execute("INSERT IGNORE INTO nts_settings (name, value) VALUES ('write_lock', '')")  # tx()
+            cur.execute("INSERT IGNORE INTO nts_state (name, value) VALUES ('write_lock', '')")  # tx()
             schema.ensure_version_table(cur, PREFIX)
             schema.record_version(cur, PREFIX, SCHEMA_VERSION)
         error = None
         _ready = True
 
 
-# ---- settings table
-def get_setting(key: str, default: str = None):
+# ---- what the app wrote down for itself (nts_state). A person's settings are not here: they are the suite's one
+# home for them (the Shared ioSuite database, declared in app.json; config.live reads one as it is now).
+def get_state(key: str, default: str = None):
     with connect() as con:
-        r = con.execute("SELECT value FROM nts_settings WHERE name = %s", (key,)).fetchone()
+        r = con.execute("SELECT value FROM nts_state WHERE name = %s", (key,)).fetchone()
     return r[0] if r else default
 
 
-def set_setting(key: str, value):
+def set_state(key: str, value):
     with tx() as con:
-        con.execute("REPLACE INTO nts_settings (name, value, updated_at) VALUES (%s, %s, UTC_TIMESTAMP(3))",
+        con.execute("REPLACE INTO nts_state (name, value, updated_at) VALUES (%s, %s, UTC_TIMESTAMP(3))",
                     (key, None if value is None else str(value)))
 
 

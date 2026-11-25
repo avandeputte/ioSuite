@@ -414,9 +414,9 @@ async def api_tags_recent(request: Request):
 
     def work():
         ids = [int(i) for i in body.get("ids", [])][:20]
-        old = [int(i) for i in json.loads(appstate.get_setting("recent_tags", "[]"))]
+        old = [int(i) for i in json.loads(appstate.get_state("recent_tags", "[]"))]
         new = ids + [i for i in old if i not in ids]
-        appstate.set_setting("recent_tags", json.dumps(new[:12]))
+        appstate.set_state("recent_tags", json.dumps(new[:12]))
         return {"recent": new[:12]}
     return await run_in_threadpool(work)
 

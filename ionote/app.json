@@ -48,6 +48,13 @@
   ],
   "settings": [
     {
+      "name": "APP_NAME",
+      "label": "What it calls itself",
+      "type": "text",
+      "default": "ioNote",
+      "hint": "The name on its pages and in its notifications. Settings › General shows the same value."
+    },
+    {
       "name": "MAX_IMAGE_MB",
       "label": "Largest image (MB)",
       "type": "number",

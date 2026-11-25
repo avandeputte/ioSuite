@@ -114,12 +114,12 @@ def sweep_gone() -> int:
     if not here:
         here = secrets.token_hex(16)
         authdb.set_setting(SUITE_ID, here, "")
-    known = db.get_setting(KNOWN_SUITE)
+    known = db.get_state(KNOWN_SUITE)
     alive = {u["id"] for u in shared.list_users()}
     owners = {r["owner_id"] for r in db.q("SELECT DISTINCT owner_id FROM con_address_books WHERE owner_id IS NOT NULL")}
     gone = owners - alive
     if known is None:
-        db.set_setting(KNOWN_SUITE, here)
+        db.set_state(KNOWN_SUITE, here)
         if gone:
             log.warning("%d private address book owner(s) have no account in the Shared ioSuite database; their books are kept "
                         "(they are removed at a later start, once this database is known to be the one they belong to)", len(gone))
@@ -128,7 +128,7 @@ def sweep_gone() -> int:
         if gone:
             log.error("the Shared ioSuite database is not the one these address books belong to (or it has no accounts): "
                       "%d owner(s) are missing from it and their private address books are KEPT. If this is the right database, "
-                      "remove the '%s' row from con_settings and restart.", len(gone), KNOWN_SUITE)
+                      "remove the '%s' row from con_state and restart.", len(gone), KNOWN_SUITE)
         return 0
     forget_gone(*gone)
     return len(gone)

@@ -402,6 +402,131 @@
       "label": "exiftool to use",
       "type": "text",
       "hint": "Empty: the one on the PATH."
+    },
+    {
+      "name": "APP_NAME",
+      "label": "What it calls itself",
+      "type": "text",
+      "hint": "The name on its pages. Empty: ioPix."
+    },
+    {
+      "name": "WRITE_FILES",
+      "label": "Write metadata into the picture files",
+      "type": "switch",
+      "default": "0",
+      "hint": "Tags, names and dates go into the files themselves as well, not only into the sidecars."
+    },
+    {
+      "name": "DIGIKAM_SYNC",
+      "label": "Read and write digiKam's database",
+      "type": "switch",
+      "default": "1",
+      "hint": "Off: ioPix works from its own copy of the library and never opens digiKam's database."
+    },
+    {
+      "name": "FILE_SCANNER",
+      "label": "Watch the album folders",
+      "type": "switch",
+      "hint": "Find files added, changed or removed outside ioPix. Empty: on where there is no digiKam, since nothing else finds new photos."
+    },
+    {
+      "name": "SCAN_INTERVAL",
+      "label": "Minutes between folder passes",
+      "type": "number",
+      "default": "15"
+    },
+    {
+      "name": "SEARCH_MODEL",
+      "label": "Model behind search",
+      "type": "text",
+      "default": "clip",
+      "hint": "clip, siglip2 or jinaclip; Settings › Search picks one of the models installed here."
+    },
+    {
+      "name": "FACE_DETECTOR",
+      "label": "Model that finds faces",
+      "type": "text",
+      "hint": "Empty: the first one installed. Settings › People picks one."
+    },
+    {
+      "name": "OBJECT_MODEL",
+      "label": "Model that names what is in a photo",
+      "type": "text",
+      "hint": "Empty: the first one installed."
+    },
+    {
+      "name": "CAPTION_MODEL",
+      "label": "Model that describes a photo",
+      "type": "text",
+      "hint": "Empty: the first one installed."
+    },
+    {
+      "name": "FACE_VECTORS",
+      "label": "Model that tells faces apart",
+      "type": "text",
+      "hint": "Empty: the first one installed. A change rebuilds the stored vectors."
+    },
+    {
+      "name": "SPEECH_MODEL",
+      "label": "Model that reads speech in videos",
+      "type": "text",
+      "hint": "Empty: the first one installed."
+    },
+    {
+      "name": "NEAR_DUPS_LEVEL",
+      "label": "How alike near duplicates must be",
+      "type": "choice",
+      "choices": [
+        [
+          "strict",
+          "Nearly the same picture"
+        ],
+        [
+          "normal",
+          "Alike"
+        ],
+        [
+          "loose",
+          "Roughly alike"
+        ]
+      ],
+      "default": "normal"
+    },
+    {
+      "name": "IMPORT_LAYOUT",
+      "label": "Folder layout imports go into",
+      "type": "text",
+      "hint": "Empty: the first layout ioPix offers."
+    },
+    {
+      "name": "MAP_PROVIDER",
+      "label": "Who draws the map",
+      "type": "choice",
+      "choices": [
+        [
+          "osm",
+          "OpenStreetMap"
+        ],
+        [
+          "google",
+          "Google Maps (needs a key)"
+        ]
+      ],
+      "default": "osm"
+    },
+    {
+      "name": "ALBUM_ROOTS",
+      "label": "Where digiKam's album roots are here",
+      "type": "text",
+      "byApp": true,
+      "hint": "Set in Settings › Library when the folders are mounted somewhere else than digiKam recorded."
+    },
+    {
+      "name": "EDIT_TEMPLATES",
+      "label": "Edit templates",
+      "type": "text",
+      "byApp": true,
+      "hint": "The owner name and contact details the Edit panel offers, set in Settings › Editing."
     }
   ],
   "ask": [

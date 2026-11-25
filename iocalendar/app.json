@@ -61,6 +61,20 @@
       "label": "Public holidays: language",
       "type": "text",
       "hint": "The language of the holidays' names."
+    },
+    {
+      "name": "HOLIDAYS",
+      "label": "Public holidays chosen",
+      "type": "text",
+      "byApp": true,
+      "hint": "The countries, regions and languages Settings › Holidays and birthdays picked, one Holidays calendar each."
+    },
+    {
+      "name": "CONTACT_BIRTHDAYS",
+      "label": "Birthdays from ioContact",
+      "type": "switch",
+      "default": "1",
+      "hint": "Keep a Birthdays calendar from the family's address books. Off: no birthdays are read."
     }
   ],
   "access": {

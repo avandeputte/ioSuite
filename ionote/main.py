@@ -67,7 +67,7 @@ def _before(request: Request):
 def _status_extra(request: Request) -> dict:
     """ioNote's own fields of GET /api/status, beside the suite's: the name an admin gave the app and,
     signed in, the account's change counter (the page polls it to learn of changes made elsewhere)."""
-    out = {"appName": db.get_setting("app_name", "") or "ionote"}
+    out = {"appName": config.live("APP_NAME", "ioNote")}
     if users.is_signed_in(request.state.user):
         out["rev"] = notes_mod.owner_rev()
     return out

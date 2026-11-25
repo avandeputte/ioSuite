@@ -5,7 +5,7 @@ key kept. The page asks this
 server, never AccuWeather, and the server asks AccuWeather only when its copy is older than the refresh interval, so a
 free key (50 calls a day) lasts: the current conditions every hour at most, the next 12 hours every 90 minutes, the
 5-day forecast every 6 hours (44 calls on a day the page stays open from morning to night), and nothing at all while
-nobody opens the page. What was last fetched is kept in the database (prt_settings), so a restart does
+nobody opens the page. What was last fetched is kept in the database (prt_state), so a restart does
 not spend a call either.
 """
 import json
@@ -15,7 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from iosuite_shared import credentials
+from iosuite_shared import admin as suite_admin, credentials
 
 from iostart import config, db
 
@@ -43,14 +43,14 @@ def api_key() -> str:
 
 
 def location_key() -> str:
-    return (db.get_setting("accuweather_location") or "").strip()
+    return config.live("WEATHER_LOCATION")
 
 
 def settings() -> dict:
     """What Settings › Weather shows (the key itself never leaves the server)."""
     return {"hasKey": bool(api_key()), "locationKey": location_key(),
-            "locationName": db.get_setting("accuweather_location_name") or "",
-            "units": db.get_setting("weather_units") or "metric", "enabled": bool(api_key() and location_key())}
+            "locationName": config.live("WEATHER_LOCATION_NAME"),
+            "units": config.live("WEATHER_UNITS", "metric"), "enabled": bool(api_key() and location_key())}
 
 
 def save(changes: dict, by: str = None) -> None:
@@ -59,18 +59,18 @@ def save(changes: dict, by: str = None) -> None:
     if "key" in changes:
         credentials.put(APP, "accuweather_key", (changes["key"] or "").strip(), by=by)
     if "locationKey" in changes:
-        db.set_setting("accuweather_location", str(changes["locationKey"] or "").strip() or None)
-        db.set_setting("accuweather_location_name", (changes.get("locationName") or "").strip() or None)
+        suite_admin.set_setting(config.APP, "WEATHER_LOCATION", str(changes["locationKey"] or "").strip())
+        suite_admin.set_setting(config.APP, "WEATHER_LOCATION_NAME", (changes.get("locationName") or "").strip())
     if "units" in changes:
         if changes["units"] not in ("metric", "imperial"):
             raise WeatherError("units: metric or imperial")
-        db.set_setting("weather_units", changes["units"])
+        suite_admin.set_setting(config.APP, "WEATHER_UNITS", changes["units"])
     forget()
 
 
 def forget() -> None:
     for k in ("weather_current", "weather_forecast", "weather_hourly"):
-        db.set_setting(k, None)
+        db.set_state(k, None)
 
 
 # ------------------------------------------------------------------ AccuWeather
@@ -124,13 +124,13 @@ def search(q: str, key: str = "") -> list[dict]:
 def _cached(name: str, ttl: int, fetch):
     """The stored answer while it is younger than ttl; else a fresh one, stored. A failed fetch keeps the old answer
     (marked stale) rather than a hole on the page."""
-    raw = db.get_setting(name)
+    raw = db.get_state(name)
     old = json.loads(raw) if raw else None
     now = int(time.time())
     if old and now - old.get("at", 0) < ttl:
         return old
     with _lock:
-        raw = db.get_setting(name)  # another request may have fetched it meanwhile
+        raw = db.get_state(name)  # another request may have fetched it meanwhile
         old = json.loads(raw) if raw else None
         if old and now - old.get("at", 0) < ttl:
             return old
@@ -141,7 +141,7 @@ def _cached(name: str, ttl: int, fetch):
                 return {**old, "stale": True, "error": str(e)}
             raise
         fresh = {"at": now, "data": data}
-        db.set_setting(name, json.dumps(fresh))
+        db.set_state(name, json.dumps(fresh))
         return fresh
 
 

@@ -10,7 +10,7 @@ PREFIX = "mny"
 # Every table is mny_<name> (the suite's naming convention: the apps can share one database) and InnoDB/utf8mb4.
 # Amounts are DECIMAL, never floats.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS mny_settings (
+    """CREATE TABLE IF NOT EXISTS mny_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -443,7 +443,7 @@ SCHEMA = [
 _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 marks = shared_db.marks
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 schema_version, ensure_database, migrate, reset_all = _db.schema_version, _db.ensure_database, _db.migrate, _db.reset_all
 
 

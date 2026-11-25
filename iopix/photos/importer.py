@@ -28,8 +28,9 @@ from iopix.digikam import dbsync, dkdb
 from iopix.photos import edits, folders, history
 from iopix.digikam.dbsync import SyncError
 from iopix.digikam.dkdb import in_chunks
-from iopix.data import index, state
+from iopix.data import index
 from iopix.faces import facemgr
+from iosuite_shared import admin as suite_admin
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iopix.photos.importer")
@@ -46,14 +47,14 @@ _TOKEN = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
 
 def layout() -> str:
-    key = state.get_setting("import_layout", "")
+    key = config.live("IMPORT_LAYOUT", "")
     return key if key in LAYOUTS else "year-yearmonth"
 
 
 def set_layout(key: str):
     if key not in LAYOUTS:
         raise Invalid("Unknown folder layout")
-    state.set_setting("import_layout", key)
+    suite_admin.set_setting(config.APP, "IMPORT_LAYOUT", key)
 
 
 _TOKENS = ("yyyy", "mm", "dd")

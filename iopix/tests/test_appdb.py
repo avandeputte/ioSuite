@@ -23,7 +23,7 @@ def other_db():
 
 def _seed():
     alex = users.create("alex", "correct horse", "admin")
-    state.set_setting("zz_probe", "value with ? and %s and `key`")
+    state.set_state("zz_probe", "value with ? and %s and `key`")
     assert state.set_favorites([(1, "h1"), (2, "h2")], True, user=alex), "favorites are an account's own"
     aid = state.create_album("Trip"); state.set_album_items(aid, [(1, "h1")], True)
     with appdb.writer() as con:
@@ -51,9 +51,9 @@ def test_private_albums_and_accounts_on_the_server(client, fresh):
         for t in ("pix_favorite_photos", "pix_album_photos", "pix_albums"):
             con.execute(f"DELETE FROM {t}")
     users.create("alex", "correct horse", "admin"); users.create("vi", "", "viewer")
-    state._settings = (-1, {})
-    state.set_setting("zz_probe", "héllo ? %s"); state._settings = (-1, {})
-    assert state.get_setting("zz_probe") == "héllo ? %s"
+    state._kept = (-1, {})
+    state.set_state("zz_probe", "héllo ? %s"); state._kept = (-1, {})
+    assert state.get_state("zz_probe") == "héllo ? %s"
     me = users.get(next(u["id"] for u in users.list_users() if u["name"] == "alex"))
     assert me["role"] == "admin" and shared_users.authenticate("alex", "correct horse", "iopix") and not shared_users.authenticate("alex", "wrong", "iopix")
     assert shared_users.authenticate("vi", "", "iopix"), "a passwordless viewer signs in with one click"

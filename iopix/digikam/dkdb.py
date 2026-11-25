@@ -51,14 +51,27 @@ def _sidecar_names(path: str) -> tuple:
     return sidecar_candidates(path)
 
 
+# the setting each connection detail is, in the suite's one home for them (iopix/app.json); the password is not one
+# of them: it is kept with the suite's keys and tokens, which are written and never read back on a screen
+SETTING = {"type": "DIGIKAM_DB_TYPE", "sqlite_dir": "DIGIKAM_DB_DIR", "host": "DIGIKAM_DB_HOST",
+           "port": "DIGIKAM_DB_PORT", "database": "DIGIKAM_DB_NAME", "user": "DIGIKAM_DB_USER",
+           "backup": "DIGIKAM_DB_BACKUP"}
+PASSWORD = "digikam_db_password"
+
+
 def settings() -> dict:
-    """The effective connection settings: a `db_<key>` setting wins over the environment."""
-    from iopix.data import state  # lazy: data.state -> data.appdb -> digikam.dkdb would be an import cycle
+    """The connection settings as they are now: each is one of ioPix's settings (Settings › Library writes the same
+    ones), and the password comes from the suite's keys and tokens."""
     out = dict(ENV)
-    for k in KEYS:
-        v = state.get_setting("db_" + k, "")
+    for k, name in SETTING.items():
+        v = config.live(name)
         if v != "":
             out[k] = v
+    try:
+        from iosuite_shared import credentials
+        out["password"] = credentials.get(config.APP, PASSWORD)
+    except Exception:  # noqa: BLE001 - the shared database is away: no password, and the caller says so
+        out["password"] = ""
     t = str(out["type"]).lower()
     out["type"] = "mysql" if t in ("mysql", "mariadb") else "none" if t in NO_DIGIKAM else "sqlite"
     try:
@@ -112,8 +125,7 @@ def is_mysql() -> bool:
 
 def no_digikam() -> bool:
     """DIGIKAM_DB_TYPE=none (or Settings > digiKam database: none): there is no digiKam database at all."""
-    from iopix.data import state  # lazy: data.state -> data.appdb -> digikam.dkdb would be an import cycle
-    return str(state.get_setting("db_type", "") or ENV["type"]).lower() in NO_DIGIKAM
+    return str(settings()["type"]).lower() in NO_DIGIKAM
 
 
 def describe() -> str:
@@ -322,8 +334,7 @@ class Conn:
 def sync_enabled() -> bool:
     """Settings > Sync with digiKam. Off: the viewer never opens digiKam's database; the library lives in
     the viewer's own tables (library.py) and every change is made there."""
-    from iopix.data import state  # lazy: data.state -> data.appdb -> digikam.dkdb would be an import cycle
-    return not no_digikam() and state.get_setting("digikam_sync", "1") != "0"
+    return not no_digikam() and config.live_flag("DIGIKAM_SYNC", True)
 
 
 def standalone() -> bool:
@@ -406,9 +417,8 @@ def tag_path(tags: dict, tid) -> str:
 def root_overrides() -> dict:
     """{path digiKam recorded: local path} from the `album_roots` setting (Settings > Album roots)."""
     import json
-    from iopix.data import state  # lazy: data.state -> data.appdb -> digikam.dkdb would be an import cycle
     try:
-        d = json.loads(state.get_setting("album_roots", "") or "{}")
+        d = json.loads(config.live("ALBUM_ROOTS") or "{}")
         return {str(k).rstrip("/"): str(v).rstrip("/") for k, v in d.items() if v}
     except (ValueError, AttributeError):
         return {}

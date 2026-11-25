@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 
 from iopix.faces import facedetect
-from iopix.data import index, state
+from iopix.data import index
 from iopix.ai import models
+from iopix.tests.helpers import pixsetting
 
 # a folder holding the detector files under their registry names (symlinks are fine); tests skip what is missing
 MODELS = Path("/private/tmp/claude-501/-Users-alex-Pictures/cd6ab508-dd1f-4df1-999c-d6fe0a83fe5c/scratchpad/models")
@@ -29,7 +30,7 @@ def test_detector_finds_the_faces_digikam_marked(client, lib, monkeypatch, detec
     if facedetect.np is None or not (MODELS / models.REGISTRY[detector]["file"]).exists():
         pytest.skip(f"{detector} model not available here")
     monkeypatch.setattr(models, "MODEL_DIR", MODELS)
-    state.set_setting("face_detector", detector)
+    pixsetting("FACE_DETECTOR", detector)
     assert facedetect.chosen() == detector and facedetect.available()
     facedetect.reset_session()
     con = index.open_index()
@@ -51,7 +52,7 @@ def test_detector_finds_the_faces_digikam_marked(client, lib, monkeypatch, detec
                 assert x - w * 0.3 <= px <= x + w * 1.3 and y - h * 0.3 <= py <= y + h * 1.3, (detector, (x, y, w, h), pts)
     finally:
         con.close()
-        state.set_setting("face_detector", "")
+        pixsetting("FACE_DETECTOR", "")
         facedetect.reset_session()
     assert total and matched / total >= 0.7, (detector, matched, total)
 

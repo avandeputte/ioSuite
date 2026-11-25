@@ -443,7 +443,7 @@ def held() -> list[dict]:
     rows = db.q("SELECT * FROM mny_monarch_new WHERE decision IS NULL ORDER BY first_seen, external_id")
     if not rows:
         return []
-    listed = set(json.loads(model.setting("monarch_ids", "[]") or "[]"))
+    listed = set(json.loads(model.state("monarch_ids", "[]") or "[]"))
     accts = db.q("SELECT id, name, institution, kind, mask, source, external_id, closed, balance FROM mny_accounts "
                  "WHERE owner_id IS NULL ORDER BY name")
     out = []
@@ -492,7 +492,7 @@ def decide(ext: str, how: str, account_id: int = None, by: int = None, private: 
     a = db.one("SELECT * FROM mny_accounts WHERE id = %s AND owner_id IS NULL", (account_id,)) if account_id else None
     if not a:
         raise Invalid("Pick the account it is")
-    if a["source"] == "monarch" and a["external_id"] in set(json.loads(model.setting("monarch_ids", "[]") or "[]")):
+    if a["source"] == "monarch" and a["external_id"] in set(json.loads(model.state("monarch_ids", "[]") or "[]")):
         raise Invalid(f"{a['name']} is still in Monarch Money under its own id")
     acc = json.loads(row["data"])
     with db.tx():
@@ -582,7 +582,7 @@ async def _run(full: bool, only: int = None, years: int = 2) -> dict:
             await _history(mm, ext, aid, bool(acc.get("isAsset", True)))
     db.ex("DELETE FROM mny_monarch_new WHERE decision = 'new' OR external_id NOT IN "
           f"({db.marks(len(listed)) if listed else 'NULL'})", tuple(listed))
-    db.set_setting("monarch_ids", json.dumps(listed))
+    db.set_state("monarch_ids", json.dumps(listed))
     # accounts given a new Monarch id: their transactions matched with those kept under the old one
     for mv in db.q("SELECT * FROM mny_monarch_moves WHERE done_at IS NULL"):
         if mv["new_external_id"] in ids:
@@ -706,7 +706,7 @@ def status() -> dict:
     good = db.one("SELECT finished_at FROM mny_syncs WHERE ok = 1 ORDER BY id DESC LIMIT 1")
     keys = {k["name"]: credentials.is_set(APP, k["name"]) for k in KEYS}
     return {"configured": configured(), "keys": keys, "running": running(), "progress": progress(), "every": SYNC_HOURS,
-            "auto": model.setting("monarch_auto", "1") == "1",
+            "auto": config.live_flag("MONARCH_AUTO", True),
             "last": {"started": last["started_at"].isoformat(), "finished": last["finished_at"].isoformat() if last["finished_at"] else None,
                      "ok": bool(last["ok"]), "message": last["message"]} if last else None,
             "lastGood": good["finished_at"].isoformat() if good and good["finished_at"] else None,
@@ -716,7 +716,7 @@ def status() -> dict:
 
 def due() -> bool:
     """Whether the automatic sync should run now."""
-    if not configured() or model.setting("monarch_auto", "1") != "1" or running():
+    if not configured() or not config.live_flag("MONARCH_AUTO", True) or running():
         return False
     last = db.one("SELECT MAX(started_at) AS t FROM mny_syncs")["t"]
     return last is None or (dt.datetime.now() - last).total_seconds() >= SYNC_HOURS * 3600

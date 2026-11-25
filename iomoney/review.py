@@ -8,14 +8,14 @@ import time
 
 from iomoney import db, model
 
-SINCE = "review_since"  # mny_settings: when the household started looking (epoch seconds)
+SINCE = "review_since"  # mny_state: when the household started looking (epoch seconds)
 
 
 def since() -> int:
-    v = db.get_setting(SINCE)
+    v = db.get_state(SINCE)
     if v is None:
         v = str(int(time.time()))
-        db.set_setting(SINCE, v)
+        db.set_state(SINCE, v)
     return int(v)
 
 

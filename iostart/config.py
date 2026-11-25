@@ -7,6 +7,7 @@ from iosuite_shared import config as shared
 # app.json's limits: iosuite_shared.config.of_app says what each is
 _own = shared.of_app(__package__)
 globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
 env_flag = _own["env_flag"]
 
 # where the apps are: each registers itself in the suite's list in the Shared ioSuite database (see apps.py)

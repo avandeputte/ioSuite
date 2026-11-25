@@ -11,6 +11,7 @@ from iosuite_shared import config as shared
 # app.json's limits: iosuite_shared.config.of_app says what each is
 _own = shared.of_app(__package__)
 globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
 env_int = _own["env_int"]
 
 # the largest image a note may carry; MariaDB's max_allowed_packet (16 MB by default) must be larger

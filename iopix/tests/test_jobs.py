@@ -8,6 +8,7 @@ import pytest
 
 from helpers import wait_for as _wait
 from iopix import jobs
+from iopix.tests.helpers import pixsetting
 
 
 @pytest.fixture(autouse=True)
@@ -108,10 +109,9 @@ def test_while_the_app_runs_the_queue_is_one_of_the_copy_s_jobs(client, monkeypa
 def test_thread_budget_is_bounded(monkeypatch):
     n = os.cpu_count() or 4
     assert 1 <= jobs.threads() <= max(1, n - 1)
-    from iopix.data import state
-    state.set_setting("bg_threads", "999")
+    pixsetting("BG_THREADS", "999")
     assert jobs.threads() == max(1, n - 1)
-    state.set_setting("bg_threads", "0")
+    pixsetting("BG_THREADS", "0")
     assert jobs.threads() == max(1, min(jobs.config.BG_THREADS, n - 1))
 
 

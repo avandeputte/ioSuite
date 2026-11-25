@@ -19,4 +19,4 @@ def test_deleting_someone_removes_their_bookmarks_and_keeps_the_shared_ones(clie
     assert client.delete(f"/api/suite-admin/users/{b}").status_code == 200
     assert not db.q("SELECT id FROM prt_bookmark_nodes WHERE owner = %s", (b,))
     assert db.q("SELECT id FROM prt_bookmark_nodes WHERE id = %s", (family["id"],))
-    assert db.get_setting(f"user:{b}:layout") is None
+    assert db.get_state(f"user:{b}:layout") is None

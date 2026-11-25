@@ -117,6 +117,23 @@ class App:
     def suite_app(self):
         return self
 
+    def setting(self, name: str, default: str = "") -> str:
+        """One of the app's settings as it is now (Settings › Apps › All settings, or its own Settings page): read
+        from the Shared ioSuite database, so a change takes hold without the app starting again. The ones the
+        declaration marks "restart" are in the app's config module instead."""
+        from iosuite_shared import config
+        return config.live(self.key, name, default)
+
+    def flag(self, name: str, default: bool = False) -> bool:
+        """One of the app's switches, as it is now."""
+        from iosuite_shared import config
+        return config.live_flag(self.key, name, default)
+
+    def number(self, name: str, default: int) -> int:
+        """One of the app's numbers, as it is now."""
+        from iosuite_shared import config
+        return config.live_int(self.key, name, default)
+
     @cached_property
     def counts(self):
         """What the app has in its tables, by name (<app>/db.py: counts), or None where it says nothing. One place

@@ -60,6 +60,85 @@
       "label": "Push TRMNL screens",
       "type": "switch",
       "default": "1"
+    },
+    {
+      "name": "PHOTO_STRIP",
+      "label": "Photos under the tiles",
+      "type": "choice",
+      "default": "rediscover",
+      "choices": [
+        [
+          "rediscover",
+          "A row of photos at random"
+        ],
+        [
+          "onthisday",
+          "On this day"
+        ],
+        [
+          "off",
+          "None"
+        ]
+      ],
+      "hint": "What everyone sees under the tiles; each person may pick another in Customize."
+    },
+    {
+      "name": "WEATHER_UNITS",
+      "label": "Weather in",
+      "type": "choice",
+      "default": "metric",
+      "choices": [
+        [
+          "metric",
+          "Celsius and millimetres"
+        ],
+        [
+          "imperial",
+          "Fahrenheit and inches"
+        ]
+      ],
+      "hint": "Each person may pick their own in Customize."
+    },
+    {
+      "name": "WEATHER_LOCATION",
+      "label": "Weather location",
+      "type": "text",
+      "byApp": true,
+      "hint": "The place Settings › Weather picked, as AccuWeather's own key for it."
+    },
+    {
+      "name": "WEATHER_LOCATION_NAME",
+      "label": "Weather location name",
+      "type": "text",
+      "byApp": true,
+      "hint": "What that place is called, as AccuWeather gave it."
+    },
+    {
+      "name": "HA_URL",
+      "label": "Home Assistant address",
+      "type": "text",
+      "hint": "http://homeassistant.local:8123, or wherever it answers. Its token is under Keys and tokens."
+    },
+    {
+      "name": "HA_NAME",
+      "label": "What Home Assistant calls the house",
+      "type": "text",
+      "byApp": true,
+      "hint": "Learned when Settings › Home Assistant tests the connection."
+    },
+    {
+      "name": "HA_ENTITIES",
+      "label": "Home Assistant things shown",
+      "type": "text",
+      "byApp": true,
+      "hint": "The lights, switches and sensors picked in Settings › Home Assistant."
+    },
+    {
+      "name": "HA_BUILTIN_ALERTS",
+      "label": "Home Assistant's own warnings",
+      "type": "switch",
+      "default": "1",
+      "hint": "Show the warnings Home Assistant itself raises on the start page. Off: only the things picked above."
     }
   ],
   "limits": {

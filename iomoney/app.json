@@ -39,6 +39,20 @@
       "type": "switch",
       "default": "1",
       "hint": "Monarch, quotes and notifications on their own. Off: only when asked."
+    },
+    {
+      "name": "CURRENCY",
+      "label": "The household's currency",
+      "type": "text",
+      "default": "USD",
+      "hint": "The three-letter code the totals are in (USD, EUR); what an account holds is converted into it. Settings › General shows the same value."
+    },
+    {
+      "name": "MONARCH_AUTO",
+      "label": "Sync Monarch Money on its own",
+      "type": "switch",
+      "default": "1",
+      "hint": "Off: Monarch is read only when someone asks for it."
     }
   ],
   "access": {

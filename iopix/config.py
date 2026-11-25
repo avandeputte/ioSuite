@@ -17,6 +17,7 @@ from iosuite_shared import config as shared
 # app.json's limits: iosuite_shared.config.of_app says what each is
 _own = shared.of_app(__package__)
 globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
 env, env_flag, env_int = _own["env"], _own["env_flag"], _own["env_int"]
 DATA_DIR = _own["DATA_DIR"]
 DB_HOST, DB_PORT, DB_NAME = _own["DB_HOST"], _own["DB_PORT"], _own["DB_NAME"]

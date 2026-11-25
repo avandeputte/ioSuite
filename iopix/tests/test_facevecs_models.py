@@ -11,6 +11,7 @@ from iopix.faces import facedetect, facevecs
 from iopix.data import index, state, appdb
 from iopix.ai import models
 from iopix import thumbs
+from iopix.tests.helpers import pixsetting
 
 MODELS = Path("/private/tmp/claude-501/-Users-alex-Pictures/cd6ab508-dd1f-4df1-999c-d6fe0a83fe5c/scratchpad/models")
 
@@ -44,8 +45,8 @@ def test_vectors_separate_people(client, lib, monkeypatch, model):
     if len(people) < 2:
         pytest.skip("the fixture library needs two people with two confirmed faces each")
     monkeypatch.setattr(models, "MODEL_DIR", MODELS)
-    state.set_setting("face_vectors", model)
-    state.set_setting("face_detector", "yunet")
+    pixsetting("FACE_VECTORS", model)
+    pixsetting("FACE_DETECTOR", "yunet")
     facevecs.reset_session(); facedetect.reset_session()
     try:
         assert facevecs.chosen() == model and facevecs.available()
@@ -60,7 +61,7 @@ def test_vectors_separate_people(client, lib, monkeypatch, model):
         print(f"{model}: same-person similarity {np.mean(same):.2f}, different people {np.mean(diff):.2f}")
         assert np.mean(same) > np.mean(diff), (model, np.mean(same), np.mean(diff))
     finally:
-        state.set_setting("face_vectors", ""); state.set_setting("face_detector", "")
+        pixsetting("FACE_VECTORS", ""); pixsetting("FACE_DETECTOR", "")
         facevecs.reset_session(); facedetect.reset_session()
 
 
@@ -71,7 +72,7 @@ def test_switching_the_model_forgets_the_old_vectors(client, lib, monkeypatch):
         con.commit()
     finally:
         con.close()
-    state.set_setting("face_vectors_built", "sface")
+    state.set_state("face_vectors_built", "sface")
     monkeypatch.setattr(facevecs, "chosen", lambda: "arcface")
     facevecs._same_model()
     con = appdb.connect()
@@ -79,6 +80,6 @@ def test_switching_the_model_forgets_the_old_vectors(client, lib, monkeypatch):
         assert con.execute("SELECT count(*) FROM pix_ai_face_embeddings").fetchone()[0] == 0
     finally:
         con.close()
-    assert state.get_setting("face_vectors_built") == "arcface"
+    assert state.get_state("face_vectors_built") == "arcface"
     facevecs._same_model()  # a second call changes nothing
-    state.set_setting("face_vectors_built", "sface")
+    state.set_state("face_vectors_built", "sface")
