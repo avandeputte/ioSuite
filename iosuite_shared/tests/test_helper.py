@@ -148,3 +148,11 @@ def test_a_process_over_its_ceiling_is_stopped_and_named(lane, monkeypatch):
     monkeypatch.setattr(helper, "CHECK_EVERY", 0.1)
     with pytest.raises(helper.HelperLost, match="more memory than the test's work may use"):
         lane.call(helperwork.hog, (400,))
+
+
+def test_a_process_that_goes_by_itself_counts_against_the_call(lane):
+    """lost_as(reason, own): own is False only when the server ran short of memory around a small job."""
+    seen = []
+    with pytest.raises(RuntimeError, match="crashed"):
+        lane.call(helperwork.crash, lost_as=lambda why, own: (seen.append(own), RuntimeError(why))[1])
+    assert seen == [True]

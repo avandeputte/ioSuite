@@ -460,7 +460,7 @@ class Heavy:
                     w["conn"].send(("run", fn.__module__, fn.__qualname__, args, {}, setup))
                 except (OSError, ValueError):
                     pass  # found gone below
-            own = False
+            own = True  # a process that went by itself is the call's doing; only a server short of memory may say otherwise
             next_check = time.monotonic() + CHECK_EVERY
             try:
                 while done is None:
