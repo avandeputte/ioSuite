@@ -9,7 +9,16 @@
     "/dav/ext"
   ],
   "devices": [
-    "POST,DELETE /api/auth/device"
+    "POST,DELETE /api/auth/device",
+    "GET /api/news",
+    "GET /api/news/items",
+    "GET /api/news/items/*",
+    "POST /api/news/items/mark",
+    "POST /api/news/read",
+    "POST /api/news/refresh",
+    "POST /api/news/feeds",
+    "PATCH,DELETE /api/news/feeds/*",
+    "GET /api/bookmarks/site-icon"
   ],
   "order": 10,
   "aside": "the start page",

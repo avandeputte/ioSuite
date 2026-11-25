@@ -189,11 +189,15 @@ what the app will show on the start page later (today's events, the newest photo
   Cloudflare Access a home-screen app signs in once by itself (it keeps its own cookies, apart from the browser's).
 - **ioStart, the iPhone and iPad app** ([avandeputte/iosuite-apps](https://github.com/avandeputte/iosuite-apps), folder
   `iostart/`): the tree with search and editing, a share sheet entry that bookmarks the page open in any browser, and a
-  built-in browser (WebKit) for opening bookmarks inside the app, plus home screen widgets (today, the next event,
+  built-in browser (WebKit) for opening bookmarks inside the app, a Today screen (what the start page's Today card
+  lists: events, tasks to tick off, birthdays, the week's bills, with what you switched off in Customize left out), the
+  feed reader (the same feeds, read and starred as on the page), plus home screen widgets (today, the next event,
   favourite bookmarks) and Siri / Shortcuts actions to add a task or an event. It speaks the extension's API
-  (`/dav/ext`) and signs in the same way (`POST /api/auth/device`), for a full app password because its
-  widgets and Siri read and add in ioCalendar and ioTask as the person (`/dav/ext/today`, `/dav/ext/calendars`,
-  `/dav/ext/tasks`, `/dav/ext/events`); a sync-only password is told to sign in again for those.
+  (`/dav/ext`) and signs in the same way (`POST /api/auth/device`), for a full app password because its Today
+  screen, widgets and Siri read and add in the other apps as the person (`/dav/ext/today`, `/dav/ext/calendars`,
+  `/dav/ext/tasks`, `/dav/ext/tasks/<id>/done`, `/dav/ext/events`); a sync-only password is told to sign in again
+  for those. The reader asks the page's own `/api/news…` calls, the ones `app.json` "devices" lets the port for
+  devices serve.
 - **Bookmark sync with browsers**: everything in the tree syncs, on the start page or not.
   - *The ioStart Bookmarks extension* (`static/extension`, Chrome, Edge and Firefox; its own README there): keeps the
     browser's own bookmarks the same as the tree, both ways, with nothing to configure but the address. The bookmarks
