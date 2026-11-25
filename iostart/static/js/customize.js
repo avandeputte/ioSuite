@@ -21,6 +21,8 @@ const BM_LOOKS = [['', 'The full list'], ['icons', 'Icons only'], ['folded', 'Fo
 // what the Today layout shows: [its name on a switch, in the dialog, the app it comes from]
 const TODAY_PARTS = { events: ['Events', 'Events', 'iocalendar'], tasks: ['Tasks', 'Tasks', 'iotask'], birthdays: ['Birthdays', 'Birthdays', 'iocontact'], bills: ['Bills', 'Bills this week', 'iomoney'],
   health: ['Health', 'Health, in a card beside it', 'iohealth'], photos: ['Photos', 'On this day photos, beside it', 'iopix'] };
+// the weather's extras, each one to switch off (layout weatherOff)
+const WEATHER_PARTS = { warnings: 'Severe weather warnings', sun: 'Sunrise, sunset and daylight', air: 'Air quality', pollen: 'Pollen' };
 const TODAY_DAYS = [['', 'The week ahead'], ['0', 'Today only'], ['1', 'Tomorrow too'], ['2', 'Two days ahead'], ['3', 'Three days ahead']];
 const SIZES = [['', 'Automatic'], ['card', 'Always a card'], ['tile', 'Always a low tile']];
 const pick = (opts, now, attrs = {}) => h('select', { class: 't', ...attrs }, opts.map(([v, t]) => h('option', { value: v, selected: String(v) === String(now == null ? '' : now) ? true : null }, t)));
@@ -34,6 +36,7 @@ export async function customize(tab = 'page') {
   const top = Object.entries(TOP_PARTS).map(([k, name]) => ({ key: k, on: !L.hidden.includes(k), name }));
   const has = (k) => apps.some((a) => a.key === k);
   const parts = Object.entries(TODAY_PARTS).filter(([, [, , app]]) => has(app)).map(([k, [, name]]) => ({ key: k, on: !L.todayOff.includes(k), name }));
+  const wxParts = Object.entries(WEATHER_PARTS).map(([k, name]) => ({ key: k, on: !(L.weatherOff || []).includes(k), name }));
   const tick = (t, label) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: t.on, onchange: (e) => { t.on = e.target.checked; } }), label);
   // a list of rows with a drag handle and a tick box, for the tiles and for the cards alike (dragSort, as the bookmarks);
   // an app that has something to show also gets its size
@@ -79,6 +82,9 @@ export async function customize(tab = 'page') {
     h('h3', null, 'The top row'),
     top.map((t) => tick(t, t.name)),
     h('div', { class: 'grid' }, fld('Weather in', units), h('div')),
+    h('h3', null, 'With the weather'),
+    wxParts.map((t) => tick(t, t.name)),
+    h('p', { class: 'muted small' }, 'Warnings come from the US National Weather Service, for places in the United States; the rest from AccuWeather with the forecast. A click on the weather shows them all.'),
     h('p', { class: 'muted small' }, `In the search box, a prefix picks a site: ${BANG_HELP}. “t …” adds a task to ioTask and “n …” a note to ioNote; a line that says when (“dinner fri 19:00”) adds an event.`),
   ];
 
@@ -139,7 +145,7 @@ export async function customize(tab = 'page') {
     sizes: Object.fromEntries(tiles.filter((t) => t.size).map((t) => [t.key, t.size])),
     // a part the dialog does not list (its app is not here) stays as it was
     todayOff: [...parts.filter((p) => !p.on).map((p) => p.key), ...L.todayOff.filter((k) => !parts.some((p) => p.key === k))],
-    todayDays: days.value === '' ? null : +days.value, units: units.value || null, accent: accent || null, text: text.value || null, bookmarks: bmLook.value || null });
+    todayDays: days.value === '' ? null : +days.value, weatherOff: wxParts.filter((t) => !t.on).map((t) => t.key), units: units.value || null, accent: accent || null, text: text.value || null, bookmarks: bmLook.value || null });
 
   const panels = {
     page: ['Page', pagePanel],
