@@ -5,6 +5,7 @@ import { $, api, BM_APP, dayKey, S, showSignIn } from './core.js';
 import { showBookmarks } from './bookmarks.js';
 import { showHome } from './home.js';
 import { haStreamStop } from './homeassistant.js';
+import { showInbox } from './inbox.js';
 import * as news from './news.js';
 import { showSettings } from './settings.js';
 import { applyTheme, drawUser, setTheme, userMenu } from './shell.js';
@@ -16,6 +17,7 @@ export function route() {
   if (a === 'settings') return { view: 'settings', tab: b || 'account', sub: c };
   if (a === 'bookmarks' || (a === 'settings' && b === 'bookmarks')) return { view: 'bookmarks' };
   if (a === 'news') return { view: 'news', b, c };  // the reader (static/js/news.js)
+  if (a === 'inbox') return { view: 'inbox', b };  // the suite's inbox by email (static/js/inbox.js)
   if (a === 'wall') return { view: 'wall' };
   if (a === 'pair') return { view: 'pair', code: b || '' };
   if (BM_APP && !a) return { view: 'bookmarks' };  // the Bookmarks app opens on them
@@ -33,7 +35,7 @@ export async function onRoute() {
   haStreamStop();  // the view opens its own stream of Home Assistant changes when it needs one
   $('#topbar').append(userMenu());  // out of the old page before it goes; showHome takes it into the new one
   $('#main').replaceChildren(page);
-  try { await ({ home: showHome, settings: showSettings, wall: showWall, bookmarks: showBookmarks, pair: showPair, news: news.showNews })[r.view](page, r); } catch (e) { fail(e); }
+  try { await ({ home: showHome, settings: showSettings, wall: showWall, bookmarks: showBookmarks, pair: showPair, news: news.showNews, inbox: showInbox })[r.view](page, r); } catch (e) { fail(e); }
 }
 
 // ------------------------------------------------------------------ live refresh

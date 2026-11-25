@@ -29,6 +29,9 @@ export function drawUser() {
       tools.replaceChildren(h('div', { class: 'mhead muted small' }, 'Admin tools'),
         ...t.map((a) => h('a', { class: 'mi', href: a.url, onclick: closeMenu }, h('img', { src: a.icon, alt: '' }), a.name)));
     };
+    // the suite's inbox by email (static/js/inbox.js), with how much waits to be filed
+    const inboxEntry = h('a', { class: 'mi', href: '#/inbox', onclick: closeMenu }, icon('receipt', 's'), 'Inbox');
+    api('api/inbox/count').then((c) => { if (c.waiting) inboxEntry.append(h('span', { class: 'micount' }, c.waiting > 99 ? '99+' : c.waiting)); }).catch(() => {});
     if (S.allApps) listTools(S.allApps);
     else api('api/apps').then((got) => { S.allApps = got.items; listTools(got.items); }).catch(() => {});
     menu = h('div', { class: 'menu' },
@@ -36,6 +39,7 @@ export function drawUser() {
       h('a', { class: 'mi', href: '#/settings/account', onclick: closeMenu }, icon('person', 's'), 'Account'),
       h('a', { class: 'mi', href: '#/bookmarks', onclick: closeMenu }, icon('link', 's'), 'Bookmarks'),
       h('a', { class: 'mi', href: '#/news', onclick: closeMenu }, icon('rss', 's'), 'Feeds'),
+      inboxEntry,
       h('button', { class: 'mi', onclick: () => { closeMenu(); customize(); } }, icon('tune', 's'), 'Customize the page'),
       h('button', { class: 'mi', onclick: () => { closeMenu(); arrangeStart(); } }, icon('move', 's'), 'Arrange the page'),
       h('button', { class: 'mi', onclick: () => { closeMenu(); enterWall(); } }, icon('wall', 's'), 'Wall display'),

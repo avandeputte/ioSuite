@@ -985,3 +985,31 @@ body.arranging .dock .arr[data-arr="tile"] { outline-offset: -1px; }
 .nwline-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .nwline-by { font-size: var(--fs-s); flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nwline:hover .nwline-title { text-decoration: underline; }
+
+/* the Inbox page (static/js/inbox.js): the suite's mail, to file */
+.mi .micount { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--accent-bg); color: var(--accent); font-size: var(--fs-s); font-weight: 600; text-align: center; }
+.pagehead .ibtools { margin-left: auto; display: flex; gap: 4px; }
+.ibhint { margin: -6px 0 14px; line-height: 1.6; }
+.ibhint code { font-size: .95em; background: var(--bg2); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+.ibrows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ibrows:has(.empty) { border: 0; }
+.ibrow { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; cursor: pointer; width: 100%; }
+.ibrow:last-child { border-bottom: 0; }
+.ibrow:hover { background: var(--bg2); }
+.ibrow.nobody .ibic { color: var(--danger); }
+.ibic { color: var(--fg2); padding-top: 2px; }
+.ibmain { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ibsubj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ibfrom, .ibnote { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ibnote a { color: var(--accent); }
+.ibwhen { white-space: nowrap; padding-top: 2px; }
+.dialog.ibdialog { max-width: 720px; }
+.ibitem .ibwarn { display: flex; gap: 6px; align-items: center; }
+.ibfiles { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.ibtext { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: var(--fs-m); background: var(--bg2); border-radius: var(--r-s); padding: 12px 14px; max-height: 40vh; overflow: auto; margin: 10px 0; }
+.ibacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ibacts select { width: auto; }
+.ibact { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ibmatch { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-s); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ibmatch:hover { background: var(--accent-bg); }
+@media (max-width: 600px) { .ibrow { padding: 12px; } .ibhint code { display: inline-block; margin: 2px 0; } }
