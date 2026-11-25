@@ -38,7 +38,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
-from iostart import __version__, apps as _apps, bookmarks, widgets as _widgets
+from iostart import __version__, apps as _apps, bookmarks, layout as _layout, widgets as _widgets
 from iostart.bookmarks import sync, icons as siteicons
 from iosuite_shared import live, users
 
@@ -208,12 +208,18 @@ async def post_sync(request: Request):
 # ------------------------------------------------------------------ the iPhone app's widgets and Siri (ioStart for iOS)
 # What ioStart's home screen widgets and its Siri / Shortcuts actions read and add, as the person:
 #
-#     GET  <address>/dav/ext/today?tz=   {today, week, tasks, links}: today's events (and the next one when the day is
-#                                        empty), the coming week's, the tasks due today or late; each part null when its
-#                                        app is not there or would not answer (`errors` says why)
+#     GET  <address>/dav/ext/today?tz=   {today, week, tasks, tasksWeek, birthdays, bills, show, links}: today's events
+#                                        (and the next one when the day is empty), the coming week's, the tasks due today
+#                                        or late and the coming days', ioContact's birthdays and ioMoney's bills of the
+#                                        week; each part null when its app is not there or would not answer (`errors`
+#                                        says why). show {off, days}: what the person left out of the start page's Today
+#                                        card and how far its list goes (layout todayOff, todayDays), which the app's
+#                                        Today screen follows; a part left out there is not asked for (null, no error)
 #     GET  <address>/dav/ext/calendars   the calendars and the lists the person may add to: {calendars, lists}
 #     POST <address>/dav/ext/tasks       {title, due?, listId?, timezone?} → {id, url}   (ioTask)
 #     POST <address>/dav/ext/events      {title, start, end?, allDay, timezone?, calendarId?} → {id, url}   (ioCalendar)
+#     POST <address>/dav/ext/tasks/<id>/done  {done?, undo?, timezone?} → {ok, moved, undo}: a task ticked off, as on
+#                                        the start page's Today card (widgets.iotask_done)
 #
 # These are asked of ioCalendar and ioTask with the app's own sign-in passed on (iostart/widgets.py), so they need a full
 # app password: the iPhone app's sign-in flow asks for one (`?scope=full`, iostart/ncbookmarks.py); a sync-only password
@@ -227,6 +233,13 @@ def _full(request: Request) -> dict:
     return u
 
 
+# what the app's Today screen lists beside the widgets' parts: {part of the answer: (app, tile kind, how many)}, and
+# the switch of the Today card each one goes with (iostart/layout.py TODAY_PARTS)
+_EXTRA_PARTS = {"tasksWeek": ("iotask", "week", 0), "birthdays": ("iocontact", "", 12), "bills": ("iomoney", "", 6)}
+_PART_OF = {"tasksWeek": "tasks", "birthdays": "birthdays", "bills": "bills"}
+_EXTRA = set(_PART_OF.values())
+
+
 def _ask(fn, *a):
     try:
         return fn(*a), None
@@ -236,16 +249,24 @@ def _ask(fn, *a):
 
 @router.get(BASE + "/today", include_in_schema=False)
 async def today(request: Request, tz: str = ""):
-    _full(request)
+    u = _full(request)
 
     def work():
-        parts = {"today": ("iocalendar", ""), "week": ("iocalendar", "week"), "tasks": ("iotask", "")}
-        with _cf.ThreadPoolExecutor(3) as ex:
-            futs = {k: ex.submit(_ask, _widgets.get, request, key, tz, kind, 8) for k, (key, kind) in parts.items()}
+        lay = _layout.get(u["id"])
+        off = [p for p in lay["todayOff"] if p in _EXTRA]
+        # the widgets' three parts always; the Today screen's own only where their app is on the suite's list and the
+        # person kept the part on their Today card
+        parts = {"today": ("iocalendar", "", 8), "week": ("iocalendar", "week", 0), "tasks": ("iotask", "", 8)}
+        there = _apps.registered()
+        parts.update({k: v for k, v in _EXTRA_PARTS.items() if v[0] in there and _PART_OF[k] not in off})
+        with _cf.ThreadPoolExecutor(len(parts)) as ex:
+            futs = {k: ex.submit(_ask, _widgets.get, request, key, tz, kind, n) for k, (key, kind, n) in parts.items()}
             got = {k: f.result() for k, f in futs.items()}
         out = {k: v for k, (v, _) in got.items()}
+        out.update({k: None for k in _EXTRA_PARTS if k not in out})
         out["errors"] = {k: why for k, (_, why) in got.items() if why}
-        out["links"] = {k: _apps.url_for(k) for k in ("iocalendar", "iotask")}
+        out["show"] = {"off": lay["todayOff"], "days": lay["todayDays"]}
+        out["links"] = {k: _apps.url_for(k) for k in ("iocalendar", "iotask", "iocontact", "iomoney")}
         return out
     return await run_in_threadpool(work)
 
@@ -281,3 +302,8 @@ async def add_task(request: Request):
 @router.post(BASE + "/events", include_in_schema=False)
 async def add_event(request: Request):
     return await _add(request, _widgets.iocalendar_add)
+
+
+@router.post(BASE + "/tasks/{task_id}/done", include_in_schema=False)
+async def task_done(task_id: str, request: Request):
+    return await _add(request, lambda req, body: _widgets.iotask_done(req, task_id, body))
