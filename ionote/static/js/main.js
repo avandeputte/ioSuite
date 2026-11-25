@@ -7,7 +7,8 @@ import { view, viewFromHash, go, loadMeta, renderNav, loadList, setOpenHandler, 
 import { openNote, flush, uploadPicture, currentNote, attachFiles } from './editor.js';
 import { renderTemplates, setTemplateHandler } from './templates.js';
 import { expandTemplate } from './markdown.js';
-import { renderSettings, renderChanges, renderImport, applyTheme } from './settings.js';
+import { renderSettings, renderChanges, renderImport } from './settings.js';
+import { themeFromAccount } from '../../api/auth/frame.js';
 
 let lastList = '';
 
@@ -181,7 +182,7 @@ async function start() {
   renderUserMenu();
   // notes are private to each account: once accounts exist, nothing shows until someone signs in
   if (!state.me.user && (state.me.requireLogin || state.me.usersExist)) { document.body.classList.add('locked'); signIn(true); return; }
-  if (state.me.user && state.me.settings && state.me.settings.theme) applyTheme(state.me.settings.theme);  // the account's theme (Settings › Display)
+  if (state.me.user) themeFromAccount(state.me.settings);  // the appearance the account carries, chosen in any app
   if (state.settings.app_name && state.settings.app_name !== 'ionote') document.title = state.settings.app_name;
   await loadMeta();
   loadSuite();

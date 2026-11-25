@@ -6,7 +6,7 @@ import { ago, api, fld, fmts, inp, S, store } from './core.js';
 import { onRoute } from './main.js';
 import { newAccountsDialog, startSync, syncLabel, watchSync } from './overview.js';
 import { transferMaintenance } from './rules.js';
-import { applyTheme, drawUser, refreshSummary } from './shell.js';
+import { applyTheme, drawUser, refreshSummary, themeChoice } from './shell.js';
 
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
@@ -73,7 +73,7 @@ async function setAccount(el) {
 /** Settings › Display: the theme, saved with the account. */
 async function setDisplay(el) {
   const ui = await accountUi();
-  put(el, ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })));
+  put(el, ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)));
 }
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app

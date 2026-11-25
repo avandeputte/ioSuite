@@ -6,7 +6,7 @@
    in the other ioSuite apps. */
 import { client, h, safeUrl } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, menuOpen, openNav, popMenu, put, toast, toggleSuite } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, menuOpen, openNav, popMenu, put, toast } from '../api/auth/frame.js';
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -60,7 +60,6 @@ function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to all the recipes. */
 async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 /* The sidebar, as in the other io apps: the name on top, the recipes (all, the family's, your own, your favourites),
    the cookbooks, the tags, adding and import, Settings at the foot. It docks beside the page on a wide screen unless its button put it away (remembered);
@@ -70,30 +69,19 @@ const VIEWS = { all: ['All recipes', 'book', '--c-green'], family: ['Family', 'h
 const viewShown = (k) => (k !== 'mine' && k !== 'favourites') || canOwn() || !!S.counts[k];
 function drawNav() {
   const nav = $('#nav'); const r = route();
-  const link = (v, href, ic, label, n, on, hueVar) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: hueVar ? { '--hue': `var(${hueVar})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label) => h('div', { class: 'navsec' }, h('span', null, label));
-  const brandName = () => [h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Recipe')];
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, gap, more } = frame.navParts(store, { name: 'Recipe', title: 'All recipes', redraw: drawNav });
   const shown = Object.entries(VIEWS).filter(([k]) => viewShown(k));
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'All recipes' }, brandName()))
-        : h('a', { class: 'brand', href: '#/', title: 'All recipes' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, brandName())),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     shown.map(([k, [label, ic, hv]]) => link(k, `#/${k}`, ic, label, S.counts[k] || null, r.view === k, hv)),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    S.books.length || canOwn() ? [h('div', { class: 'navgap' }),
-      h('div', { class: 'navsec' }, h('span', null, 'Cookbooks'),
-        canOwn() ? h('button', { class: 'iconbtn', title: 'New cookbook', 'aria-label': 'New cookbook', onclick: () => newBook() }, icon('add', 's')) : null),
+    more(moreSheet),
+    S.books.length || canOwn() ? [gap(),
+      sec('Cookbooks', canOwn() ? h('button', { class: 'iconbtn', title: 'New cookbook', 'aria-label': 'New cookbook', onclick: () => newBook() }, icon('add', 's')) : null),
       S.books.map((b) => link('book', `#/book/${b.id}`, b.family ? 'books' : 'lock', b.name, b.count || null, r.view === 'book' && r.id === b.id, b.family ? '--c-amber' : '--c-blue'))] : null,
-    S.tags.length ? [h('div', { class: 'navgap' }), sec('Tags'),
+    S.tags.length ? [gap(), sec('Tags'),
       S.tags.slice(0, 14).map((t) => link('tag', `#/tag/${encodeURIComponent(t.tag)}`, 'tag', t.tag, t.count, r.view === 'tag' && r.tag.toLowerCase() === t.tag.toLowerCase(), '--c-slate'))] : null,
-    canAdd() ? [h('div', { class: 'navgap' }), sec('Add'),
+    canAdd() ? [gap(), sec('Add'),
       link('new', '#/new', 'add', 'New recipe', null, r.view === 'new', '--c-green'),
       link('import', '#/import', 'download', 'Import and export', null, r.view === 'import', '--c-teal')] : null,
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
@@ -102,7 +90,6 @@ function drawNav() {
   $('.navmore')?.classList.toggle('on', ['tag', 'book', 'import', 'new', 'settings', 'search'].includes(r.view));
 }
 function applySidebar() { frame.applySidebar(store); }
-function sidebarButton() { frame.sidebarButton(store); }
 
 /** Phones: what the bottom bar has no room for (the cookbooks, the tags, adding, settings). */
 function moreSheet() {
@@ -731,7 +718,7 @@ async function setDisplay(el) {
   const ui = await accountUi();
   const sv = h('select', { class: 't', onchange: async (e) => { await saveSettings({ startView: e.target.value }); toast('Saved'); } },
     Object.entries(VIEWS).filter(([k]) => viewShown(k)).map(([v, [l]]) => h('option', { value: v, selected: v === (S.settings.startView || 'all') ? true : null }, l)));
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })),
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(frame.themeChoice(), frame.applyTheme)),
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Recipes'), h('div', { class: 'grid' }, fld('Open on', sv))));
 }
 
@@ -748,13 +735,13 @@ function showSignIn() { frame.signInScreen({ api, name: 'Recipe', first: !S.stat
 
 // ------------------------------------------------------------------ start
 async function start() {
-  applyTheme();
+  frame.applyTheme();
   document.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic)));
   S.status = await api('api/status');
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  frame.themeFromAccount(S.settings);
   drawUser();
   const nb = $('#newbtn');
   nb.hidden = !canAdd();

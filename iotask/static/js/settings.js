@@ -1,5 +1,5 @@
 import { $, S, api, canOwn, canShared, confirmDialog, copyRow, defaultList, dragSort, fail, h, icon, loadLists, saveSettings, store, toast, writable } from './core.js';
-import { SMART, applyTheme, colorPicker, drawNav, drawUser, newList, orderLists } from './shell.js';
+import { SMART, applyTheme, colorPicker, drawNav, drawUser, newList, orderLists, themeChoice } from './shell.js';
 import { saveTemplate, smartAdd } from './lists.js';
 import { onRoute } from './main.js';
 import { profileScope as scopeSelect } from '../../api/auth/ui.js';
@@ -36,7 +36,7 @@ export async function setDisplay(el) {
   const dl = h('select', { class: 't', onchange: (e) => save({ defaultList: +e.target.value }) },
     writable().map((c) => h('option', { value: c.id, selected: c.id === defaultList()?.id ? true : null }, `${c.name}${c.shared ? ' (shared)' : ''}`)));
   const qa = h('input', { type: 'checkbox', checked: smartAdd(), onchange: (e) => save({ quickAdd: e.target.checked ? 'on' : 'off' }) });
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })),
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)),
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Tasks'), h('div', { class: 'grid' }, fld('Open on', sv), fld('New tasks go to', dl)),
       h('p', null, h('label', { class: 'check' }, qa, ' The new-task line understands what is typed')),
       h('p', { class: 'muted small' }, 'When (tomorrow 5pm, friday, 15 nov, in 2 weeks), how often (every monday, monthly, every 2 weeks after done), how important (!high), which list (#groceries) and for whom (@emma) become the task’s fields: “Pay rent every month on the 1st 9am !high”. What was understood shows under the line while you type; the rest is the title.')));

@@ -1,5 +1,5 @@
 import { S, api, confirmDialog, copyRow, downloadProfile, fail, h, icon, loadMeta, toast } from './core.js';
-import { applyTheme, canOwn, drawUser, newBook } from './shell.js';
+import { applyTheme, canOwn, drawUser, newBook, themeChoice } from './shell.js';
 import { onRoute } from './main.js';
 import { profileScope as scopeSelect } from '../../api/auth/ui.js';
 import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
@@ -29,7 +29,7 @@ export async function setAccount(el) {
 /** Settings › Display: the theme, saved with the account. The sort order and the fields shown are at the top of the list. */
 export async function setDisplay(el) {
   const ui = await accountUi();
-  el.append(ui.box('theme', 'Appearance', ui.themeRow((S.settings && S.settings.theme) || localStorage.getItem('iocontact.theme') || 'system', (t) => { S.settings = { ...S.settings, theme: t }; applyTheme(t); })));
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)));
 }
 
 /** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite_shared's suite profile),

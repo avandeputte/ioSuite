@@ -4,6 +4,10 @@
   "description": "Contacts",
   "tag": "Contacts for the family",
   "color": "#4f2f7d",
+  "page": {
+    "search": "Search names, emails, phones, companies, places, tags…",
+    "new": "New contact"
+  },
   "folder": "contacts",
   "sync": [
     "/dav",

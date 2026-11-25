@@ -4,6 +4,10 @@
   "description": "Tasks",
   "tag": "The family's task lists",
   "color": "#146b5e",
+  "page": {
+    "search": "Search tasks…",
+    "new": "New task (n)"
+  },
   "folder": "tasks",
   "sync": [
     "/dav",

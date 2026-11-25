@@ -1,7 +1,7 @@
 import { $, S, api, canOwn, canShared, closeDialogs, dialog, dragSort, fail, h, icon, loadLists, memberBadge, memberColor, store, toggleWho, writable } from './core.js';
 import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite } from '../../api/auth/frame.js';
-export { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite };
+import { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount } from '../../api/auth/frame.js';
+export { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount };  // the appearance is the suite's one choice
 import { route } from './main.js';
 
 // ------------------------------------------------------------------ chrome
@@ -9,7 +9,6 @@ export function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to Today. */
 export async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-export function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 /* The sidebar, as in the other io apps: the name on top, the smart lists, the shared lists, the family, your own lists,
    Settings at the foot. It docks beside the page on a wide screen unless its button put it away (remembered); otherwise
@@ -17,9 +16,8 @@ export function applyTheme(choice) { frame.applyTheme(store, choice); }
 export const SMART = { today: ['Today', 'today', '--c-blue'], scheduled: ['Scheduled', 'event', '--c-rose'], all: ['All', 'inbox', '--c-slate'], done: ['Completed', 'done', '--c-green'] };
 export function drawNav() {
   const nav = $('#nav'); const r = route();
-  const link = (v, href, ic, label, n, on, hueVar) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: hueVar ? { '--hue': `var(${hueVar})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label, btn) => h('div', { class: 'navsec' }, h('span', null, label), btn || null);
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, gap, more } = frame.navParts(store, { name: 'Task', title: 'Today', redraw: drawNav });
   const listRow = (c) => h('a', { href: `#/list/${c.id}`, 'data-v': 'list', 'data-id': c.id, class: r.view === 'list' && r.id === c.id ? 'on' : null, style: { '--hue': c.color } },
     h('span', { class: 'ldot' }), h('span', { class: 'nl' }, c.name),
     h('span', { class: `n ${c.overdue ? 'late' : ''}`, title: c.overdue ? `${c.overdue} overdue` : null }, c.count || ''));
@@ -33,29 +31,20 @@ export function drawNav() {
     if (can && lists.length > 1) dragSort(g, 'a', null, orderLists);
     return g;
   };
-  const brandName = () => [h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Task')];
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'Today' }, brandName()))
-        : h('a', { class: 'brand', href: '#/', title: 'Today' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, brandName())),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     Object.entries(SMART).map(([k, [label, ic, hv]]) => link(k, `#/${k}`, ic, label, k === 'done' ? null : (k === 'today' ? S.counts.today : S.counts[k]) || null, r.view === k, hv)),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    h('div', { class: 'navgap' }),
+    more(moreSheet),
+    gap(),
     sec('Shared', canShared() ? h('button', { class: 'iconbtn', title: 'New shared list', onclick: () => newList(true) }, icon('add', 's')) : null),
     group(shared, canShared()),
-    S.members.length > 1 ? [h('div', { class: 'navgap' }),
+    S.members.length > 1 ? [gap(),
       sec('Family', S.who.size ? h('button', { class: 'pillbtn noic tiny', title: 'Show everyone again', onclick: () => toggleWho(null) }, 'Everyone') : null),
       S.members.map(whoRow)] : null,
-    h('div', { class: 'navgap' }),
+    gap(),
     canOwn() || mine.length ? sec('Mine', canOwn() ? h('button', { class: 'iconbtn', title: 'New private list', onclick: () => newList(false) }, icon('add', 's')) : null) : null,
     group(mine, canOwn()),
-    h('div', { class: 'navgap' }), sec('Manage'),
+    gap(), sec('Manage'),
     link('activity', '#/activity', 'history', 'Activity', null, r.view === 'activity', '--c-slate'),
     writable().length ? link('import', '#/import', 'upload', 'Import', null, r.view === 'import', '--c-teal') : null,
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
@@ -67,7 +56,6 @@ export async function orderLists(ids) {
   try { await api('api/lists/order', { method: 'POST', json: { ids } }); await loadLists(); } catch (e) { fail(e); drawNav(); }
 }
 export function applySidebar() { frame.applySidebar(store); }
-export function sidebarButton() { frame.sidebarButton(store); }
 /** Phones: what the bottom bar has no room for (the lists, the family filter, import, settings). */
 export function moreSheet() {
   const r = route();

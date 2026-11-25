@@ -1,5 +1,5 @@
 import { $, S, api, calOf, fail, h, icon, isAuto, loadCals, parseDay, sameDay, writable, ymd } from './core.js';
-import { applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn } from './shell.js';
+import { applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn, themeFromAccount } from './shell.js';
 import { showEdit } from './edit.js';
 import { closeDialogs, showEventPage } from './event.js';
 import { showImport, showSearch } from './search.js';
@@ -54,7 +54,7 @@ export async function start() {
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  themeFromAccount(S.settings);
   S.hidden = new Set(String(S.settings.hiddenCalendars || '').split(',').filter(Boolean).map(Number));
   S.who = new Set(String(S.settings.memberFilter || '').split(',').filter(Boolean).map(Number));
   drawUser();

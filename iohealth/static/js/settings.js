@@ -1,5 +1,5 @@
 import { ALERT_DEFAULTS, SECTIONS, applySections, fmtCompact, forgetTypeList, h, pages, prettyUnit, sectionOn, typeHidden, typeLabel } from './core.js';
-import { api, apiCache, applyTheme, pageTitle, saveSettings, settings } from './shell.js';
+import { api, apiCache, applyTheme, pageTitle, saveSettings, settings, themeChoice } from './shell.js';
 import { card, seg } from './charts.js';
 import { accountUi, me, setAccount, suitePanel } from './accounts.js';
 
@@ -54,7 +54,7 @@ export async function setDisplay() {
   const saveNow = async () => { saveSettings(); };
   return [
     ui.box('theme', 'Display',
-      ui.themeRow(settings.theme === 'auto' ? 'system' : settings.theme, v => { settings.theme = v === 'system' ? 'auto' : v; applyTheme(); }, saveNow),
+      ui.themeRow(themeChoice(), applyTheme),
       ui.unitsRow(settings.units || 'auto', v => { settings.units = v; apiCache.clear(); }, saveNow)),
     card('Sections', h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Untick what you don\'t use to hide it everywhere.'),
       ...SECTIONS.map(([key, label, what]) => h('label', { class: 'row', style: { gap: '8px', margin: '6px 0' } },

@@ -48,7 +48,7 @@ export function saveLayout(json, to = S.layoutOf && S.layoutOf.scope === 'device
   return api(`api/me/layout${to ? `?${new URLSearchParams({ device: to.id, name: to.name || '' })}` : ''}`, { method: 'PUT', json });
 }
 /** The page's colour and the size of its type (layout accent, text): on the document, and kept in this browser so the
-    next visit draws in them at once (static/js/theme.js). */
+    next visit draws in them at once (static/js/look.js). */
 export function applyLook(L) {
   const d = document.documentElement.dataset, look = { accent: (L && L.accent) || '', text: (L && L.text) || '' };
   if (look.accent) d.accent = look.accent; else delete d.accent;

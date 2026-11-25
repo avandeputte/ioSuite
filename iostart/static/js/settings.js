@@ -6,7 +6,7 @@ import { api, dragSort, S } from './core.js';
 import { setBookmarkSettings } from './bookmarks.js';
 import { HA_ICONS, haIcon } from './homeassistant.js';
 import { onRoute } from './main.js';
-import { drawUser, setTheme } from './shell.js';
+import { applyTheme, drawUser, themeChoice } from './shell.js';
 import { setTrmnl } from './trmnl.js';
 
 // ------------------------------------------------------------------ settings
@@ -26,7 +26,7 @@ async function setAccount(el) {
 }
 async function setDisplay(el) {
   const ui = await accountUi();
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings?.theme || 'system', setTheme)));
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)));
 }
 
 // ------------------------------------------------------------------ settings › the home page: the weather, Home Assistant (admins)

@@ -205,6 +205,12 @@ def auth_router(self) -> APIRouter:
         menu of the suite's apps, the sidebar, the theme: import { ... } from '../api/auth/frame.js'."""
         return pages.send(request, pages.SHARED / "frame.js", "text/javascript")
 
+    @r.get("/api/auth/theme.js", dependencies=[access.public])
+    def api_theme(request: Request):
+        """The two lines that apply the suite's one appearance choice before the page draws (static/theme.js), named
+        in the <head> of every app's page: <script src="api/auth/theme.js"></script>."""
+        return pages.send(request, pages.SHARED / "theme.js", "text/javascript")
+
     @r.get("/api/auth/base.css", dependencies=[access.public])
     def api_base_css(request: Request):
         """The look the single-page io apps share (static/base.css), linked before each one's own static/app.css."""

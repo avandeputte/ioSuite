@@ -4,6 +4,12 @@
   "description": "Local DNS",
   "tag": "Local DNS",
   "color": "#0e7c86",
+  "page": {
+    "search": "Filter names and addresses…",
+    "searchLabel": "Filter",
+    "new": "New entry (n)",
+    "newHidden": true
+  },
   "folder": "dns",
   "order": 110,
   "adminTool": true,

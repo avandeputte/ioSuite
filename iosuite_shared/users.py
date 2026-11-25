@@ -453,26 +453,43 @@ def set_value(user_id: int, app: str, key: str, value):
 
 
 SETTINGS_KEY = "settings"
+SUITE = ""  # the app of the settings that are the person's own for the whole suite, not one app's
+SUITE_WIDE = ("theme",)  # chosen once and followed by every app: the appearance (Settings > Appearance)
 
 
-def get_settings(user_id: int, app: str) -> dict:
-    """The user's display preferences in this app (a free-form JSON object the app reads and writes)."""
+def _own(user_id: int, app: str) -> dict:
     v = get_value(user_id, app, SETTINGS_KEY, {})
     return v if isinstance(v, dict) else {}
 
 
+def get_settings(user_id: int, app: str) -> dict:
+    """The person's display preferences in this app (a free-form JSON object the app reads and writes), with the
+    suite-wide ones on top: the appearance is chosen once and every app follows it."""
+    if app == SUITE:
+        return _own(user_id, SUITE)
+    own = {k: v for k, v in _own(user_id, app).items() if k not in SUITE_WIDE}  # their one home is the suite's slot
+    wide = _own(user_id, SUITE)
+    return {**own, **{k: v for k, v in wide.items() if k in SUITE_WIDE}}
+
+
 def set_settings(user_id: int, app: str, changes: dict) -> dict:
-    """Merge changes into the preferences (None removes a key; keys and values are limited in size) and return the result."""
-    cur = get_settings(user_id, app)
+    """Merge changes into the preferences (None removes a key; keys and values are limited in size) and return the
+    result. A suite-wide setting (SUITE_WIDE) is kept once for the person, whichever app sends it."""
+    parts = {}
     for k, v in (changes or {}).items():
         if not isinstance(k, str) or len(k) > 64:
             continue
-        if v is None:
-            cur.pop(k, None)
-        elif isinstance(v, (str, int, float, bool)) and len(str(v)) <= 2000:
-            cur[k] = v
-    set_value(user_id, app, SETTINGS_KEY, cur)
-    return cur
+        if v is None or (isinstance(v, (str, int, float, bool)) and len(str(v)) <= 2000):
+            parts.setdefault(SUITE if (k in SUITE_WIDE and app != SUITE) else app, {})[k] = v
+    for which, few in parts.items():
+        cur = _own(user_id, which)
+        for k, v in few.items():
+            if v is None:
+                cur.pop(k, None)
+            else:
+                cur[k] = v
+        set_value(user_id, which, SETTINGS_KEY, cur)
+    return get_settings(user_id, app)
 
 
 # ---- sign-in attempts: a wrong password costs a growing wait, per address and account (in memory: a restart clears

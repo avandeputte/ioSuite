@@ -1,4 +1,4 @@
-/* Theme: light by default, dark with the system, or whichever Settings › Appearance fixes (data-theme on <html>:
+/* Theme: the device's by default, or whichever Settings › Appearance fixes (data-theme on <html>:
    light | dark; absent = follow the system). The same token names and scales as iopix; ionote' own hue is the
    deep teal of its icon, with iopix's gold for "io". */
 :root {

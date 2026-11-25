@@ -1,6 +1,7 @@
 /* The account menu (the gear) and the theme. */
 import * as frame from '../../api/auth/frame.js';
-import { icon, toast } from '../../api/auth/frame.js';
+import { applyTheme, icon, themeChoice, themeFromAccount, toast } from '../../api/auth/frame.js';
+export { applyTheme, themeChoice, themeFromAccount };  // the appearance is the suite's one choice
 import { h } from '../../api/auth/ui.js';
 import { $, api, S, store } from './core.js';
 import { arrangeStart, customize } from './customize.js';
@@ -20,7 +21,7 @@ export function drawUser() {
   const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== btn) closeMenu(); };
   btn.onclick = () => {
     if (menu) return closeMenu();
-    const theme = localStorage.getItem('iostart.theme') || 'system';
+    const theme = themeChoice();
     // the admin tools (ioDNS…: only their admins get them) are listed here, not on the start page
     const tools = h('div', { class: 'mtools', hidden: true });
     const listTools = (apps) => {
@@ -39,7 +40,7 @@ export function drawUser() {
       h('button', { class: 'mi', onclick: () => { closeMenu(); customize(); } }, icon('tune', 's'), 'Customize the page'),
       h('button', { class: 'mi', onclick: () => { closeMenu(); arrangeStart(); } }, icon('move', 's'), 'Arrange the page'),
       h('button', { class: 'mi', onclick: () => { closeMenu(); enterWall(); } }, icon('wall', 's'), 'Wall display'),
-      h('button', { class: 'mi', onclick: () => { const n = { system: 'light', light: 'dark', dark: 'system' }[theme]; setTheme(n); api('api/auth/settings', { method: 'POST', json: { theme: n } }).catch(() => {}); closeMenu(); toast(`Appearance: ${n}`); } },
+      h('button', { class: 'mi', onclick: () => { const n = { system: 'light', light: 'dark', dark: 'system' }[theme]; applyTheme(n); closeMenu(); toast(`Appearance: ${n}`); } },
         icon('theme', 's'), `Appearance: ${theme}`),
       tools,
       h('a', { class: 'mi', href: '#/settings', onclick: closeMenu }, icon('settings', 's'), 'Settings'),
@@ -49,10 +50,3 @@ export function drawUser() {
   };
   m.append(btn);
 }
-/** The theme: kept with the account (Settings › Display), and in this browser so the page draws in it at once. */
-export function setTheme(t) {
-  try { localStorage.setItem('iostart.theme', t); } catch { /* private mode */ }
-  if (S.settings) S.settings.theme = t;
-  applyTheme();
-}
-export function applyTheme(choice) { frame.applyTheme(store, choice); }

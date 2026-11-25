@@ -1,21 +1,17 @@
 /** Settings, one page as in every ioSuite app (Account and Display for accounts; Server for admins;
  *  People, Apps, Servers and Keys for suite admins), the Import and export page and the change log. */
 import { $, h, api, state, icon, toast, fail, canWrite, fmtDate } from './core.js';
+import { applyTheme, themeChoice } from '../../api/auth/frame.js';  // the appearance: the suite's one choice
 
 /** Settings › Account (with the app passwords) and Display: iosuite_shared's panels, the same in every io app. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
-export function applyTheme(t) {
-  try { localStorage.setItem('ionote.theme', t); } catch (e) { /* private mode */ }
-  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-}
-const currentTheme = () => { try { return localStorage.getItem('ionote.theme') || 'system'; } catch (e) { return 'system'; } };
 async function accountPanel() {
   const ui = await accountUi(), el = h('div'), pw = h('div');
   await ui.mountAccount(el, { toast });
   await ui.mountAppPasswords(pw, { toast });
   return [el, pw];
 }
-async function displayPanel() { const ui = await accountUi(); return ui.box('theme', 'Appearance', ui.themeRow(currentTheme(), applyTheme)); }
+async function displayPanel() { const ui = await accountUi(); return ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)); }
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people and their role in every app (here
  *  too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by

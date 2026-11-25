@@ -1,5 +1,6 @@
 /** What the whole app shares: user and settings, the library's metadata, the route and the navigation, status polling. */
 import { $, DOCK_MIN, PREF, api, fill, h, main, norm, store } from './core.js';
+import { applyTheme as suiteTheme, themeChoice, themeFromAccount as suiteFromAccount } from '../../api/auth/frame.js';  // the appearance: the suite's one choice, kept with the account
 import { crumbs, renderChips } from './search.js';
 import { G, keepPlace, removeScrubber, showPhotos } from './grid.js';
 import { clearSelection, showDamaged, showHistory, showImport, showQuality, showTrash } from './actions.js';
@@ -121,12 +122,14 @@ export function infoPrefsEditor(onchange) {
   return h('div', { class: 'iprefs' }, INFO_SECTIONS.map(([k, label]) => h('label', null, h('input', { type: 'checkbox', checked: !hid.has(k), onchange: (e) => {
     const s = infoHidden(); if (e.target.checked) s.delete(k); else s.add(k); store.set(PREF.infoHide, [...s].join(',')); onchange?.(); } }), label)));
 }
-/** Appearance: light, dark, or follow the system (the default). Set on <html> so the stylesheet
- *  picks the palette; the browser chrome (theme-color) follows the page background. */
+/** Appearance: light, dark, or follow the device (the default). One choice for the whole suite, kept with the
+ *  account (frame.applyTheme); here the browser chrome (theme-color) follows the page background as well. */
 export const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['system', 'System']];  // the device's unless chosen otherwise
-export function applyTheme() {
-  const t = store.get(PREF.theme, 'system');
-  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+export { themeChoice };
+/** The choice the account carries (/api/auth/me settings.theme), taken as the page loads or somebody signs in. */
+export function themeFromAccount(settings) { suiteFromAccount(settings); applyTheme(); }
+export function applyTheme(choice) {
+  suiteTheme(choice);
   S.applySidebar?.();  // docked or put away is a display preference too: it follows the account
   requestAnimationFrame(() => { const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = getComputedStyle(document.body).backgroundColor; });
 }

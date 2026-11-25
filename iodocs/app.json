@@ -4,6 +4,10 @@
   "description": "Passports, licenses and policies",
   "tag": "The family's papers",
   "color": "#a03a6a",
+  "page": {
+    "search": "Search documents…",
+    "new": "Add a document"
+  },
   "folder": "docs",
   "order": 85,
   "system": [

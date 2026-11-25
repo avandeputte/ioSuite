@@ -5,7 +5,7 @@
    security and global settings), laid out as in the other ioSuite apps. */
 import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, initials, menuOpen, openNav, popMenu, put, toast, toggleSuite } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, initials, menuOpen, openNav, popMenu, put, toast } from '../api/auth/frame.js';
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -100,7 +100,6 @@ function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to all the documents. */
 async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 
 /* The sidebar, as in the other io apps: the name on top, the documents (all of them, what expires, archived), the
@@ -111,35 +110,19 @@ const viewCount = (k) => ({ all: S.counts.documents, expiring: (S.counts.soon ||
 const kindOf = (k) => S.kinds.find((x) => x.key === k) || { key: k, label: k, plural: k, icon: 'file' };
 function drawNav() {
   const nav = $('#nav'); const r = route();
-  const link = (v, href, ic, label, n, on, hueVar) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: hueVar ? { '--hue': `var(${hueVar})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label) => h('div', { class: 'navsec' }, h('span', null, label));
-  const folded = new Set((store.get('navfold') || '').split(',').filter(Boolean));
-  const fold = (key, label, n) => h('div', { class: `navsec${folded.has(key) ? ' folded' : ''}` },
-    h('button', { class: 'fold', 'aria-expanded': String(!folded.has(key)), title: folded.has(key) ? `Show the ${label.toLowerCase()}` : `Fold the ${label.toLowerCase()} away`,
-      onclick: () => { folded.has(key) ? folded.delete(key) : folded.add(key); store.set('navfold', [...folded].join(',')); drawNav(); } },
-    icon('next', 's'), h('span', null, label), folded.has(key) && n ? h('span', { class: 'fn' }, n) : null));
-  const shown = (key, list, on) => folded.has(key) ? list.filter(on) : list;
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, ioDocs' own rows
+  const { head, link, sec, fold, shown, gap, more } = frame.navParts(store, { name: 'Docs', title: 'All documents', redraw: drawNav });
   const kinds = S.kinds.filter((k) => S.counts.kinds && S.counts.kinds[k.key]);
-  const brandName = () => [h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Docs')];
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'All documents' }, brandName()))
-        : h('a', { class: 'brand', href: '#/', title: 'All documents' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, brandName())),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     Object.entries(VIEWS).map(([k, [label, ic, hv]]) => link(k, `#/${k}`, ic, label, viewCount(k), r.view === k, hv)),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    S.family.length ? [h('div', { class: 'navgap' }), fold('family', 'Family', S.family.length),
+    more(moreSheet),
+    S.family.length ? [gap(), fold('family', 'Family', S.family.length),
       shown('family', S.family, (m) => r.view === 'person' && r.id === m.id).map((m) => h('a', { href: `#/person/${m.id}`, 'data-v': 'person', class: `who${r.view === 'person' && r.id === m.id ? ' on' : ''}`, title: `${possessive(m.displayName)} documents` },
         memberBadge(m, true), h('span', { class: 'nl' }, m.displayName), m.count ? h('span', { class: 'n' }, m.count) : null))] : null,
-    kinds.length ? [h('div', { class: 'navgap' }), fold('kinds', 'Kinds', kinds.length),
+    kinds.length ? [gap(), fold('kinds', 'Kinds', kinds.length),
       shown('kinds', kinds, (k) => r.view === 'kind' && r.id === k.key).map((k) => link('kind', `#/kind/${k.key}`, k.icon, k.plural, S.counts.kinds[k.key], r.view === 'kind' && r.id === k.key, '--c-indigo'))] : null,
-    canAdd() ? [h('div', { class: 'navgap' }), sec('Add'),
+    canAdd() ? [gap(), sec('Add'),
       link('scan', '#/scan', 'camera', 'From a scan or photo', null, r.view === 'scan', '--c-teal'),
       link('new', '#/new', 'add', 'Type one in', null, r.view === 'new', '--c-blue')] : null,
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
@@ -148,7 +131,6 @@ function drawNav() {
   $('.navmore')?.classList.toggle('on', ['kind', 'person', 'new', 'scan', 'settings', 'search'].includes(r.view));
 }
 function applySidebar() { frame.applySidebar(store); }
-function sidebarButton() { frame.sidebarButton(store); }
 
 /** Phones: what the bottom bar has no room for (the family, the kinds, adding, settings). */
 function moreSheet() {
@@ -616,7 +598,7 @@ async function setDisplay(el) {
   const ui = await accountUi();
   const sv = h('select', { class: 't', onchange: async (e) => { await saveSettings({ startView: e.target.value }); toast('Saved'); } },
     Object.entries(VIEWS).map(([v, [l]]) => h('option', { value: v, selected: v === (S.settings.startView || 'all') ? true : null }, l)));
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })),
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(frame.themeChoice(), frame.applyTheme)),
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Documents'), h('div', { class: 'grid' }, fld('Open on', sv))));
 }
 
@@ -633,13 +615,13 @@ function showSignIn() { frame.signInScreen({ api, name: 'Docs', first: !S.status
 
 // ------------------------------------------------------------------ start
 async function start() {
-  applyTheme();
+  frame.applyTheme();
   document.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic)));
   S.status = await api('api/status');
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  frame.themeFromAccount(S.settings);
   drawUser();
   const nb = $('#newbtn');
   nb.hidden = !canAdd();

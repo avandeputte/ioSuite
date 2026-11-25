@@ -4,6 +4,10 @@
   "description": "Recipes",
   "tag": "The family's recipes",
   "color": "#4a7c23",
+  "page": {
+    "search": "Search recipes…",
+    "new": "New recipe"
+  },
   "folder": "recipes",
   "order": 60,
   "system": [

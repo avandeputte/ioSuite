@@ -1,5 +1,7 @@
 import { $, TZ, h, route } from './core.js';
 import { authApi, dialog, signIn } from './accounts.js';
+import { applyTheme, themeChoice, themeFromAccount } from '../../api/auth/frame.js';  // the appearance: the suite's one choice
+export { applyTheme, themeChoice, themeFromAccount };
 
 // ---------- the menu: a sidebar with the pages in groups, Settings at the foot (as in iopix) ----------
 
@@ -157,11 +159,12 @@ export function setNavOn(page) {
 }
 
 export const settings = (() => {
-  const defaults = { units: 'auto', maxHr: '', theme: 'auto', glucoseUnit: '', glucoseLow: '70', glucoseHigh: '180', hiddenSections: [], hiddenTypes: [] };
+  const defaults = { units: 'auto', maxHr: '', glucoseUnit: '', glucoseLow: '70', glucoseHigh: '180', hiddenSections: [], hiddenTypes: [] };
   try { return Object.assign(defaults, JSON.parse(localStorage.getItem('iohealth.settings') || '{}')); } catch { return defaults; }
 })();
-// Settings live in the database (hlt_user_settings), shared by every browser; the copy in localStorage only makes the
-// theme right before the server answers.
+// Settings live in the database (hlt_user_settings), shared by every browser; the copy in localStorage makes the
+// first page draw right before the server answers. The appearance is not here: it is the suite's one choice, kept
+// with the account (api/auth/frame.js).
 export let settingsTimer;
 export function saveSettings() {
   try { localStorage.setItem('iohealth.settings', JSON.stringify(settings)); } catch { /* private mode */ }
@@ -178,11 +181,6 @@ export async function loadSettings() {
     else saveSettings(); // first run: keep what this browser had
   } catch (e) { console.error('loading settings', e); }
 }
-export function applyTheme() {
-  if (settings.theme === 'auto') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', settings.theme);
-}
-applyTheme();
 
 export const apiCache = new Map();
 export let inflight = 0;

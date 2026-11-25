@@ -4,6 +4,10 @@
   "description": "Calendar",
   "tag": "The family calendar",
   "color": "#963522",
+  "page": {
+    "search": "Search events, places, people, notes…",
+    "new": "New event (n)"
+  },
   "folder": "calendar",
   "sync": [
     "/dav",

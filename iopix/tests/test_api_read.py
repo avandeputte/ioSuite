@@ -94,7 +94,8 @@ def test_pwa_files_are_served(client):
         assert client.get(p).status_code == 200, p
     html = client.get("/").text
     assert 'rel="manifest"' in html and "theme-color" in html
-    assert "serviceWorker" in client.get("/static/app.js").text  # the registration lives in app.js: the only inline script is the theme one (content security policy)
+    assert "serviceWorker" in client.get("/static/app.js").text  # the registration lives in app.js: the page has no inline script (content security policy)
+    assert client.get("/api/auth/theme.js").status_code == 200  # the suite's one appearance choice, applied before the page draws
 
 
 def test_the_shell_its_files_and_the_icon_are_public(client):

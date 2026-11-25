@@ -233,9 +233,9 @@ export const SETTINGS = { user: null, pending: {}, flush: 0 };
 const KEY = 'iopix.';  // every key this app keeps in the browser starts with it
 /** Every preference the app remembers, declared once: the bare key store.get/set take (the browser adds KEY, the
  *  account's settings keep it bare). A key is read in several modules, so a typo in one would silently split a
- *  setting in two; index.html's inline script reads iopix.theme by name before any module loads. */
+ *  setting in two. The appearance is not here: it is the suite's one choice, kept with the account (frame.js). */
 export const PREF = {
-  theme: 'theme', units: 'units', badges: 'badges', infoHide: 'info_hide', filters: 'filters', sidebar: 'sidebar', info: 'info',
+  units: 'units', badges: 'badges', infoHide: 'info_hide', filters: 'filters', sidebar: 'sidebar', info: 'info',
   tile: 'tile', group: 'group', hsize: 'hsize', qsize: 'qsize', qcheck: 'qcheck', faceGroups: 'facegroups',
   exploreSize: 'explore-size', peopleSort: 'people-sort', peopleSize: 'people-size', peopleWithin: 'people-within',
   mapLayer: 'map-layer', traySize: 'tray-size', expSize: 'exp-size', expFmt: 'exp-fmt', expName: 'exp-name', expNoGps: 'exp-nogps', expFlat: 'exp-flat',
@@ -249,7 +249,7 @@ const local = {
 };
 export const store = {
   local,
-  // browser keys carry the app's prefix (iopix.theme, iopix.tile…); the server-side user settings keep the bare names
+  // browser keys carry the app's prefix (iopix.tile, iopix.group…); the server-side user settings keep the bare names
   get(k, d) { if (SETTINGS.user) return k in SETTINGS.user ? String(SETTINGS.user[k]) : d; return local.get(k, d); },
   set(k, v) {
     if (SETTINGS.user) {

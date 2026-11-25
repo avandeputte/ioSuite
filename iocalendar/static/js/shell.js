@@ -1,7 +1,7 @@
 import { $, DOW, ICONS, LOCAL_TZ, REFRESH_HOURS, S, addDays, addMonths, api, canOwn, canShared, dialog, fail, h, icon, isAuto, loadCals, memberBadge, memberColor, sameDay, startOfWeek, tasksOn, billsOn, billsOffered, toggleBills, papersOn, papersOffered, togglePapers, toast, toggleCal, toggleTasks, toggleWho, weekStart, writable, ymd } from './core.js';
 import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite } from '../../api/auth/frame.js';
-export { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite };
+import { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount } from '../../api/auth/frame.js';
+export { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount };  // the appearance is the suite's one choice
 const store = frame.storeFor('iocalendar');  // what this browser remembers for the app
 import { go, route } from './main.js';
 import { drawView } from './views.js';
@@ -11,12 +11,11 @@ export function drawUser() {
   frame.userMenu($('#usermenu'), S.user, api, (close) => [
     frame.menuLink('#/settings/account', 'person', 'Account', close),
     frame.menuLink('#/settings/devices', 'devices', 'Connect apps and devices', close),
-    frame.themeEntry(store, applyTheme, close)]);
+    frame.themeEntry(applyTheme, close)]);
 }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to the calendar. */
 export async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-export function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 /** A small month in the sidebar: pick a day to go to it. */
 export function miniMonth() {
@@ -39,10 +38,9 @@ export function miniMonth() {
    put it away (remembered); otherwise it slides over the page. Phones get a bottom bar instead. */
 export function drawNav() {
   const nav = $('#nav'); const r = route();
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, gap, more } = frame.navParts(store, { name: 'Calendar', title: 'Calendar', redraw: drawNav });
   const calView = ['month', 'week', 'day'].includes(r.view);
-  const link = (v, href, ic, label, n, on, hue) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: hue ? { '--hue': `var(${hue})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label, btn) => h('div', { class: 'navsec' }, h('span', null, label), btn || null);
   const check = '<svg viewBox="0 0 24 24"><path d="' + ICONS.check + '"/></svg>';
   const calRow = (c) => {
     const ck = h('span', { class: 'ck' }); ck.innerHTML = check;
@@ -76,37 +74,29 @@ export function drawNav() {
   };
   const shared = S.cals.filter((c) => c.shared), mine = S.cals.filter((c) => !c.shared);
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'Calendar' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Calendar')))
-        : h('a', { class: 'brand', href: '#/', title: 'Calendar' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Calendar'))),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     link('calendar', `#/${S.view === 'agenda' ? 'month' : S.view}/${ymd(S.date)}`, 'today', 'Calendar', null, calView, '--c-rose'),
     link('agenda', '#/agenda', 'agenda', 'Agenda', null, r.view === 'agenda', '--c-blue'),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
+    more(moreSheet),
     miniMonth(),
     sec('Shared', canShared() ? h('button', { class: 'iconbtn', title: 'New shared calendar', onclick: () => newCalendar(true) }, icon('add', 's')) : null),
     shared.map(calRow),
-    S.members.length > 1 ? [h('div', { class: 'navgap' }),
+    S.members.length > 1 ? [gap(),
       sec('Family', S.who.size ? h('button', { class: 'pillbtn noic tiny', title: 'Show everyone again', onclick: () => toggleWho(null) }, 'Everyone') : null),
       S.members.map(whoRow)] : null,
-    h('div', { class: 'navgap' }),
+    gap(),
     canOwn() || mine.length ? sec('Mine', canOwn() ? h('button', { class: 'iconbtn', title: 'New private calendar', onclick: () => newCalendar(false) }, icon('add', 's')) : null) : null,
     mine.map(calRow),
-    S.status.iotask ? [h('div', { class: 'navgap' }),
+    S.status.iotask ? [gap(),
       sec('ioTask', S.tasks.url ? h('a', { class: 'iconbtn', href: S.tasks.url, target: '_blank', rel: 'noopener', title: 'Open ioTask' }, icon('open', 's')) : null),
       taskRow()] : null,
-    billsOffered() ? [h('div', { class: 'navgap' }),
+    billsOffered() ? [gap(),
       sec('ioMoney', S.bills.url ? h('a', { class: 'iconbtn', href: S.bills.url, target: '_blank', rel: 'noopener', title: 'Open ioMoney' }, icon('open', 's')) : null),
       billRow()] : null,
-    papersOffered() ? [h('div', { class: 'navgap' }),
+    papersOffered() ? [gap(),
       sec('ioDocs', S.papers.url ? h('a', { class: 'iconbtn', href: S.papers.url, target: '_blank', rel: 'noopener', title: 'Open ioDocs' }, icon('open', 's')) : null),
       paperRow()] : null,
-    h('div', { class: 'navgap' }), sec('Manage'),
+    gap(), sec('Manage'),
     writable().some((c) => !isAuto(c)) ? link('import', '#/import', 'upload', 'Import', null, r.view === 'import', '--c-green') : null,
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
   ].flat(3).filter(Boolean));
@@ -114,7 +104,6 @@ export function drawNav() {
   $('.navmore')?.classList.toggle('on', ['import', 'settings', 'search'].includes(r.view));
 }
 export function applySidebar() { frame.applySidebar(store); }
-export function sidebarButton() { frame.sidebarButton(store); }
 /** Phones: what the bottom bar has no room for (the calendars to show, import, settings). */
 export function moreSheet() {
   const r = route();

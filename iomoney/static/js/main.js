@@ -10,7 +10,7 @@ import { showBalance } from './reconcile.js';
 import { showRecurring } from './recurring.js';
 import { showRules, showTransfers } from './rules.js';
 import { showSettings } from './settings.js';
-import { applySidebar, applyTheme, drawNav, drawUser, loadSuite, refreshSummary } from './shell.js';
+import { applySidebar, applyTheme, drawNav, drawUser, loadSuite, refreshSummary, themeFromAccount } from './shell.js';
 import { showChanges, showDuplicates, showPayees, showReview, showTidy } from './tidy.js';
 import { showTransaction, showTransactions, txDialog } from './transactions.js';
 
@@ -67,7 +67,7 @@ async function start() {
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  themeFromAccount(S.settings);
   drawUser();
   await refreshSummary();
   const nb = $('#newbtn');

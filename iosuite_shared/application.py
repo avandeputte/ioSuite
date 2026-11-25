@@ -156,5 +156,6 @@ def create(suite_app, *, description: str, prepare=None, start=(), jobs=None, st
     if server is not None:
         shared_mcp.mount(app, server)  # MCP over streamable HTTP at /mcp, ahead of everything else
     if page:
-        pages.mount(app, config.STATIC_DIR, service_worker=service_worker, dependencies=[auth.access.public])  # /, the manifest and /static
+        pages.mount(app, config.STATIC_DIR, service_worker=service_worker, dependencies=[auth.access.public],
+                    declared=suite_app.manifest)  # /, the manifest and /static; the page is the shell every app shares (app.json's `page`)
     return app

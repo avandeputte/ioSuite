@@ -16,6 +16,11 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
   key, name, description   the folder and the app's key (iocalendar), its name (ioCalendar), a word or two for the
                            suite's list of apps ("Calendar"); tag: one line for the website
   color                    its colour (#963522)
+  page                     its page, where it is the shell every app shares (iosuite_shared/static/page.html, served
+                           at /): search (the search box's placeholder; none: no search box), searchLabel ("Filter"),
+                           new (the New button's title; none: no button), newLabel ("Add"), newHidden (the app shows
+                           it when it may be used). An app whose page is more than that keeps its own
+                           static/index.html (ioPix, ioStart, ioNote, ioHealth), which is served instead
   folder                   its folder on an address the suite shares (/calendar/; none for the start page)
   sync                     the path prefixes it serves at the sync door (iosuite_shared.doors): ["/dav", "/ics/"]
   devices                  the calls of its API (/api/) the sync door serves as well: the ones its native apps make,
@@ -91,6 +96,11 @@ def validate(apps: list[dict]) -> list[dict]:
                 raise ValueError(f"{k}/{MANIFEST}: no {f}")
         if not COLOR.fullmatch(str(m["color"])):
             raise ValueError(f"{k}/{MANIFEST}: color {m['color']!r} is not #rrggbb")
+        pg = m.get("page") or {}
+        if set(pg) - {"search", "searchLabel", "new", "newLabel", "newHidden"}:
+            raise ValueError(f"{k}/{MANIFEST}: page says search, searchLabel, new, newLabel, newHidden: {pg}")
+        if (pg.get("searchLabel") and not pg.get("search")) or ((pg.get("newLabel") or pg.get("newHidden")) and not pg.get("new")):
+            raise ValueError(f"{k}/{MANIFEST}: page: searchLabel needs search, newLabel and newHidden need new: {pg}")
         for pre in m.get("sync") or []:
             if not re.fullmatch(r"/[A-Za-z0-9._~/-]{1,60}", str(pre)) or str(pre).startswith(("/api", "/mcp", "/static")):
                 raise ValueError(f"{k}/{MANIFEST}: sync {pre!r} is not a path prefix of its own (/dav, /ics/)")

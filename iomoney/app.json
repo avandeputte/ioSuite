@@ -4,6 +4,11 @@
   "description": "Household finances",
   "tag": "Household finances",
   "color": "#94650a",
+  "page": {
+    "search": "Search transactions…",
+    "new": "Add",
+    "newLabel": "Add"
+  },
   "folder": "money",
   "order": 80,
   "compose": {

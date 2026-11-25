@@ -1,10 +1,8 @@
 """The front-end's hand-kept lists stay true to the files. No module declares a local name that hides one of its own
 imports: v1.89.0 shared an upload helper `send` from core.js while Import and folder uploads kept local functions called
 send: each then called itself instead of uploading, and Import failed with "Cannot read properties of undefined (reading
-'token')". No module imports a name it never uses. sw.js's shell list names every module, and index.html's CSP hash is
-the hash of the inline theme script (a stale one blocks it and the page flashes the wrong theme)."""
-import base64
-import hashlib
+'token')". No module imports a name it never uses. sw.js's shell list names every module, and the page holds no inline
+script (the appearance comes from the suite's api/auth/theme.js), so its content security policy needs no hash."""
 import re
 from pathlib import Path
 
@@ -45,8 +43,9 @@ def test_service_worker_lists_every_module():
     assert listed == {f.stem for f in JS.glob("*.js")}
 
 
-def test_csp_hash_is_the_inline_scripts():
+def test_the_page_has_no_inline_script():
+    """Nothing inline, so the content security policy needs no hash: the appearance is applied by the suite's own
+    api/auth/theme.js, and the service worker is registered from app.js."""
     html = (STATIC / "index.html").read_text()
-    script = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
-    want = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
-    assert f"'sha256-{want}'" in html, f"index.html's CSP hash must be sha256-{want}"
+    assert "<script>" not in html and "sha256-" not in html
+    assert '<script src="api/auth/theme.js"></script>' in html

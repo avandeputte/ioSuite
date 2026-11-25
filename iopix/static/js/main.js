@@ -1,6 +1,6 @@
 /** Startup: metadata, state, the first route. */
-import { $, DOCK_MIN, NET, NO_CONNECTION, PREF, api, fmtWhen, h, healSoon, icon, main, nf, norm, plural, sleep, store } from './core.js';
-import { FILTER_VIEWS, NAV, NAV_LIBRARY, NAV_MANAGE, S, ST, applyAppName, applyBadgePref, applyTheme, loadState, onRoute, parseHash, pollSoon } from './state.js';
+import { $, DOCK_MIN, NET, NO_CONNECTION, PREF, SETTINGS, api, fmtWhen, h, healSoon, icon, main, nf, norm, plural, sleep, store } from './core.js';
+import { FILTER_VIEWS, NAV, NAV_LIBRARY, NAV_MANAGE, S, ST, applyAppName, applyBadgePref, loadState, onRoute, parseHash, pollSoon, themeFromAccount } from './state.js';
 import { initSearch } from './search.js';
 import { G } from './grid.js';
 import { dbDialog } from './editing.js';
@@ -195,7 +195,7 @@ async function start() {
     h('div', { class: 'navfoot' }, link(['settings', 'Settings', 'gear']), h('div', { id: 'status', role: 'status', 'aria-live': 'polite' })));
   initSidebar();
   initSearch();
-  applyBadgePref(); applyTheme();
+  applyBadgePref(); themeFromAccount(SETTINGS.user);
   if (S.REQUIRE_LOGIN && !S.USER) { document.body.classList.add('locked'); loginDialog(true); return; }  // boot() runs after sign-in
   await boot();
 }

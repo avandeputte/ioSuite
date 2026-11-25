@@ -4,6 +4,10 @@
   "description": "Everything you own",
   "tag": "Everything you own",
   "color": "#2a6f97",
+  "page": {
+    "search": "Search things…",
+    "new": "New thing"
+  },
   "folder": "things",
   "order": 70,
   "system": [

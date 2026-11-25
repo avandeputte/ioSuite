@@ -948,7 +948,8 @@ def glucose(request: Request):
     return cached(request, 0, reply)
 
 
-# ---- settings (units, theme, hidden sections and metrics, targets, goals): per account, shared by its browsers
+# ---- settings (units, hidden sections and metrics, targets, goals): per account, shared by its browsers
+# (the appearance is not here: it is the suite's one choice, kept with the account in the Shared ioSuite database)
 
 @router.get("/api/settings", dependencies=[access.signed_in])
 def get_settings(request: Request):

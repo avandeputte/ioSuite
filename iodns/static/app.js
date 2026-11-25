@@ -4,7 +4,7 @@
    global settings). */
 import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, toast, toggleSuite } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, toast } from '../api/auth/frame.js';
 const store = frame.storeFor('iodns');  // what this browser remembers for the app
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
@@ -58,37 +58,30 @@ async function saveSettings(changes) {
 function drawUser() {
   frame.userMenu($('#usermenu'), S.user, api, (close) => [
     frame.menuLink('#/settings/account', 'person', 'Account', close),
-    frame.themeEntry(store, applyTheme, close)]);
+    frame.themeEntry(frame.applyTheme, close)]);
 }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark opens a menu of them. */
 async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-function applyTheme(choice) { frame.applyTheme(store, choice); if (choice && S.user) saveSettings({ theme: choice }); }
 
 /* The sidebar: the master list, Compare for each view (with how many names differ), servers, dynamic DNS, history,
    Settings. Docked beside the page on a wide screen, sliding over it otherwise, a bottom bar on a phone. */
 function drawNav() {
   const nav = $('#nav'); if (!S.user) return;
   const r = route();
-  const link = (v, href, ic, label, n, on, hueVar, warn) => h('a', { href, 'data-v': v, class: [on ? 'on' : '', warn ? 'warnn' : ''].join(' '), style: hueVar ? { '--hue': `var(${hueVar})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label) => h('div', { class: 'navsec' }, h('span', null, label));
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, gap, more } = frame.navParts(store, { name: 'DNS', title: 'Records', redraw: drawNav });
   const diffs = (slug) => { const ss = S.servers.filter((s) => s.view === slug && s.target && s.enabled); const n = ss.reduce((a, s) => a + (s.check.differences || 0), 0); const bad = ss.some((s) => s.check.ok === false); return { n, bad, any: ss.some((s) => s.check.at) }; };
-  const brandName = h('span', { class: 'brand-name' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'DNS'));
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' }, h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', onclick: (e) => toggleSuite(e.currentTarget) },
-          h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })), h('a', { class: 'brand-name', href: '#/' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'DNS')))
-        : h('a', { class: 'brand', href: '#/' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }), brandName),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     link('records', '#/', 'list', 'Records', null, r.view === 'records', '--c-teal'),
     link('compare', `#/compare/${r.view === 'compare' ? r.slug : (S.views[0] || {}).slug || 'internal'}`, 'compare', 'Compare', null, r.view === 'compare', '--c-indigo'),
     link('servers', '#/servers', 'dns', 'Servers', S.servers.length || null, r.view === 'servers', '--c-blue'),
     link('ddns', '#/ddns', 'globe', 'Dynamic DNS', null, r.view === 'ddns', '--c-orange'),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    h('div', { class: 'navgap' }), sec('Views'),
-    S.views.map((v) => { const d = diffs(v.slug); return link('view', `#/compare/${v.slug}`, 'layers', v.name, d.any ? (d.bad ? '!' : d.n ? String(d.n) : '✓') : null, r.view === 'compare' && r.slug === v.slug, null, d.bad || d.n); }),
-    h('div', { class: 'navgap' }),
+    more(moreSheet),
+    gap(), sec('Views'),
+    S.views.map((v) => { const d = diffs(v.slug); const a = link('view', `#/compare/${v.slug}`, 'layers', v.name, d.any ? (d.bad ? '!' : d.n ? String(d.n) : '✓') : null, r.view === 'compare' && r.slug === v.slug);
+      if (d.bad || d.n) a.classList.add('warnn'); return a; }),
+    gap(),
     link('history', '#/history', 'history', 'History', null, r.view === 'history', '--c-slate'),
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
   ].flat(3).filter(Boolean));
@@ -96,7 +89,6 @@ function drawNav() {
   $('.navmore')?.classList.toggle('on', ['history', 'settings'].includes(r.view));
 }
 function applySidebar() { frame.applySidebar(store); }
-function sidebarButton() { frame.sidebarButton(store); }
 function moreSheet() {
   const tile = (href, ic, label, hueV) => h('a', { href, style: { '--hue': hueV } }, h('span', { class: 'sic' }, icon(ic)), h('span', null, label));
   const grid = h('div', { class: 'sheetgrid' }, S.views.map((v) => tile(`#/compare/${v.slug}`, 'layers', `Compare ${v.name}`, 'var(--c-indigo)')),
@@ -556,8 +548,7 @@ async function setAccount(el) {
 }
 async function setDisplay(el) {
   const ui = await accountUi();
-  let t = 'system'; try { t = localStorage.getItem('iodns.theme') || 'system'; } catch { /* */ }
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || t, (x) => { S.settings.theme = x; applyTheme(x); })));
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(frame.themeChoice(), frame.applyTheme)));
 }
 async function setViews(el) {
   await loadOverview();
@@ -600,13 +591,13 @@ function showSignIn() { frame.signInScreen({ api, name: 'DNS', first: !S.status.
 
 // ------------------------------------------------------------------ start
 async function start() {
-  applyTheme();
+  frame.applyTheme();
   document.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic)));
   S.status = await api('api/status');
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) { try { localStorage.setItem('iodns.theme', S.settings.theme); } catch { /* */ } applyTheme(); }
+  frame.themeFromAccount(S.settings);
   drawUser();
   await loadOverview();
   $('#newbtn').onclick = () => editEntry(null);
