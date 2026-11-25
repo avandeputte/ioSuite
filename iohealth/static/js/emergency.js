@@ -12,11 +12,6 @@ const MAX = 4;
 const BLOOD = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const fmtDay = (d) => new Date(d + 'T12:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
-function age(born) {
-  const b = new Date(born + 'T12:00'), n = new Date();
-  return n.getFullYear() - b.getFullYear() - (n < new Date(n.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
-}
-
 /** The card itself, both sides, at its printed size (85.6 × 54 mm a side). */
 export function cardSheet(c) {
   const sec = (title, ...kids) => h('div', { class: 'ec-sec' }, h('div', { class: 'ec-h' }, title), ...kids);
@@ -28,7 +23,7 @@ export function cardSheet(c) {
     h('div', { class: 'ec-band' }, h('span', { class: 'ec-cross' }, '+'), 'Emergency medical information'),
     h('div', { class: 'ec-body' },
       h('div', { class: 'ec-name' }, c.person.name || ''),
-      h('div', { class: 'ec-facts' }, c.person.born ? h('span', {}, `Born ${fmtDay(c.person.born)} (${age(c.person.born)})`) : null,
+      h('div', { class: 'ec-facts' }, c.person.born ? h('span', {}, `Born ${fmtDay(c.person.born)}`) : null,
         c.bloodType ? h('span', {}, 'Blood type ', h('b', {}, c.bloodType)) : null,
         c.organDonor ? h('span', {}, `Organ donor: ${c.organDonor}`) : null),
       sec('Allergies', allergies),
