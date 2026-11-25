@@ -8,7 +8,8 @@ organ donor, a note, and which doctors and people to call (ioContact contact ids
 document ids) go on the card. The rest is read when the card is shown: the allergies and medicines from this app
 (meds.py), the date of birth from what the phone sent (hlt_characteristics), and the contacts and documents from
 ioContact and ioDocs, asked as the viewer (iosuite_shared.links.App), so the card only ever shows what the person may
-see there. A contact or a paper they no longer see is left off the card and marked in the editor. Nothing to set up:
+see there. Each person to call is shown with what they are to you (wife, son, friend) where ioContact knows: from the
+relations on your own card there (the one marked "This is me"), the stated ones and the ones the family implies. A contact or a paper they no longer see is left off the card and marked in the editor. Nothing to set up:
 both apps are found in the suite's list; without one of them, that part of the card is just not offered.
 """
 import datetime as dt
@@ -18,6 +19,7 @@ import re
 
 from fastapi import APIRouter, Request
 from iosuite_shared import links
+from iosuite_shared import users as shared_users
 from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
@@ -118,6 +120,34 @@ def _contact(c: dict) -> dict:
             "title": c.get("title") or "", "phone": _phone(c)}
 
 
+def _relations(request, uid: int) -> dict:
+    """{contact id: what they are to the person ("Wife")}, from the person's own card in ioContact; {} without one."""
+    try:
+        mine = int(shared_users.get_value(uid, CONTACTS, "me_contact_id") or 0)
+    except (TypeError, ValueError):
+        mine = 0
+    if not mine or not _contacts.enabled():
+        return {}
+    try:
+        c = _contacts.ask(request, f"/api/contacts/{mine}")
+    except links.Unavailable:
+        return {}
+    out = {}
+    for r in (c.get("relations") or []) + (c.get("impliedRelations") or []):  # the stated ones first: a guess never replaces one
+        if r.get("relatedId") and r.get("typeLabel") and r.get("type") not in ("emergency", "other"):
+            out.setdefault(int(r["relatedId"]), str(r["typeLabel"]))
+    return out
+
+
+def _related(request, uid: int, people: list) -> list:
+    if any(p.get("found") for p in people):
+        rel = _relations(request, uid)
+        for p in people:
+            if p.get("found"):
+                p["relation"] = rel.get(p.get("id"), "")
+    return people
+
+
 def _document(d: dict) -> dict:
     fields = [{"name": str(f.get("name") or ""), "value": str(f.get("value") or "")} for f in d.get("fields") or []
               if isinstance(f, dict) and f.get("value")]
@@ -159,6 +189,7 @@ def card(request: Request) -> dict:
     meds_now = [m for m in meds.medicines(uid) if m["onCard"] and meds.active_on(m, today)]
     doctors, p1 = _each(request, _contacts, "/api/contacts/{}", k["doctors"], _contact)
     people, p2 = _each(request, _contacts, "/api/contacts/{}", k["contacts"], _contact)
+    people = _related(request, uid, people)
     papers, p3 = _each(request, _docs, "/api/documents/{}", k["documents"], _document)
     problems = [{"app": a, "message": p} for a, p in ((CONTACTS, p1 or p2), (DOCS, p3)) if p]
     return {"person": {"name": u.get("displayName") or u.get("name"), "born": born},
@@ -204,7 +235,8 @@ def _unavailable(e: links.Unavailable):
 @router.get("/api/emergency", dependencies=[access.signed_in])
 def get_card(request: Request):
     """Your emergency card: {person: {name, born}, bloodType, organDonor, conditions, notes, allergies, medicines,
-    doctors, contacts, documents (each {found: false} when you no longer see it), kept (what is saved), problems,
+    doctors, contacts (each with relation: what they are to you, '' when ioContact does not know), documents (each
+    {found: false} when you no longer see it), kept (what is saved), problems,
     apps}. tz."""
     return card(request)
 
