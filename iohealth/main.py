@@ -8,13 +8,14 @@ writes.
 """
 from iosuite_shared import application, chores, users as shared
 
-from iohealth import __version__, config, db, notify, suiteitems, upload, usual, webapi
+from iohealth import __version__, config, db, emergency, meds, notify, suiteitems, upload, usual, webapi
 from iohealth.auth import APP, auth, updater
 
 
 def _jobs() -> list:
     return [chores.start(notify.weekly, every_s=60, first_s=20, name="weekly summary", app=config.APP),  # Monday morning: last week next to the one before
-            chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual", app=config.APP)]  # at each person's morning time
+            chores.start(notify.usual_morning, every_s=60, first_s=40, name="outside your usual", app=config.APP),
+            chores.start(meds.reminders, every_s=60, first_s=30, name="medicine reminders", app=config.APP)]  # at each dose's time  # at each person's morning time
 
 
 def _where() -> str:
@@ -52,6 +53,7 @@ app = application.create(
     # (the phone's endpoints under /v1/, app.json's sync, check the app password themselves)
     limit_for=_limit_for, status=_status_extra, suite=suiteitems.PROVIDER, related=False,
     routers=(upload.router, webapi.router,
-             usual.router))  # /api/usual: what is outside the account's usual
+             usual.router,  # /api/usual: what is outside the account's usual
+             meds.router, emergency.router))  # medicines and allergies, the emergency card
 
 __all__ = ["app", "APP"]

@@ -337,12 +337,25 @@ def _send(rows: list, message: dict, ttl: int, urgency: str) -> int:
     return ok
 
 
+def _actions(actions) -> list | None:
+    """Up to two buttons: [{action, title, post (an address the device POSTs body to, as JSON, with the person's
+    sign-in), body}]."""
+    out = []
+    for a in (actions or [])[:2]:
+        if isinstance(a, dict) and a.get("action") and a.get("title") and str(a.get("post") or "").startswith(("https://", "http://")):
+            out.append({"action": str(a["action"])[:32], "title": str(a["title"])[:40], "post": str(a["post"]),
+                        "body": a.get("body") if isinstance(a.get("body"), dict) else {}})
+    return out or None
+
+
 def notify(user_id: int, kind: str, title: str, body: str = "", url: str = None, once: str = None, tag: str = None,
-           ttl: int = 86400, urgency: str = "normal", check: bool = True) -> int:
+           ttl: int = 86400, urgency: str = "normal", check: bool = True, actions: list = None) -> int:
     """Send one notification to every device of this account, if it wants this kind (check=False: it asked, as for a
     test). once: a key that is sent at most once per account (claimed before sending, so two apps never both send it;
     given back when no device took it, so the next run tries again). tag: a notification with the same tag replaces
-    the one on the screen. How many devices took it."""
+    the one on the screen. actions: buttons on it where the device shows them (_actions; ioHealth's "Taken" on a
+    medicine reminder): pressing one POSTs to its address, and a device that could not opens url instead. How many
+    devices took it."""
     if kind not in KIND and kind != "test":
         raise Invalid(f"Unknown kind of notification: {kind}")
     if check:
@@ -356,6 +369,8 @@ def notify(user_id: int, kind: str, title: str, body: str = "", url: str = None,
         return 0
     message = {"title": str(title or "")[:120], "body": str(body or "")[:600], "kind": kind, "url": url or None,
                "tag": (tag or once or "")[:64] or None, "app": KIND.get(kind, {}).get("app")}
+    if _actions(actions):
+        message["actions"] = _actions(actions)
     try:
         ok = _send(rows, message, ttl, urgency)
     except Exception:
