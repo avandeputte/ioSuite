@@ -9,7 +9,7 @@ from iostart import db
 def of(user_id: int, remove: bool) -> list:
     own = db.one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE owner = %s AND shared = 0", (user_id,))["n"]
     starts = db.one("SELECT count(*) AS n FROM prt_bookmark_starts WHERE user_id = %s", (user_id,))["n"]
-    layout = db.one("SELECT count(*) AS n FROM prt_settings WHERE name LIKE %s", (f"user:{int(user_id)}:%",))["n"]
+    layout = db.one("SELECT count(*) AS n FROM prt_state WHERE name LIKE %s", (f"user:{int(user_id)}:%",))["n"]
     shared = db.one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE owner = %s AND shared = 1", (user_id,))["n"]
     from iostart.trmnl import push as trmnlpush, server as trmnlserver
     pushed = len(trmnlpush.hooks(user_id))
@@ -27,7 +27,7 @@ def of(user_id: int, remove: bool) -> list:
             # children first is not needed: a folder of theirs only holds their own (ON DELETE CASCADE does the rest)
             db.ex("DELETE FROM prt_bookmark_nodes WHERE owner = %s AND shared = 0", (user_id,))
             db.ex("DELETE FROM prt_bookmark_starts WHERE user_id = %s", (user_id,))
-            db.ex("DELETE FROM prt_settings WHERE name LIKE %s", (f"user:{int(user_id)}:%",))
+            db.ex("DELETE FROM prt_state WHERE name LIKE %s", (f"user:{int(user_id)}:%",))
     return [{"what": "own bookmarks and folders", "one": "own bookmark or folder", "count": own},
             {"what": "start page choices", "one": "start page choice", "count": starts},
             {"what": "home page layout", "count": layout},

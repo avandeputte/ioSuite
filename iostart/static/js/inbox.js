@@ -3,7 +3,7 @@
    What could be filed by itself is filed (a receipt on its ioMoney transaction, papers in ioDocs, an invitation in
    ioCalendar) and listed under Done; the rest waits here, each with why, to be filed with a tap or let go. Your
    addresses: the other addresses you send from. Mailbox (suite admins): the mailbox the suite reads. */
-import { addIcons, confirmDialog, dialog, fail, fld, icon, toast } from '../../api/auth/frame.js';
+import { addIcons, confirmDialog, dialog, fail, fill, fld, icon, toast } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
 import { api, S } from './core.js';
 
@@ -42,7 +42,7 @@ export async function showInbox(page, r) {
     history.replaceState(null, '', st.show === 'done' ? '#/inbox/done' : '#/inbox');
     seg.replaceChildren(...[['waiting', `To file${d.waiting ? ` (${d.waiting})` : ''}`], ['done', 'Done']].map(([k, t]) =>
       h('button', { class: st.show === k ? 'on' : '', onclick: () => { st.show = k; load(); } }, t)));
-    tools.replaceChildren(
+    fill(tools,  // (fill leaves out what is not there; replaceChildren would write the word "null")
       h('button', { class: 'iconbtn', title: 'Your addresses', 'aria-label': 'Your addresses', onclick: () => yourAddresses() }, icon('person', 's')),
       d.suiteAdmin ? h('button', { class: 'iconbtn', title: 'The mailbox the suite reads', 'aria-label': 'Mailbox', onclick: () => mailbox() }, icon('settings', 's')) : null,
       d.suiteAdmin && d.mailbox.ready ? h('button', { class: 'iconbtn', title: 'Look for new mail now', 'aria-label': 'Look for new mail now', onclick: (e) => checkNow(e.currentTarget) }, icon('update', 's')) : null);

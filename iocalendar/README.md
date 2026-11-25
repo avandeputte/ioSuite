@@ -57,10 +57,10 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iocalendar.cli check                         # connect to the databases and say what is there
-.venv/bin/python -m iocalendar.cli import CALENDAR-ID FILE.ics   # events from an .ics file into a calendar
-.venv/bin/python -m iocalendar.cli sync-birthdays                # bring the Birthdays calendar up to date from ioContact
-.venv/bin/python -m iocalendar.cli sync-holidays                 # bring the Holidays calendars up to date (Settings › Holidays and birthdays)
+iosuite iocalendar check                         # connect to the databases and say what is there
+iosuite iocalendar import CALENDAR-ID FILE.ics   # events from an .ics file into a calendar
+iosuite iocalendar sync-birthdays                # bring the Birthdays calendar up to date from ioContact
+iosuite iocalendar sync-holidays                 # bring the Holidays calendars up to date (Settings › Holidays and birthdays)
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iocalendar` makes someone an admin of ioCalendar only (`iosuite admin NAME`: of
@@ -69,9 +69,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioCalendar has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioCalendar, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iocalendar        # what may be set, with the value stored now
@@ -86,6 +87,8 @@ iosuite set iocalendar PUBLIC_URL https://calendar.example.com    # no value: ba
 | `HOLIDAYS_COUNTRY` | public holidays: countries. Until Settings › Holidays and birthdays is chosen: a two-letter country code or several (BE,NL); off: none. Empty: the time zone's |
 | `HOLIDAYS_REGION` | public holidays: region. A state or province code of the first country |
 | `HOLIDAYS_LANGUAGE` | public holidays: language. The language of the holidays' names |
+| `HOLIDAYS` | the countries, regions and languages Settings › Holidays and birthdays picked, one Holidays calendar each (that screen writes it) |
+| `CONTACT_BIRTHDAYS` | keep a Birthdays calendar from the family's address books (`1` or `0`; on by default) |
 
 The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
 machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
@@ -97,7 +100,7 @@ it from the server as its own service account (`iocalendar-app`) with a read-onl
 first use and listed on the start page's Settings › People, where a suite admin can revoke them (a new one is made the
 next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Keys)
 goes along. The Birthdays calendar is filled from ioContact's birthday feed and brought up to date every six hours
-(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `python -m iocalendar.cli sync-birthdays`).
+(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `iosuite iocalendar sync-birthdays`).
 
 ### ioTask
 
@@ -195,7 +198,7 @@ at all. Every assistant signs in with an **app password** (Settings › Account 
 claude mcp add --transport http iocalendar https://mcp.example.com/calendar/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m iocalendar.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iocalendar --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_calendars`, `list_family_members`, `agenda`, `search_events`, `get_event`, `get_ics`,
 `free_busy`, `connection_details`; `create_event`, `update_event`, `delete_event`, `move_event`, `create_calendar`,

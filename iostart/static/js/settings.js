@@ -6,19 +6,19 @@ import { api, dragSort, S } from './core.js';
 import { setBookmarkSettings } from './bookmarks.js';
 import { HA_ICONS, haIcon } from './homeassistant.js';
 import { onRoute } from './main.js';
-import { drawUser, setTheme } from './shell.js';
+import { applyTheme, drawUser, themeChoice } from './shell.js';
 import { setTrmnl } from './trmnl.js';
 
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
-  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page']] : []),
+  const tabs = [['account', 'Account'], ['display', 'Display'], ['bookmarks', 'Bookmarks'], ['trmnl', 'TRMNL'], ...(adm ? [['weather', 'Home page'], ['app', 'This app']] : []),
     ...(S.user.suiteAdmin ? [['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']] : [])];
   if (!tabs.some(([k]) => k === r.tab)) r.tab = 'account';
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, bookmarks: setBookmarkSettings, trmnl: setTrmnl, weather: setHome, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, bookmarks: setBookmarkSettings, trmnl: setTrmnl, weather: setHome, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 
 async function setAccount(el) {
@@ -26,7 +26,7 @@ async function setAccount(el) {
 }
 async function setDisplay(el) {
   const ui = await accountUi();
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings?.theme || 'system', setTheme)));
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)));
 }
 
 // ------------------------------------------------------------------ settings › the home page: the weather, Home Assistant (admins)
@@ -133,4 +133,7 @@ async function setHomeAssistant(el) {
 /* Everything in the Shared ioSuite database, for the whole suite: Security (people and their role in every app, roles,
    app passwords, sign-in at the proxy), Apps, Servers and Keys. The same panel in every io app,
    served by iosuite_shared at /api/suite-admin/ui.js. */
+/** Settings › This app (its admins): every setting the start page declares, in the suite's one home for them. The
+    same block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 function setSuite(el, r) { return frame.suitePanel(el, r, 'err'); }

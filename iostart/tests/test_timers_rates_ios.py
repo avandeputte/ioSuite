@@ -109,9 +109,9 @@ def test_rates_fetched_once_then_kept_and_the_old_ones_when_away(client, monkeyp
     # six hours on, Frankfurter is away: the last rates, with their date
     from iostart import db
     import json
-    kept = json.loads(db.get_setting("rates"))
+    kept = json.loads(db.get_state("rates"))
     kept["at"] -= rates.RATES_TTL + 1
-    db.set_setting("rates", json.dumps(kept))
+    db.set_state("rates", json.dumps(kept))
     monkeypatch.setattr(rates, "_fetch", lambda: (_ for _ in ()).throw(rates.RatesError("down")))
     assert client.get("/api/rates").json()["date"] == "2026-11-20"
 

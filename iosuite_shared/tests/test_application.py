@@ -12,7 +12,7 @@ from iosuite_shared.fastapi import Auth
 from iosuite_shared.updates import Updater
 
 TABLES = ["CREATE TABLE IF NOT EXISTS zap_things (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(80) NOT NULL)",
-          "CREATE TABLE IF NOT EXISTS zap_settings (name VARCHAR(64) PRIMARY KEY, value MEDIUMTEXT)"]
+          "CREATE TABLE IF NOT EXISTS zap_state (name VARCHAR(64) PRIMARY KEY, value MEDIUMTEXT)"]
 
 
 def _config(name="iosuite_shared_app_test"):
@@ -22,19 +22,20 @@ def _config(name="iosuite_shared_app_test"):
 
 # ------------------------------------------------------------------ an app's own database
 
-def test_an_app_s_database_makes_its_tables_keeps_its_settings_and_says_its_version():
+def test_an_app_s_database_makes_its_tables_keeps_its_own_notes_and_says_its_version():
     d = db.AppDatabase(_config(), "zap", TABLES, 3)
     seeded = []
     d.migrate(after=lambda cur: seeded.append(cur.execute("INSERT INTO zap_things (name) VALUES ('first')")))
     assert seeded == [1], "what an app cannot be without is written in the same transaction as its tables"
     assert d.schema_version() == 3
     assert d.one("SELECT name FROM zap_things")["name"] == "first"
-    assert d.get_setting("currency") is None and d.get_setting("currency", "EUR") == "EUR"
-    d.set_setting("currency", "USD")
-    d.set_setting("currency", "CHF")
-    assert d.get_setting("currency") == "CHF"
-    d.set_setting("currency", None)
-    assert d.get_setting("currency", "EUR") == "EUR"
+    # what the app wrote down for itself (zap_state); a person's settings are the suite's one home for them
+    assert d.get_state("synced") is None and d.get_state("synced", "never") == "never"
+    d.set_state("synced", "yesterday")
+    d.set_state("synced", "just now")
+    assert d.get_state("synced") == "just now"
+    d.set_state("synced", None)
+    assert d.get_state("synced", "never") == "never"
     d.migrate()  # a second start changes nothing
     assert d.q("SELECT count(*) AS n FROM zap_things")[0]["n"] == 1
 
@@ -107,7 +108,7 @@ def test_a_local_mcp_server_acts_as_the_named_account_or_the_only_admin():
 @pytest.mark.parametrize("named, argv, accounts, says", [
     ("ghost", [], ACCOUNTS, "no ioTask account named 'ghost'"),
     ("theo", [], ACCOUNTS, "has no access to ioTask"),
-    ("", [], ACCOUNTS + [{"id": 4, "name": "ava", "role": "admin"}], "name the account: python -m iotask.mcp --user NAME"),
+    ("", [], ACCOUNTS + [{"id": 4, "name": "ava", "role": "admin"}], "name the account: iosuite mcp iotask --user NAME"),
     ("", [], [], "name the account"),
 ])
 def test_a_local_mcp_server_ends_with_why_when_it_cannot_tell_who_it_is(named, argv, accounts, says):
@@ -122,18 +123,24 @@ def test_before_any_account_exists_an_app_may_say_who_its_local_mcp_server_is():
     assert shared_mcp.stdio_user("iopix", "", ACCOUNTS, argv=[], open_install=owner)["name"] == "morgan"
 
 
-def test_diagnostics_say_the_same_in_every_app_and_a_database_that_is_down_is_an_error_line():
+def _for_diagnostics(db_module, mcp_on=True, accounts=ACCOUNTS):
     config = SimpleNamespace(APP_DIR="/opt/iosuite", PUBLIC_URL="", DB_HOST="db", DB_PORT=3306, DB_NAME="things")
-    updater = SimpleNamespace(local_commit=lambda: "0123456789abcdef", in_docker=lambda: False, status=lambda: {"available": False})
+    updater = SimpleNamespace(version="4.1.0", local_commit=lambda: "0123456789abcdef", in_docker=lambda: False,
+                              status=lambda: {"available": False})
+    return testing.StandIn("iotest", config=config, updater=updater, mcp_enabled=lambda: mcp_on,
+                           modules={"db": db_module, "users": SimpleNamespace(all_users=lambda: accounts)})
+
+
+def test_diagnostics_say_the_same_in_every_app_and_a_database_that_is_down_is_an_error_line():
     good = SimpleNamespace(one=lambda sql: {"v": "11.4.2-MariaDB"}, schema_version=lambda: 7)
-    out = shared_mcp.diagnostics(config, "4.1.0", updater, good, lambda: True, ACCOUNTS, counts=lambda: {"things": 12}, currency="EUR")
+    out = shared_mcp.app_diagnostics(_for_diagnostics(good), counts=lambda: {"things": 12}, currency="EUR")
     assert out["version"] == "4.1.0" and out["commit"] == "0123456" and out["publicUrl"] is None and out["currency"] == "EUR"
     assert out["database"] == {"host": "db:3306", "name": "things", "server": "11.4.2-MariaDB", "schema": 7, "things": 12}
     assert out["mcp"] == {"enabled": True} and out["accounts"][1] == {"name": "riley", "role": "editor"}
 
     def down(sql):
         raise OSError("connection refused")
-    out = shared_mcp.diagnostics(config, "4.1.0", updater, SimpleNamespace(one=down), lambda: False, [])
+    out = shared_mcp.app_diagnostics(_for_diagnostics(SimpleNamespace(one=down), mcp_on=False, accounts=[]))
     assert out["database"] == {"error": "connection refused"} and out["accounts"] == []
 
 
@@ -156,7 +163,7 @@ class Handle:
 
 def _app(monkeypatch, seen, app="iotask", **more):
     auth = Auth(app)
-    updater = Updater(app, "1.2.3", user_agent=app)
+    updater = Updater("1.2.3", user_agent=app)
     monkeypatch.setattr(updater, "start_daily", lambda: seen.append("daily check"))
     monkeypatch.setattr("iosuite_shared.demo.at_start", lambda a: seen.append(f"demo {a}"))
     r = APIRouter()
@@ -174,7 +181,8 @@ def _app(monkeypatch, seen, app="iotask", **more):
         return {"dav": True}
 
     config = SimpleNamespace(DB_HOST="db", DB_PORT=3306, DB_NAME="tasks")
-    return application.create(auth, updater, "1.2.3", config, description="A test app.", routers=(r,), page=False,
+    stand_in = testing.StandIn(app, config=config, auth=auth, updater=updater, prepare=more.pop("prepare", ()))
+    return application.create(stand_in, description="A test app.", routers=(r,), page=False,
                               forbidden=(Forbidden,), **more)
 
 

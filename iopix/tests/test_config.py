@@ -1,16 +1,14 @@
-"""The conventions every app of the suite follows (iosuite_shared.testing): the port, one version, the manifest, and an
-access marker on every API route (test_access.py also checks each route's level against access_table.json)."""
+"""What ioPix's own settings and routes must look like: an access marker on every API route (test_access.py also
+checks each route's level against access_table.json) and the paths it keeps things in. The conventions every app
+shares are checked over all of them at once (iosuite_shared/tests/test_conventions.py)."""
 from pathlib import Path
 
 from iosuite_shared import testing
 
-from iopix import __version__, access, config
+from iopix import access, config
 
 ROOT = Path(__file__).resolve().parent.parent
 
-
-def test_suite_conventions():
-    testing.check_conventions(ROOT, "iopix", __version__, config)
 
 
 def test_every_api_route_declares_who_may_call_it():

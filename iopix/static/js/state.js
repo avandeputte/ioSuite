@@ -1,5 +1,7 @@
 /** What the whole app shares: user and settings, the library's metadata, the route and the navigation, status polling. */
 import { $, DOCK_MIN, PREF, api, fill, h, main, norm, store } from './core.js';
+import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
+import { applyTheme as suiteTheme, themeChoice, themeFromAccount as suiteFromAccount } from '../../api/auth/frame.js';  // the appearance: the suite's one choice, kept with the account
 import { crumbs, renderChips } from './search.js';
 import { G, keepPlace, removeScrubber, showPhotos } from './grid.js';
 import { clearSelection, showDamaged, showHistory, showImport, showQuality, showTrash } from './actions.js';
@@ -121,12 +123,14 @@ export function infoPrefsEditor(onchange) {
   return h('div', { class: 'iprefs' }, INFO_SECTIONS.map(([k, label]) => h('label', null, h('input', { type: 'checkbox', checked: !hid.has(k), onchange: (e) => {
     const s = infoHidden(); if (e.target.checked) s.delete(k); else s.add(k); store.set(PREF.infoHide, [...s].join(',')); onchange?.(); } }), label)));
 }
-/** Appearance: light, dark, or follow the system (the default). Set on <html> so the stylesheet
- *  picks the palette; the browser chrome (theme-color) follows the page background. */
+/** Appearance: light, dark, or follow the device (the default). One choice for the whole suite, kept with the
+ *  account (frame.applyTheme); here the browser chrome (theme-color) follows the page background as well. */
 export const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['system', 'System']];  // the device's unless chosen otherwise
-export function applyTheme() {
-  const t = store.get(PREF.theme, 'system');
-  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+export { themeChoice };
+/** The choice the account carries (/api/auth/me settings.theme), taken as the page loads or somebody signs in. */
+export function themeFromAccount(settings) { suiteFromAccount(settings); applyTheme(); }
+export function applyTheme(choice) {
+  suiteTheme(choice);
   S.applySidebar?.();  // docked or put away is a display preference too: it follows the account
   requestAnimationFrame(() => { const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = getComputedStyle(document.body).backgroundColor; });
 }
@@ -139,6 +143,33 @@ export function brandName(el = h('span', { class: 'brand-name' })) {
   else el.textContent = n;
   return el;
 }
+// ------------------------------------------------------------------ the suite's other apps
+/* The suite (iosuite_shared's suite_apps, frame.loadSuite): when other apps are registered, the mark top left (in the
+   sidebar; in the top bar on a phone) opens a menu of them. Alone, the mark and the name are the link to Explore.
+   The list is per account, so it is asked for again when the account changes. */
+let suiteFor;  // the account the list was loaded for
+export async function loadSuite() {
+  const who = S.USER ? S.USER.id : null;
+  if (who === suiteFor) return;
+  suiteFor = who;
+  if (who == null) frame.suite.items = [];  // the list needs a signed-in account
+  else await frame.loadSuite(api);
+  drawBrand();
+}
+/** The sidebar's mark: a button that opens the menu where there are other apps, with the name beside it as the link
+ *  to Explore; alone, mark and name are one link. */
+export function drawBrand() {
+  frame.closeSuite();
+  const old = document.querySelector('#nav .navhead .brand');
+  if (!old) return;
+  const mark = () => h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' });
+  old.replaceWith(frame.suite.items.length
+    ? h('div', { class: 'brand' },
+      h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => frame.toggleSuite(e.currentTarget) }, mark()),
+      h('a', { class: 'brand-home', href: '#/explore', title: 'Home' }, brandName()))
+    : h('a', { class: 'brand', href: '#/explore', title: 'Home' }, mark(), brandName()));
+}
+
 export function applyAppName() {
   document.querySelectorAll('.brand-name').forEach((b) => brandName(b));
   document.title = S.APP_NAME;

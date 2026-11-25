@@ -1,5 +1,5 @@
 import { $, S, api, closeDialogs, closeMenu, fail, h, icon, listOf, loadLists, menuOpen } from './core.js';
-import { SMART, applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn } from './shell.js';
+import { SMART, applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn, themeFromAccount } from './shell.js';
 import { showActivity, showImport } from './activity.js';
 import { drawTasks } from './lists.js';
 import { showSettings } from './settings.js';
@@ -57,7 +57,7 @@ export async function start() {
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  themeFromAccount(S.settings);
   S.who = new Set(String(S.settings.memberFilter || '').split(',').filter(Boolean).map(Number));
   drawUser();
   await loadLists();

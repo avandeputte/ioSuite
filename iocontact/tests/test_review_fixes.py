@@ -144,7 +144,7 @@ def test_another_shared_database_never_empties_the_private_books(client):
     mine = next(b for b in client.get("/api/books").json()["items"] if not b["shared"])
     mk(client, mine["id"], fn="Ann Lee")
     users.init()  # notes which Shared ioSuite database this is
-    assert db.get_setting(users.KNOWN_SUITE) == authdb.get_setting(users.SUITE_ID, "", "")
+    assert db.get_state(users.KNOWN_SUITE) == authdb.get_setting(users.SUITE_ID, "", "")
     # the same server now reaches a different Shared ioSuite database: other accounts, another id
     for t in ("ios_user_roles", "ios_sessions", "ios_users", "ios_settings"):
         authdb.ex(f"DELETE FROM {t}")
@@ -156,7 +156,7 @@ def test_another_shared_database_never_empties_the_private_books(client):
     # and an empty one (no accounts at all) changes nothing either, even under the id it knows
     authdb.ex("DELETE FROM ios_users")
     shared.invalidate()
-    db.set_setting(users.KNOWN_SUITE, authdb.get_setting(users.SUITE_ID, "", ""))
+    db.set_state(users.KNOWN_SUITE, authdb.get_setting(users.SUITE_ID, "", ""))
     assert users.sweep_gone() == 0 and db.one("SELECT 1 AS x FROM con_address_books WHERE id = %s", (mine["id"],))
 
 

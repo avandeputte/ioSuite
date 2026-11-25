@@ -1,4 +1,4 @@
-/* Theme: light by default, dark with the system, or whichever Settings › Appearance fixes (data-theme on <html>:
+/* Theme: the device's by default, or whichever Settings › Appearance fixes (data-theme on <html>:
    light | dark; absent = follow the system). The same token names and scales as iopix; ionote' own hue is the
    deep teal of its icon, with iopix's gold for "io". */
 :root {
@@ -42,22 +42,14 @@
 :root, :root[data-theme="light"] { color-scheme: light; }  /* form controls follow the chosen theme, not the device's */
 :root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme]) { color-scheme: dark; } }
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
-body { background: var(--bg); color: var(--fg); font: var(--fs-base)/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
-a { color: var(--accent); text-decoration: none; }
-button, input, select, textarea { font: inherit; color: inherit; }
-[hidden] { display: none !important; }
-.ic { display: inline-flex; width: 20px; height: 20px; flex: none; }
-.ic svg { width: 100%; height: 100%; fill: currentColor; }
-.muted { color: var(--fg2); }
-.small { font-size: var(--fs-s); }
+body { font: var(--fs-base)/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+a { color: var(--accent); }
+.ic { width: 20px; height: 20px; }
 
 /* ---- top bar: the search beside the sidebar, New note, the account at the right; the menu button shows only while the
    sidebar is put away. Laid out as iopix's. */
 #topbar { position: fixed; inset: 0 0 auto var(--nav); height: calc(var(--topbar) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 20px;
   display: flex; align-items: center; gap: 12px; background: var(--bg); z-index: var(--z-bar); }
-#menubtn { margin-left: -8px; }
 body.side-docked #menubtn { display: none; }
 .brand { display: flex; align-items: center; gap: 8px; color: inherit; flex: none; min-width: 0; }
 .brand-name { font-weight: 700; font-size: var(--fs-xl); letter-spacing: -.2px; white-space: nowrap; }
@@ -67,25 +59,9 @@ body.side-docked #menubtn { display: none; }
 .brand-home { color: inherit; min-width: 0; }
 #nav .navhead a.brand, #nav .navhead a.brand-home { gap: 8px; height: auto; padding: 0; border-radius: 0; }
 /* the suite's app switcher (as ioContact's): the mark opens a menu of the other ioSuite apps */
-.suitebtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; margin: 0 -4px; padding: 0; border: 0; border-radius: var(--r-m); background: transparent; cursor: pointer; }
-.suitebtn:hover, .suitebtn:focus-visible { background: color-mix(in srgb, var(--fg) 8%, transparent); }
-.suitebtn img { width: 30px; height: 30px; }
-#suitebtn { display: none; }
-.suitesec { grid-column: 1 / -1; padding: 8px 6px 2px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg2); }
 .suitepop { position: fixed; z-index: var(--z-menu); display: grid; grid-template-columns: repeat(var(--cols, 3), 92px); gap: 4px; padding: 8px; max-width: calc(100vw - 16px);
   background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: var(--shadow); }
-.apptile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; border-radius: var(--r-m); color: var(--fg); text-align: center; min-width: 0; }
-.apptile:hover, .apptile:focus-visible { background: var(--bg2); }
-.appic { width: 44px; height: 44px; border-radius: 12px; object-fit: contain; }
-.appic.fb { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; }
-.appnm { font-size: var(--fs-s); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the app this menu is in stays in the list (one order in every app), marked; admin tools come smaller, apart */
-.apptile.cur { background: var(--bg2); }
-.apptile.cur .appnm { font-weight: 600; }
-.apptile.tool { gap: 4px; padding: 6px 4px; }
-.apptile.tool .appic { width: 28px; height: 28px; border-radius: 8px; }
-.apptile.tool .appic.fb { font-size: 13px; }
-.apptile.tool .appnm { font-size: 12px; }
 #search { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px;
   background: var(--bg2); border-radius: var(--r-pill); color: var(--fg2); }
 #search:focus-within { background: var(--bg); box-shadow: var(--shadow); }
@@ -101,11 +77,6 @@ body.side-docked #menubtn { display: none; }
 .pillbtn.danger { color: var(--danger); }
 .pillbtn:disabled { opacity: .5; cursor: default; }
 #newbtn .ic { color: var(--accent); }
-#usermenu { margin-left: auto; display: inline-flex; align-items: center; }
-#usermenu .tool { width: 30px; height: 30px; color: var(--fg2); opacity: .85; }
-#usermenu .tool:hover { opacity: 1; background: var(--bg3); }
-#usermenu .tool .ic { width: 18px; height: 18px; }
-.avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--c-amber-av); color: #1f2730; font-size: var(--fs-s); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 
 /* ---- sidebar: the name on top, the views, Folders, Tags and Manage, then Settings at the foot above the
    status line. Docked (body.side-docked) on a wide screen; otherwise hidden off the left edge and slid over the page
@@ -115,9 +86,7 @@ body.side-docked #menubtn { display: none; }
 body.side-open #nav { transform: none; visibility: visible; transition: transform .2s ease; box-shadow: var(--shadow); }
 body.side-docked #nav { transform: none; visibility: visible; transition: none; z-index: 10; box-shadow: none; border-right: 1px solid var(--line); }
 body.side-docked { --nav: var(--side); }
-#navscrim { position: fixed; inset: 0; z-index: calc(var(--z-panel) - 1); background: rgba(0,0,0,.32); }
 .navhead { display: flex; align-items: center; justify-content: space-between; flex: none; height: var(--topbar); padding-left: 12px; margin-bottom: 10px; }
-#sidebtn { width: 34px; height: 34px; margin-right: -4px; opacity: .75; } #sidebtn:hover { opacity: 1; } #sidebtn .ic { width: 20px; height: 20px; }
 #nav a { flex: none; display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 12px; border-radius: var(--r-m); font-size: var(--fs-base); color: var(--fg); user-select: none; }
 #nav a.on { background: color-mix(in srgb, var(--hue, var(--accent)) var(--mix), transparent); color: var(--hue, var(--accent)); font-weight: 600; }
 #nav a .ic { width: 20px; height: 20px; transition: transform .15s; color: var(--hue, var(--fg2)); }  /* each destination's icon in its own colour */
@@ -128,11 +97,9 @@ body.side-docked { --nav: var(--side); }
 #nav a.drop { outline: 2px dashed var(--accent); }
 #nav a .dot { width: 20px; display: inline-flex; align-items: center; justify-content: center; background: none; opacity: 1; }
 #nav a .dot::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--hue, var(--fg2)); opacity: .8; }
-.navgap { flex: none; height: 14px; }
 .navsec { flex: none; display: flex; align-items: center; justify-content: space-between; min-height: 24px; padding: 0 4px 4px 12px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
 .navsec .iconbtn { width: 26px; height: 26px; } .navsec .iconbtn .ic { width: 18px; height: 18px; }
 .navmore { display: none; }
-.navfoot { margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; gap: 2px; }
 #status { padding: 8px 12px calc(12px + env(safe-area-inset-bottom)); font-size: var(--fs-xs); color: var(--fg2); line-height: 1.3; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--fg2); opacity: .55; }
 
@@ -152,7 +119,6 @@ body.side-docked { --nav: var(--side); }
 .card .m .ic { width: 14px; height: 14px; }
 .card img.th { width: 64px; height: 64px; object-fit: cover; border-radius: var(--r-s); background: var(--bg3); flex: none; }
 .card .pin { position: absolute; right: 10px; top: 10px; color: var(--accent); width: 16px; height: 16px; }
-.empty { padding: 48px 24px; text-align: center; color: var(--fg2); }
 .more { margin: 12px auto 24px; }
 
 #note { flex: 1; min-width: 0; overflow-y: auto; }
@@ -303,28 +269,8 @@ pre.log { font: var(--fs-xs)/1.4 ui-monospace, Menlo, monospace; background: var
 .err { color: var(--danger); }
 
 /* ---- dialogs, menus, toast */
-.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: 16px; }
-.dialog { background: var(--bg); border-radius: var(--r-l); box-shadow: var(--shadow); width: 100%; max-width: 420px; max-height: 90vh; overflow: auto; padding: 20px; }
-.dialog h2 { margin: 0 0 10px; font-size: var(--fs-xl); font-weight: 400; }
-.dialog .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 .dialog input[type=text], .dialog input[type=password] { width: 100%; border: 1px solid var(--line); border-radius: var(--r-s); padding: 9px 12px; background: var(--bg); margin: 4px 0 10px; }
-.scrim.required { background: var(--bg); }  /* sign-in required: nothing of the app shows behind it */
 body.locked #main, body.locked #nav, body.locked #topbar { visibility: hidden; }
-/* the sign-in, as in iopix: the logo and name above the title, a tile per account */
-.signin-brand { display: flex; align-items: center; gap: 10px; margin: -4px 0 14px; }
-.signin-brand .logo { width: 36px; height: 36px; border-radius: var(--r-s); }
-.signin-brand .brand-name, .signin-brand .brand-name { display: inline; font-size: var(--fs-xxl); }
-.signin-form { display: grid; gap: 8px; margin-top: 10px; }
-.einput, .dialog input.einput { width: 100%; margin: 0; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--bg); padding: 8px 10px; outline: 0; font: inherit; color: inherit; box-sizing: border-box; }
-.einput:focus { border-color: var(--accent); }
-.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin: 6px 0 4px; }
-.accounts:empty { display: none; }
-.account { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 0; border-radius: var(--r-m); background: var(--bg2); color: inherit; cursor: pointer; font: inherit; }
-.account:hover, .account.on { background: var(--bg3); }
-.account .nm { font-size: var(--fs-m); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account .tiny { font-size: 11px; }
-.avatar.big { width: 48px; height: 48px; font-size: var(--fs-xxl); background: var(--c-amber-av); color: #1f2730; }
-.avatar.big.other { background: var(--bg3); color: var(--fg2); }
 .menu { position: fixed; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: var(--shadow); padding: 6px; z-index: var(--z-menu); min-width: 200px; }
 .menu .mi { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--r-s); cursor: pointer; }
 .menu .mi:hover { background: var(--bg2); }
@@ -334,7 +280,6 @@ body.locked #main, body.locked #nav, body.locked #topbar { visibility: hidden; }
 .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .swatch.on { border-color: var(--fg); }
 .swatch.none { background: var(--bg3); position: relative; }
-#toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #323232; color: #fff; padding: 10px 18px; border-radius: var(--r-s); z-index: var(--z-toast); box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 #drop { position: fixed; inset: 0; z-index: var(--z-modal); background: color-mix(in srgb, var(--brand) 30%, transparent); display: flex; align-items: center; justify-content: center; pointer-events: none; }
 #drop div { background: var(--bg); padding: 18px 26px; border-radius: var(--r-l); box-shadow: var(--shadow); font-size: var(--fs-l); }
 .banner { margin: 10px 16px 0; padding: 10px 14px; border-radius: var(--r-m); background: var(--accent-bg); color: var(--brand-ink); font-size: var(--fs-m); }
@@ -366,7 +311,6 @@ body.locked #main, body.locked #nav, body.locked #topbar { visibility: hidden; }
   .splitbtn #newmore { border: 0; width: 26px; padding: 0; justify-content: center; }
   #newbtn .ic { width: 24px; height: 24px; }
   #search { padding: 0 10px; }
-  #usermenu .tool { width: 40px; height: 40px; }
   .pagein { padding: 8px 16px 40px; margin: 0; }
   .row input[type=text], .row input[type=password], .row select, .sec select { width: 100%; }
   .stabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -375,9 +319,9 @@ body.locked #main, body.locked #nav, body.locked #topbar { visibility: hidden; }
   #toast { bottom: calc(68px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 800px) {
-  .scrim { padding: 0; align-items: flex-end; }
-  .scrim.required { align-items: center; padding: 16px; }
+  .dialog-back { padding: 0; align-items: flex-end; }
   .dialog { max-width: none; max-height: calc(100dvh - env(safe-area-inset-top) - 24px); border-radius: var(--r-l) var(--r-l) 0 0; padding: 16px 16px calc(14px + env(safe-area-inset-bottom)); }
-  .scrim.required .dialog { border-radius: var(--r-l); }
-  .einput { font-size: var(--fs-l); }
+  .signin { padding: 16px; }
+  .signin .dialog { border-radius: var(--r-l); }
+  .dialog input.t { font-size: var(--fs-l); }
 }

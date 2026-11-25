@@ -1,16 +1,14 @@
-"""The conventions every app of the suite follows (iosuite_shared.testing): the port, one version, config.env, and an
-access marker on every API route."""
+"""What this app's own settings and routes must look like: an access marker on every API route, and the paths it
+keeps things in. The conventions every app shares are checked over all of them at once
+(iosuite_shared/tests/test_conventions.py)."""
 from pathlib import Path
 
 from iosuite_shared import testing
 
-from iobackup import __version__, access, config
+from iobackup import access, config
 
 ROOT = Path(__file__).resolve().parent.parent
 
-
-def test_suite_conventions():
-    testing.check_conventions(ROOT, "iobackup", __version__, config)
 
 
 def test_every_api_route_declares_who_may_call_it(app):

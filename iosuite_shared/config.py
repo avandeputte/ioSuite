@@ -247,7 +247,7 @@ def standard(app: str, app_dir, stored: Settings = None) -> dict:
       BASE_URL              PUBLIC_URL, else http://localhost:PORT/folder (the links in MCP results)
       TLS_CERT_FILE, TLS_KEY_FILE   the machine's: HTTPS served directly instead of behind a reverse proxy
       KEEP_DELETED_DAYS     how long what was deleted is kept before it is purged for good (90)
-      MCP_USER              the account `python -m <app>.mcp` (stdio) acts as
+      MCP_USER              the account `iosuite mcp <app>` (stdio) acts as
       ADMIN_USER, ADMIN_PASSWORD    the first admin account, created on a first start with no accounts"""
     from iosuite_shared import catalog
     s = stored or settings(app)
@@ -324,33 +324,72 @@ def own_db(app: str, stored: Settings = None, default_name: str = None) -> dict:
     return {"host": DB_HOST, "port": DB_PORT, "database": s.get("DB_NAME", default_name or app), "user": DB_USER, "password": DB_PASSWORD}
 
 
-# ---- what a person may set: Settings › Apps › All settings, and `iosuite set`
-# {name, label, hint, type: text | number | switch | choice, default?, choices?}; an app's own are in its app.json ("settings")
+def of_app(package: str) -> dict:
+    """Every name an app's config module has without writing it (`globals().update(shared.of_app(__package__))`):
+
+      APP                           its key
+      env, env_flag, env_int        its stored settings, read once, now (Settings.get, .flag, .int)
+      live, live_flag, live_int     one of them as it is now, read again every time (a change needs no restart)
+      what standard() gives         APP_DIR, DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT, PUBLIC_URL, BASE_URL...
+      DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD    its own database (own_db)
+      MAX_<NAME>_BYTES              the manifest's `limits` (app.json), MAX_JSON_BYTES among them
+
+    The module then holds only what is the app's own."""
+    from iosuite_shared import app as declared
+    key = package.split(".")[0]
+    a = declared.of(key)
+    s = settings(key)
+    own = own_db(key, s)
+    out = {"APP": key, "env": s.get, "env_flag": s.flag, "env_int": s.int,
+           "live": lambda name, default="", _k=key: live(_k, name, default),
+           "live_flag": lambda name, default=False, _k=key: live_flag(_k, name, default),
+           "live_int": lambda name, default=0, _k=key: live_int(_k, name, default),
+           **standard(key, a.dir, s),
+           "DB_HOST": own["host"], "DB_PORT": own["port"], "DB_NAME": own["database"], "DB_USER": own["user"], "DB_PASSWORD": own["password"]}
+    out.update({declared.limit_name(name): n for name, n in a.limits(s).items()})
+    return out
+
+
+def shared_db_public() -> dict:
+    """Where the Shared ioSuite database is, without its password (a start-up log line, a diagnostics answer)."""
+    return {"host": DB_HOST, "port": DB_PORT, "database": DB_NAME, "user": DB_USER}
+
+
+# ---- what a person may set: Settings › Apps › All settings, the app's own Settings page, and `iosuite set`
+# {name, label, hint, type: text | number | switch | choice, default?, choices?, restart?}; an app's own are in its
+# app.json ("settings"). A setting is read as it is now (live, from the Shared ioSuite database) unless it says
+# "restart": true, which the app reads once as it starts, because it is the address it answers at or where it keeps
+# what it keeps.
 COMMON = [
-    {"name": "PUBLIC_URL", "label": "Its own address", "type": "text",
+    {"name": "PUBLIC_URL", "label": "Its own address", "type": "text", "restart": True,
      "hint": "An address of its own (https://calendar.example.com), beside its folder at the suite's address. Empty: the folder only."},
-    {"name": "SYNC_URL", "label": "Its own address for devices", "type": "text",
+    {"name": "SYNC_URL", "restart": True, "label": "Its own address for devices", "type": "text",
      "hint": "Where phones, native apps and devices reach its sync door (https://calendar-sync.example.com). Empty: the suite's, or the address asked with the sync port."},
-    {"name": "MCP_URL", "label": "Its own address for MCP", "type": "text",
+    {"name": "MCP_URL", "restart": True, "label": "Its own address for MCP", "type": "text",
      "hint": "Where MCP clients reach its MCP door. Empty: the suite's, or the address asked with the MCP port."},
-    {"name": "DATA_DIR", "label": "Data folder", "type": "text",
+    {"name": "DATA_DIR", "label": "Data folder", "type": "text", "restart": True,
      "hint": "Where it writes on its own (files it keeps, caches). Empty: a folder named after it in the machine's data folder."},
-    {"name": "DB_NAME", "label": "Database", "type": "text", "hint": "The name of its own database. Empty: the app's name."},
+    {"name": "DB_NAME", "label": "Database", "type": "text", "restart": True,
+     "hint": "The name of its own database. Empty: the app's name."},
 ]
 SUITE = [
-    {"name": "PUBLIC_URL", "label": "The suite's address", "type": "text",
+    {"name": "PUBLIC_URL", "label": "The suite's address", "type": "text", "restart": True,
      "hint": "One address for every app (https://home.example.com): the start page answers there and each app in its folder (/calendar/). Empty: the address it is reached at."},
-    {"name": "SYNC_URL", "label": "The suite's address for devices", "type": "text",
+    {"name": "SYNC_URL", "label": "The suite's address for devices", "type": "text", "restart": True,
      "hint": "Where phones, native apps and devices reach the sync door (https://sync.example.com, or https://home.example.com:8443). Empty: the address asked, with the sync port."},
-    {"name": "MCP_URL", "label": "The suite's address for MCP", "type": "text",
+    {"name": "MCP_URL", "label": "The suite's address for MCP", "type": "text", "restart": True,
      "hint": "Where MCP clients reach the MCP door (https://mcp.example.com). Empty: the address asked, with the MCP port."},
-    {"name": "COOKIE_DOMAIN", "label": "Sign-in domain", "type": "text",
+    {"name": "COOKIE_DOMAIN", "label": "Sign-in domain", "type": "text", "restart": True,
      "hint": "The domain the sign-in is shared on (example.com): signed in at one app under it, signed in at all of them. Empty: each address on its own."},
     {"name": "TZ", "label": "Time zone", "type": "text", "hint": "Europe/Brussels, America/New_York… Empty: the server's own."},
     {"name": "KEEP_DELETED_DAYS", "label": "Days deleted items are kept", "type": "number", "default": "90",
      "hint": "How long the marker of a deleted item is kept for the apps that sync, before it is gone for good."},
     {"name": "MCP_USER", "label": "Account for a local MCP client", "type": "text",
-     "hint": "The account `python -m <app>.mcp` (stdio) acts as."},
+     "hint": "The account `iosuite mcp <app>` (stdio) acts as."},
+    {"name": "OCR_PROGRAM", "label": "Program that reads text in pictures", "type": "text", "default": "tesseract",
+     "hint": "Tesseract reads the text on a scan or a photo for ioDocs, ioNote and ioRecipe. Another path, or off to never read them."},
+    {"name": "OCR_LANGUAGES", "label": "Languages of that text", "type": "text",
+     "hint": "eng+nld+fra, each needing its tesseract-ocr-<lang> package. Empty: every language installed, English first."},
 ]
 
 
@@ -361,6 +400,36 @@ def declared(app: str = "") -> list:
     from iosuite_shared import catalog
     own = (catalog.APPS.get(app) or {}).get("settings") or []
     return [dict(d) for d in COMMON] + [dict(d) for d in own]
+
+
+def live(app: str, name: str, default: str = "") -> str:
+    """A setting of this app as it is now: its own value, else the whole suite's, else what the declaration says,
+    else `default`. Read from the Shared ioSuite database every time (cached a few seconds there), so a change under
+    Settings takes hold without the app starting again. The settings marked "restart" are read once instead, by the
+    app's config module, because they say where the app answers and where it keeps what it keeps."""
+    from iosuite_shared import db
+    try:
+        v = (db.get_setting(name, "", app) or "").strip()
+    except Exception:  # noqa: BLE001 - the database is away: what it started on
+        v = (OF_APP.get(app) or {}).get(name) or ""
+    if v:
+        return v
+    d = known(app, name) or {}
+    return str(d.get("default") or "") or default
+
+
+def live_flag(app: str, name: str, default: bool = False) -> bool:
+    """A switch of this app as it is now (live)."""
+    v = live(app, name)
+    return as_flag(v, default) if v else default
+
+
+def live_int(app: str, name: str, default: int) -> int:
+    """A number of this app as it is now (live)."""
+    try:
+        return int(live(app, name) or default)
+    except ValueError:
+        return default
 
 
 def known(app: str, name: str) -> dict | None:

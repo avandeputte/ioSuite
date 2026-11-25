@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from iopix.data import state as appstate
 from iopix.digikam.dkdb import in_chunks
 from iopix import access, users
-from iopix.http import jresp, json_body
+from iosuite_shared.http import jresp, json_body
 from iopix.runtime import db
 
 

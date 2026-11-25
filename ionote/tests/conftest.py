@@ -19,7 +19,7 @@ _tmp = os.environ["DATA_DIR"]
 from ionote import db, notes  # noqa: E402
 from iosuite_shared import proxyauth  # noqa: E402
 
-TABLES = ["nts_notes", "nts_note_images", "nts_attachments", "nts_templates", "nts_folders", "nts_tag_colors", "nts_change_log", "nts_change_counter", "nts_settings"]
+TABLES = ["nts_notes", "nts_note_images", "nts_attachments", "nts_templates", "nts_folders", "nts_tag_colors", "nts_change_log", "nts_change_counter", "nts_state"]
 
 
 @pytest.fixture(scope="session")
@@ -35,7 +35,7 @@ def clean():
         for t in TABLES:
             con.execute(f"DELETE FROM {t}")
         con.commit()
-    from ionote.auth import auth
+    from ionote import auth
     _authtest.clean_shared_tables(auth)  # accounts, sessions, app passwords, settings, the list of apps; the first account is #1 again
     proxyauth.forget_identities()
     notes._tags_seen.clear()

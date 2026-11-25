@@ -79,8 +79,8 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iodocs.cli check       # connect to the databases and say what is there, and what this server can read off a scan
-.venv/bin/python -m iodocs.cli read FILE   # what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
+iosuite iodocs check       # connect to the databases and say what is there, and what this server can read off a scan
+iosuite iodocs read FILE   # what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iodocs` makes someone an admin of ioDocs only (`iosuite admin NAME`: of
@@ -89,9 +89,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioDocs has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioDocs, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iodocs        # what may be set, with the value stored now
@@ -104,11 +105,11 @@ iosuite set iodocs PUBLIC_URL https://docs.example.com    # no value: back to th
 | `DATA_DIR` | where the app writes on its own (`iodocs/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iodocs`) |
 | `MAX_FILE_MB` | largest file (MB) (`100`). One scan, photo or PDF as uploaded |
-| `TESSERACT` | OCR program (`tesseract`). The program that reads the scans; off: never read them |
-| `OCR_LANGS` | OCR languages (`eng`). Tesseract's languages (eng+fra+deu); each needs its tesseract-ocr-<lang> package |
 
-The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
-machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are
+kept, and `OCR_PROGRAM` and `OCR_LANGUAGES`: the program that reads the text in a scan or a photo and the languages it
+reads in, shared with ioNote and ioRecipe), the machine's file and the three ports are in the guide's
+[Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 

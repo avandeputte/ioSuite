@@ -42,9 +42,10 @@ def test_mcp_updates_every_app(client):
     assert out["status"] == "current" and {a["app"] for a in out["apps"]} >= {"iocalendar", "ionote"}
     assert call(client, auth, "update_suite")["asked"] == []  # nothing is behind
     from iosuite_shared import suiteupdates
-    suiteupdates.publish("iocalendar", installed="1.0.0", latest="9.0.0", status="update", can_run=1)
-    assert "iocalendar" in call(client, auth, "update_suite")["asked"]  # every app below the newest version known
-    assert shared_db.one("SELECT action, requested_by FROM ios_updates WHERE app = 'iocalendar'") == {"action": "update", "requested_by": "alex"}
+    suiteupdates.publish(installed="1.0.0", latest="9.0.0", status="update", can_run=1)  # this copy, whichever apps it runs
+    assert "iocalendar" in call(client, auth, "update_suite")["asked"]  # every app on a copy below the newest version known
+    assert shared_db.one("SELECT action, requested_by FROM ios_copies WHERE copy = %s", (suiteupdates.here(),)) == {
+        "action": "update", "requested_by": "alex"}
 
     # an admin of the start page who is not a suite admin cannot
     ed = users.create("ed", "secret123", "admin", "iostart")

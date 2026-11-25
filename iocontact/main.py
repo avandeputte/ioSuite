@@ -8,17 +8,11 @@ suite.
 """
 import logging
 
-from iosuite_shared import application, chores, mcp as shared_mcp
+from iosuite_shared import application, chores
 
-from iocontact import __version__, api, carddav, config, db, enrich, iopix, ldapd, mcp, model, notify, quality, suiteitems, users
-from iocontact.auth import auth, updater
+from iocontact import api, auth, carddav, config, enrich, iopix, ldapd, mcp, model, notify, quality, suite_app, users
 
 log = logging.getLogger("iocontact")
-
-# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
-mcp_switch = shared_mcp.Switch(config.APP,
-                               "Lets an AI assistant look up, add and correct contacts, as you.")
-mcp_enabled = mcp_switch.enabled
 
 
 async def _ldap():
@@ -39,7 +33,7 @@ def _jobs() -> list:
 
 # the MCP endpoint's gate (the switch; an app password or session; every tool acts as that account). An app password
 # with a scope, such as an Apple profile's CardDAV/LDAP-only one, is kept to its paths by the same middleware.
-_mcp_gate = auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set)
+_mcp_gate = auth.mcp_gate(suite_app.mcp_enabled, on_user=mcp.set_user)  # whose the call is: iocontact/mcp
 
 
 def _before(request):
@@ -49,31 +43,24 @@ def _before(request):
     return _mcp_gate(request)
 
 
-def _limit_for(path: str, ctype: str) -> int:
-    if "/import" in path or path.startswith("/dav"):  # a vCard or CSV file to import; CardDAV checks its own PUTs
-        return config.MAX_IMPORT_BYTES
-    return config.MAX_JSON_BYTES
-
-
 def _status_extra(request) -> dict:
     """ioContact's own fields of GET /api/status, beside the suite's (its `user` also names the account's own contact)."""
     u = request.state.user
-    return {"user": users.public(u), "iopix": bool(iopix.settings()["url"]) if u else None, "mcp": mcp_enabled() if u else None,
+    return {"user": users.public(u), "iopix": bool(iopix.settings()["url"]) if u else None,
             "suggestions": enrich.pending_count(api.book_ids(u)) if u else None}
 
 
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="Contacts for the family. Also served over CardDAV at /dav/ (vCard 3.0 and 4.0), LDAP "
                 "(read-only), as a birthday calendar (iCalendar) and to AI assistants over MCP (/mcp). JSON by "
                 "default; ask for text/vcard or application/vcard+json (jCard) with Accept or ?format=vcard|vcard4|jcard.",
-    prepare=(db.migrate, users.init), start=(_ldap,), jobs=_jobs,
-    mcp=mcp, mcp_enabled=mcp_enabled, before=_before,
+    start=(_ldap,), jobs=_jobs,
+     before=_before,
     # what a visitor may still fetch when sign-in is required, beside what app.json lists as sync (the birthday
     # calendar links with their own secret, CardDAV with its own sign-in): the profile links
     open_prefixes=("/profile/",),
-    limit_for=_limit_for,
-    status=_status_extra, suite=suiteitems.PROVIDER,
+    status=_status_extra, 
     routers=(auth.profile_router(api.sync_url),  # /profile/<token>/<file> and the profile for all the apps that sync
              api.router,                         # the contacts; also an account's own fields (its "me" contact, the face on its tile)
              auth.feeds_router(api.feed_links),  # /api/feeds: your birthday calendar links (Shared ioSuite database, shown once)

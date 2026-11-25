@@ -40,8 +40,12 @@ def test_settings_and_data():
     assert users.get_settings(u["id"], "iopix") == {}
     out = users.set_settings(u["id"], "iopix", {"theme": "dark", "grid": 4, "x" * 65: "ignored"})
     assert out == {"theme": "dark", "grid": 4}
+    assert users.get_settings(u["id"], "ionote") == {"theme": "dark"}, "the appearance is the suite's, the rest the app's"
+    assert users.get_settings(u["id"], users.SUITE) == {"theme": "dark"}  # its one home, whichever app sent it
+    assert users.set_settings(u["id"], "ionote", {"theme": "light"}) == {"theme": "light"}
+    assert users.get_settings(u["id"], "iopix") == {"theme": "light", "grid": 4}, "a choice made in one app holds in all"
     assert users.set_settings(u["id"], "iopix", {"theme": None}) == {"grid": 4}
-    assert users.get_settings(u["id"], "ionote") == {}  # per app
+    assert users.get_settings(u["id"], "ionote") == {}
     users.set_value(u["id"], "iopix", "person", 42)
     assert users.get_value(u["id"], "iopix", "person") == 42
     users.set_value(u["id"], "iopix", "person", None)

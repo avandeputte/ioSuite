@@ -29,7 +29,6 @@ import time
 import traceback
 
 from iopix import config
-from iopix.data import state
 
 ORDER = ["thumbs", "pixels", "embeddings", "vision", "facedetect", "faces", "neardups", "captions", "looks", "ages", "jerseys", "clothing", "rotation", "videos", "filecheck"]
 
@@ -156,7 +155,7 @@ def threads() -> int:
     """Cores a background job may use right now."""
     n = config.cpu_count()
     try:
-        v = int(state.get_setting("bg_threads") or 0)
+        v = config.live_int("BG_THREADS", 0)
     except (TypeError, ValueError):
         v = 0
     if v <= 0:

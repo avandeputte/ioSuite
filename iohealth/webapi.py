@@ -18,7 +18,7 @@ from fastapi.responses import ORJSONResponse, Response
 from iosuite_shared.errors import Invalid
 
 from iohealth import access, analytics as an, config, db, glucose as gl, rollup
-from iohealth.auth import uid as uid_of
+from iohealth.hooks import uid as uid_of
 
 log = logging.getLogger("iohealth.webapi")
 
@@ -948,7 +948,8 @@ def glucose(request: Request):
     return cached(request, 0, reply)
 
 
-# ---- settings (units, theme, hidden sections and metrics, targets, goals): per account, shared by its browsers
+# ---- settings (units, hidden sections and metrics, targets, goals): per account, shared by its browsers
+# (the appearance is not here: it is the suite's one choice, kept with the account in the Shared ioSuite database)
 
 @router.get("/api/settings", dependencies=[access.signed_in])
 def get_settings(request: Request):

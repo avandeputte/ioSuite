@@ -1,7 +1,7 @@
 """What every app's MCP server shares: the server instance, the annotations, who is asking, and the HTTP mount.
 
     from iosuite_shared import mcp as shared_mcp
-    server = shared_mcp.make_server("iocalendar", "ioCalendar", __version__, instructions="...")
+    server = shared_mcp.make_server("iocalendar", instructions="...", counts=lambda: {"events": ...})
     current_user = shared_mcp.current_user                      # set per request by Auth.mcp_gate(on_user=current_user.set)
     @server.tool(annotations=shared_mcp.READ_ONLY)
     def overview(): u = shared_mcp.who(); ...
@@ -55,8 +55,39 @@ class AppServer(MCPServer):
         return result
 
 
-def make_server(app: str, label: str, version: str, instructions: str) -> MCPServer:
-    return AppServer(app, title=label, version=version, instructions=instructions)
+def make_server(app: str, instructions: str, counts=None, more=None, app_tools: bool = True) -> MCPServer:
+    """An app's MCP server (its name and version are the suite's: catalog, iosuite_shared.__version__), with the two
+    tools every app has already on it (see add_app_tools): `counts` are the app's rows for diagnostics, `more()` its
+    own lines there."""
+    from iosuite_shared import __version__, catalog
+    server = AppServer(app, title=catalog.name_of(app), version=__version__, instructions=instructions)
+    if app_tools:  # False for an app whose health is of another kind altogether (ioPix: a digiKam library)
+        add_app_tools(server, app, counts=counts, more=more)
+    return server
+
+
+def add_app_tools(server: MCPServer, app: str, counts=None, more=None) -> None:
+    """The tools every app's MCP server has, from what the app declares (iosuite_shared.app): `diagnostics` (the
+    server's health) and `list_accounts` (the suite's accounts with their role in this app). An app's own admin tools
+    stay its own (ioCalendar's holidays, ioPix's library)."""
+    from iosuite_shared import app as declared
+    a = declared.of(app)
+
+    @server.tool(annotations=READ_ONLY)
+    def diagnostics() -> dict:
+        """Admins: the server's health: version and commit, Python and platform, where the app is, the database
+        (server version and the app's rows), the MCP switch, the last update check and update, and the accounts."""
+        need_admin()
+        extra = more() if more else {}
+        return app_diagnostics(a, counts=counts, **extra)
+
+    @server.tool(annotations=READ_ONLY)
+    def list_accounts() -> list:
+        """Admins: the accounts, with their roles here (viewer, member, editor, admin)."""
+        need_admin()
+        return account_list(a.users.all_users() if not a.has("users") else a.module("users").all_users())
+
+
 
 
 def who() -> dict:
@@ -153,27 +184,30 @@ def stdio_user(app: str, named: str, accounts: list, argv: list = None, open_ins
         return admins[0]
     if not accounts and open_install is not None:
         return open_install
-    sys.exit(f"name the account: python -m {app}.mcp --user NAME (or MCP_USER=NAME)")
+    sys.exit(f"name the account: iosuite mcp {app} --user NAME (or MCP_USER=NAME)")
 
 
-def diagnostics(config, version: str, updater, db, mcp_enabled, accounts: list, counts=None, **more) -> dict:
+def app_diagnostics(a, counts=None, **more) -> dict:
     """What an app's `diagnostics` tool says of its server, the same in every app: version and commit, Python and
     platform, where the app is, `more` (the app's own lines), the last update check and update, the database (its
     server's version, the schema's, and `counts()`: the app's rows; or the error when it cannot be asked), the MCP
-    switch and the accounts with their roles in the app."""
+    switch and the accounts with their roles in the app. `a` is the app as declared (iosuite_shared.app.App)."""
     import platform
     import sys
-    out = {"version": version, "commit": updater.local_commit()[:7], "docker": updater.in_docker(),
+    config, updater = a.config, a.updater
+    users_of = a.module("users") if a.has("users") else a.users
+    out = {"version": updater.version, "commit": updater.local_commit()[:7], "docker": updater.in_docker(),
            "python": sys.version.split()[0], "platform": platform.platform(), "appDir": str(config.APP_DIR),
            "publicUrl": config.PUBLIC_URL or None, **more, "update": updater.status()}
     try:
+        db = a.module("db")
         out["database"] = {"host": f"{config.DB_HOST}:{config.DB_PORT}", "name": config.DB_NAME,
                            "server": db.one("SELECT version() AS v")["v"], "schema": db.schema_version(),
                            **(counts() if counts else {})}
     except Exception as e:  # noqa: BLE001
         out["database"] = {"error": str(e)[:200]}
-    out["mcp"] = {"enabled": mcp_enabled()}
-    out["accounts"] = [{"name": u["name"], "role": u.get("role")} for u in accounts]
+    out["mcp"] = {"enabled": a.mcp_enabled()}
+    out["accounts"] = [{"name": u["name"], "role": u.get("role")} for u in users_of.all_users()]
     return out
 
 

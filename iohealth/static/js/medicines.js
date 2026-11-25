@@ -1,7 +1,14 @@
 import { TZ, empty, h, isoDate, loading, pages, resetPage, showError } from './core.js';
 import { pageTitle } from './shell.js';
 import { card } from './charts.js';
-import { dialog, toast } from './accounts.js';
+import { dialog, toast } from './shell.js';
+
+/** A dialog whose buttons do something and stay open when that fails: the suite's dialog (frame.js), where a button's
+ *  value may be a function and an answer of undefined keeps the dialog. `action` gives false to stay. */
+const formDialog = (title, body, buttons) => dialog(title, body, buttons.filter(Boolean).map((b) => ({
+  label: b.label, primary: b.primary, danger: b.danger,
+  value: b.action ? async () => ((await b.action()) === false ? undefined : true) : (b.value ?? null),
+})), '', { wait: true });
 
 // ---------- medicines and allergies: the doses of the day to tick, the medicines, the last 30 days, the allergies ----------
 // Everything here is the signed-in person's own (iohealth/meds.py). Times are the person's local times; the server
@@ -174,7 +181,7 @@ export function editMedicine(m, done) {
     try { await medApi(path, { method, body: b }); done(); return true; } catch (e) { err.textContent = e.message; err.hidden = false; return false; }
   };
   const today = isoDate(new Date());
-  return dialog(m ? m.name : 'Add a medicine', body, [
+  return formDialog(m ? m.name : 'Add a medicine', body, [
     m ? { label: 'Delete', danger: true, action: async () => {
       if (await dialog(`Delete ${m.name}?`, h('p', {}, 'It goes with every dose ticked. To keep that, stop taking it instead.'), [{ label: 'Cancel', value: false }, { label: 'Delete', danger: true, value: true }]) !== true) return false;
       return send(`medicines/${m.id}`, 'DELETE');
@@ -200,7 +207,7 @@ export function editAllergy(a, done) {
   const send = async (path, method, b) => {
     try { await medApi(path, { method, body: b }); done(); return true; } catch (e) { err.textContent = e.message; err.hidden = false; return false; }
   };
-  return dialog(a ? a.name : 'Add an allergy', h('div', { class: 'form' }, field('Allergic to', name), field('Reaction', reaction), field('How bad', sev), field('Note', note), err), [
+  return formDialog(a ? a.name : 'Add an allergy', h('div', { class: 'form' }, field('Allergic to', name), field('Reaction', reaction), field('How bad', sev), field('Note', note), err), [
     a ? { label: 'Delete', danger: true, action: () => send(`allergies/${a.id}`, 'DELETE') } : null,
     { label: 'Cancel' },
     { label: a ? 'Save' : 'Add', primary: true, action: () => (name.value.trim() ? send(a ? `allergies/${a.id}` : 'allergies', a ? 'PATCH' : 'POST',

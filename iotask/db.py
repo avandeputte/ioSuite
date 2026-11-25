@@ -12,7 +12,7 @@ PREFIX = "tsk"
 # in it (alarms, its own X- properties, sort order) comes back unchanged; the columns beside it are what the app
 # searches, sorts and filters on, filled in whenever the object is saved.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS tsk_settings (
+    """CREATE TABLE IF NOT EXISTS tsk_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -110,7 +110,7 @@ _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 pool = _db.pool
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 marks = shared_db.marks
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 schema_version, ensure_database, reset_all = _db.schema_version, _db.ensure_database, _db.reset_all
 
 
@@ -124,3 +124,11 @@ def _family_list(cur) -> None:
 
 def migrate() -> None:
     _db.migrate(after=_family_list)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iotask check`, and the app's diagnostics tool)."""
+    return {"lists": one("SELECT count(*) AS n FROM tsk_lists")["n"],
+            "tasks": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 0")["n"],
+            "open": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 0 AND done = 0")["n"],
+            "tombstones": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 1")["n"]}

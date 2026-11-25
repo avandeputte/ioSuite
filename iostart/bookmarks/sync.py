@@ -10,7 +10,7 @@ from fastapi import HTTPException, Request
 from iosuite_shared import users
 
 from iostart import bookmarks
-from iostart.auth import auth
+from iostart import auth
 
 REALM = 'Basic realm="ioStart bookmarks", charset="UTF-8"'
 

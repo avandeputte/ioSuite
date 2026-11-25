@@ -21,7 +21,7 @@ def test_appearance_setting_switches_the_theme(page, server):
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(255, 255, 255)"
     page.click("#themeseg [data-theme=system]")
     assert page.evaluate("document.documentElement.dataset.theme") is None
-    assert page.evaluate("localStorage.getItem('iopix.theme')") == "system"
+    assert page.evaluate("localStorage.getItem('iosuite.theme')") == "system", "the suite's one choice, under the suite's key"
 
 def test_the_device_theme_is_the_default(browser, server):
     ctx = browser.new_context(bypass_csp=True, color_scheme="dark")  # a device set to dark
@@ -295,15 +295,15 @@ def test_inside_the_app_the_web_navigation_steps_aside(browser, server):
 
 
 def test_the_name_opens_the_other_suite_apps(page, server, browser):
-    """With other ioSuite apps in suite_apps, the logo top left opens a menu of them (static/js/suite.js), each a link to
+    """With other ioSuite apps in suite_apps, the logo top left opens a menu of them (the suite's frame, api/auth/frame.js), each a link to
     its app, and the name beside it stays the link to Explore; alone, logo and name are one link to Explore. On a phone
     the logo button is in the top bar."""
     assert page.request.post(server + "/api/auth/setup", data={"name": "alex", "password": "correct horse"}).ok  # signs this context in
     page.goto(server + "/#/explore")
     page.wait_for_selector("#usermenu .avatar", timeout=10000)
-    page.wait_for_function("import('/static/js/suite.js').then(() => true)", timeout=5000)
+    page.wait_for_function("import('/api/auth/frame.js').then(() => true)", timeout=5000)
     assert page.locator("#nav .navhead a.brand[href='#/explore']").count() == 1  # iopix alone: nothing changes
-    assert page.locator("#suitebtn").count() == 0
+    assert page.locator("#suitebtn").is_hidden()  # the page's own button for a phone's top bar: shown once there are other apps
     others = {"app": "iopix", "items": [
         {"app": "iopix", "name": "iopix", "url": server, "icon": server + "/static/icons/mark.svg", "color": "#3b4a8c"},
         {"app": "iocontact", "name": "ioContact", "description": "Contacts", "url": "https://contacts.example.com", "icon": None, "color": "#7a4fd0"},

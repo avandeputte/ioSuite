@@ -5,13 +5,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iocontact import __version__, config, db, model
+from iocontact import auth, config, db, iopix, model
 
 # what the tool modules take from here: the suite's pieces (iosuite_shared.mcp) and ioContact's own helpers
 __all__ = ["ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "book_ids", "brief", "clamp", "contact_out", "current_user", "default_book", "find_book", "find_contact", "need_admin", "readable_books", "server", "who"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioContact", __version__,
+    config.APP,
     instructions=(
         "The family's address book (ioContact). Start with overview. Find people with search_contacts (names, emails, "
         "phone digits, companies, addresses, labels and notes all match), then get_contact for everything about one, "
@@ -24,6 +24,9 @@ server = shared_mcp.make_server(
         "sites, social networks...) and file what you find with suggest_contact_update: it only proposes, and a person "
         "accepts or dismisses each suggestion in the web app. Ask before deleting or merging contacts."
     ),
+    counts=db.counts,
+    more=lambda: {"ldap": {"port": config.LDAP_PORT, "base": config.LDAP_BASE} if config.LDAP_PORT else "off",
+                  "proxySignIn": auth.proxy.mode(), "iopix": _iopix()},
 )
 
 def public_url() -> str:
@@ -135,3 +138,9 @@ def brief(u: dict, s: dict) -> dict:
            "org": s.get("org"), "title": s.get("title"), "birthday": s.get("birthday"), "favorite": s.get("favorite") or None,
            "iopixPersonId": s.get("iopixPersonId")}
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
+
+
+def _iopix() -> dict:
+    """Whether the photo library is part of the suite (the faces on a contact), for the diagnostics tool."""
+    s = iopix.public_settings()
+    return {"url": s.get("url") or None, "connected": s["enabled"]}

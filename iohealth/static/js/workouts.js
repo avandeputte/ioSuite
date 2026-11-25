@@ -91,14 +91,14 @@ export function calendar(el, ws, endDate) {
     const wk = Math.floor(i / 7), dow = (d.getDay() + 6) % 7, key = isoDate(d), m = minutes[key] || 0;
     if (d.getMonth() !== lastMonth && dow === 0) {
       lastMonth = d.getMonth();
-      svg.append(s('text', { x: 30 + wk * (cell + gap), y: 10, 'font-size': 10, fill: cssVar('--muted') }, d.toLocaleDateString(undefined, { month: 'short' })));
+      svg.append(s('text', { x: 30 + wk * (cell + gap), y: 10, 'font-size': 10, fill: cssVar('--fg2') }, d.toLocaleDateString(undefined, { month: 'short' })));
     }
     const label = `${weekdayFmt.format(d)}: ${m ? fmtHM(m) : 'no workouts'}`;
     svg.append(s('rect', { x: 30 + wk * (cell + gap), y: 16 + dow * (cell + gap), width: cell, height: cell, rx: 2,
       fill: m ? accent : lineC, 'fill-opacity': m ? 0.25 + 0.75 * Math.min(1, m / max) : 1,
       onmousemove: e => showTip(e, label), onmouseleave: hideTip, onclick: () => { hideTip(); location.hash = '#/day/' + key; }, style: 'cursor:pointer' }));
   }
-  ['Mon', 'Wed', 'Fri'].forEach((d, i) => svg.append(s('text', { x: 0, y: 26 + i * 2 * (cell + gap), 'font-size': 10, fill: cssVar('--muted') }, d)));
+  ['Mon', 'Wed', 'Fri'].forEach((d, i) => svg.append(s('text', { x: 0, y: 26 + i * 2 * (cell + gap), 'font-size': 10, fill: cssVar('--fg2') }, d)));
   el.replaceChildren(svg);
 }
 
@@ -131,7 +131,7 @@ export function trainingLoad(el, ws, profile, from, to) {
     { label: 'Fitness', color: '#2563eb', dec: 0, values: fit },
     { label: 'Fatigue', color: '#e8445a', dec: 0, values: fat },
     { label: 'Form', color: '#16a34a', dec: 0, values: form, dash: [4, 3] },
-    { label: 'Daily TRIMP', color: '#9aa1ad88', dec: 0, values: load, bars: true, scale: 'trimp', axisColor: cssVar('--muted') },
+    { label: 'Daily TRIMP', color: '#9aa1ad88', dec: 0, values: load, bars: true, scale: 'trimp', axisColor: cssVar('--fg2') },
   ] });
 }
 

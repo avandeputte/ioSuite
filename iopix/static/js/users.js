@@ -2,10 +2,9 @@
  *  and setup dialogs, and the suite's own tabs of Settings (People, Apps, Servers, Keys). */
 import { $, SETTINGS, api, errorBox, fill, h, icon, post } from './core.js';
 const suiteUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);  // the suite's sign-in (the two-step code, passkeys), fetched when someone signs in
-import { S, applyBadgePref, applyTheme, avatarOf, brandName, hashFor, onRoute, toast, toastError } from './state.js';
+import { S, applyBadgePref, applyTheme, avatarOf, brandName, hashFor, loadSuite, onRoute, themeFromAccount, toast, toastError } from './state.js';
 import { modal } from './actions.js';
 import { boot, pollStatus } from './main.js';
-import { loadSuite } from './suite.js';
 import { LB, details, popMenu, showItem } from './lightbox.js';
 
 // ---- users: sign in / out, own password, first-admin setup, admin user management
@@ -25,8 +24,8 @@ export function renderUserMenu() {
 }
 async function afterLogin(me) {
   S.USER = me.user; SETTINGS.user = me.settings || {}; renderUserMenu();
-  if (!S.BOOTED) { applyBadgePref(); applyTheme(); await boot(); return; }  // sign-in was required: load the library now
-  await pollStatus(); applyBadgePref(); applyTheme(); S.viewKey = null; onRoute(); accountChanged();
+  if (!S.BOOTED) { applyBadgePref(); themeFromAccount(SETTINGS.user); await boot(); return; }  // sign-in was required: load the library now
+  await pollStatus(); applyBadgePref(); themeFromAccount(SETTINGS.user); S.viewKey = null; onRoute(); accountChanged();
 }
 /** A photo's details depend on who asks (its folder, ages, the editor): asked again, and an open photo drawn again. */
 function accountChanged() { details.clear(); if (LB.open) showItem(); }

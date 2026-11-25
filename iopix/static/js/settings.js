@@ -1,7 +1,7 @@
 /** Settings: one page in tabs, as in every ioSuite app (the suite's own tabs are users.js), and the
  *  Tools page. */
 import { PREF, UNITS, act, api, dfDayLocal, errorBox, fill, fmtBytes, fmtWhen, h, icon, loadingBox, main, nf, plural, post, regionUsesMiles, store } from './core.js';
-import { S, THEMES, applyBadgePref, applyTheme, avatarOf, hashFor, infoPrefsEditor, photosWith, pollSoon, toast, toastError } from './state.js';
+import { S, THEMES, applyBadgePref, applyTheme, avatarOf, hashFor, infoPrefsEditor, photosWith, pollSoon, themeChoice, toast, toastError } from './state.js';
 import { confirmDialog } from './actions.js';
 import { dbDialog, templatesSection } from './editing.js';
 import { pageTitle } from './pages.js';
@@ -294,7 +294,7 @@ function displayTab(c) {
     S.IS_ADMIN ? row('Name', `What ${S.APP_NAME} calls itself, for everyone. Empty: ioPix.`,
       h('input', { class: 'einput', placeholder: 'ioPix', value: m.appNameSet || '', maxlength: 40, style: 'width:220px', onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') e.target.blur(); },
         onchange: async (e) => { await save({ app_name: e.target.value }); pollSoon(300); } })) : null,
-    row('Theme', kept, seg('themeseg', 'theme', THEMES, store.get(PREF.theme, 'system'), (k) => { store.set(PREF.theme, k); applyTheme(); toast('Saved'); })),
+    row('Theme', 'Saved with your account, for every app in the suite.', seg('themeseg', 'theme', THEMES, themeChoice(), (k) => { applyTheme(k); toast('Saved'); })),
     row('Units', `Automatic follows your region (${regionUsesMiles(navigator.language) ? 'miles' : 'kilometres'} here). ${kept}`,
       seg('unitseg', 'units', UNITS, store.get(PREF.units, 'auto'), (k) => { store.set(PREF.units, k); toast('Saved'); })),
     row('Thumbnail badges', 'Faces, GPS and favorite marks on thumbnails. Kept in this browser.',

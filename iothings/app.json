@@ -4,6 +4,10 @@
   "description": "Everything you own",
   "tag": "Everything you own",
   "color": "#2a6f97",
+  "page": {
+    "search": "Search things…",
+    "new": "New thing"
+  },
   "folder": "things",
   "order": 70,
   "system": [
@@ -42,6 +46,37 @@
       "type": "number",
       "default": "100",
       "hint": "One manual, receipt or photo as uploaded."
+    },
+    {
+      "name": "CURRENCY",
+      "label": "Currency",
+      "type": "text",
+      "default": "USD",
+      "hint": "The three-letter code prices and costs are in (USD, EUR). Settings › Things shows the same value."
+    }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant look things up, add them and log their upkeep, as you.",
+  "limits": {
+    "json": 2,
+    "import": 20,
+    "file": {
+      "setting": "MAX_FILE_MB",
+      "default": 100
+    }
+  },
+  "bodies": [
+    {
+      "path": "/api/import/homebox",
+      "limit": "import"
+    },
+    {
+      "path": "*/files",
+      "limit": "file"
     }
   ]
 }

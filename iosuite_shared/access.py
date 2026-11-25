@@ -87,18 +87,6 @@ class Access:
         return found[0] if len(found) == 1 else None
 
 
-def json_body(request: Request):
-    async def read():
-        try:
-            body = await request.json()
-        except ValueError:
-            raise HTTPException(400, "The request body is not JSON")
-        if not isinstance(body, dict):
-            raise HTTPException(400, "A JSON object is expected")
-        return body
-    return read()
-
-
 STATUS_PATH = "/api/status"
 PUBLIC_USER_FIELDS = ("id", "name", "displayName", "email", "role", "suiteAdmin", "passwordless")
 

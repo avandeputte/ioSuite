@@ -34,7 +34,7 @@ import re
 import time
 import urllib.error
 
-from iosuite_shared import catalog, credentials, db as shared_db, links, push, sessions, stamp, users
+from iosuite_shared import admin as suite_admin, catalog, credentials, db as shared_db, links, push, sessions, stamp, users
 from iosuite_shared.errors import Invalid
 
 from iostart import config, db
@@ -56,7 +56,7 @@ TAGS = {"money": "receipt", "receipt": "receipt", "receipts": "receipt", "iomone
         "calendar": "invite", "cal": "invite", "event": "invite", "events": "invite", "invite": "invite", "iocalendar": "invite",
         "inbox": "other", "hold": "other"}
 APP_OF = {"receipt": "iomoney", "document": "iodocs", "invite": "iocalendar"}
-SETTING, STATE = "inbox_mailbox", "inbox_state"
+STATE = "inbox_state"  # what the last look at the mailbox found (prt_state)
 PASSWORD = "mail_password"  # with the start page's keys and tokens (iostart/keys.py)
 
 SCHEMA = [
@@ -115,18 +115,13 @@ class NotFiled(Exception):
 
 def mailbox() -> dict:
     """{host, port, user, folder, on}: the mailbox the suite reads (the password is with the keys and tokens)."""
-    s = db.get_setting(SETTING, None)
-    try:
-        s = json.loads(s) if s else {}
-    except ValueError:
-        s = {}
-    return {"host": str(s.get("host") or ""), "port": int(s.get("port") or 993), "user": str(s.get("user") or ""),
-            "folder": str(s.get("folder") or "INBOX"), "on": bool(s.get("on", True))}
+    return {"host": config.live("MAIL_HOST"), "port": config.live_int("MAIL_PORT", 993), "user": config.live("MAIL_USER"),
+            "folder": config.live("MAIL_FOLDER", "INBOX"), "on": config.live_flag("MAIL_ON", True)}
 
 
 def state() -> dict:
     try:
-        return json.loads(db.get_setting(STATE, None) or "{}")
+        return json.loads(db.get_state(STATE) or "{}")
     except ValueError:
         return {}
 
@@ -134,7 +129,7 @@ def state() -> dict:
 def _set_state(**kw) -> None:
     s = state()
     s.update(kw)
-    db.set_setting(STATE, json.dumps(s))
+    db.set_state(STATE, json.dumps(s))
 
 
 def ready() -> bool:
@@ -167,7 +162,8 @@ def set_mailbox(b: dict, by: str) -> dict:
         m["port"] = port
     if "on" in b:
         m["on"] = bool(b["on"])
-    db.set_setting(SETTING, json.dumps(m))
+    for k in ("host", "port", "user", "folder", "on"):  # app.json's MAIL_*: kept with the suite's settings, shown on All settings
+        suite_admin.set_setting(config.APP, "MAIL_" + k.upper(), m[k])
     if b.get("password"):
         credentials.put(config.APP, PASSWORD, str(b["password"]), by=by)
     elif "password" in b and b["password"] is None:

@@ -16,7 +16,7 @@ import time
 import urllib.error
 import urllib.parse
 
-from iosuite_shared import links, stamp
+from iosuite_shared import admin as suite_admin, links, stamp
 
 from iocalendar import config, db, ical, model
 
@@ -26,7 +26,7 @@ SYNC_EVERY = 6 * 3600
 _lock = threading.Lock()
 _state: dict = {"synced": None, "error": None, "count": None}
 def settings() -> dict:
-    return {"url": links.url(PROVIDER) or "", "birthdays": (db.get_setting("iocontact_birthdays") or "1") == "1"}
+    return {"url": links.url(PROVIDER) or "", "birthdays": config.live_flag("CONTACT_BIRTHDAYS", True)}
 
 
 def enabled() -> bool:
@@ -43,7 +43,7 @@ def public_settings() -> dict:
 
 def save_settings(birthdays=None) -> None:
     if birthdays is not None:
-        db.set_setting("iocontact_birthdays", "1" if birthdays else "0")
+        suite_admin.set_setting(config.APP, "CONTACT_BIRTHDAYS", bool(birthdays))
 
 
 def _req(path: str, timeout: float = 15, accept: str = "application/json"):

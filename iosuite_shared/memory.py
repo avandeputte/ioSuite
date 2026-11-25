@@ -1,6 +1,6 @@
 """How much memory this machine may use, how much is in use, and how much a process and what it started hold.
 
-The helper (helper.py) and ioPix's job process (iopix/jobproc.py) do work that can take gigabytes, and a server in a
+The helper (helper.py), ioPix's analysis jobs among them (iopix/jobproc.py), does work that can take gigabytes, and a server in a
 container has a hard limit: past it the kernel ends a process, and when that process is the copy every app of it is
 gone. Both ask here while a call runs, so the work is stopped by the suite, with a message, before the kernel has to
 choose.

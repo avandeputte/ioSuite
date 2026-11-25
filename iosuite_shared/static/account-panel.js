@@ -4,7 +4,7 @@
 
      const ui = await import(new URL('api/auth/ui.js', document.baseURI).href);
      await ui.mountAccount(el, { toast });                         // Settings › Account
-     el.append(ui.themeRow(current, (k) => applyTheme(k)));         // 'light' | 'dark' | 'system', saved with the account
+     el.append(ui.themeRow(frame.themeChoice(), frame.applyTheme));  // the suite's one appearance choice
      el.append(ui.unitsRow(current, (k) => applyUnits(k)));         // 'auto' | 'metric' | 'imperial'
      await ui.mountAppPasswords(el, { toast, syncOnly: 'Calendar apps only (CalDAV)' });
      await ui.mountNotifications(el, { toast });                   // also part of mountAccount: this device, what to get
@@ -281,10 +281,10 @@ export function segmented(choices, current, onPick) {
 const saveSetting = (body) => api('auth/settings', { json: body }).then(() => toast('Saved'));
 
 // ------------------------------------------------------------------ Settings › Display
-/** Appearance: Light, Dark or System, saved with the account (the app applies it with apply(value)). save(value):
- *  where an app keeps its own settings store (ioHealth); else the account's settings. */
-export const themeRow = (current, apply, save) => row('Theme', 'Saved with your account.',
-  segmented([['light', 'Light'], ['dark', 'Dark'], ['system', 'System']], current || 'system', async (v) => { apply(v); if (save) { await save(v); toast('Saved'); } else await saveSetting({ theme: v }); }));
+/** Appearance: Light, Dark or System. One choice for the whole suite, kept with the account: apply(value) is the
+ *  app's applyTheme (frame.js), which keeps it in this browser and with the account, so every app follows it. */
+export const themeRow = (current, apply) => row('Theme', 'Saved with your account, for every app in the suite.',
+  segmented([['light', 'Light'], ['dark', 'Dark'], ['system', 'System']], current || 'system', (v) => { apply(v); toast('Saved'); }));
 /** Units: Automatic (from the browser's region), Kilometres or Miles, saved with the account (or by save(value)). */
 export const unitsRow = (current, apply, save) => row('Units', 'Automatic follows your region.',
   segmented([['auto', 'Automatic'], ['metric', 'Kilometres'], ['imperial', 'Miles']], current || 'auto', async (v) => { apply(v); if (save) { await save(v); toast('Saved'); } else await saveSetting({ units: v }); }));
@@ -440,7 +440,7 @@ export async function mountSignInWays(el, opts = {}) {
       row('Passkeys', !passkeysWork() ? 'Sign in with Face ID, Touch ID or a fingerprint instead of your password. Passkeys need an https address; this one is not.'
         : here ? 'On: the sign-in screen offers “Sign in with a passkey”.' : 'Off. Sign in with Face ID, Touch ID, a fingerprint or a security key instead of typing your password.',
       passkeysWork() ? h('button', { class: 'sv-btn', onclick: () => addPasskey().catch(fail) }, 'Add a passkey') : null),
-      list,
+      ...(list ? [list] : []),  // replaceChildren writes a null out as the word "null"
       row('Two-step sign-in', two.on ? `On since ${when(two.since)}: a code from your code app after your password. ${two.recoveryLeft} recovery code${two.recoveryLeft === 1 ? '' : 's'} left. Calendar, contacts and other sync apps sign in with an app password.`
         : 'Off. A 6-digit code from a code app after your password. Sync apps (calendar, contacts) then need an app password instead of your password.',
       two.on ? h('button', { class: 'sv-btn', onclick: () => turnOff().catch(fail) }, 'Turn off') : h('button', { class: 'sv-btn', onclick: () => turnOn().catch(fail) }, 'Turn on')));

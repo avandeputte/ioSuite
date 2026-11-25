@@ -1,23 +1,20 @@
 """Updating the program itself: which commit is installed, whether GitHub has a newer version, running update.sh,
 and restarting.
 
-    from iosuite_shared.updates import Updater
-    updater = Updater("iocalendar", version=__version__)                    # the program folder, repository and branch: the machine's (config)
-    updater.start_daily()                                                   # the daily check, while the setting is on
+    from iosuite_shared import updates
+    updater = updates.copy()        # the one Updater of this copy of the program, whichever apps it runs
+    updater.start_daily()           # the daily check, while the setting is on, and the watch for what an admin asks
 
-The suite is one program in one repository and has one version, which every app carries: iosuite_shared.__version__.
-An update is a higher version on the branch; a commit that leaves the version as it is (the docs, a workflow) is
-nothing to install.
+The suite is one program in one repository and has one version: iosuite_shared.__version__. An update is a higher
+version on the branch; a commit that leaves the version as it is (the docs, a workflow) is nothing to install.
 
 `update.sh` sits in the program folder; this module only runs it. The script is told where to write its outcome and
 which repository and branch to follow through IOSUITE_RESULT, IOSUITE_REPO, IOSUITE_BRANCH and IOSUITE_REF in its
 environment. Docker installs are updated by pulling the image, so there the check only reports.
 
-One copy of the program runs several apps, and an update is the copy's: every app keeps its Updater and its row in
-the Shared ioSuite database (iosuite_shared.suiteupdates), so Settings › Servers › Updates and the start
-page's MCP endpoint go on listing the apps, but the apps of one copy ask GitHub once between them, run update.sh
-once and look for what a suite admin asked with one thread and one question to the database (`_Copy`), each writing
-the same outcome to its own row.
+A copy of the program runs several apps, and an update is the copy's: one Updater, one row in the Shared ioSuite
+database (iosuite_shared.suiteupdates), one question to GitHub, one update.sh. Settings › Servers › Updates and
+the start page's MCP endpoint list the copies, each with the apps it runs.
 
 The "check for updates daily" switch is one setting for the whole suite in the Shared ioSuite database (update_check).
 """
@@ -36,7 +33,6 @@ from iosuite_shared import config, db, suiteupdates
 
 DAILY = 24 * 3600
 VERSION_FILE = "iosuite_shared/__init__.py"  # where the suite's version is, in the repository
-CHECK_KEPT_S = 60  # the apps of one copy ask GitHub once between them
 VERSION_RE = re.compile(r'^__version__\s*=\s*"([^"]+)"', re.M)
 _version_tuple = suiteupdates.version_tuple
 
@@ -59,69 +55,24 @@ def set_auto_check(on: bool) -> None:
     db.set_setting("update_check", "" if on else "0")  # on is the default: no row
 
 
-class _Copy:
-    """What the apps of one copy of the program share: one update.sh run, one answer from GitHub."""
-    lock = threading.Lock()
-    progress: dict = {"running": False, "error": None, "log": "", "started": None, "finished": None}
-    members: list = []   # every Updater of this process
-    checked: dict = {}   # (repo, branch) -> (at, what check() found)
-    watched: list = []   # the ones that look for what a suite admin asks: one thread for them all
-    watcher: threading.Thread = None
-    joined = threading.Event()   # an app joined the watch: it says what is installed now, not at the next look
-    watch_lock = threading.Lock()
-
-    @classmethod
-    def watch(cls, updater, every: float = None) -> threading.Thread:
-        with cls.watch_lock:
-            cls.watched = [u for u in cls.watched if u.app != updater.app] + [updater]   # an app started again in this process: its newest
-            if cls.watcher is None or not cls.watcher.is_alive():
-                cls.watcher = threading.Thread(target=cls._look, args=(every,), name="update-watch", daemon=True)
-                cls.watcher.start()
-        cls.joined.set()
-        return cls.watcher
-
-    @classmethod
-    def _look(cls, every: float = None) -> None:
-        greeted, beat = set(), time.time()
-        while True:
-            for u in list(cls.watched):
-                if id(u) not in greeted:
-                    greeted.add(id(u))
-                    try:
-                        u._said_hello()
-                    except Exception:  # noqa: BLE001 - the database away: the row is written at the app's next start
-                        pass
-            cls.joined.wait(every or suiteupdates.WATCH_S)
-            if cls.joined.is_set():
-                cls.joined.clear()
-                continue
-            mine = {u.app: u for u in list(cls.watched)}
-            try:
-                for app, action in suiteupdates.claims(list(mine)).items():
-                    mine[app].serve(action)
-            except Exception:  # noqa: BLE001
-                pass
-            if time.time() - beat >= suiteupdates.BEAT_S:
-                beat = time.time()
-                suiteupdates.beats(list(mine))
-
-
 class Updater:
-    """One per app. `app` is its key (iocalendar), `version` the running version (the suite's: app.__version__).
-    `root` is the program folder (update.sh, .venv, the checkout), `repo` and `branch` what it follows: the
-    machine's unless given."""
+    """One per copy of the program (updates.copy()). `version` is the running version (the suite's). `root` is the
+    program folder (update.sh, .venv, the checkout), `repo` and `branch` what it follows: the machine's unless given."""
 
-    def __init__(self, app: str, version: str, root=None, repo: str = None, branch: str = None, result_file=None,
-                 user_agent: str = None):
-        self.app, self.version, self.root = app, version, Path(root or config.BASE)
+    def __init__(self, version: str = None, root=None, repo: str = None, branch: str = None, result_file=None,
+                 user_agent: str = "iosuite"):
+        from iosuite_shared import __version__
+        self.version, self.root = version or __version__, Path(root or config.BASE)
         self.repo = repo or config.REPO
         self.branch = branch or config.BRANCH
         self.result_file = Path(result_file) if result_file else config.DATA_DIR / ".update-result"
-        self.user_agent = user_agent or app
+        self.user_agent = user_agent
         self._commit = None
         self.local_commit()  # read now, as the process starts: an update moves HEAD while this copy still runs the code it started with
-        self.progress = _Copy.progress
-        _Copy.members.append(self)
+        self.progress = {"running": False, "error": None, "log": "", "started": None, "finished": None}
+        self._lock = threading.Lock()
+        self._daily, self._held = None, 0   # the daily round, and how many apps of the copy hold it
+        self._watcher, self._every = None, None
 
     # ---- what is installed
     def in_docker(self) -> bool:
@@ -187,14 +138,8 @@ class Updater:
 
     def check(self) -> dict:
         """Ask GitHub: {installed, version, remote, remoteDate, remoteMessage, remoteVersion,
-        status: current | update | error, checked}; the app's row (iosuite_shared.suiteupdates) gets the answer."""
+        status: current | update | error, checked}; the copy's row (iosuite_shared.suiteupdates) gets the answer."""
         mine = self.local_commit()
-        kept = _Copy.checked.get((self.repo, self.branch))
-        if kept and time.time() - kept[0] < CHECK_KEPT_S:  # another app of this copy just asked
-            out = dict(kept[1])
-            suiteupdates.publish(self.app, installed=self.version, git_commit=mine[:7], status=out["status"], checked_at=out["checked"],
-                                 latest=out.get("remoteVersion") or (self.version if out["status"] == "current" else None))
-            return out
         out = {"installed": mine[:7], "version": self.version, "checked": int(time.time())}
         try:
             c = self._branch_head()
@@ -215,16 +160,13 @@ class Updater:
         except Exception as e:  # noqa: BLE001
             out.update(status="error", error=str(e)[:160])
         latest = out.get("remoteVersion") or (self.version if out["status"] == "current" else None)
-        suiteupdates.publish(self.app, installed=self.version, git_commit=mine[:7], latest=latest, status=out["status"],
-                             checked_at=out["checked"])
-        if out["status"] != "error":
-            _Copy.checked[(self.repo, self.branch)] = (time.time(), dict(out))
+        suiteupdates.publish(installed=self.version, git_commit=mine[:7], latest=latest, status=out["status"], checked_at=out["checked"])
         if out["status"] == "update" and out.get("remoteVersion"):
             self._announce(out["remoteVersion"])
         return out
 
     def _announce(self, version: str) -> None:
-        """Tell the suite admins who want it that a newer version is out: once per version, whichever app saw it first."""
+        """Tell the suite admins who want it that a newer version is out: once per version, whichever copy saw it first."""
         try:
             from iosuite_shared import push
             push.notify_admins("updates", f"ioSuite {version} is out", f"This server has {self.version}. Update every app in one go "
@@ -236,16 +178,28 @@ class Updater:
     def start_daily(self, first_after: float = 60, watch: bool = True):
         """Ask GitHub once a day (the first time a minute after start) whether the branch has moved on, while the
         setting is on. Only the public commit is fetched; nothing about this install is sent. With `watch`, also
-        watch for a check or an update a suite admin asks for (watch()).
+        watch for a check, an update or a restart a suite admin asks for (watch()).
 
-        The daily round is one of the copy's jobs (iosuite_shared.jobs), so it is on Settings › Servers › Jobs with
-        every other; the watch is not, being a few seconds' look at a row rather than a job that runs: one thread
-        and one question for all the apps of the copy (_Copy.watch)."""
+        Every app of the copy calls this as it starts and cancels what it gets as it stops; the round is registered
+        once and taken off the runner when the last app let go. It is one of the copy's jobs (iosuite_shared.jobs),
+        so it is on Settings › Servers › Jobs with every other; the watch is not, being a few seconds' look at a row
+        rather than a job that runs."""
         from iosuite_shared import chores
         if watch:
             self.watch()
-        return chores.start(self._daily_round, every_s=DAILY, first_s=first_after, app=self.app,
-                            name="update check", title="Ask GitHub whether there is a newer version")
+        with self._lock:
+            if self._daily is None:
+                self._daily = chores.start(self._daily_round, every_s=DAILY, first_s=first_after, app="",
+                                           name="update check", title="Ask GitHub whether there is a newer version")
+            self._held += 1
+        return _Hold(self)
+
+    def _let_go(self) -> None:
+        with self._lock:
+            self._held = max(0, self._held - 1)
+            if not self._held and self._daily is not None:
+                self._daily.cancel()
+                self._daily = None
 
     def _daily_round(self) -> str:
         """The daily round: the version check (while the setting allows it), then the notifications' housekeeping."""
@@ -268,16 +222,38 @@ class Updater:
 
     # ---- asked from the start page (iosuite_shared.suiteupdates)
     def watch(self, every: float = None) -> threading.Thread:
-        """Say what is installed, then have the copy look every few seconds for a check, an update or a restart a
-        suite admin asked of this app, and run it: a check asks GitHub even while the daily check is off (an admin
-        asked), an update runs update.sh. One thread looks for all the apps of the copy, with one question to the
-        database, however many apps it runs (_Copy.watch)."""
-        return _Copy.watch(self, every)
+        """Say what is installed, then look every few seconds for a check, an update or a restart a suite admin asked
+        of this copy, and run it: a check asks GitHub even while the daily check is off (an admin asked), an update
+        runs update.sh. One thread and one question to the database, however many apps the copy runs."""
+        with self._lock:
+            self._every = every
+            if self._watcher is None or not self._watcher.is_alive():
+                self._watcher = threading.Thread(target=self._look, name="update-watch", daemon=True)
+                self._watcher.start()
+        return self._watcher
+
+    def _look(self) -> None:
+        greeted, beat = False, time.time()
+        while True:
+            if not greeted:
+                try:
+                    self._said_hello()
+                    greeted = True
+                except Exception:  # noqa: BLE001 - the database away: said at the next look
+                    pass
+            time.sleep(self._every or suiteupdates.WATCH_S)
+            try:
+                self.serve(suiteupdates.claim())
+            except Exception:  # noqa: BLE001
+                pass
+            if time.time() - beat >= suiteupdates.BEAT_S:
+                beat = time.time()
+                suiteupdates.beat()
 
     def _said_hello(self) -> None:
         """What a fresh start knows: the version, the commit, whether it can update itself; and when the update before
         the restart was running, how it went (update.sh wrote that down before the restart)."""
-        r = suiteupdates.row(self.app) or {}
+        r = db.one("SELECT * FROM ios_copies WHERE copy = %s", (suiteupdates.here(),)) or {}
         fields = {"installed": self.version, "git_commit": self.local_commit()[:7], "can_run": int(self.can_run()), "docker": int(self.in_docker())}
         last = self.last_result()
         if r.get("state") == "running" and not self.progress["running"]:
@@ -290,23 +266,20 @@ class Updater:
         if r.get("latest") and r.get("status") != "error":
             # the newest version GitHub had when last asked: what this start installed may be it
             fields["status"] = "update" if _version_tuple(r["latest"]) > _version_tuple(self.version) else "current"
-        suiteupdates.publish(self.app, **fields)
+        suiteupdates.publish(**fields)
 
     def serve(self, action: str | None) -> None:
         """Run what a suite admin asked for ('check', 'update' or 'restart'); an update that cannot run says why on the row."""
         if action == "check":
             self.check()
         elif action == "restart":
-            for u in _Copy.members:  # the copy starts again once, whichever of its apps were asked
-                if u is not self:
-                    suiteupdates.claim(u.app)
             logging.getLogger("iosuite_shared.updates").info("restart asked from Settings: the copy starts again")
             self.restart()
         elif action == "update":
             try:
                 self.run()
             except RuntimeError as e:
-                suiteupdates.publish(self.app, state="failed", message=str(e)[:300])
+                suiteupdates.publish(state="failed", message=str(e)[:300])
 
     # ---- running update.sh
     def last_result(self) -> dict | None:
@@ -333,8 +306,7 @@ class Updater:
 
     def run(self) -> None:
         """update.sh in a child process, which installs the tip of the branch; the service manager starts the program
-        again when it finishes. Raises RuntimeError when it cannot run. With several apps in this copy, the first
-        one asked runs it and the others follow along. Another commit is installed from a shell on the server only
+        again when it finishes. Raises RuntimeError when it cannot run. Another commit is installed from a shell on the server only
         (IOSUITE_REF=<commit> ./update.sh): GitHub serves a fork's commits under the repository's own address, so a
         commit id taken from a request could install anybody's code."""
         if self.in_docker():
@@ -342,18 +314,12 @@ class Updater:
         if not self.can_run():
             raise RuntimeError("This install cannot update itself (no update.sh or .venv in the program folder, or the folder is not "
                                "writable by the service). Run ./update.sh in the program folder.")
-        with _Copy.lock:
-            if self.progress["running"]:  # another app of this copy started it: the same run
-                suiteupdates.publish(self.app, state="running", message=f"update.sh started at version {self.version}")
+        with self._lock:
+            if self.progress["running"]:  # asked twice: the same run
                 return
             self.progress.update(running=True, error=None, log="", started=int(time.time()), finished=None)
-        mine = [u.app for u in _Copy.members]
-
-        def publish(**fields):
-            for k in mine:
-                suiteupdates.publish(k, **fields)
-
-        suiteupdates.publish(self.app, state="running", message=f"update.sh started at version {self.version}")
+        publish = suiteupdates.publish
+        publish(state="running", message=f"update.sh started at version {self.version}")
         env = dict(os.environ, IOSUITE_RESULT=str(self.result_file), IOSUITE_REPO=self.repo, IOSUITE_BRANCH=self.branch,
                    IOSUITE_RUNNING=self.version)
         env.pop("IOSUITE_REF", None)  # never inherited: the service installs the tip of its branch
@@ -389,8 +355,8 @@ class Updater:
                     publish(state="failed", message=self.progress["error"][:300])
                 elif restarting:
                     # updated, and the restart is under way: the rows stay "running" until the new version starts and
-                    # says how it went (_said_hello). Marked "ok" here, the suite's Updates page would see these apps
-                    # still on the old version and stop following along while a slow starter (ioPix) is coming back
+                    # says how it went (_said_hello). Marked "ok" here, the suite's Updates page would see this copy
+                    # still on the old version and stop following along while it is coming back
                     publish(state="running", message=f"{last['text']}; restarting")
                 elif last:  # nothing to install, or updated without a restart (update.sh says what to do)
                     publish(state="ok" if last["ok"] else "failed", message=last["text"])
@@ -403,6 +369,31 @@ class Updater:
         Docker (restart: unless-stopped) starts the program again, with every app of this copy."""
         from iosuite_shared import serve
         serve.end(delay)
+
+
+class _Hold:
+    """What start_daily hands an app: cancelled as the app stops, and the copy's round goes with the last one."""
+
+    def __init__(self, updater: Updater):
+        self._updater = updater
+
+    def cancel(self) -> None:
+        u, self._updater = self._updater, None
+        if u is not None:
+            u._let_go()
+
+
+_copy: Updater = None
+_copy_lock = threading.Lock()
+
+
+def copy() -> Updater:
+    """This copy's one Updater, made when first asked for."""
+    global _copy
+    with _copy_lock:
+        if _copy is None:
+            _copy = Updater()
+        return _copy
 
 
 # ---- the log: the copy's one (iosuite_shared.logs); these are the names the apps call

@@ -7,7 +7,8 @@ Three readers, the surest first:
   exactly as the DMV wrote it (zxing-cpp; skipped when it is not installed);
 - the machine-readable zone of a passport, an ID card or a visa (the two or three lines of <<< at the bottom, ICAO
   9303): the number, the names, the nationality, the birth and expiry dates, each checked against its check digit;
-- the printed words (Tesseract, on this server: nothing leaves it), searched for labelled dates and numbers ("Expires
+- the printed words (the suite's reader on this server, iosuite_shared.ocr: nothing leaves it), searched for
+  labelled dates and numbers ("Expires
   03/14/2029", "Policy number H-55120", "Policy period 01/01/2026 to 01/01/2027") and the kind of document.
 
 A PDF with text in it is read as it is; a scanned one is turned into pictures first (pdftoppm, from poppler-utils).
@@ -24,11 +25,11 @@ from pathlib import Path
 
 from PIL import Image, ImageFilter, ImageOps, UnidentifiedImageError
 
-from iodocs import config
+from iosuite_shared import ocr as shared
 
 log = logging.getLogger("iodocs.ocr")
 
-TIMEOUT = 90          # seconds for one run of tesseract or pdftoppm
+TIMEOUT = 90          # seconds for one run of the reader or of pdftoppm
 MAX_PAGES = 4         # pages of a scanned PDF that are read
 MAX_SIDE = 3600       # a picture is made no larger than this before it is read
 MIN_SIDE = 1600       # nor smaller (small photos read better made larger)
@@ -37,11 +38,9 @@ MRZ_MODEL = Path(__file__).parent / "tessdata" / "mrz.traineddata"  # Tesseract'
 TEXT_PDF = 80         # characters a PDF's own text needs to be taken as it is
 
 
-def tesseract() -> str | None:
-    """The OCR program, when this server has it."""
-    if (config.TESSERACT or "").lower() in ("off", "0", "no", "none"):
-        return None
-    return shutil.which(config.TESSERACT or "tesseract")
+# the OCR program this server has and the languages it reads in: the suite's (iosuite_shared.ocr, one setting each
+# for the whole suite), as ioNote's and ioRecipe's are
+tesseract = shared.program
 
 
 def available() -> dict:
@@ -539,24 +538,15 @@ def _prepared(im: Image.Image) -> Image.Image:
 
 
 def _tess(im: Image.Image, psm: int = 3, mrz: bool = False) -> str:
-    exe = tesseract()
-    if not exe:
-        return ""
-    buf = io.BytesIO()
-    im.save(buf, "PNG")
-    cmd = [exe, "stdin", "stdout", "-l", config.OCR_LANGS or "eng", "--psm", str(psm)]
-    if mrz and MRZ_MODEL.is_file():  # the model trained on the zone's own font: it tells < from K
-        cmd = [exe, "stdin", "stdout", "--tessdata-dir", str(MRZ_MODEL.parent), "-l", "mrz", "--psm", str(psm)]
-    elif mrz:
-        cmd = [exe, "stdin", "stdout", "-l", "eng", "--psm", str(psm), "-c", "tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"]
-    try:
-        r = subprocess.run(cmd, input=buf.getvalue(), capture_output=True, timeout=TIMEOUT)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        log.warning("tesseract did not finish: %s", e)
-        return ""
-    if r.returncode != 0:
-        log.warning("tesseract: %s", r.stderr.decode("utf-8", "replace")[-300:])
-    return r.stdout.decode("utf-8", "replace")
+    """One run of the suite's reader (iosuite_shared.ocr.run). `mrz`: the machine-readable zone of a passport, read
+    with the model trained on its own font (it tells < from K), or, without that model, in English with only the
+    characters the zone may hold."""
+    if mrz and MRZ_MODEL.is_file():
+        return shared.run(im, psm=psm, langs="mrz", tessdata=str(MRZ_MODEL.parent), timeout=TIMEOUT)
+    if mrz:
+        return shared.run(im, psm=psm, langs="eng", timeout=TIMEOUT,
+                          extra=["-c", "tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"])
+    return shared.run(im, psm=psm, timeout=TIMEOUT)
 
 
 def _ink(im: Image.Image, level: float) -> Image.Image:

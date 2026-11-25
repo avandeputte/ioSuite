@@ -1,7 +1,7 @@
 import { $, S, api, dialog, fail, h, icon, loadMeta } from './core.js';
 import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite } from '../../api/auth/frame.js';
-export { DOCK_MIN, closeNav, closeSuite, openNav, toggleSuite };
+import { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount } from '../../api/auth/frame.js';
+export { DOCK_MIN, applyTheme, closeNav, closeSuite, openNav, themeChoice, themeFromAccount };  // the appearance is the suite's one choice
 const store = frame.storeFor('iocontact');  // what this browser remembers for the app
 import { route } from './main.js';
 
@@ -10,47 +10,37 @@ export function drawUser() {
   frame.userMenu($('#usermenu'), S.user, api, (close) => [
     frame.menuLink('#/settings/account', 'person', 'Account', close),
     frame.menuLink('#/settings/devices', 'devices', 'Connect apps and devices', close),
-    frame.themeEntry(store, applyTheme, close)]);
+    frame.themeEntry(applyTheme, close)]);
 }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to All contacts. */
 export async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-export function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 /* The sidebar, as in ioPix: the name on top, the destinations in groups, Settings at the foot. It docks
    beside the page on a wide screen unless its button put it away (remembered); otherwise it slides over the page from the
    menu button. Phones get a bottom bar instead: four destinations and More. */
 export function drawNav() {
   const nav = $('#nav'); const r = route();
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, gap, more } = frame.navParts(store, { name: 'Contact', title: 'All contacts', redraw: drawNav });
   const listView = ['list', 'contact', 'edit', 'new'].includes(r.view);
-  const link = (v, href, ic, label, n, on, hue) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: hue ? { '--hue': `var(${hue})` } : null },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label, btn) => h('div', { class: 'navsec' }, h('span', null, label), btn || null);
   const total = S.books.reduce((a, b) => a + (b.count || 0), 0);
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'All contacts' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Contact')))
-        : h('a', { class: 'brand', href: '#/', title: 'All contacts' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Contact'))),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     link('all', '#/', 'people', 'All contacts', total, listView && S.scope.kind === 'all', '--c-purple'),
     link('fav', '#/fav', 'star', 'Favorites', null, listView && S.scope.kind === 'fav', '--c-amber'),
     link('upcoming', '#/upcoming', 'cake', 'Birthdays', null, r.view === 'upcoming', '--c-rose'),
     S.status.iopix ? link('iopix', '#/iopix', 'image', 'ioPix people', null, r.view === 'iopix', '--c-indigo') : null,
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    h('div', { class: 'navgap' }),
+    more(moreSheet),
+    gap(),
     sec('Address books', canOwn() ? h('button', { class: 'iconbtn', title: 'New address book', onclick: newBook }, icon('add', 's')) : null),
     S.books.map((b) => h('a', { href: `#/book/${b.id}`, 'data-v': 'book', class: listView && S.scope.kind === 'book' && +S.scope.id === b.id ? 'on' : null,
       style: { '--hue': b.color || (b.shared ? 'var(--c-purple)' : 'var(--c-teal)') } },
       h('span', { class: 'ic dotic' }, h('span', { class: 'dot' })), h('span', { class: 'nl' }, b.name), h('span', { class: 'n' }, b.count))),
-    S.tags.length ? [h('div', { class: 'navgap' }), sec('Labels'),
+    S.tags.length ? [gap(), sec('Labels'),
       S.tags.map((t) => h('a', { href: `#/tag/${encodeURIComponent(t.tag)}`, 'data-v': 'tag', class: listView && S.scope.kind === 'tag' && S.scope.name === t.tag ? 'on' : null, style: { '--hue': 'var(--c-orange)' } },
         icon('tag'), h('span', { class: 'nl' }, t.tag), h('span', { class: 'n' }, t.n)))] : null,
-    h('div', { class: 'navgap' }), sec('Manage'),
+    gap(), sec('Manage'),
     link('import', '#/import', 'upload', 'Import and export', null, r.view === 'import', '--c-green'),
     link('cleanup', '#/cleanup', 'wrench', 'Clean up', S.status.suggestions || null, r.view === 'cleanup', '--c-amber'),
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
@@ -59,7 +49,6 @@ export function drawNav() {
   $('.navmore')?.classList.toggle('on', ['book', 'tag', 'import', 'cleanup', 'settings', 'iopix'].some((v) => (v === 'book' || v === 'tag') ? listView && S.scope.kind === v : r.view === v));
 }
 export function applySidebar() { frame.applySidebar(store); }
-export function sidebarButton() { frame.sidebarButton(store); }
 /** Phones: what the bottom bar has no room for. */
 export function moreSheet() {
   const r = route(); const listView = ['list', 'contact', 'edit', 'new'].includes(r.view);

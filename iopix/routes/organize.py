@@ -16,7 +16,8 @@ from iopix.digikam import dbsync, dkdb
 from iopix.photos import deletion, edits, folders, importer, lossless, organize, versions
 from iopix.data import index
 from iopix.guards import organize_allowed, run_organize
-from iopix.http import IMG_CACHE, json_body
+from iosuite_shared.http import json_body
+from iopix.http import IMG_CACHE
 from iopix.runtime import CACHES, DB_ERRORS, db
 import secrets
 import threading

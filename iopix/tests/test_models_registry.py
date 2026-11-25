@@ -6,6 +6,7 @@ import json
 import pytest
 
 from iopix.ai import models
+from iopix.tests.helpers import pixsetting
 
 
 class _Resp(io.BytesIO):
@@ -127,16 +128,15 @@ def test_listing_shape():
 
 
 def test_choice_groups_and_defaults(monkeypatch):
-    from iopix.data import state
     for group, c in models.CHOICES.items():
         opts = models.options(group)
         assert c["default"] in opts and len(opts) >= 2, group
-    state.set_setting("face_detector", "scrfd")
+    pixsetting("FACE_DETECTOR", "scrfd")
     assert models.chosen("face_detector") == "scrfd"
     assert models.path_for("face_detector").name == "scrfd_10g.onnx"
-    state.set_setting("face_detector", "yolox")  # a model of another feature: ignored
+    pixsetting("FACE_DETECTOR", "yolox")  # a model of another feature: ignored
     assert models.chosen("face_detector") == "yunet"
-    state.set_setting("face_detector", "")
+    pixsetting("FACE_DETECTOR", "")
     assert models.listing()["choices"]["object_model"] == {"label": "Object detection", "chosen": "yolox", "options": ["yolox", "yolox_m", "yolox_l", "yolox_x"]}
 
 

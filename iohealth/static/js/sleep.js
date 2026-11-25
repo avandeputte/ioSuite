@@ -65,7 +65,7 @@ export function hypnogram(n) {
   const W = 600, rowH = 26, H = rows.length * rowH + 22;
   const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', preserveAspectRatio: 'none', style: 'max-height:200px' });
   const X = t => 70 + (t - t0) / (t1 - t0) * (W - 80);
-  rows.forEach((k, i) => svg.append(s('text', { x: 0, y: i * rowH + 17, 'font-size': 11, fill: cssVar('--muted') }, STAGES.find(x => x[0] === k)[1].replace(' (unspecified)', ''))));
+  rows.forEach((k, i) => svg.append(s('text', { x: 0, y: i * rowH + 17, 'font-size': 11, fill: cssVar('--fg2') }, STAGES.find(x => x[0] === k)[1].replace(' (unspecified)', ''))));
   for (const sg of segs) {
     const i = rows.indexOf(sg.stage);
     if (i < 0) continue;
@@ -73,7 +73,7 @@ export function hypnogram(n) {
       onmousemove: e => showTip(e, `${STAGES.find(x => x[0] === sg.stage)[1]} ${fmtTime(sg.s)}–${fmtTime(sg.e)}`), onmouseleave: hideTip }));
   }
   for (let t = Math.ceil(t0 / 3600) * 3600; t < t1; t += 3600) {
-    svg.append(s('text', { x: X(t), y: H - 4, 'font-size': 10, fill: cssVar('--muted'), 'text-anchor': 'middle' }, fmtTime(t).replace(/:00/, '')));
+    svg.append(s('text', { x: X(t), y: H - 4, 'font-size': 10, fill: cssVar('--fg2'), 'text-anchor': 'middle' }, fmtTime(t).replace(/:00/, '')));
   }
   return svg;
 }

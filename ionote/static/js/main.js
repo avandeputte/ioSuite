@@ -1,47 +1,16 @@
 /** Start-up and routing: #/notes (the list and the open note), #/note/<id>, #/settings[/tab], #/changes. Pasting or
  *  dropping a picture makes a note of it; N makes a new note; / goes to the search box. */
-import { $, h, api, state, icon, paintIcons, toast, fail, canWrite, familyWrite, debounce, menu } from './core.js';
+import { $, h, api, state, icon, paintIcons, toast, fail, canWrite, familyWrite, debounce, menu, store } from './core.js';
 import { loadMe, renderUserMenu, signIn } from './auth.js';
-import { loadSuite } from './suite.js';
 import { view, viewFromHash, go, loadMeta, renderNav, loadList, setOpenHandler, refresh, markSelected, setStatus } from './notes.js';
 import { openNote, flush, uploadPicture, currentNote, attachFiles } from './editor.js';
 import { renderTemplates, setTemplateHandler } from './templates.js';
 import { expandTemplate } from './markdown.js';
-import { renderSettings, renderChanges, renderImport, applyTheme } from './settings.js';
+import { renderSettings, renderChanges, renderImport } from './settings.js';
+import * as frame from '../../api/auth/frame.js';
+import { themeFromAccount } from '../../api/auth/frame.js';
 
 let lastList = '';
-
-/** The sidebar docks beside the page on a wide screen, unless its button put it away (remembered in this browser).
- *  Put away, or on a narrower screen, it hides off the left edge and the menu button in the top bar slides it over the
- *  page; choosing a destination, the dimmed page or Escape puts it away again. Phones keep the bottom bar instead.
- *  The same as iopix. */
-const DOCK_MIN = 1100, SIDEBAR = 'ionote.sidebar';
-function initSidebar() {
-  const body = document.body, btn = $('#sidebtn');
-  const canDock = () => innerWidth >= DOCK_MIN;
-  const pref = () => { try { return localStorage.getItem(SIDEBAR) || '1'; } catch (e) { return '1'; } };
-  const setPref = (v) => { try { localStorage.setItem(SIDEBAR, v); } catch (e) { /* private mode */ } };
-  const setOpen = (on) => { body.classList.toggle('side-open', on); $('#navscrim').hidden = !on; };
-  const apply = () => {
-    const docked = canDock() && pref() === '1';
-    body.classList.toggle('side-docked', docked);
-    if (docked) setOpen(false);
-    const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : canDock() ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
-    btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
-  };
-  btn.onclick = () => {
-    if (body.classList.contains('side-docked')) setPref('0');
-    else if (canDock()) setPref('1');
-    else { setOpen(false); return; }
-    apply();
-  };
-  $('#menubtn').onclick = () => setOpen(true);
-  $('#navscrim').onclick = () => setOpen(false);
-  $('#nav').addEventListener('click', (e) => { if (e.target.closest('a') && !body.classList.contains('side-docked')) setOpen(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && body.classList.contains('side-open')) { setOpen(false); e.stopPropagation(); } }, true);
-  addEventListener('resize', apply);
-  apply();
-}
 
 function notesLayout() {
   const main = $('#main');
@@ -174,17 +143,17 @@ function wire() {
 
 async function start() {
   paintIcons();
-  initSidebar();
+  frame.wireSidebar(store);
   state.onSignedOut = () => { if (state.me && state.me.user) location.reload(); };
   try { state.settings = await api('api/settings'); } catch (e) { state.settings = {}; }
   await loadMe();
   renderUserMenu();
   // notes are private to each account: once accounts exist, nothing shows until someone signs in
-  if (!state.me.user && (state.me.requireLogin || state.me.usersExist)) { document.body.classList.add('locked'); signIn(true); return; }
-  if (state.me.user && state.me.settings && state.me.settings.theme) applyTheme(state.me.settings.theme);  // the account's theme (Settings › Display)
+  if (!state.me.user && (state.me.requireLogin || state.me.usersExist)) { document.body.classList.add('locked'); signIn(); return; }
+  if (state.me.user) themeFromAccount(state.me.settings);  // the appearance the account carries, chosen in any app
   if (state.settings.app_name && state.settings.app_name !== 'ionote') document.title = state.settings.app_name;
   await loadMeta();
-  loadSuite();
+  frame.loadSuite(api).then(renderNav);
   wire();
   api('api/status').then((s) => { state.version = s.version; setStatus(`ioNote ${s.version}`); }).catch(() => {});
   if (!location.hash) history.replaceState(null, '', '#/notes');

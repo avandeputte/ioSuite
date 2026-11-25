@@ -22,6 +22,7 @@
   "GET /api/auth/ui.js": "public",
   "GET /api/auth/base.css": "public",
   "GET /api/auth/frame.js": "public",
+  "GET /api/auth/theme.js": "public",
   "GET /api/badges": "public",
   "GET /api/clothing": "editor",
   "GET /api/concepts": "public",
@@ -179,5 +180,6 @@
   "DELETE /api/auth/passkeys/{passkey_id}": "signed_in",
   "POST /api/auth/two-step/begin": "signed_in",
   "POST /api/auth/two-step": "signed_in",
-  "POST /api/auth/two-step/off": "signed_in"
+  "POST /api/auth/two-step/off": "signed_in",
+  "GET /api/status": "public"
 }

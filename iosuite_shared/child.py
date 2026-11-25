@@ -1,5 +1,6 @@
-"""A process the copy starts beside itself for work that must not take the copy down with it: what the helper
-(helper.py, helperworker.py) and ioPix's job process (iopix/jobproc.py, jobworker.py) do the same way.
+"""A process the copy starts beside itself for work that must not take the copy down with it: how the helper
+(helper.py, helperworker.py) starts every one of its processes, for a scan to be read as much as for ioPix's
+analysis jobs (iopix/jobproc.py).
 
     copy:   proc, conn = child.spawn("iosuite_shared.helperworker", "IOSUITE_HELPER_WORKER")
             conn.send(("run", ...)); conn.recv(); ...
@@ -9,8 +10,7 @@
             child.first_to_go()                   # the kernel ends this process, not the copy, when memory runs out
             child.log_to_parent(send)             # its log lines go to the copy, which writes the one log
 
-Each side keeps its own messages (the helper: one call, its answer; the job process: progress kept in step both ways
-and cancels). The child starts with the copy's environment, so it reads the same machine's file and the same
+Each side keeps its own messages (helperworker.py has them). The child starts with the copy's environment, so it reads the same machine's file and the same
 settings, in a session of its own: ending it ends what it started too (tesseract, ffmpeg, exiftool). Its share of
 the copy's database connections is small (config.child_connections()).
 """

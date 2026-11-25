@@ -7,22 +7,21 @@ calendar app put there (alarms it acknowledged, attachments, X- properties) stay
 """
 import copy
 import datetime as dt
-import hashlib
 import json
 import math
 import re
-import uuid as uuidlib
 from zoneinfo import ZoneInfo
 
 import recurring_ical_events
 from icalendar import Alarm, Calendar, Event, vCalAddress, vRecur, vText
 
-from iocalendar import __version__
-from iosuite_shared import zones
+from iosuite_shared import ical as shared
 from iosuite_shared.errors import Invalid
 
-PRODID = f"-//iothing//ioCalendar {__version__}//EN"
-UTC = dt.timezone.utc
+# what reading and writing the file is, whichever app does it (iosuite_shared.ical): the text in, the zones, the
+# moments, one object per UID, the repeat rule, the stamps, the whole feed out
+PRODID = shared.prodid("iocalendar")
+UTC = shared.UTC
 FAR = dt.datetime(2200, 1, 1, tzinfo=UTC)
 MAX_LAST = 20000  # occurrences counted to find where a bounded series ends; beyond that it counts as endless
 MAX_PER_DAY = 48  # a series repeats every half hour at most ...
@@ -36,138 +35,52 @@ MAX_EXPAND = dt.timedelta(days=1830)  # the longest period CalDAV's expand write
 REMINDER_DESC = "Reminder"
 
 
-# ------------------------------------------------------------------ time zones
+# ------------------------------------------------------------------ what the suite's iCalendar code gives
 
 # the server's time zone (floating times and new events without a zone are read in it), whether a name is a zone, and
-# a moment in UTC: the suite's (iosuite_shared.zones), the same in ioCalendar and ioTask
-default_tz, valid_tz, zone, to_utc = zones.server, zones.valid, zones.zone, zones.to_utc
+# a moment in UTC; then the file itself and the properties every component has
+default_tz, valid_tz, zone, to_utc = shared.default_tz, shared.valid_tz, shared.zone, shared.to_utc
+tz_name, naive_utc, iso, parse, master_of, text, etag_of = (shared.tz_name, shared.naive_utc, shared.iso, shared.parse,
+                                                            shared.master_of, shared.text, shared.etag_of)
+_set, _rrule, _fit_until, safe_url, stamp = shared.set_prop, shared.rrule, shared.fit_until, shared.safe_url, shared.stamp
 
 
-def tz_name(d) -> str | None:
-    """The IANA name of a datetime's zone (None for floating times and dates; 'UTC' for UTC)."""
-    if not isinstance(d, dt.datetime) or d.tzinfo is None:
-        return None
-    k = getattr(d.tzinfo, "key", None) or getattr(d.tzinfo, "zone", None)
-    if k:
-        return k
-    if d.utcoffset() == dt.timedelta(0):
-        return "UTC"
-    try:
-        from icalendar.timezone import tzid_from_dt
-        return tzid_from_dt(d)
-    except Exception:  # noqa: BLE001
-        return None
+def new_uid() -> str:
+    return f"{shared.uuid()}@iocalendar"
 
 
-def naive_utc(d, tzname: str | None = None) -> dt.datetime:
-    """For the DATETIME columns."""
-    return to_utc(d, tzname).replace(tzinfo=None)
+def new_calendar() -> Calendar:
+    return shared.new_calendar(PRODID)
 
 
-def iso(d) -> str:
-    """A date as YYYY-MM-DD, a datetime as ISO 8601 with its offset (floating: without one)."""
-    if isinstance(d, dt.datetime):
-        return d.isoformat(timespec="seconds")
-    return d.isoformat()
+def finish(cal: Calendar) -> Calendar:
+    """VTIMEZONE definitions for every zone the events use (calendar apps want them), and the header."""
+    return shared.finish(cal, PRODID)
 
 
 def parse_when(s: str, tzname: str | None = None, all_day: bool = False):
     """'2026-11-03' (a date) or '2026-11-03T10:00[:00][Z|+01:00]' (a datetime: without an offset it is wall time in
-    tzname). ValueError when it is neither."""
-    s = (s or "").strip()
-    if not s:
-        raise Invalid("A date or time is missing")
-    if all_day or re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
-        return dt.date.fromisoformat(s[:10])
-    d = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
-    if d.tzinfo is None:
-        d = d.replace(tzinfo=zone(tzname))
-    elif tzname and valid_tz(tzname):
-        d = d.astimezone(ZoneInfo(tzname))
-    return d.replace(microsecond=0)
-
-
-# ------------------------------------------------------------------ reading
-
-def parse(text: str | bytes) -> Calendar:
-    """One VCALENDAR; ValueError when the text is not iCalendar."""
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", "replace")
-    text = text.lstrip("\ufeff")
-    if "BEGIN:VCALENDAR" not in text.upper():
-        raise Invalid("Not an iCalendar object (no BEGIN:VCALENDAR)")
-    try:
-        cals = Calendar.from_ical(text, multiple=True)
-    except Exception as e:  # noqa: BLE001 - the library raises several kinds
-        raise Invalid(f"Not valid iCalendar: {e}") from e
-    if not cals:
-        raise Invalid("No VCALENDAR in the text")
-    if len(cals) == 1:
-        return cals[0]
-    out = cals[0]
-    for c in cals[1:]:  # several VCALENDARs in one file (some exports): one calendar with all their components
-        for sub in c.subcomponents:
-            out.add_component(sub)
-    return out
-
-
-def events_of(cal: Calendar) -> list[Event]:
-    return [c for c in cal.subcomponents if c.name == "VEVENT"]
-
-
-def master_of(comps: list) -> Event | None:
-    """The VEVENT without a RECURRENCE-ID (the series, or the one event); for a lone changed occurrence, that one."""
-    for c in comps:
-        if "RECURRENCE-ID" not in c:
-            return c
-    return comps[0] if comps else None
+    tzname). Invalid when it is neither."""
+    return shared.parse_when(s, tzname, all_day)
 
 
 def split_by_uid(cal: Calendar) -> list[Calendar]:
     """A calendar with many events (an import, a feed) as one calendar object per UID, each with the VTIMEZONEs it uses."""
-    tzs = {str(c.get("TZID")): c for c in cal.subcomponents if c.name == "VTIMEZONE"}
-    groups: dict[str, list] = {}
-    for ev in events_of(cal):
-        uid = str(ev.get("UID") or "").strip() or new_uid()
-        if "UID" not in ev:
-            ev.add("UID", uid)
-        groups.setdefault(uid, []).append(ev)
-    out = []
-    for uid, comps in groups.items():
-        c = new_calendar()
-        used = set()
-        for ev in comps:
-            for k in ("DTSTART", "DTEND", "RECURRENCE-ID", "EXDATE", "RDATE"):
-                vals = ev.get(k)
-                for v in (vals if isinstance(vals, list) else [vals]):
-                    if v is not None and getattr(v, "params", None) and v.params.get("TZID"):
-                        used.add(str(v.params["TZID"]))
-        for t in sorted(used):
-            if t in tzs:
-                c.add_component(tzs[t])
-        for ev in sorted(comps, key=lambda e: "RECURRENCE-ID" in e):  # the series first, then its changed occurrences
-            c.add_component(ev)
-        out.append(c)
-    return out
+    return shared.split_by_uid(cal, "VEVENT", new_uid, PRODID)
 
 
-def new_calendar() -> Calendar:
-    c = Calendar()
-    c.add("PRODID", PRODID)
-    c.add("VERSION", "2.0")
-    return c
+def feed(objects: list, name: str, description: str = "", color: str | None = None, tzname: str | None = None,
+         refresh_hours: int = 1) -> str:
+    """Many calendar objects (parsed, or as text) as one VCALENDAR (a subscription or an export)."""
+    return shared.feed(objects, name, PRODID, description=description, color=color, tzname=tzname,
+                       refresh_hours=refresh_hours)
 
 
-def new_uid() -> str:
-    return f"{uuidlib.uuid4()}@iocalendar"
+# ------------------------------------------------------------------ reading
 
 
-def text(cal: Calendar) -> str:
-    return cal.to_ical().decode("utf-8")
-
-
-def etag_of(ics: str) -> str:
-    return hashlib.sha1(ics.encode("utf-8")).hexdigest()[:24]
+def events_of(cal: Calendar) -> list[Event]:
+    return [c for c in cal.subcomponents if c.name == "VEVENT"]
 
 
 def _start_end(ev: Event, tzname: str | None = None):
@@ -522,13 +435,6 @@ EDITABLE = ("title", "location", "notes", "allDay", "start", "end", "timezone", 
             "url", "status", "busy", "categories")
 
 
-def _set(ev: Event, name: str, value) -> None:
-    if name in ev:
-        del ev[name]
-    if value not in (None, "", []):
-        ev.add(name, value)
-
-
 def _when(data: dict, ev: Event | None, tzname: str | None):
     """(start, end) for an edit: from data, falling back on the event's own."""
     all_day = data.get("allDay")
@@ -563,38 +469,6 @@ def _when(data: dict, ev: Event | None, tzname: str | None):
     return start, end
 
 
-def _rrule(value: str | dict | None):
-    if not value:
-        return None
-    if isinstance(value, dict):
-        value = ";".join(f"{k.upper()}={','.join(map(str, v)) if isinstance(v, list) else v}" for k, v in value.items())
-    value = str(value).strip()
-    if value.upper().startswith("RRULE:"):
-        value = value[6:]
-    try:
-        r = vRecur.from_ical(value)
-    except Exception as e:  # noqa: BLE001
-        raise Invalid(f"Not a repeat rule (RRULE): {value}") from e
-    if not r.get("FREQ"):
-        raise Invalid("A repeat rule needs FREQ (DAILY, WEEKLY, MONTHLY or YEARLY)")
-    return r
-
-
-def _fit_until(r: vRecur, start) -> vRecur:
-    """UNTIL has to be of the start's kind (RFC 5545): a date for an all-day event, UTC for a zoned start."""
-    u = r.get("UNTIL")
-    if not u:
-        return r
-    u = u[0] if isinstance(u, list) else u
-    if not isinstance(start, dt.datetime):
-        r["UNTIL"] = [u.date() if isinstance(u, dt.datetime) else u]
-    else:
-        if not isinstance(u, dt.datetime):
-            u = dt.datetime.combine(u, dt.time(23, 59, 59), start.tzinfo)
-        r["UNTIL"] = [to_utc(u) if start.tzinfo else u.replace(tzinfo=None)]
-    return r
-
-
 def _person(p: dict) -> vCalAddress | None:
     name = (p.get("name") or "").strip()[:200]
     email = (p.get("email") or "").strip()[:200]
@@ -620,14 +494,8 @@ def _alarm(minutes: int, title: str) -> Alarm:
     a.add("ACTION", "DISPLAY")
     a.add("DESCRIPTION", title or REMINDER_DESC)
     a.add("TRIGGER", dt.timedelta(minutes=-int(minutes)))
-    a.add("UID", str(uuidlib.uuid4()).upper())
+    a.add("UID", shared.uuid().upper())
     return a
-
-
-def safe_url(u) -> str | None:
-    """A link on an event: http(s) or mailto only (never javascript: or the like), else none."""
-    u = (u or "").strip()[:2000]
-    return u if re.match(r"^(https?://|mailto:)", u, re.I) else None
 
 
 def apply(ev: Event, data: dict, tzname: str | None = None, series: bool = True) -> Event:
@@ -689,16 +557,6 @@ def apply(ev: Event, data: dict, tzname: str | None = None, series: bool = True)
     return ev
 
 
-def stamp(ev: Event, bump: bool = True) -> None:
-    now = dt.datetime.now(UTC).replace(microsecond=0)
-    _set(ev, "DTSTAMP", now)
-    _set(ev, "LAST-MODIFIED", now)
-    if "CREATED" not in ev:
-        ev.add("CREATED", now)
-    if bump:
-        _set(ev, "SEQUENCE", int(ev.get("SEQUENCE") or 0) + (1 if "SEQUENCE" in ev else 0))
-
-
 def add_exdate(ev: Event, when) -> None:
     """Leave one occurrence out of the series (the value in the start's own form)."""
     s = ev["DTSTART"].dt
@@ -709,19 +567,6 @@ def add_exdate(ev: Event, when) -> None:
     elif isinstance(when, dt.datetime):
         when = when.date()
     ev.add("EXDATE", when)
-
-
-def finish(cal: Calendar) -> Calendar:
-    """VTIMEZONE definitions for every zone the events use (calendar apps want them), and the header."""
-    if "PRODID" not in cal:
-        cal.add("PRODID", PRODID)
-    if "VERSION" not in cal:
-        cal.add("VERSION", "2.0")
-    try:
-        cal.add_missing_timezones()
-    except Exception:  # noqa: BLE001 - a zone the library cannot describe: apps fall back on its name
-        pass
-    return cal
 
 
 def build(data: dict, tzname: str | None = None) -> Calendar:
@@ -1016,36 +861,3 @@ def from_jcal(obj) -> Calendar:
 
 # ------------------------------------------------------------------ feeds
 
-def feed(objects: list, name: str, description: str = "", color: str | None = None, tzname: str | None = None,
-         refresh_hours: int = 1) -> str:
-    """Many calendar objects (parsed, or as text) as one VCALENDAR (a subscription or an export), each VTIMEZONE once.
-    The objects are read only: their events go into the new calendar as they are."""
-    out = new_calendar()
-    out.add("CALSCALE", "GREGORIAN")
-    out.add("METHOD", "PUBLISH")
-    out.add("X-WR-CALNAME", name)
-    if description:
-        out.add("X-WR-CALDESC", description)
-    if tzname:
-        out.add("X-WR-TIMEZONE", tzname)
-    if color:
-        out.add("X-APPLE-CALENDAR-COLOR", color)
-    out.add("REFRESH-INTERVAL", dt.timedelta(hours=refresh_hours), parameters={"VALUE": "DURATION"})
-    out.add("X-PUBLISHED-TTL", dt.timedelta(hours=refresh_hours))
-    tzs: dict = {}
-    events = []
-    for o in objects:
-        try:
-            c = o if isinstance(o, Calendar) else parse(o)
-        except ValueError:
-            continue
-        for sub in c.subcomponents:
-            if sub.name == "VTIMEZONE":
-                tzs.setdefault(str(sub.get("TZID")), sub)
-            elif sub.name in ("VEVENT", "VTODO", "VJOURNAL"):
-                events.append(sub)
-    for t in tzs.values():
-        out.add_component(t)
-    for e in events:
-        out.add_component(e)
-    return out.to_ical().decode("utf-8")

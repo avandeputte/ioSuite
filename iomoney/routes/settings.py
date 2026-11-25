@@ -2,10 +2,12 @@
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
-from iomoney import access, db, model, monarch, quotes
+from iosuite_shared import admin as suite_admin
+
+from iomoney import access, config, model, monarch, quotes
 from iomoney.routes.common import _u
 
 router = APIRouter()
@@ -79,7 +81,7 @@ def monarch_forget():
 @router.get("/api/settings", dependencies=[access.signed_in])
 def get_settings():
     """The household's currency (what the totals are in) and whether Monarch Money is synced on its own."""
-    return {"currency": model.home_currency(), "monarchAuto": model.setting("monarch_auto", "1") == "1"}
+    return {"currency": model.home_currency(), "monarchAuto": config.live_flag("MONARCH_AUTO", True)}
 
 
 @router.put("/api/settings", dependencies=[access.admin])
@@ -88,8 +90,8 @@ async def put_settings(request: Request):
     b = await json_body(request)
     if "currency" in b:
         cur = model.currency(b["currency"])
-        db.set_setting("currency", cur)
+        suite_admin.set_setting(config.APP, "CURRENCY", cur)
         await run_in_threadpool(quotes.refresh)
     if "monarchAuto" in b:
-        db.set_setting("monarch_auto", "1" if b["monarchAuto"] else "0")
+        suite_admin.set_setting(config.APP, "MONARCH_AUTO", bool(b["monarchAuto"]))
     return get_settings()

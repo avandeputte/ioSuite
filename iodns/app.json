@@ -4,6 +4,12 @@
   "description": "Local DNS",
   "tag": "Local DNS",
   "color": "#0e7c86",
+  "page": {
+    "search": "Filter names and addresses…",
+    "searchLabel": "Filter",
+    "new": "New entry (n)",
+    "newHidden": true
+  },
   "folder": "dns",
   "order": 110,
   "adminTool": true,
@@ -25,6 +31,23 @@
       "type": "switch",
       "default": "1",
       "hint": "Off: nothing is compared and no address is updated until someone asks from the pages."
+    },
+    {
+      "name": "DDNS_DETECT",
+      "label": "How the public address is found",
+      "type": "text",
+      "default": "auto",
+      "hint": "auto (a few public services), unifi:<server id> (a UniFi gateway), or the address of a page that answers with the IP."
+    },
+    {
+      "name": "DDNS_MINUTES",
+      "label": "Minutes between address checks",
+      "type": "number",
+      "default": "5",
+      "hint": "How often the public address is looked up for the records that follow it; 0: only when someone asks."
     }
-  ]
+  ],
+  "limits": {
+    "json": 4
+  }
 }

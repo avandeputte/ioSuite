@@ -4,6 +4,10 @@
   "description": "Recipes",
   "tag": "The family's recipes",
   "color": "#4a7c23",
+  "page": {
+    "search": "Search recipes…",
+    "new": "New recipe"
+  },
   "folder": "recipes",
   "order": 60,
   "system": [
@@ -33,12 +37,6 @@
   ],
   "settings": [
     {
-      "name": "OCR_LANGUAGES",
-      "label": "Reading photos of recipes: languages",
-      "type": "text",
-      "hint": "The languages Tesseract tries, as its codes with + between (eng+nld+fra). Empty: every language installed."
-    },
-    {
       "name": "AI",
       "label": "Read web pages without recipe data with AI",
       "type": "switch",
@@ -57,6 +55,32 @@
       "type": "number",
       "default": "300",
       "hint": ""
+    }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant look recipes up, add them and import them from the web, as you.",
+  "limits": {
+    "json": 2,
+    "import": 300,
+    "photo": 20,
+    "page": 5
+  },
+  "bodies": [
+    {
+      "path": "/api/import/file",
+      "limit": "import"
+    },
+    {
+      "path": "*/photos",
+      "limit": "photo"
+    },
+    {
+      "path": "*/import/photo",
+      "limit": "photo"
     }
   ]
 }

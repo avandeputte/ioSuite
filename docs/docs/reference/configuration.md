@@ -63,7 +63,7 @@ the database server for more than it gives: MariaDB allows 151 in all, by defaul
 error. A request that waited in vain is answered `503` with `Retry-After`.
 
 Idle connections are closed after two minutes, and an app that needs one while the copy is at its allowance gets the
-longest-idle one of another app. The helper process and ioPix's job process are processes of their own, each with a
+longest-idle one of another app. The helper processes are processes of their own, each with a
 quarter of that allowance beside the copy's. With several copies on one database server, their allowances add up: keep the sum
 under the server's `max_connections`, or raise that.
 
@@ -84,7 +84,12 @@ helper process beside the copy:
   server and others on another works as before.
 
 It reads the same machine's file and settings as the copy, and its log lines go to the copy's log. `HELPER=off` runs
-the work inside the copy, as before. ioPix keeps its own job process for its AI models and makes its thumbnails itself.
+the work inside the copy, as before.
+
+ioPix's AI jobs take the same helper's other lane: one process that stays between jobs, so a model loaded for one
+job serves the next, with ioPix's own memory numbers (`JOBS_MEMORY_MB`, `MEMORY_RESERVE_MB`) instead of
+`HELPER_MEMORY_MB`, and no time limit. It ends when ioPix's queue runs dry, which gives the models' memory back.
+`JOBS_PROCESS=0` runs those jobs inside the copy. ioPix makes its thumbnails itself, as before.
 
 ## The three ports
 
@@ -111,8 +116,15 @@ for devices and MCP answer HTTPS as well as plain HTTP.
 
 ## Settings in the database
 
-Under **Settings › Apps › All settings** (suite admins), with a section for the whole suite and one per app.
-A change takes effect when the app starts again; the screen has a Restart button. The whole suite's:
+Under **Settings › Apps › All settings** (suite admins), with a section for the whole suite and one per app, and
+under **Settings › This app** in each app (its own admins), which shows that app's section. This is the one place an
+app's settings are kept: no settings file per app, and nothing of a person's settings in an app's own database.
+
+A change takes hold at once, because every setting is read as it is now. The few that say where an app answers and
+where it keeps what it keeps are read once, as it starts (the screen marks them, and has a Restart button): the
+three addresses, the data folder, the database name, the suite's address, the sign-in domain. A setting whose
+editor is a screen in the app (a list of countries, which lights to show) is marked too, and shown but not typed
+here. The whole suite's:
 
 | Setting | What it is |
 | --- | --- |
@@ -122,10 +134,17 @@ A change takes effect when the app starts again; the screen has a Restart button
 | `TZ` | the time zone (`Europe/Brussels`) |
 | `KEEP_DELETED_DAYS` | how long what a deletion leaves behind is kept (90) |
 | `MCP_USER` | the account a local MCP client (stdio) acts as |
+| `OCR_PROGRAM` | the program that reads the text on a scan or a photo, for ioDocs, ioNote and ioRecipe (`tesseract`). Another path, or `off` to never read them |
+| `OCR_LANGUAGES` | the languages that text is in (`eng+nld+fra`), each needing its `tesseract-ocr-<lang>` package; empty: every language installed, English first |
 
 Every app has `PUBLIC_URL`, `SYNC_URL` and `MCP_URL` of its own (an address of its own beside its folder:
-`https://calendar.example.com`), `DATA_DIR` and `DB_NAME`, and then what only it needs: the photos folder and digiKam
-for ioPix, the LDAP port for ioContact, the backup folder for ioBackup. The screen lists them with what each is for.
+`https://calendar.example.com`), `DATA_DIR` and `DB_NAME`, and then what only it needs: the photos folder, digiKam
+and the models for ioPix, the LDAP port for ioContact, the backup folder for ioBackup, the household's currency for
+ioMoney, the public holidays for ioCalendar. The screen lists them with what each is for.
+
+Each app's own database holds what the app writes down for itself, in its `<prefix>_state` table: where a sync got
+to, what it worked out last, an answer it keeps for a while. That is not a setting and there is nothing to change
+there.
 
 `KEEP_DELETED_DAYS` is for the apps that phones and other devices sync with. A deleted event (ioCalendar), task
 (ioTask) or contact (ioContact) leaves a marker, so a device learns of the deletion at its next sync; the marker goes

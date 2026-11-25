@@ -152,8 +152,40 @@ def restore_stored() -> None:
         db.set_setting(k, v, app)
 
 
+class StandIn:
+    """An app as `application.create` and the shared MCP tools see one (iosuite_shared.app.App), for a test with no
+    app package of its own: `modules` stands in for the package's modules (db, users, mcp, suiteitems...)."""
+
+    def __init__(self, key: str, config=None, auth=None, updater=None, prepare=(), modules=None, mcp_enabled=None,
+                 limits=None, users=None, counts=None):
+        from iosuite_shared import users as shared_users
+        from iosuite_shared.fastapi import Auth
+        from iosuite_shared.updates import Updater
+        self.key = key
+        self.config = config
+        self.auth = auth if auth is not None else Auth(key)
+        self.updater = updater if updater is not None else Updater(root=None)
+        self.prepare = prepare
+        self.modules = modules or {}
+        self.mcp_enabled = mcp_enabled or (lambda: True)
+        self.limits = limits or {}
+        self.users = users if users is not None else shared_users.AppUsers(key)
+        self.counts = counts
+        self.manifest = {}
+        self.access = self.auth.access
+
+    def has(self, module: str) -> bool:
+        return module in self.modules
+
+    def module(self, name: str):
+        return self.modules[name]
+
+    def limit_for(self, path: str, ctype: str) -> int:
+        return self.limits.get("json", 2 << 20)
+
+
 # ---- what every app's test suite does the same way
-SHARED_TABLES = ("ios_item_changes", "ios_item_stamps", "ios_user_roles", "ios_user_data", "ios_app_passwords", "ios_feed_tokens", "ios_sessions", "ios_users", "ios_settings", "ios_apps", "ios_credentials", "ios_updates")
+SHARED_TABLES = ("ios_item_changes", "ios_item_stamps", "ios_user_roles", "ios_user_data", "ios_app_passwords", "ios_feed_tokens", "ios_sessions", "ios_users", "ios_settings", "ios_apps", "ios_credentials", "ios_copies")
 
 
 def clean_shared_tables(auth=None) -> None:
@@ -179,10 +211,11 @@ def clean_shared_tables(auth=None) -> None:
         auth._registered = False
 
 
-def check_conventions(root, app: str, version: str, config) -> None:
-    """The conventions every app follows (one test per app calls this with its package folder): the suite's version as
-    the app's, a manifest that names it, no settings file of its own, and a page that asks for everything with relative
-    addresses (check_relative: the app is served in a folder of an address as well as at a name of its own)."""
+def check_conventions(root, app: str, version: str) -> None:
+    """The conventions every app follows: the suite's version as the app's, a manifest that names it, no settings file
+    of its own, and a page that asks for everything with relative addresses (check_relative: the app is served in a
+    folder of an address as well as at a name of its own). One test over every app calls this
+    (iosuite_shared/tests/test_conventions.py), so an app's own tests do not repeat it."""
     import json
     from pathlib import Path
     import iosuite_shared

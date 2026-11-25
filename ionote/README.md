@@ -77,7 +77,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m ionote.cli check   # connect to the databases and say what is there
+iosuite ionote check   # connect to the databases and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app ionote` makes someone an admin of ioNote only (`iosuite admin NAME`: of
@@ -86,9 +86,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioNote has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioNote, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings ionote        # what may be set, with the value stored now
@@ -101,6 +102,7 @@ iosuite set ionote PUBLIC_URL https://notes.example.com    # no value: back to t
 | `DATA_DIR` | where the app writes on its own (`ionote/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`ionote`) |
 | `MAX_IMAGE_MB` | largest image (MB) (`15`). MariaDB's max_allowed_packet (16 MB by default) must be larger |
+| `APP_NAME` | what it calls itself on its pages and in its notifications (`ioNote`) |
 | `THUMB_SIZE` | thumbnail size (pixels) (`480`) |
 | `THUMB_QUALITY` | thumbnail quality (`80`). JPEG quality, 1 to 95 |
 
@@ -228,7 +230,7 @@ claude mcp add --transport http ionote https://mcp.example.com/notes/mcp --heade
 
 Apps that take a JSON configuration and only start local processes (Claude Desktop, for example) can reach it through
 `mcp-remote`: `{"mcpServers": {"ionote": {"command": "npx", "args": ["-y", "mcp-remote", "https://mcp.example.com/notes/mcp", "--header", "Authorization: Bearer ionote-…"]}}}`.
-`python -m ionote.mcp --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
+`iosuite mcp ionote --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
 
 ## Export, import and backups
 

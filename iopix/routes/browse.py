@@ -23,7 +23,7 @@ from iopix.data import index, state as appstate
 from iopix.digikam.dkdb import in_chunks
 from iopix.ai.semantic import enabled as semantic_enabled, semantic
 from iopix.data.query import SORTS
-from iopix.http import jresp
+from iosuite_shared.http import jresp
 from iopix.runtime import CACHES, app_name, db, public_version, resolve, state, tag_covers
 
 from iopix import videostream

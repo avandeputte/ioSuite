@@ -10,7 +10,7 @@ with are kept with the suite's keys and tokens (iosuite_shared.credentials, app 
 
 so a suite admin sees them (Settings › Keys), and the person can revoke the app password
 in Settings › Account like any other (pushing then stops, and says so). The rest (time zone, clock, what was sent
-when) is the person's own setting (prt_settings user:<id>:trmnl), gone with their account.
+when) is the person's own setting (prt_state user:<id>:trmnl), gone with their account.
 
 A screen is made every SCREENS[...]["every"] minutes (15 at least) and sent when it changed, or after RESEND minutes
 anyway: TRMNL takes 12 pushes an hour per plugin (30 with TRMNL+) and 5 KB each (trmnl.LIMIT).
@@ -48,14 +48,14 @@ def _cred(uid: int, what: str) -> str:
 def settings(uid: int) -> dict:
     """{tz, clock, sent: {screen: {at, ok, error, hash}}}."""
     try:
-        d = json.loads(db.get_setting(_key(uid)) or "{}")
+        d = json.loads(db.get_state(_key(uid)) or "{}")
     except ValueError:
         d = {}
     return {"tz": d.get("tz") or "", "clock": 24 if d.get("clock") == 24 else 12, "sent": d.get("sent") or {}}
 
 
 def _save(uid: int, s: dict) -> None:
-    db.set_setting(_key(uid), json.dumps(s))
+    db.set_state(_key(uid), json.dumps(s))
 
 
 def hooks(uid: int) -> dict:
@@ -166,7 +166,7 @@ def asker(uid: int):
     user = apppasswords.authenticate(None, pw, apppasswords.HUB)
     if not user:
         raise Invalid("The TRMNL app password was revoked: open Settings › TRMNL and save it again")
-    from iostart.auth import auth
+    from iostart import auth
     return Asker(auth.decorate(user), pw)
 
 
@@ -225,7 +225,7 @@ def push(uid: int, only: str = None, force: bool = False, now: float = None) -> 
 
 
 def _people() -> list:
-    rows = db.q("SELECT name FROM prt_settings WHERE name LIKE %s", ("user:%:trmnl",))
+    rows = db.q("SELECT name FROM prt_state WHERE name LIKE %s", ("user:%:trmnl",))
     return [int(r["name"].split(":")[1]) for r in rows if r["name"].split(":")[1].isdigit()]
 
 

@@ -167,14 +167,21 @@ app answers (`/api/auth`, `/api/status`, `/api/live`, `/api/suite`…), the MCP 
 helpers (`iosuite_shared.db.AppDatabase`), the accounts as an app sees them (`iosuite_shared.users.AppUsers`) and
 what a local MCP server and its diagnostics say (`iosuite_shared.mcp`) are kept once as well.
 
-Each app's page is a page of its own, and what the pages all did in the same words is one script and one style
-sheet the suite serves beside them: `iosuite_shared/static/frame.js` (the icons most of them draw, the note at the
-foot of the page, dialogs, the menus, the menu of the suite's apps, the account's menu, the sign-in screen, the
-sidebar, the theme), `account-panel.js` (`h()`, the client, Settings › Account) and `base.css`. A page imports
-them from its own app (`api/auth/frame.js`), so it works the same on whichever server the app runs. A page's own
-script has no build step: `static/app.js` starts it, and where it is more than one file the modules are in
-`static/js/` by subject (`core.js`: the helpers and the page's state; `main.js`: the routes and the start; then a
-module per page or part of the page).
+The page itself is the same in every app with a sidebar: the suite serves one shell
+(`iosuite_shared/static/page.html`) and fills in the app's name, colour, search box and New button from its
+`app.json` (`page`), so those apps keep no `index.html` of their own; an app whose page is more than that (ioPix,
+ioStart, ioNote, ioHealth) keeps one and it is served instead. What the pages all did in the same words is one
+script and one style sheet the suite serves beside them: `iosuite_shared/static/frame.js` (the icons most of them
+draw, the note at the foot of the page, dialogs, the menus, the menu of the suite's apps, the account's menu, the
+sign-in screen, the sidebar and the parts it is made of (`navParts`), the appearance), `account-panel.js` (`h()`,
+the client, Settings › Account) and `base.css`. A page imports them from its own app (`api/auth/frame.js`), so it
+works the same on whichever server the app runs. A page's own script has no build step: `static/app.js` starts it,
+and where it is more than one file the modules are in `static/js/` by subject (`core.js`: the helpers and the
+page's state; `main.js`: the routes and the start; then a module per page or part of the page).
+
+The appearance (light, dark or the device's) is one choice for the whole suite, kept with the account in the Shared
+ioSuite database and mirrored in the browser under one key, so a page draws in it at once (`api/auth/theme.js`,
+before any module loads) and a choice made in one app holds in all of them.
 
 What two or three apps need in the same way is in the shared library too, not in each of them: family members as
 tags on events and tasks (`iosuite_shared.family.Tags`), files kept in an app's database (`stored.py`: ioDocs,

@@ -8,7 +8,7 @@ import { haStreamStop } from './homeassistant.js';
 import { showInbox } from './inbox.js';
 import * as news from './news.js';
 import { showSettings } from './settings.js';
-import { applyTheme, drawUser, setTheme, userMenu } from './shell.js';
+import { applyTheme, drawUser, themeFromAccount, userMenu } from './shell.js';
 import { showPair, showWall } from './wall.js';
 
 // ------------------------------------------------------------------ routes
@@ -86,7 +86,7 @@ async function start() {
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme && S.settings.theme !== (localStorage.getItem('iostart.theme') || 'system')) setTheme(S.settings.theme);
+  themeFromAccount(S.settings);
   drawUser();
   if (BM_APP) { document.body.classList.add('bmapp'); $('#topbar .brand').href = './'; $('#topbar .brand').title = 'The start page'; }
   addEventListener('hashchange', onRoute);

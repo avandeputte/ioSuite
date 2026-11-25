@@ -1,30 +1,10 @@
-"""The server itself, for admins: health, the Birthdays calendar from ioContact and the Holidays calendars."""
+"""The server itself, for admins: the Birthdays calendar from ioContact and the Holidays calendars."""
 from typing import Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
-from iosuite_shared import mcp as shared_mcp
-
-from iocalendar import __version__, config, contacts, db, holiday, ical, users
-from iocalendar.auth import updater
+from iocalendar import contacts, holiday
 from iocalendar.mcp.base import READ_ONLY, UPDATES, WRITES, need_admin, server
-
-
-@server.tool(annotations=READ_ONLY)
-def diagnostics() -> dict:
-    """Admins: the server's health: version and commit, Python and platform, the time zone, the database (server
-    version, tables, rows), ioContact, the MCP switch, the last update check and update, and the accounts."""
-    need_admin()
-    from iocalendar.main import mcp_enabled
-    out = shared_mcp.diagnostics(config, __version__, updater, db, mcp_enabled, users.all_users(), counts=lambda: {
-        "calendars": db.one("SELECT count(*) AS n FROM cal_calendars")["n"],
-        "events": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 0")["n"],
-        "tombstones": db.one("SELECT count(*) AS n FROM cal_events WHERE deleted = 1")["n"]}, timezone=ical.default_tz())
-    s = contacts.public_settings()
-    out["iocontact"] = {"url": s.get("url") or None, "connected": s["enabled"], "birthdays": s["birthdays"], "lastSync": s["lastSync"]}
-    h = holiday.public_settings()
-    out["holidays"] = {"countries": [{k: x[k] for k in ("country", "region", "language")} for x in h["items"]], "lastSync": h["lastSync"]}
-    return out
 
 
 @server.tool(annotations=UPDATES)
@@ -64,8 +44,3 @@ def holiday_regions(country: str) -> dict:
         raise ToolError(str(e))
 
 
-@server.tool(annotations=READ_ONLY)
-def list_accounts() -> list:
-    """Admins: the accounts, with their roles here (viewer, member, editor, admin)."""
-    need_admin()
-    return shared_mcp.account_list(users.all_users())

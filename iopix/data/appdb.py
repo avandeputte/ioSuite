@@ -44,8 +44,8 @@ except ImportError:  # pragma: no cover
 
 # ---- schema: one definition per table, the MySQL spelling; columns in copy order
 TABLES = {
-    "pix_settings": (["name", "value", "updated_at"],
-                     "CREATE TABLE IF NOT EXISTS pix_settings (name VARCHAR(191) PRIMARY KEY, value MEDIUMTEXT, "
+    "pix_state": (["name", "value", "updated_at"],
+                     "CREATE TABLE IF NOT EXISTS pix_state (name VARCHAR(191) PRIMARY KEY, value MEDIUMTEXT, "
                      "updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3))"),
     # each account's own favorites (user_id: an account id in the Shared ioSuite database; 0: the one list everyone
     # shares while there are no accounts, and what there was before favorites were kept per account)

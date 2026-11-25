@@ -2,16 +2,16 @@
 
 The Mac and iPhone apps read the text themselves with Apple's Vision framework and send it as ocrText, so the
 server only does this for pictures added in the browser. One background thread works through a queue; the
-text lands in notes.ocr_text, which MariaDB's full-text index covers. The reading itself (_read: the model, a few
-hundred MB once loaded, and onnxruntime) runs in the suite's helper process (iosuite_shared.helper), so the model
-leaves memory when there is nothing to read and a crash in it never takes the copy down.
+text lands in notes.ocr_text, which MariaDB's full-text index covers. The reading itself is the suite's
+(iosuite_shared.ocr.rapid_read: the model, a few hundred MB once loaded, and onnxruntime) and runs in the suite's
+helper process (iosuite_shared.helper), so the model leaves memory when there is nothing to read and a crash in it
+never takes the copy down.
 """
-import io
 import logging
 import queue
 import threading
 
-from iosuite_shared import helper
+from iosuite_shared import helper, ocr as shared
 
 from ionote import images, notes
 
@@ -20,31 +20,16 @@ TIMEOUT = 300  # seconds one picture may take (the model is loaded on the first)
 _q = queue.Queue()
 _queued = set()  # ids waiting in _q: a note queued twice is read once
 _qlock = threading.Lock()
-_engine = None
 _thread = None
 _failed = None
 
 
-def available() -> bool:
-    import importlib.util
-    return importlib.util.find_spec("rapidocr") is not None
+available = shared.rapid_available
+_read = shared.rapid_read
 
 
 def status() -> dict:
     return {"installed": available(), "queued": _q.qsize(), "error": _failed}
-
-
-def _read(data: bytes) -> str:
-    global _engine
-    import numpy as np
-    from PIL import Image
-    if _engine is None:
-        from rapidocr import RapidOCR
-        _engine = RapidOCR()
-    img = Image.open(io.BytesIO(data)).convert("RGB")
-    img.thumbnail((2400, 2400))
-    res = _engine(np.array(img))
-    return "\n".join(t for t in (res.txts or []) if t and t.strip())
 
 
 def _work():

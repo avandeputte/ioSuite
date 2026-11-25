@@ -4,13 +4,10 @@ from pathlib import Path
 
 from iosuite_shared import testing
 
-from iohealth import __version__, access, config
+from iohealth import access, config
 
 ROOT = Path(__file__).resolve().parent.parent
 
-
-def test_suite_conventions():
-    testing.check_conventions(ROOT, "iohealth", __version__, config)
 
 
 def test_every_api_route_declares_who_may_call_it(app):

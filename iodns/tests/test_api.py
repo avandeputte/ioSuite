@@ -222,7 +222,7 @@ def test_a_dynamic_dns_run_does_not_wait_for_itself(client, monkeypatch):
     monkeypatch.setattr(ddns, "detect", lambda: {"ipv4": "203.0.113.5", "ipv6": "2001:db8::5"})
     add_server(client, "CF", "http://cf", view="external")
     entry(client, "nas.example.com", external=[{"type": "A", "source": "publicip"}, {"type": "AAAA", "source": "publicip6"}])
-    db.set_setting("public_ipv6", None)
+    db.set_state("public_ipv6", None)
     monkeypatch.setattr(ddns, "detect", lambda: {"ipv4": "198.51.100.7", "ipv6": None})
     got = {}
     t = threading.Thread(target=lambda: got.update(ddns.run()), daemon=True)

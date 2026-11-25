@@ -8,7 +8,7 @@ from typing import Literal
 from mcp.server.mcpserver.exceptions import ToolError
 
 from iopix import __version__, config, jobs, thumbs, users
-from iopix.auth import auth as auth_shared, updater
+from iopix import auth as auth_shared, updater
 from iosuite_shared.updates import tail
 from iopix.photos import consistency, edits, repair
 from iopix.data import state as appstate
@@ -69,14 +69,17 @@ def diagnostics() -> dict:
 
 
 def _public_settings() -> dict:
-    """Every stored setting except secrets (passwords, keys, session vouches)."""
+    """Every setting of ioPix as it is now, from the suite's one home for them (keys and passwords are not among
+    them: those are the suite's keys and tokens, which are written and never read back), and beside them what the
+    app wrote down for itself (pix_state)."""
+    from iosuite_shared import db as shared_db
+    out = dict(shared_db.settings_of(config.APP))
     con = appstate.connect()
     try:
-        rows = con.execute("SELECT name, value FROM pix_settings").fetchall()
+        out["state"] = dict(con.execute("SELECT name, value FROM pix_state").fetchall())
     finally:
         con.close()
-    hide = ("password", "key", "secret", "token")
-    return {k: ("***" if any(h in k for h in hide) else v) for k, v in rows}
+    return out
 
 
 @server.tool(annotations=READ_ONLY)

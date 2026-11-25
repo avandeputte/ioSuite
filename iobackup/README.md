@@ -154,10 +154,10 @@ Local backups go to the folder `BACKUP_DIR` names (`/var/backups/iobackup`; `/ba
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iobackup.cli check     # connect to the databases and say what is there
-.venv/bin/python -m iobackup.cli jobs      # the jobs, with their schedule and next run
-.venv/bin/python -m iobackup.cli run JOB   # back up now (the job's name or number), here, without the web app; prints the log
-.venv/bin/python -m iobackup.cli runs      # the last runs
+iosuite iobackup check     # connect to the databases and say what is there
+iosuite iobackup jobs      # the jobs, with their schedule and next run
+iosuite iobackup run JOB   # back up now (the job's name or number), here, without the web app; prints the log
+iosuite iobackup runs      # the last runs
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iobackup` makes someone an admin of ioBackup only (`iosuite admin NAME`: of
@@ -166,9 +166,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioBackup has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioBackup, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iobackup        # what may be set, with the value stored now

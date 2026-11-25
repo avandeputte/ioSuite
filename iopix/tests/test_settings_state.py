@@ -1,14 +1,14 @@
-"""Settings and viewer state live in the viewer's own database: defaults,
-round trips and the read cache."""
+"""What the app writes down for itself lives in the viewer's own database (pix_state): defaults, round trips and
+the read cache. Its settings are elsewhere: the suite's one home for them (test_app_settings.py)."""
 from iopix.data import state
 
 
 def test_setting_default_and_roundtrip():
-    assert state.get_setting("no-such-key", "dflt") == "dflt"
-    state.set_setting("probe", "1")
-    assert state.get_setting("probe") == "1"
-    state.set_setting("probe", "2")
-    assert state.get_setting("probe") == "2"
+    assert state.get_state("no-such-key", "dflt") == "dflt"
+    state.set_state("probe", "1")
+    assert state.get_state("probe") == "1"
+    state.set_state("probe", "2")
+    assert state.get_state("probe") == "2"
 
 
 def test_favorites_and_albums_roundtrip():

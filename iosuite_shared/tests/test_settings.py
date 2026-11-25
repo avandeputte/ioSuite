@@ -128,7 +128,7 @@ def test_only_a_suite_admin_reaches_the_settings_the_restart_and_the_log(two_cop
         assert c.get("/api/suite-admin/logs?local=1").status_code == status
         assert c.put("/api/suite-admin/settings/_suite/TZ", json={"value": "UTC"}).status_code == status
         assert c.post("/api/suite-admin/restart", json={}).status_code == status
-    assert db.settings_of("") == {} and db.q("SELECT * FROM ios_updates") == []
+    assert db.settings_of("") == {} and db.q("SELECT * FROM ios_copies") == []
 
 
 def test_setting_and_restarting_from_the_screen(two_copies):
@@ -146,8 +146,8 @@ def test_setting_and_restarting_from_the_screen(two_copies):
     assert c.get("/api/suite-admin/addresses").json()["copy"] == "home"
     # a restart is left for the apps named; each copy picks its own up
     assert c.post("/api/suite-admin/restart", json={"apps": ["iopix"]}).json() == {"asked": ["iopix"]}
-    rows = db.q("SELECT app, action, requested_by FROM ios_updates")
-    assert rows == [{"app": "iopix", "action": "restart", "requested_by": "alex"}]
+    rows = db.q("SELECT copy, action, requested_by FROM ios_copies")
+    assert rows == [{"copy": "nas", "action": "restart", "requested_by": "alex"}]  # one row per copy, not per app
     assert c.post("/api/suite-admin/restart").json() == {"asked": ["iocalendar", "iopix", "iostart"]}
 
 

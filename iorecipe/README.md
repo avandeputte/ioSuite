@@ -52,7 +52,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iorecipe.cli check   # connect to the databases and say what is there
+iosuite iorecipe check   # connect to the databases and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iorecipe` makes someone an admin of ioRecipe only (`iosuite admin NAME`: of
@@ -61,9 +61,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioRecipe has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioRecipe, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iorecipe        # what may be set, with the value stored now
@@ -75,13 +76,14 @@ iosuite set iorecipe PUBLIC_URL https://recipes.example.com    # no value: back 
 | `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://recipes.example.com`), beside its folder at the suite's address |
 | `DATA_DIR` | where the app writes on its own (`iorecipe/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iorecipe`) |
-| `OCR_LANGUAGES` | reading photos of recipes: languages. The languages Tesseract tries, as its codes with + between (eng+nld+fra). Empty: every language installed |
 | `AI` | read web pages without recipe data with AI (`1` or `0`; on by default). A small model that runs on this server, inside the app |
 | `AI_MODEL` | AI model. Another model than the one the app fetches: a GGUF file on the server, or the address of one |
 | `AI_TIMEOUT` | AI: seconds one page may take (`300`) |
 
-The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
-machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are
+kept, and `OCR_PROGRAM` and `OCR_LANGUAGES`: the program that reads the text on a photo of a recipe and the languages
+it reads in, shared with ioDocs and ioNote), the machine's file and the three ports are in the guide's
+[Configuration](../docs/docs/reference/configuration.md).
 
 ### Reading a page with AI
 
@@ -189,7 +191,7 @@ at all. Every assistant signs in with an **app password** (Settings › Account 
 claude mcp add --transport http iorecipe https://mcp.example.com/recipes/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m iorecipe.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iorecipe --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_recipes`, `search_recipes`, `get_recipe`; `create_recipe`, `update_recipe`,
 `delete_recipe`, `import_recipe`, `mark_recipe`; `list_cookbooks`, `create_cookbook`, `add_to_cookbook`,

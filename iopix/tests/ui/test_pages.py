@@ -80,7 +80,7 @@ def test_database_row_tests_a_connection(page, server, lib):
 def test_container_mode_writes_without_a_confirmation(page, server):
     """DIGIKAM_CHECK=none (the browser tests' server runs that way): the viewer cannot see digiKam,
     so a database write goes through without asking whether digiKam is closed."""
-    con = ui_db(); con.cursor().execute("REPLACE INTO pix_settings (name, value) VALUES ('digikam_closed_until', '0')"); con.close()
+    con = ui_db(); con.cursor().execute("REPLACE INTO pix_state (name, value) VALUES ('digikam_closed_until', '0')"); con.close()
     assert _get(server, "/api/status")["digikamCheck"] == "none"
     dialogs = []
     def on_dialog(d):

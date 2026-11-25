@@ -255,14 +255,15 @@ def test_the_sign_in_screens_faces_are_for_the_network_only(monkeypatch):
 def test_only_the_upload_routes_take_a_large_body():
     """The body cap is by route, not by what the request calls itself: 2 GiB for the routes that take photos, a few
     MiB for the rest (a "multipart" body sent to the sign-in would otherwise be read whole). Needs no library."""
-    from iopix import main
-    big, small = main.MAX_UPLOAD_BYTES, main.MAX_JSON_BYTES
+    from iopix import config, suite_app
+    limit_for = suite_app.limit_for
+    big, small = config.MAX_UPLOAD_BYTES, config.MAX_JSON_BYTES
     for path in ("/api/import", "/api/import/stage", "/share", "/api/folders/12/upload"):
-        assert main._limit_for(path, "multipart/form-data; boundary=x") == big, path
-        assert main._limit_for(path, "application/json") == small, path
-    assert small < main._limit_for("/api/gpx/preview", "multipart/form-data") < big
+        assert limit_for(path, "multipart/form-data; boundary=x") == big, path
+        assert limit_for(path, "application/json") == small, path
+    assert small < limit_for("/api/gpx/preview", "multipart/form-data") < big
     for path in ("/api/auth/login", "/api/photos", "/api/zip", "/mcp", "/api/folders/12", "/api/import/abc/run"):
-        assert main._limit_for(path, "multipart/form-data; boundary=x") == small, path
+        assert limit_for(path, "multipart/form-data; boundary=x") == small, path
 
 
 def test_an_answer_that_depends_on_the_viewer_is_kept_per_account():

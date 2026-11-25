@@ -148,10 +148,11 @@ def test_proxy_sign_in_settings(page, server):
     assert page.request.get(server + "/api/suite-admin/proxy").json()["here"]["mode"] == "off"
 
 def test_csp_lets_the_app_and_the_vendored_map_run(browser, server):
-    """The page carries a Content Security Policy: the inline theme script is hashed, Leaflet comes from /vendor (and finds
-    its marker images there), and nothing the pages do is refused. Its own context: the shared fixture bypasses the policy."""
+    """The page carries a Content Security Policy: the suite's theme script is the app's own (api/auth/theme.js, no inline
+    script to allow), Leaflet comes from /vendor (and finds its marker images there), and nothing the pages do is refused.
+    Its own context: the shared fixture bypasses the policy."""
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
-    ctx.add_init_script("try { localStorage.setItem('iopix.theme', 'light'); } catch (e) {}")  # a chosen theme: the inline script sets it
+    ctx.add_init_script("try { localStorage.setItem('iosuite.theme', 'light'); } catch (e) {}")  # a chosen theme: the script in the head sets it
     page = ctx.new_page()
     errors, blocked, vendor = [], [], []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -161,7 +162,7 @@ def test_csp_lets_the_app_and_the_vendored_map_run(browser, server):
         page.goto(server + "/#/explore")
         page.wait_for_selector("#main h1", timeout=15000)
         assert page.locator("meta[http-equiv='Content-Security-Policy']").count() == 1
-        assert page.evaluate("document.documentElement.dataset.theme") == "light", "the inline theme script ran (its hash is in the policy)"
+        assert page.evaluate("document.documentElement.dataset.theme") == "light", "the theme script ran (the policy lets the app's own scripts run)"
         page.goto(server + "/#/map")
         page.wait_for_selector(".leaflet-container", timeout=15000)
         assert page.evaluate("window.L.version") == "1.9.4" and page.evaluate("typeof L.markerClusterGroup") == "function"

@@ -4,20 +4,22 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
-from iosuite_shared import users
-from iosuite_shared.access import json_body
+from iosuite_shared import admin as suite_admin, users
+from iosuite_shared.http import json_body
 from starlette.concurrency import run_in_threadpool
 
-from ionote import access, backup, config, db, notes
-from ionote.http import attachment, user_name
+from ionote import access, backup, config, notes
+from iosuite_shared.http import attachment, user_name
 
 router = APIRouter()
-TEXTS = ("app_name",)  # the MCP switch is the suite's: Settings › Apps (iosuite_shared.mcp.set_for)
+# the app's own settings live in the suite's one home for them (the Shared ioSuite database, declared in ionote's
+# app.json); the MCP switch is the suite's too: Settings › Apps (iosuite_shared.mcp.set_for)
+TEXTS = {"app_name": "APP_NAME"}
 
 
 @router.get("/api/settings", dependencies=[access.public])
 def api_settings(request: Request):
-    return {"app_name": db.get_setting("app_name", "") or "ionote", "require_login": users.require_login(config.APP),
+    return {"app_name": config.live("APP_NAME", "ioNote"), "require_login": users.require_login(config.APP),
             "colors": list(notes.COLORS)}
 
 
@@ -26,9 +28,9 @@ async def api_settings_set(request: Request):
     body = await json_body(request)
 
     def save():
-        for k, v in body.items():  # sign-in required is a suite admin’s, on Settings › Apps
+        for k, v in body.items():  # sign-in required is a suite admin's, on Settings › Apps
             if k in TEXTS:
-                db.set_setting(k, str(v or "").strip()[:40])
+                suite_admin.set_setting(config.APP, TEXTS[k], str(v or "").strip()[:40])
     await run_in_threadpool(save)
     return {"ok": True}
 

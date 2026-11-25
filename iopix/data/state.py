@@ -1,4 +1,4 @@
-"""The app's own writable state: favorites, app-side albums, settings, users, the
+"""The app's own writable state: favorites, app-side albums, what it wrote down for itself (STATE), users, the
 pending-edit and tag-manager queues, and (through analysis.py and consistency.py,
 which share the database) the analysis results.
 
@@ -16,54 +16,24 @@ from iopix.digikam.dkdb import in_chunks
 
 rev = 0  # bumped on every write so cached query results can be invalidated
 lock = threading.Lock()
-_settings = (-1, {})  # (stamp it was read at, {key: value}); settings are read on every poll and every POST
+_kept = (-1, {})  # (stamp it was read at, {key: value}); the app's own notes, read on every poll and every POST
 log = logging.getLogger("iopix.data.state")
 
-# Every key of the pix_settings table: {key: (default, type, what it is)}. Values are stored as text; the type
-# says how the readers interpret it (a flag is "0"/"1"). get_setting(key) with no default answers the default
-# here, so a reader and the Settings page cannot disagree about it. A key that is not here is a programming
-# error: it is logged once, and the read or write goes ahead (the tests use probe keys on purpose).
-SETTINGS = {
-    "app_name": ("", str, "what the viewer calls itself (Settings › Name); empty: the app's own name"),
-    "write_files": ("0", bool, "metadata edits go into the image files too, not only the sidecars"),
-    "sidecar_compat": ("0", bool, "new sidecars are named photo.xmp, digiKam's compatible file name (SIDECAR_COMPAT=1 locks it on)"),
-    "digikam_sync": ("1", bool, "the viewer reads digiKam's database and writes applied edits into it; off: the library tables"),
-    "digikam_closed_until": ("0", float, "epoch seconds until which the admin vouched that digiKam is closed (dbsync writes without checking)"),
-    "file_scanner": ("0", bool, "watch the album folders for files added, changed or removed outside the viewer (on by default with no digiKam)"),
-    "scan_interval": ("15", int, "minutes between file scanner passes"),
-    "bg_threads": ("", int, "cores the background jobs may use; empty: BG_THREADS from the environment, half the machine by default"),
-    "search_model": ("clip", str, "the embedding model behind search (clip, siglip2, jinaclip); runtime reads it with default '' to see whether one was chosen"),
-    "face_detector": ("", str, "model key for face detection; empty: the registry's default (iopix/ai/models.py CHOICES)"),
-    "object_model": ("", str, "model key for object detection; empty: the registry's default"),
-    "caption_model": ("", str, "model key for captions; empty: the registry's default"),
-    "face_vectors": ("", str, "model key for face vectors; empty: the registry's default"),
-    "speech_model": ("", str, "model key for speech in videos; empty: the registry's default"),
-    "face_vectors_built": ("sface", str, "the face vector model the stored vectors were made with (a change rebuilds them)"),
-    "near_dups_level": ("normal", str, "how alike photos must be to count as near duplicates (strict, normal, loose)"),
-    "near_dups_gen": ("", str, "the generation the near-duplicate groups were computed for; empty: compute again"),
-    "import_layout": ("", str, "the folder layout imports go into (importer.LAYOUTS); empty: the first one"),
-    "map_provider": ("osm", str, "osm or google: who draws the map and the Street View links"),
-    "album_roots": ("", "json", "{album root id: local path}: where digiKam's album roots are mounted here, when not at their recorded paths"),
-    "templates": ("[]", "json", "the edit templates (owner name and contact) the Edit panel offers"),
-    "recent_tags": ("[]", "json", "the last tags used in the Edit panel, newest first (at most 12)"),
-    # digiKam's database, overriding the stored DIGIKAM_DB_* settings (dkdb.settings()): one key per dkdb.KEYS
-    "db_type": ("", str, "sqlite, mysql or none; empty: DIGIKAM_DB_TYPE"),
-    "db_sqlite_dir": ("", str, "the folder with digikam4.db; empty: DIGIKAM_DB_DIR"),
-    "db_host": ("", str, "MySQL host; empty: DIGIKAM_DB_HOST"),
-    "db_port": ("", str, "MySQL port; empty: DIGIKAM_DB_PORT"),
-    "db_database": ("", str, "MySQL database name; empty: DIGIKAM_DB_NAME"),
-    "db_user": ("", str, "MySQL user; empty: DIGIKAM_DB_USER"),
-    "db_password": ("", str, "MySQL password"),
-    "db_backup": ("", str, "auto or skip; empty: DIGIKAM_DB_BACKUP"),
-    # sign-in at a reverse proxy (iosuite_shared.proxyauth.KEYS, lower-cased): the environment wins when set there
+# What the app writes down for itself (pix_state): not settings, which are the suite's one home for them (declared
+# in iopix/app.json, in the Shared ioSuite database, read as they are now with config.live). {key: (default, what)}
+STATE = {
+    "digikam_closed_until": ("0", "epoch seconds until which the admin vouched that digiKam is closed (dbsync writes without checking)"),
+    "face_vectors_built": ("sface", "the face vector model the stored vectors were made with (a change rebuilds them)"),
+    "near_dups_gen": ("", "the generation the near-duplicate groups were computed for; empty: compute again"),
+    "recent_tags": ("[]", "the last tags used in the Edit panel, newest first (at most 12)"),
 }
 _unknown_keys = set()  # logged once each
 
 
 def _known(key: str):
-    if key not in SETTINGS and key not in _unknown_keys:
+    if key not in STATE and key not in _unknown_keys:
         _unknown_keys.add(key)
-        log.warning("setting %r is not in state.SETTINGS (add it there with its default)", key)
+        log.warning("%r is not in state.STATE (add it there with its default)", key)
 
 
 def connect():
@@ -298,39 +268,39 @@ def set_album_items(album_id: int, items: list, on: bool):
                                        [(album_id, i) for i, _ in items]))
 
 
-def _settings_stamp() -> tuple:
+def _state_stamp() -> tuple:
     """Changes on every write: rev for this process, and for writes by another one (the stdio MCP server
     shares this database) a few-second clock, since the server offers no cheap change marker."""
     return rev, int(time.time() / 5)
 
 
-def get_setting(key: str, default: str = None) -> str:
-    """Settings are tiny and read on every status poll and every POST, so the whole
-    table is cached and re-read only after a write. No default: SETTINGS' own."""
-    global _settings
+def get_state(key: str, default: str = None) -> str:
+    """What the app wrote down for itself. These are tiny and read on every status poll and every POST, so the whole
+    table is cached and re-read only after a write. No default: STATE's own."""
+    global _kept
     _known(key)
     if default is None:
-        default = SETTINGS[key][0] if key in SETTINGS else ""
-    stamp, values = _settings
-    now = _settings_stamp()  # taken before the query: a write racing with it makes the next call reload
+        default = STATE[key][0] if key in STATE else ""
+    stamp, values = _kept
+    now = _state_stamp()  # taken before the query: a write racing with it makes the next call reload
     if stamp != now:
         con = connect()
         try:
-            values = dict(con.execute("SELECT name, value FROM pix_settings").fetchall())
+            values = dict(con.execute("SELECT name, value FROM pix_state").fetchall())
         except Exception:
             return default
         finally:
             con.close()
-        _settings = (now, values)
+        _kept = (now, values)
     return values.get(key, default)
 
 
 
 
-def set_setting(key: str, value: str):
-    """Store one app setting (a known key, as a string); the UI and the index pick it up on their next poll."""
+def set_state(key: str, value: str):
+    """Write one of them down (a known key, as a string); the UI and the index pick it up on their next poll."""
     _known(key)
-    write(lambda c: c.execute("INSERT OR REPLACE INTO pix_settings (name, value) VALUES (?,?)", (key, value)))
+    write(lambda c: c.execute("INSERT OR REPLACE INTO pix_state (name, value) VALUES (?,?)", (key, value)))
 
 
 # ---- the viewer's own photo sets as id lists: favorites and album contents live in this database (SQLite or MySQL),

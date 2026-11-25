@@ -9,12 +9,12 @@ PREFIX = "con"
 
 # Every table is con_<name> (the suite's naming convention: the apps can share one database) and InnoDB/utf8mb4. Child rows (emails, phones...) are replaced as a whole when a contact is saved.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS con_settings (
+    """CREATE TABLE IF NOT EXISTS con_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
     )""",
-    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared, iocontact/auth.py)
+    # accounts and app passwords live in the Shared ioSuite database (iosuite_shared)
     # owner_id NULL: a shared address book. owner_key stands in for owner_id in the unique key: NULLs never clash in a
     # unique key, so (owner_id, slug) alone would let two shared address books share a slug
     """CREATE TABLE IF NOT EXISTS con_address_books (
@@ -134,7 +134,7 @@ SCHEMA = [
 _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 pool = _db.pool
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 schema_version, ensure_database, reset_all = _db.schema_version, _db.ensure_database, _db.reset_all
 
 
@@ -164,3 +164,11 @@ def _family_book(cur) -> None:
 
 def migrate() -> None:
     _db.migrate(after=_family_book)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iocontact check`, and the app's diagnostics tool)."""
+    return {"contacts": one("SELECT count(*) AS n FROM con_contacts WHERE deleted = 0")["n"],
+            "tombstones": one("SELECT count(*) AS n FROM con_contacts WHERE deleted = 1")["n"],
+            "relations": one("SELECT count(*) AS n FROM con_contact_relations")["n"],
+            "addressBooks": one("SELECT count(*) AS n FROM con_address_books")["n"]}

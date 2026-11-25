@@ -10,7 +10,7 @@ PREFIX = "doc"
 # Every table is doc_<name> (the suite's naming convention: the apps can share one database) and InnoDB/utf8mb4.
 # Who sees which document is iodocs/model.py's (visible_sql): each one says who may see it.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS doc_settings (
+    """CREATE TABLE IF NOT EXISTS doc_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -93,5 +93,12 @@ SCHEMA = [
 _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 marks = shared_db.marks
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 schema_version, ensure_database, migrate, reset_all = _db.schema_version, _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iodocs check`, and the app's diagnostics tool)."""
+    return {"documents": one("SELECT count(*) AS n FROM doc_documents")["n"],
+            "files": one("SELECT count(*) AS n FROM doc_files")["n"],
+            "fileBytes": int(one("SELECT COALESCE(SUM(size), 0) AS n FROM doc_files")["n"])}

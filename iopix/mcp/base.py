@@ -15,7 +15,7 @@ from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import READ_ONLY, WRITES, current_user, who
 from mcp.server.mcpserver.exceptions import ToolError
 
-from iopix import __version__, config, users
+from iopix import config, users
 from iopix.photos import edits
 from iopix.data import index, state as appstate
 from iopix.data.query import DATE_RE, build_where
@@ -32,7 +32,7 @@ MONTH_DAY_RE = re.compile(r"^\d\d-\d\d$")
 CONTENT_SEARCH_CANDIDATES = 200
 _state_ready = False  # the viewer database's tables are checked on the first call, not on every one
 
-server = shared_mcp.make_server("iopix", "ioPix", __version__, instructions=(
+server = shared_mcp.make_server("iopix", app_tools=False, instructions=(
     "A personal digiKam photo library. Start with library_overview, use list_people / list_tags / list_albums to find "
     "exact names, then search_photos. People are tags too. Selecting a tag or album also matches everything nested "
     "under it. Dates are local camera time. Use view_photo to actually look at a picture. The library tools answer "
@@ -80,7 +80,7 @@ def anon_paths_ok() -> bool:
 
 def need_admin() -> dict:
     """The operator and maintenance tools take an admin: the account the client signed in as (over HTTP an app
-    password or session; over stdio, `python -m iopix.mcp --user`)."""
+    password or session; over stdio, `iosuite mcp iopix --user`)."""
     return shared_mcp.need_admin()
 
 

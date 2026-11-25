@@ -10,11 +10,11 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import Response
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from starlette.concurrency import run_in_threadpool
 
 from ionote import access, attachments, images, notes, ocr
-from ionote.http import attachment, jresp, user_name
+from iosuite_shared.http import attachment, jresp, user_name
 
 router = APIRouter()
 

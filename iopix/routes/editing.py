@@ -15,7 +15,8 @@ from iopix.photos import consistency, dateprecision, edits, metaedit, placetags,
 from iopix.digikam import dbsync, dkdb
 from iopix.geo import gpx
 from iopix.data import state as appstate
-from iopix.http import MAX_IDS, form_items, json_body
+from iosuite_shared.http import json_body
+from iopix.http import MAX_IDS, form_items
 from iopix.runtime import DB_ERRORS, db, resolve
 from iopix.digikam.dkdb import in_chunks
 
@@ -413,9 +414,9 @@ async def api_tags_recent(request: Request):
 
     def work():
         ids = [int(i) for i in body.get("ids", [])][:20]
-        old = [int(i) for i in json.loads(appstate.get_setting("recent_tags", "[]"))]
+        old = [int(i) for i in json.loads(appstate.get_state("recent_tags", "[]"))]
         new = ids + [i for i in old if i not in ids]
-        appstate.set_setting("recent_tags", json.dumps(new[:12]))
+        appstate.set_state("recent_tags", json.dumps(new[:12]))
         return {"recent": new[:12]}
     return await run_in_threadpool(work)
 

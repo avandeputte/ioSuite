@@ -7,7 +7,7 @@ Three places a setup comes from, the nearest first:
   the device's id and keeps it; the person names it.
 - the account's ("user:<id>:layout"), on every device without one of its own.
 - the family's ("layout:default"), which an admin sets as everyone's starting point, for whoever has none of their own.
-All in the prt_settings table, as JSON. Every app registered in the suite's list is on the page unless the person hides
+All in the prt_state table, as JSON. Every app registered in the suite's list is on the page unless the person hides
 it; the photo strip is the admin's choice (Settings › Home page) unless they pick another. Empty: the page as it comes."""
 import json
 import re
@@ -142,7 +142,7 @@ def _empty() -> dict:
 
 def _read(key: str):
     """The JSON kept under a settings key, or None."""
-    raw = db.get_setting(key)
+    raw = db.get_state(key)
     if not raw:
         return None
     try:
@@ -165,7 +165,7 @@ def family() -> dict | None:
 def set_family(body: dict | None) -> dict | None:
     """Admins: this setup for whoever has none of their own; nothing (or an empty one) takes it away again."""
     v = clean(body or {})
-    db.set_setting(FAMILY, None if v == EMPTY else json.dumps(v))
+    db.set_state(FAMILY, None if v == EMPTY else json.dumps(v))
     return family()
 
 
@@ -173,7 +173,7 @@ def devices(user_id: int) -> list:
     """The person's devices that have a setup of their own: [{id, name}], by name."""
     prefix = _key(user_id) + ":"
     out = []
-    for r in db.q("SELECT name, value FROM prt_settings WHERE name LIKE %s", (prefix + "%",)):
+    for r in db.q("SELECT name, value FROM prt_state WHERE name LIKE %s", (prefix + "%",)):
         dev = r["name"][len(prefix):]
         try:
             v = json.loads(r["value"])
@@ -227,22 +227,22 @@ def save(user_id: int, body: dict, device: str | None = None, name: str | None =
             raise Invalid("device: 8 to 32 letters and digits")
         if not _read(_key(user_id, device)) and len(devices(user_id)) >= DEVICES_MOST:
             raise Invalid(f"{DEVICES_MOST} devices have a setup of their own already: remove one first")
-        db.set_setting(_key(user_id, device), json.dumps({"name": device_name(name), "layout": v}))
+        db.set_state(_key(user_id, device), json.dumps({"name": device_name(name), "layout": v}))
         return get(user_id, device)
-    db.set_setting(_key(user_id), None if v == EMPTY else json.dumps(v))
+    db.set_state(_key(user_id), None if v == EMPTY else json.dumps(v))
     return get(user_id)
 
 
 def forget_device(user_id: int, device: str) -> None:
     """The device goes back to the account's setup."""
     if device_ok(device):
-        db.set_setting(_key(user_id, device), None)
+        db.set_state(_key(user_id, device), None)
 
 
 def give(user_id: int, body: dict) -> dict:
     """Admins: this setup as that person's, on every device (the ones their devices kept are removed)."""
     v = clean(body)
     with db.tx():
-        db.ex("DELETE FROM prt_settings WHERE name LIKE %s", (_key(user_id) + ":%",))
-        db.set_setting(_key(user_id), None if v == EMPTY else json.dumps(v))
+        db.ex("DELETE FROM prt_state WHERE name LIKE %s", (_key(user_id) + ":%",))
+        db.set_state(_key(user_id), None if v == EMPTY else json.dumps(v))
     return get(user_id)

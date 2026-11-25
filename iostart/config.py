@@ -1,22 +1,14 @@
 """Settings: ioStart's own are kept in the Shared ioSuite database and read once, as it starts (Settings › Apps ›
 All settings changes them; app.json lists them). The settings every app of the suite shares come from
 iosuite_shared.config.standard; the machine's file says only where that database is and where the server listens."""
-from pathlib import Path
-
 from iosuite_shared import config as shared
 
-APP = "iostart"
-APP_DIR = Path(__file__).resolve().parent
-_s = shared.settings(APP)  # what is stored for this app in the Shared ioSuite database, read once, now
-env, env_flag, env_int = _s.get, _s.flag, _s.int
-# APP_DIR, DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT, PUBLIC_URL, BASE_URL, TLS_CERT_FILE, TLS_KEY_FILE,
-# KEEP_DELETED_DAYS, ADMIN_USER, ADMIN_PASSWORD: the same names in every app (iosuite_shared.config.standard says what each is)
-globals().update(shared.standard(APP, APP_DIR, _s))
-ROOT = APP_DIR
-
-# the app's own database: beside the Shared ioSuite database, under the same login (DB_NAME names another than iostart)
-_db = shared.own_db(APP, _s)
-DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD = _db["host"], _db["port"], _db["database"], _db["user"], _db["password"]
+# APP, env, env_flag, env_int, what every app has (APP_DIR, DATA_DIR, PUBLIC_URL...), DB_* and the MAX_<NAME>_BYTES of
+# app.json's limits: iosuite_shared.config.of_app says what each is
+_own = shared.of_app(__package__)
+globals().update(_own)
+live, live_flag, live_int = _own["live"], _own["live_flag"], _own["live_int"]
+env_flag = _own["env_flag"]
 
 # where the apps are: each registers itself in the suite's list in the Shared ioSuite database (see apps.py)
 
@@ -27,6 +19,3 @@ TIMERS_LOOP = env_flag("TIMERS_LOOP", True)   # TIMERS_LOOP=0: no job that sends
 NEWS_LOOP = env_flag("NEWS_LOOP", True)   # NEWS_LOOP=0: the server does not fetch the feeds people follow by itself (news.py; the tests call tick())
 INBOX_LOOP = env_flag("INBOX_LOOP", True)   # INBOX_LOOP=0: the suite's mailbox is not read by itself (inbox/__init__.py; the tests call tick())
 TRMNL_PUSH = env_flag("TRMNL_PUSH", True)   # TRMNL_PUSH=0: the start page does not push anyone's TRMNL screens (trmnl/push.py)
-
-MAX_IMPORT_BYTES = 16 * 1024 * 1024   # a bookmarks file to import
-MAX_JSON_BYTES = 4 * 1024 * 1024      # any other request body

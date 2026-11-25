@@ -8,9 +8,9 @@ import json
 import os
 import zipfile
 
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
-from iostart.auth import auth
+from iostart import auth
 from iostart import access, config, bookmarks, status as appstatus
 from iostart.bookmarks import icons as siteicons, check as bookmarkcheck, files as bookmarkfiles, sync as bookmarksync
 

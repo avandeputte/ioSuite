@@ -102,8 +102,8 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iothings.cli check                        # connect to the databases and say what is there
-.venv/bin/python -m iothings.cli import-homebox FILE [NAME]   # the things in a Homebox CSV export, added as NAME (or the first admin)
+iosuite iothings check                        # connect to the databases and say what is there
+iosuite iothings import-homebox FILE [NAME]   # the things in a Homebox CSV export, added as NAME (or the first admin)
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iothings` makes someone an admin of ioThings only (`iosuite admin NAME`: of
@@ -112,9 +112,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioThings has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioThings, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iothings        # what may be set, with the value stored now
@@ -127,6 +128,7 @@ iosuite set iothings PUBLIC_URL https://things.example.com    # no value: back t
 | `DATA_DIR` | where the app writes on its own (`iothings/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iothings`) |
 | `MAX_FILE_MB` | largest attachment (MB) (`100`). One manual, receipt or photo as uploaded |
+| `CURRENCY` | the currency prices and costs are in (`USD`): a three-letter code |
 
 The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
 machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).

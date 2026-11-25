@@ -4,7 +4,7 @@ had a CLIP index the new index answers from the start instead of nothing."""
 import numpy as np
 
 from iopix.ai import semantic
-from iopix.data import state
+from iopix.tests.helpers import pixsetting
 
 
 def _fresh(tmp_path, monkeypatch, clip_index: bool):
@@ -19,7 +19,7 @@ def _fresh(tmp_path, monkeypatch, clip_index: bool):
         monkeypatch.setattr(e, "load", lambda: None)
     if clip_index:
         s.engines["clip"].file.write_bytes(b"x")
-    state.set_setting("search_model", "siglip2")
+    pixsetting("SEARCH_MODEL", "siglip2")
     return s
 
 

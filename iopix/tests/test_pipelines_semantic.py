@@ -8,6 +8,7 @@ import time
 import numpy as np
 
 from iopix.ai import concepts, neardups, semantic
+from iopix import config
 from iopix.data import state, appdb
 from iopix.faces import facevecs
 
@@ -234,7 +235,7 @@ def test_near_duplicate_pairs_in_blocks_match_the_full_comparison(monkeypatch):
                 expect[(int(ids[i]), int(ids[j]))] = float(row[j])
         assert len(expect) >= n // 9 and set(pairs) == set(expect)
         assert all(abs(pairs[k] - expect[k]) < 1e-6 for k in expect)
-        assert state.get_setting("near_dups_gen") == "stub:7:loose" and state.get_setting("near_dups_level") == "loose"
+        assert state.get_state("near_dups_gen") == "stub:7:loose" and config.live("NEAR_DUPS_LEVEL") == "loose"
     finally:
         con = appdb.connect()
         try:
@@ -242,7 +243,7 @@ def test_near_duplicate_pairs_in_blocks_match_the_full_comparison(monkeypatch):
             con.commit()
         finally:
             con.close()
-        state.set_setting("near_dups_gen", "")
+        state.set_state("near_dups_gen", "")
 
 
 # ---- face groups: row blocks against the whole matrix, a union-find over the pairs
@@ -297,12 +298,12 @@ def test_face_vectors_are_dropped_when_the_model_revision_changes(monkeypatch):
             con.close()
     try:
         seed()
-        state.set_setting("face_vectors_built", "sface")  # what versions before revisions wrote
+        state.set_state("face_vectors_built", "sface")  # what versions before revisions wrote
         facevecs._same_model()
-        assert count() == 1 and state.get_setting("face_vectors_built") == "sface@aaa", "adopted, and the revision is recorded from now on"
+        assert count() == 1 and state.get_state("face_vectors_built") == "sface@aaa", "adopted, and the revision is recorded from now on"
         revs["r"] = "bbb"
         facevecs._same_model()
-        assert count() == 0 and state.get_setting("face_vectors_built") == "sface@bbb", "the same model as another file: recomputed"
+        assert count() == 0 and state.get_state("face_vectors_built") == "sface@bbb", "the same model as another file: recomputed"
         seed()
         facevecs._same_model()
         assert count() == 1, "nothing changed: nothing dropped"
@@ -313,4 +314,4 @@ def test_face_vectors_are_dropped_when_the_model_revision_changes(monkeypatch):
             con.commit()
         finally:
             con.close()
-        state.set_setting("face_vectors_built", "sface")
+        state.set_state("face_vectors_built", "sface")

@@ -18,7 +18,8 @@ import urllib.request
 
 from iosuite_shared import credentials
 
-from iopix.data import state
+from iopix import config as appconfig   # `config` below is this module's own function
+
 
 SESSION_URL = "https://tile.googleapis.com/v1/createSession"
 TILE_URL = "https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}"
@@ -51,7 +52,7 @@ def _headers(extra: dict = None) -> dict:
 
 
 def provider() -> str:
-    p = state.get_setting("map_provider", "osm")
+    p = appconfig.live("MAP_PROVIDER", "osm")
     return "google" if p == "google" and key() else "osm"
 
 

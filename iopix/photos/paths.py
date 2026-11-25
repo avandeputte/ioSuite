@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 from iopix import config
-from iopix.data import state
 
 BACKUP_DIR = config.DATA_DIR / "sidecar-backups"
 FILE_BACKUP_DIR = config.DATA_DIR / "file-backups"  # originals of image files before their metadata is rewritten
@@ -38,7 +37,7 @@ def compat_naming() -> bool:
     if config.sidecar_compat_env():
         return True
     try:
-        return state.get_setting("sidecar_compat", "0") == "1"
+        return config.live_flag("SIDECAR_COMPAT")
     except Exception:
         return False
 

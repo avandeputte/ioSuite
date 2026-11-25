@@ -318,7 +318,7 @@ def test_the_card_is_built_once_and_the_settings_read_once(client, monkeypatch):
     monkeypatch.setattr(ha, "describe", lambda *a, **kw: (built.append(1), real_describe(*a, **kw))[1])
     for _ in range(50):
         assert ha.home() is first or ha.home() == first
-    assert not [s for s in asked if "prt_settings" in s] and not built
+    assert not [s for s in asked if "prt_state" in s] and not built
     # a change of the settings shows at once
     client.post("/api/ha/settings", json={"entities": [{"id": "light.kitchen", "name": "Stove light", "control": True}]})
     assert ha.home()["items"][0]["name"] == "Stove light"

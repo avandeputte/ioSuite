@@ -5,14 +5,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iotask import __version__, config, members, model
+from iotask import config, db, ical, members, model
 
 # what the tool modules take from here: the suite's pieces (iosuite_shared.mcp) and ioTask's own helpers
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who", "task_link",
            "lists", "find_list", "default_list", "list_names", "find_task", "task_out", "member_ids"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioTask", __version__,
+    config.APP,
     instructions=(
         "The family's task lists (ioTask). Start with overview: it says who you are, the lists you can see and change, "
         "the time zone, and the open tasks that are overdue or due today. list_tasks lists tasks (open by default; by "
@@ -24,6 +24,8 @@ server = shared_mcp.make_server(
         "some time after it was ticked off (repeat_after). recent_activity says who did what, and undo takes a change "
         "back. The same tasks show in Apple Reminders on the family's phones. Ask before deleting tasks or lists."
     ),
+    counts=db.counts,
+    more=lambda: {"timezone": ical.default_tz()},
 )
 
 

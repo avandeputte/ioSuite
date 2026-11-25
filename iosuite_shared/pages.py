@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 SHARED = Path(__file__).with_name("static")
 PUBLIC = SHARED / "public"  # served in every app's /static, after the app's own files
-STAMPED = ("static/app.js", "static/app.css", "static/js/theme.js", "api/auth/base.css")
+STAMPED = ("static/app.js", "static/app.css", "static/js/look.js", "api/auth/theme.js", "api/auth/base.css")
 TEXT = (".js", ".css", ".html", ".svg", ".json", ".webmanifest", ".txt")  # what is worth compressing
 SMALL = 1024  # under this, compressing saves nothing
 FOR_GOOD = "public, max-age=31536000, immutable"
@@ -108,21 +108,48 @@ class Static(StaticFiles):
         return Response(packed, media_type=r.media_type, headers={**keep, "ETag": "W/" + r.headers["etag"], "Content-Encoding": "gzip"})
 
 
-def mount(app, static_dir: Path, service_worker: bool = False) -> None:
-    """GET / (index.html with a mark on its script and style sheets: stamp()), the manifest, /sw.js at the root when
-    the app has one (its scope is then the whole app), and /static."""
+SEARCH = """  <div id="search">
+    <span class="ic" data-ic="search"></span>
+    <input id="q" type="search" placeholder="{placeholder}" autocomplete="off" spellcheck="false" aria-label="{label}">
+  </div>"""
+NEWBTN = '  <button id="newbtn" class="pillbtn primary" title="{title}"{hidden}><span class="ic" data-ic="add"></span><span>{label}</span></button>'
+
+
+def shell(manifest: dict) -> str:
+    """The page of an app that keeps none of its own: the shell every app's page is (static/page.html), with the app's
+    name and colour and, as its manifest asks for them (app.json's `page`), the search box and the New button. An app
+    whose page is more than that (ioPix, ioStart) keeps its own static/index.html, which is served instead."""
+    said = manifest.get("page") or {}
+    middle = []
+    if said.get("search"):
+        middle.append(SEARCH.format(placeholder=said["search"], label=said.get("searchLabel") or "Search"))
+    if said.get("new"):
+        middle.append(NEWBTN.format(title=said["new"], label=said.get("newLabel") or "New", hidden=" hidden" if said.get("newHidden") else ""))
+    html = (SHARED / "page.html").read_text(encoding="utf-8")
+    return (html.replace("{{name}}", str(manifest["name"])).replace("{{color}}", str(manifest["color"]))
+            .replace("{{middle}}", "\n".join(middle) or '  <div class="grow"></div>'))
+
+
+def mount(app, static_dir: Path, service_worker: bool = False, dependencies=(), declared=None) -> None:
+    """GET / (the page with a mark on its script and style sheets: stamp()), the manifest, /sw.js at the root when
+    the app has one (its scope is then the whole app), and /static. The page is the shell every app shares, built from
+    the app's own manifest (shell()); an app with a static/index.html of its own serves that. `dependencies`: the
+    access marker these routes declare, like every other route of the app (iosuite_shared.access: the page is public)."""
     static_dir = Path(static_dir)
+    marked = list(dependencies)
+    own = static_dir / "index.html"
 
-    @app.get("/", include_in_schema=False)
+    @app.get("/", include_in_schema=False, dependencies=marked)
     def index():
-        return HTMLResponse(stamp((static_dir / "index.html").read_text(encoding="utf-8"), static_dir), headers={"Cache-Control": "no-cache"})
+        html = own.read_text(encoding="utf-8") if own.is_file() else shell(declared or {})
+        return HTMLResponse(stamp(html, static_dir), headers={"Cache-Control": "no-cache"})
 
-    @app.get("/manifest.webmanifest", include_in_schema=False)
+    @app.get("/manifest.webmanifest", include_in_schema=False, dependencies=marked)
     def manifest():
         return FileResponse(static_dir / "manifest.webmanifest", media_type="application/manifest+json")
 
     if service_worker:
-        @app.get("/sw.js", include_in_schema=False)
+        @app.get("/sw.js", include_in_schema=False, dependencies=marked)
         def sw():
             return FileResponse(static_dir / "sw.js", media_type="text/javascript")
 

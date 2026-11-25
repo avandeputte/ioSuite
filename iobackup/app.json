@@ -49,5 +49,8 @@
       "default": "1",
       "hint": "Off: nothing runs and no schedule fires; backups are only taken from a shell."
     }
-  ]
+  ],
+  "limits": {
+    "json": 1
+  }
 }

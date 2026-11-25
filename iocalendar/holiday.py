@@ -21,7 +21,7 @@ from pathlib import Path
 from icalendar import Event
 
 from iocalendar import config, db, ical, model
-from iosuite_shared import stamp
+from iosuite_shared import admin as suite_admin, stamp
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iocalendar.holidays")
@@ -134,7 +134,7 @@ def _clean(items) -> list[dict]:
 
 def settings() -> dict:
     """{items: [{country, region, language}], guessed}: one Holidays calendar per item; no items, none."""
-    raw = db.get_setting("holidays_countries")
+    raw = config.live("HOLIDAYS") or None
     guessed = False
     if raw is None:  # never chosen: the environment, else the time zone's country
         items, guessed = _from_env()
@@ -187,7 +187,7 @@ def save_settings(items) -> None:
     dup = {c for c in (x["country"] for x in out) if [x["country"] for x in out].count(c) > 1}
     if dup:
         raise Invalid("Each country once: " + ", ".join(sorted(dup)))
-    db.set_setting("holidays_countries", json.dumps(out))
+    suite_admin.set_setting(config.APP, "HOLIDAYS", json.dumps(out))
 
 
 def set_country(country: str, region=None, language=None) -> None:

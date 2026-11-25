@@ -36,7 +36,6 @@ try:
     import numpy as np
 except ImportError:
     np = None
-from iopix.data import state as appstate
 try:
     importlib.import_module("fastembed")  # also proves onnxruntime and friends load on this machine
     _HAVE = np is not None
@@ -368,7 +367,7 @@ class Semantic:
         """Which model the owner picked. Installing SigLIP 2 does not switch to it:
         that is a deliberate choice (it indexes several times slower than CLIP)."""
         try:
-            name = appstate.get_setting("search_model", "clip")
+            name = config.live("SEARCH_MODEL", "clip")
         except Exception:
             name = "clip"
         return name if name in ENGINES and ready(name) else "clip"

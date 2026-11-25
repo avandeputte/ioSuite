@@ -84,8 +84,8 @@ def test_weather_setup_and_cache(client, monkeypatch):
     # a failing AccuWeather keeps the old reading, marked stale
     monkeypatch.setattr(weather, "_get", lambda *a, **k: (_ for _ in ()).throw(weather.WeatherError("down")))
     from iostart import db
-    stale = json.loads(db.get_setting("weather_current"))
-    db.set_setting("weather_current", json.dumps({**stale, "at": 0}))
+    stale = json.loads(db.get_state("weather_current"))
+    db.set_state("weather_current", json.dumps({**stale, "at": 0}))
     w = client.get("/api/weather").json()
     assert w["current"]["text"] == "Sunny" and w["stale"] and "down" in w["error"]
     # a viewer may read the weather, not the settings
@@ -115,7 +115,7 @@ def test_weather_warnings(client, monkeypatch):
     client.get("/api/weather")
     assert calls.count("/locations/v1/349727") == 1 and len(asked) == 1, "the coordinates once, the warnings kept 10 minutes"
     # the weather service away: no warnings and a note, and not asked again on the next visit
-    db.set_setting("weather_warnings", None)
+    db.set_state("weather_warnings", None)
     monkeypatch.setattr(weather, "_nws", lambda *a, **k: (_ for _ in ()).throw(weather.WeatherError("The weather service answered 500")))
     w = client.get("/api/weather").json()
     assert w["current"]["text"] == "Sunny" and w["warnings"]["items"] == [] and "500" in w["warnings"]["error"]

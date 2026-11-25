@@ -8,8 +8,8 @@ writes.
 """
 from iosuite_shared import application, chores, users as shared
 
-from iohealth import __version__, config, db, emergency, meds, notify, suiteitems, upload, usual, webapi
-from iohealth.auth import APP, auth, updater
+from iohealth import config, db, emergency, meds, notify, suite_app, upload, usual, webapi
+from iohealth.config import APP
 
 
 def _jobs() -> list:
@@ -22,12 +22,6 @@ def _where() -> str:
     c = db.params()
     return "writing to %s:%s/%s (%s)" % (c["host"], c["port"], c["database"], "accounts exist" if shared.any_users() else
                                          "no accounts yet: create the first one from the sign-in screen, inside your network")
-
-
-def _limit_for(path: str, ctype: str) -> int:
-    if path.startswith("/v1/"):  # the phone's batches: app.upload counts them itself, after decompression
-        return upload.MAX_BODY
-    return config.MAX_JSON_BYTES
 
 
 def _status_extra(request) -> dict:
@@ -44,14 +38,14 @@ upload.on_sync.append(webapi.sync_finished)
 upload.on_user_sync.append(notify.after_sync_quietly)  # "goal reached" and "outside your usual" notifications
 
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="Apple Health data from the iPhone in your own MariaDB: the phone uploads to /v1/, the web app reads /api/. "
                 "Every figure is the signed-in account's own.",
     prepare=(db.wait_for_server, shared.init, db.migrate),
     start=(webapi.start_backfill,),  # the hourly rollup of the types that have none yet, after the demo data
     jobs=_jobs, where=_where,
     # (the phone's endpoints under /v1/, app.json's sync, check the app password themselves)
-    limit_for=_limit_for, status=_status_extra, suite=suiteitems.PROVIDER, related=False,
+    status=_status_extra, related=False,
     routers=(upload.router, webapi.router,
              usual.router,  # /api/usual: what is outside the account's usual
              meds.router, emergency.router))  # medicines and allergies, the emergency card

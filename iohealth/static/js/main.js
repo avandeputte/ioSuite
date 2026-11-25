@@ -1,5 +1,5 @@
 import { applySections, refreshStatus, render, route } from './core.js';
-import { applyTheme, buildNav, loadSettings, loadSuite } from './shell.js';
+import { buildNav, loadSettings, loadSuite, themeFromAccount } from './shell.js';
 import { loadMe, me, renderUserMenu, signIn } from './accounts.js';
 
 // the pages: each registers itself in core.pages
@@ -19,11 +19,11 @@ import './settings.js';
 
 loadMe().then(async () => {
   renderUserMenu();
-  if (!me.user) { signIn(true); return; }
+  if (!me.user) { signIn(); return; }
   buildNav();
   loadSuite();
   await loadSettings();
-  applyTheme();
+  themeFromAccount(me.settings);
   applySections();
   refreshStatus();
   setInterval(refreshStatus, 60000);

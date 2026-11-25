@@ -28,30 +28,19 @@
 }
 
 /* ---- top bar: beside the docked sidebar */
-.suitesec { grid-column: 1 / -1; padding: 8px 6px 2px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg2); }
 
 /* the app this menu is in stays in the list (one order in every app), marked; admin tools come smaller, apart */
-.apptile.cur { background: var(--bg2); }
-.apptile.cur .appnm { font-weight: 600; }
-.apptile.tool { gap: 4px; padding: 6px 4px; }
-.apptile.tool .appic { width: 28px; height: 28px; border-radius: 8px; }
-.apptile.tool .appic.fb { font-size: 13px; }
-.apptile.tool .appnm { font-size: 12px; }
-.avatarbtn { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+
 
 #nav a[data-v="settings"], #nav a[data-v="maint"] { color: var(--fg2); }
 #nav a[data-v="settings"].on, #nav a[data-v="maint"].on { color: var(--accent); }
 #nav .dotic { align-items: center; justify-content: center; }
-#nav .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hue); }
-
-.navsec { flex: none; display: flex; align-items: center; height: 24px; padding: 0 4px 4px 12px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
-.navsec .iconbtn { margin-left: auto; width: 26px; height: 26px; }
 
 /* ---- main */
-#main { position: fixed; top: var(--topbar); bottom: 0; left: var(--nav); right: 0; overflow: hidden; display: flex; }
+
 .listpane { width: 380px; flex: none; border-right: 1px solid var(--line); overflow-y: auto; }
 .detailpane { flex: 1; overflow-y: auto; min-width: 0; }
-#main:has(> .page) { display: block; overflow: auto; }  /* a page scrolls as a whole, its scrollbars at the window's edges */
+  /* a page scrolls as a whole, its scrollbars at the window's edges */
 
 .listhead { position: sticky; top: 0; background: var(--bg); z-index: 2; padding: 12px 16px 8px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
 .listhead .title { font-weight: 600; font-size: var(--fs-l); }
@@ -81,13 +70,9 @@
 .card { border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 18px; min-width: 0; }
 .card h3 { margin: 0 0 8px; font-size: var(--fs-m); font-weight: 600; color: var(--fg2); display: flex; align-items: center; gap: 8px; }
 .card h3 .ic { width: 18px; height: 18px; color: var(--hue, var(--brand)); }
-.kv { display: flex; gap: 12px; padding: 5px 0; align-items: baseline; min-width: 0; }
-.kv .k { width: 90px; flex: none; color: var(--fg2); font-size: var(--fs-s); }
-.kv .k::first-letter { text-transform: uppercase; }
-.kv .v { min-width: 0; overflow-wrap: anywhere; }
+
 .kv .v .pref { color: var(--star); font-size: var(--fs-xs); margin-left: 6px; }
 
-.chip .lab { color: var(--fg2); font-size: var(--fs-s); }
 .chip.implied { background: transparent; border: 1px dashed var(--line); }
 .chip.implied a:hover { color: var(--accent); }
 .chip.implied .keep { border: 0; background: var(--bg2); color: var(--fg2); width: 22px; height: 22px; border-radius: 50%; margin-right: -6px; cursor: pointer; font-size: 15px; line-height: 1; }
@@ -99,9 +84,6 @@
 .iopixcard { display: flex; gap: 14px; align-items: center; }
 .iopixcard img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--bg2); }
 
-.fsec { margin: 22px 0 6px; font-weight: 600; color: var(--fg2); font-size: var(--fs-m); display: flex; align-items: center; gap: 8px; }
-.fsec .ic { width: 18px; height: 18px; color: var(--brand); }
-
 .multi { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .multi select.t { width: 150px; flex: none; }
 .multi input.t { flex: 1; min-width: 160px; width: auto; }
@@ -110,7 +92,7 @@
 .addbtn { color: var(--accent); display: inline-flex; gap: 6px; align-items: center; height: 32px; padding: 0 10px; border-radius: var(--r-pill); }
 .addbtn:hover { background: var(--accent-bg); }
 .prefck { display: inline-flex; gap: 4px; align-items: center; font-size: var(--fs-s); color: var(--fg2); }
-.formbar { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; display: flex; gap: 8px; border-top: 1px solid var(--line); margin-top: 24px; }
+
 .picker { position: relative; flex: 1; min-width: 200px; }
 .picker .drop { position: absolute; left: 0; right: 0; top: 42px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-s); box-shadow: var(--shadow);
   max-height: 280px; overflow-y: auto; z-index: 30; }
@@ -162,8 +144,6 @@
 
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #323232; color: #fff; padding: 12px 18px; border-radius: var(--r-s); z-index: 100;
   box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
-
-.dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 /* ---- narrow screens: one pane at a time, the sidebar slides in */
 @media (max-width: 1100px) { .listpane { width: 320px; } }
@@ -219,5 +199,3 @@
 .mergedlg .mk { width: 120px; flex: none; color: var(--fg2); font-size: var(--fs-s); padding-top: 3px; }
 .mergedlg .mv { flex: 1 1 280px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .mergedlg .mrow > p { flex-basis: 100%; margin: 0; }
-
-.pform { display: grid; gap: 10px; max-width: 520px; }

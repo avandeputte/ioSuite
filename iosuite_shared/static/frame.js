@@ -1,7 +1,8 @@
 /* The frame the pages of the io apps share, kept once: finding things in the page, the icons most of them draw, the
    note at the foot of the page, dialogs, the menu that drops from a button, the menu of the suite's apps, the sidebar
-   that docks or slides, the theme. One ES module, served by every app at <app>/api/auth/frame.js (beside ui.js, the
-   account panels and h()), so a page loads it from its own app whichever server that is:
+   that docks or slides and the parts it is made of (navParts), the suite's one appearance choice. One ES module,
+   served by every app at <app>/api/auth/frame.js (beside ui.js, the account panels and h()), so a page loads it from
+   its own app whichever server that is:
 
        import * as frame from '../api/auth/frame.js';
        import { $, addIcons, dialog, icon, toast } from '../api/auth/frame.js';
@@ -13,6 +14,7 @@ import { h, passkeyButton, signIn } from './ui.js';
 
 // ------------------------------------------------------------------ the page
 export const $ = (s, el = document) => el.querySelector(s);
+export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 /** replaceChildren that leaves out null and false (as h() does) and flattens lists. */
 export const fill = (el, ...kids) => el.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false));
 /** append with the same manners. */
@@ -22,8 +24,9 @@ export const hue = (s) => { let x = 0; for (const c of s || '') x = (x * 31 + c.
 export const initials = (fn) => { const p = (fn || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
 /** A labelled field of a form. */
 export const fld = (l, e, hint) => h('label', { class: 'field' }, h('span', null, l), e, hint ? h('small', { class: 'muted' }, hint) : null);
-/** What this browser remembers for an app (the theme, the sidebar, a folded section): localStorage under the app's
-    name, and nothing when the browser keeps none (private mode). */
+/** What this browser remembers for an app (the sidebar, a folded section, the last tab): localStorage under the app's
+    name, and nothing when the browser keeps none (private mode). The appearance is not here: it is the suite's one
+    choice, kept with the account (applyTheme). */
 export const storeFor = (app) => ({
   get: (k) => { try { return localStorage.getItem(`${app}.${k}`); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(`${app}.${k}`, v); } catch { /* private mode */ } },
@@ -47,6 +50,7 @@ export const ICONS = {
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
+  more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
   menuOpen: 'M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z',
   minus: 'M19 13H5v-2h14v2z',
   money: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
@@ -65,6 +69,8 @@ export const ICONS = {
   upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
 };
 export function addIcons(more) { Object.assign(ICONS, more); }
+/** The icons the page itself names (<span class="ic" data-ic="menu">), drawn once the page's script is in. */
+export function paintIcons(root = document) { root.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic))); }
 export const icon = (n, cls = '') => { const s = document.createElement('span'); s.className = 'ic ' + cls; s.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ICONS[n] || ''}"/></svg>`; return s; };
 
 // ------------------------------------------------------------------ the note at the foot of the page
@@ -164,12 +170,13 @@ function appTile(a) {
   return el;
 }
 function suiteOutside(e) { if (suitePop && !suitePop.contains(e.target) && !e.target.closest('.suitebtn')) closeSuite(); }
-function suiteKey(e) { if (e.key === 'Escape') closeSuite(); }
+function suiteKey(e) { if (e.key === 'Escape' && suitePop) { closeSuite(); e.stopPropagation(); } }
 export function closeSuite() {
   if (!suitePop) return;
   suitePop.remove(); suitePop = null;
+  document.querySelectorAll('.suitebtn[aria-expanded]').forEach((b) => b.removeAttribute('aria-expanded'));
   document.removeEventListener('click', suiteOutside, true);
-  document.removeEventListener('keydown', suiteKey);
+  document.removeEventListener('keydown', suiteKey, true);
   removeEventListener('resize', closeSuite);
 }
 /** The menu under the button with the suite's mark: the apps, then the admin tools in a section of their own (the
@@ -181,10 +188,14 @@ export function toggleSuite(btn) {
   suitePop = h('div', { class: 'suitepop', role: 'menu', 'aria-label': 'ioSuite apps', style: { '--cols': String(Math.min(3, Math.max(apps.length, tools.length))) } },
     ...apps.map(appTile), ...(tools.length ? [h('div', { class: 'suitesec' }, 'Admin tools'), ...tools.map(appTile)] : []));
   document.body.append(suitePop);
+  btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect();
   suitePop.style.top = `${Math.round(r.bottom + 6)}px`;
   suitePop.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - suitePop.offsetWidth - 8)))}px`;
-  setTimeout(() => { document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey); addEventListener('resize', closeSuite); }, 0);
+  suitePop.querySelector('a')?.focus({ preventScroll: true });
+  // at once, not after a timer: a busy page runs a tap before a timer, so a quick tap outside left the menu open (the
+  // click that opened it has passed the document already, and suiteOutside ignores the button anyway)
+  document.addEventListener('click', suiteOutside, true); document.addEventListener('keydown', suiteKey, true); addEventListener('resize', closeSuite);
 }
 /** Settings › People, Apps, Servers and Keys: the suite's panel (api/suite-admin/ui.js), in the app's Settings page. */
 export async function suitePanel(el, r, cls = 'warn') {
@@ -192,6 +203,48 @@ export async function suitePanel(el, r, cls = 'warn') {
   try { ui = await import(new URL('api/suite-admin/ui.js', document.baseURI).href); } catch (e) { el.append(h('p', { class: cls }, `The panel did not load: ${e.message}`)); return; }
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
+/** Settings › This app (the app's admins): the settings the app declares (its app.json), kept in the suite's one
+    home for them and read as they are now, so a change takes hold without a restart. The same block in every app,
+    beside the app's own screens for the ones that need a picker or a list (those say so and are shown here only). */
+export async function appSettings(el, { toast: say = toast } = {}) {
+  const url = new URL('api/app-settings', document.baseURI).href;
+  let d;
+  try { d = await (await fetch(url, { headers: { Accept: 'application/json' } })).json(); } catch (e) { el.append(h('p', { class: 'warn' }, `The settings did not load: ${e.message}`)); return; }
+  if (!d || !d.settings) { el.append(h('p', { class: 'warn' }, (d && d.detail) || 'Only an admin of this app sees its settings.')); return; }
+  const save = async (st, value, back) => {
+    try {
+      const r = await fetch(`${url}/${encodeURIComponent(st.name)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value }) });
+      const n = await r.json();
+      if (!r.ok) throw new Error(n.detail || r.statusText);
+      st.value = (n.settings || []).find((x) => x.name === st.name)?.value ?? '';
+      say(st.value === '' ? 'Back to the default' : 'Saved');
+    } catch (e) { say(e.message); if (back) back(); }
+  };
+  const row = (st) => {
+    const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
+    let input;
+    if (st.byApp) input = h('div', { class: 'muted' }, st.value || fallback || 'not set');
+    else if (st.type === 'switch') {
+      const on = st.value !== '' ? /^(1|true|yes|on)$/i.test(st.value) : /^(1|true|yes|on)$/i.test(st.suite || st.default || '');
+      input = h('input', { type: 'checkbox', checked: on, onchange: (e) => save(st, e.target.checked, () => { e.target.checked = !e.target.checked; }) });
+    } else if (st.type === 'choice') {
+      const opts = (st.choices || []).map((c) => (Array.isArray(c) ? c : [c, c]));
+      input = h('select', { class: 't', onchange: (e) => save(st, e.target.value) },
+        h('option', { value: '', selected: st.value === '' ? true : null }, fallback || 'default'),
+        opts.map(([k, l]) => h('option', { value: k, selected: st.value === String(k) ? true : null }, l)));
+    } else {
+      input = h('input', { class: 't', type: st.type === 'number' ? 'number' : 'text', value: st.value, placeholder: fallback, autocomplete: 'off', spellcheck: false,
+        onchange: (e) => save(st, e.target.value.trim(), () => { e.target.value = st.value; }) });
+    }
+    const note = st.byApp ? 'Changed on its own screen here.' : st.restart ? 'Applies when the app starts again.' : '';
+    return h('div', { class: 'setrow' }, h('label', null, st.label, h('span', { class: 'muted small' }, st.name)),
+      h('div', null, input, st.hint ? h('div', { class: 'muted small' }, st.hint) : null, note ? h('div', { class: 'muted small' }, note) : null));
+  };
+  el.append(h('div', { class: 'box' }, h('h2', null, 'This app'),
+    h('p', { class: 'muted small' }, 'Every setting of this app, kept with the suite in one place: the same values Settings › Apps › All settings shows. A field left empty takes the default.'),
+    d.settings.map(row)));
+}
+
 /** The account panels (api/auth/ui.js), asked for when Settings opens. */
 export const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
 
@@ -261,9 +314,9 @@ export function userMenu(m, user, api, more) {
 }
 /** An entry of a menu that goes to an address of the page. */
 export const menuLink = (href, ic, label, close) => h('a', { class: 'mi', href, onclick: close }, icon(ic, 's'), label);
-/** The entry that steps the theme on: the device's, light, dark. apply(choice): the app's applyTheme. */
-export function themeEntry(store, apply, close) {
-  const theme = store.get('theme') || 'system';
+/** The entry that steps the suite's appearance on: the device's, light, dark. apply(choice): the app's applyTheme. */
+export function themeEntry(apply, close) {
+  const theme = themeChoice();
   return h('button', { class: 'mi', onclick: () => { const n = { system: 'light', light: 'dark', dark: 'system' }[theme]; apply(n); close(); toast(`Appearance: ${n}`); } },
     icon('theme', 's'), `Appearance: ${theme}`);
 }
@@ -283,6 +336,17 @@ export function applySidebar(store) {
   const [ic, title] = docked ? ['menuOpen', 'Hide the sidebar'] : innerWidth >= DOCK_MIN ? ['pin', 'Keep the sidebar open'] : ['close', 'Close the sidebar'];
   btn.replaceChildren(icon(ic)); btn.title = title; btn.setAttribute('aria-label', title);
 }
+/** The sidebar's own buttons, the same in every app: the menu button slides it over the page, the dimmed page and
+    choosing a row put it away (while it is not docked), and a window resized docks or undocks it. `rows`: which rows
+    put it away (ioCalendar keeps its calendar links from doing so). Escape stays with the app: what it answers to
+    first differs (a menu, a dialog, then the sidebar). */
+export function wireSidebar(store, { rows = 'a' } = {}) {
+  $('#menubtn').onclick = openNav;
+  $('#navscrim').onclick = closeNav;
+  $('#nav').addEventListener('click', (e) => { if (e.target.closest(rows) && !document.body.classList.contains('side-docked')) closeNav(); });
+  addEventListener('resize', () => applySidebar(store));
+  applySidebar(store);
+}
 /** What #sidebtn does: put a docked sidebar away, dock it on a wide screen, close it on a narrow one. */
 export function sidebarButton(store) {
   if (document.body.classList.contains('side-docked')) store.set('sidebar', '0');
@@ -291,11 +355,70 @@ export function sidebarButton(store) {
   applySidebar(store);
 }
 
+// ------------------------------------------------------------------ the sidebar's parts
+/** The pieces every app's sidebar is made of, so each app writes only its own rows:
+
+      const { head, link, sec, fold, shown, gap, more } = frame.navParts(store, { name: 'Docs', title: 'All documents', redraw: drawNav });
+      $('#nav').replaceChildren(...[head(), link('all', '#/', 'box', 'Everything', 12, r.view === 'all', '--c-blue'), more(moreSheet)]);
+
+    `store` is what this browser remembers for the app (which sections are folded away); `name` follows "io" in the
+    wordmark; `home` and `title` are the link on it; `redraw` is the app's own drawNav, called when a section is
+    folded or unfolded; `suite` says whether the other apps' menu is offered. */
+export function navParts(store, { name, home = '#/', title = '', redraw = () => {}, suite: hasSuite = () => suite.items.length }) {
+  const folded = new Set((store.get('navfold') || '').split(',').filter(Boolean));
+  const turn = (key) => { folded.has(key) ? folded.delete(key) : folded.add(key); store.set('navfold', [...folded].join(',')); redraw(); };
+  const mark = () => h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' });
+  const word = () => [h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, name)];
+  return {
+    folded,
+    /** A row: its view, where it goes, its icon, its label, a count, whether it is the one shown, its colour (a
+        --c-* token or a colour of its own) and how far it is indented. */
+    link: (v, href, ic, label, n, on, hue, depth) => h('a', { href, 'data-v': v, class: on ? 'on' : null,
+      style: { ...(hue ? { '--hue': String(hue).startsWith('--') ? `var(${hue})` : hue } : {}), ...(depth ? { paddingLeft: `${12 + depth * 14}px` } : {}) } },
+      icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null),
+    /** A heading over a group of rows, with a button of its own at the end (a new list, a new cookbook). */
+    sec: (label, btn) => h('div', { class: 'navsec' }, h('span', null, label), btn || null),
+    /** A heading whose group folds away, remembered on this device; folded, it says how many it holds. */
+    fold: (key, label, n, btn) => h('div', { class: `navsec${folded.has(key) ? ' folded' : ''}` },
+      h('button', { class: 'fold', 'aria-expanded': String(!folded.has(key)), title: folded.has(key) ? `Show the ${label.toLowerCase()}` : `Fold the ${label.toLowerCase()} away`,
+        onclick: () => turn(key) }, icon('next', 's'), h('span', null, label), folded.has(key) && n ? h('span', { class: 'fn' }, n) : null), btn || null),
+    /** What a folded group still shows: the row you are on. */
+    shown: (key, list, on) => (folded.has(key) ? list.filter(on) : list),
+    /** The space between two groups. */
+    gap: () => h('div', { class: 'navgap' }),
+    /** The top: the app's mark (the suite's menu where other apps are there), its name, and the sidebar's button. */
+    head: () => h('div', { class: 'navhead' },
+      hasSuite()
+        ? h('div', { class: 'brand' },
+          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) }, mark()),
+          h('a', { class: 'brand-name', href: home, title: title || null }, word()))
+        : h('a', { class: 'brand', href: home, title: title || null }, mark(), h('span', { class: 'brand-name' }, word())),
+      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: () => sidebarButton(store) })),
+    /** The More row, which opens the rest on a phone's bottom bar. */
+    more: (onclick, label = 'More') => h('button', { class: 'navmore', 'data-v': 'more', title: label, onclick }, icon('more'), h('span', { class: 'nl' }, label)),
+  };
+}
+
 // ------------------------------------------------------------------ the theme
-/** The theme this browser keeps for the app (`store`): the device's unless Settings › Appearance chose light or dark.
-    With `choice`, that is kept first. (static/js/theme.js applies it before the page draws.) */
-export function applyTheme(store, choice) {
-  if (choice) store.set('theme', choice);
-  const t = choice || store.get('theme') || 'system';
+// One appearance choice for the whole suite: it is kept with the account, so every app and every browser follows it,
+// and mirrored under one key here so a page draws in it at once (api/auth/theme.js, before any module loads).
+const THEME_KEY = 'iosuite.theme';
+export const themeChoice = () => { try { return localStorage.getItem(THEME_KEY) || 'system'; } catch { return 'system'; } };
+/** The appearance: the device's unless light or dark was chosen. With `choice`, that becomes the suite's choice (kept
+    in this browser and, when somebody is signed in, with the account; `save: false` leaves the saving to the caller). */
+export function applyTheme(choice, { save = true } = {}) {
+  if (choice) {
+    try { localStorage.setItem(THEME_KEY, choice); } catch { /* private mode */ }
+    if (save) fetch(new URL('api/auth/settings', document.baseURI).href,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme: choice }) }).catch(() => { /* not signed in */ });
+  }
+  const t = choice || themeChoice();
   if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+}
+/** The choice the account carries (/api/auth/me settings.theme), taken as a page loads: one made in another app, or
+    in another browser, takes hold here too. */
+export function themeFromAccount(settings) {
+  const t = (settings || {}).theme;
+  if (t && t !== themeChoice()) { try { localStorage.setItem(THEME_KEY, t); } catch { /* private mode */ } }
+  applyTheme();
 }

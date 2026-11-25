@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.concurrency import run_in_threadpool
 
 from iosuite_shared import prefix
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
-from iostart.auth import auth
+from iostart import auth
 from iostart import access, trmnl
 from iostart.trmnl import push as trmnlpush, server as trmnlserver
 

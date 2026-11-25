@@ -1,5 +1,6 @@
 /** The sidebar (views, folders, tags) and the list of notes. */
-import { $, h, api, state, icon, fmtDate, colorVar, menu, colorPicker, ask, confirmIt, toast, fail, canWrite, hasFamily, familyWrite, dialog, displayTitle } from './core.js';
+import * as frame from '../../api/auth/frame.js';
+import { $, h, api, state, icon, fmtDate, colorVar, menu, colorPicker, ask, confirmIt, toast, fail, canWrite, hasFamily, familyWrite, dialog, displayTitle, store } from './core.js';
 import { taskCounts } from './markdown.js';
 
 export const view = { v: 'all', f: null, t: null, q: '', sort: localSort(), n: null };
@@ -68,12 +69,13 @@ function dropTarget(el, folderId) {
  *  and More, which opens the rest (moreSheet). */
 export function renderNav() {
   const m = state.meta, nav = $('#nav');
-  [...nav.children].forEach((c) => { if (!c.classList.contains('navhead')) c.remove(); });
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, ioNote's own rows
+  const { head, sec } = frame.navParts(store, { name: 'Note', home: '#/notes', title: 'All notes', redraw: renderNav });
+  nav.replaceChildren(head());
   const to = (changes) => hashFor({ v: 'all', f: null, t: null, n: null, q: '', ...changes });
   const page = location.hash.replace(/^#/, '').split(/[?/]/)[1] || 'notes';
   const notes = page === 'notes' || page === 'note';
   const on = (v) => notes && view.v === v && (v !== 'all' || !view.q);
-  const sec = (label, btn) => h('div.navsec', h('span', label), btn || null);
   const out = [
     navItem('All notes', 'notes', m.total, on('all'), to({}), 'var(--c-teal)', '.bar'),
     navItem('Pinned', 'pin', m.pinned || null, on('pinned'), to({ v: 'pinned' }), 'var(--c-orange)', '.bar'),
@@ -107,6 +109,7 @@ export function renderNav() {
       navItem('Settings', 'gear', null, page === 'settings', '#/settings', null, '.foot'),
       h('div#status', { role: 'status', 'aria-live': 'polite' }, statusText)));
   nav.append(...out.filter(Boolean));
+  frame.applySidebar(store);
 }
 
 let statusText = '';
@@ -137,7 +140,7 @@ function moreSheet() {
       : h('p.muted.small', canWrite() ? 'No folders yet: make one with +.' : 'No folders yet.'),
     m.tags.length ? [h('h4.sheeth', 'Tags'), h('div.chips', m.tags.map((t) => chip(to({ v: 'tag', t: t.name }), '#' + t.name, t.color ? colorVar(t.color) : null, view.v === 'tag' && view.t === t.name)))] : null);
   const p = dialog('More', content, [{ label: 'Close' }]);
-  close = () => { const b = content.closest('.dialog'); if (b) b.querySelector('.acts button').click(); };
+  close = () => frame.closeDialogs();
   return p;
 }
 

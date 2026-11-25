@@ -52,7 +52,7 @@ export function lonePoints(u, sidx, show) {
 }
 
 export function chart(el, { xs, series, height = 240, sync, xTime = true, xRange, xFmt, xIncrs, xSpace, bands, legend = true, yRange, hooks, axisFmt, incrs, zoom = true }) {
-  const muted = cssVar('--muted'), line = cssVar('--line');
+  const muted = cssVar('--fg2'), line = cssVar('--line');
   const scales = { x: { time: xTime } };
   const axes = [{ stroke: muted, grid: { stroke: line, width: 1 }, ticks: { stroke: line }, values: xFmt, incrs: xIncrs }];
   if (xSpace) axes[0].space = xSpace; // an undefined space would replace uPlot's default and drop every label
@@ -225,7 +225,7 @@ export function sparkline(values, { w = 190, h: ht = 38, color = cssVar('--accen
   } else {
     svg.append(s('path', { d: pts.map((p, k) => (k ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(''), fill: 'none', stroke: color, 'stroke-width': 1.8, 'vector-effect': 'non-scaling-stroke' }));
   }
-  if (goal != null && isFinite(goal)) svg.append(s('line', { x1: 0, x2: w, y1: Y(goal), y2: Y(goal), stroke: cssVar('--good'), 'stroke-width': 1.2, 'stroke-dasharray': '4 3', 'vector-effect': 'non-scaling-stroke' }));
+  if (goal != null && isFinite(goal)) svg.append(s('line', { x1: 0, x2: w, y1: Y(goal), y2: Y(goal), stroke: cssVar('--ok'), 'stroke-width': 1.2, 'stroke-dasharray': '4 3', 'vector-effect': 'non-scaling-stroke' }));
   return svg;
 }
 

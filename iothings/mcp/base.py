@@ -5,13 +5,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iothings import __version__, config, model
+from iothings import config, db, model
 
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who",
            "find_item", "find_location", "item_out", "summary", "guard"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioThings", __version__,
+    config.APP,
     instructions=(
         "The things in the family's house (ioThings): appliances, tools, furniture, electronics, the car. Start with "
         "overview: who you are, how many things there are, the places and labels, and what needs doing soon. "
@@ -23,6 +23,7 @@ server = shared_mcp.make_server(
         "warranties_ending. Dates are YYYY-MM-DD; prices are in the currency (overview says which). Ask "
         "before deleting a thing; archiving keeps its story (archived=true)."
     ),
+    counts=db.counts,
 )
 
 

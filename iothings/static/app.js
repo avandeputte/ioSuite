@@ -6,7 +6,7 @@
    as in the other ioSuite apps. */
 import { client, h, safeUrl } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, initials, menuOpen, openNav, popMenu, put, toast, toggleSuite } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeMenu, closeNav, confirmDialog, dialog, fail, fill, fld, hue, icon, initials, menuOpen, openNav, popMenu, put, toast } from '../api/auth/frame.js';
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
 // ------------------------------------------------------------------ helpers
@@ -89,7 +89,6 @@ function drawUser() { frame.userMenu($('#usermenu'), S.user, api); }
 /* The suite (iosuite_shared's suite_apps): when other ioSuite apps are registered, the app mark top left (in the sidebar; in
    the top bar on a phone) opens a menu of them, each a link to that app. Alone, the mark stays the link to all the things. */
 async function loadSuite() { S.suite = await frame.loadSuite(api); drawNav(); }
-function applyTheme(choice) { frame.applyTheme(store, choice); }
 
 
 /* The sidebar, as in the other io apps: the name on top, the things (all of them, what needs upkeep, warranties ending,
@@ -100,39 +99,23 @@ const VIEWS = { all: ['All things', 'box', '--c-blue'], upkeep: ['Upkeep', 'buil
 const viewCount = (k) => ({ all: S.counts.items, upkeep: S.counts.upkeepDue, warranty: S.counts.warrantySoon, archived: S.counts.archived }[k] || null);
 function drawNav() {
   const nav = $('#nav'); const r = route();
-  const link = (v, href, ic, label, n, on, hueVar, depth) => h('a', { href, 'data-v': v, class: on ? 'on' : null, style: { ...(hueVar ? { '--hue': `var(${hueVar})` } : {}), ...(depth ? { paddingLeft: `${12 + depth * 14}px` } : {}) } },
-    icon(ic), h('span', { class: 'nl' }, label), n ? h('span', { class: 'n' }, n) : null);
-  const sec = (label, btn) => h('div', { class: 'navsec' }, h('span', null, label), btn || null);
+  // the sidebar's parts, the same in every app (iosuite_shared/static/frame.js); below them, its own rows
+  const { head, link, sec, fold, shown, gap, more } = frame.navParts(store, { name: 'Things', title: 'All things', redraw: drawNav });
   // Places, Family and Labels fold away (remembered on this device); folded, a section still shows the one you are on
-  const folded = new Set((store.get('navfold') || '').split(',').filter(Boolean));
-  const fold = (key, label, n, btn) => h('div', { class: `navsec${folded.has(key) ? ' folded' : ''}` },
-    h('button', { class: 'fold', 'aria-expanded': String(!folded.has(key)), title: folded.has(key) ? `Show the ${label.toLowerCase()}` : `Fold the ${label.toLowerCase()} away`,
-      onclick: () => { folded.has(key) ? folded.delete(key) : folded.add(key); store.set('navfold', [...folded].join(',')); drawNav(); } },
-    icon('next', 's'), h('span', null, label), folded.has(key) && n ? h('span', { class: 'fn' }, n) : null), btn || null);
-  const shown = (key, list, on) => folded.has(key) ? list.filter(on) : list;
   const labelLink = (t) => { const a = link('label', `#/label/${t.id}`, 'tag', t.name, t.count || null, r.view === 'label' && r.id === t.id, t.color ? null : '--c-slate'); if (t.color) a.style.setProperty('--hue', t.color); return a; };
-  const brandName = () => [h('span', { class: 'io' }, 'io'), h('span', { class: 'nm' }, 'Things')];
   nav.replaceChildren(...[
-    h('div', { class: 'navhead' },
-      S.suite.length
-        ? h('div', { class: 'brand' },
-          h('button', { class: 'suitebtn', title: 'ioSuite apps', 'aria-label': 'ioSuite apps', 'aria-haspopup': 'menu', onclick: (e) => toggleSuite(e.currentTarget) },
-            h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' })),
-          h('a', { class: 'brand-name', href: '#/', title: 'All things' }, brandName()))
-        : h('a', { class: 'brand', href: '#/', title: 'All things' }, h('img', { src: 'static/icons/mark.svg', alt: '', class: 'brand-mark' }),
-          h('span', { class: 'brand-name' }, brandName())),
-      h('button', { id: 'sidebtn', class: 'iconbtn', onclick: sidebarButton })),
+    head(),
     Object.entries(VIEWS).map(([k, [label, ic, hv]]) => link(k, `#/${k}`, ic, label, viewCount(k), r.view === k, hv)),
-    h('button', { class: 'navmore', 'data-v': 'more', title: 'More', onclick: moreSheet }, icon('more'), h('span', { class: 'nl' }, 'More')),
-    S.locations.length || canAdd() ? [h('div', { class: 'navgap' }),
+    more(moreSheet),
+    S.locations.length || canAdd() ? [gap(),
       fold('places', 'Places', S.locations.length, canAdd() ? h('button', { class: 'iconbtn', title: 'New place', 'aria-label': 'New place', onclick: () => placeDialog(null) }, icon('add', 's')) : null),
       shown('places', S.locations, (l) => r.view === 'place' && r.id === l.id).map((l) => link('place', `#/place/${l.id}`, l.depth ? 'subdir' : 'place', l.name, l.count || null, r.view === 'place' && r.id === l.id, '--c-indigo', l.depth))] : null,
-    S.family.length ? [h('div', { class: 'navgap' }), fold('family', 'Family', S.family.length),
+    S.family.length ? [gap(), fold('family', 'Family', S.family.length),
       shown('family', S.family, (m) => r.view === 'person' && r.id === m.id).map((m) => h('a', { href: `#/person/${m.id}`, 'data-v': 'person', class: `who${r.view === 'person' && r.id === m.id ? ' on' : ''}`, title: `${possessive(m.displayName)} things` },
         memberBadge(m, true), h('span', { class: 'nl' }, m.displayName), m.count ? h('span', { class: 'n' }, m.count) : null))] : null,
-    S.labels.length ? [h('div', { class: 'navgap' }), fold('labels', 'Labels', S.labels.length),
+    S.labels.length ? [gap(), fold('labels', 'Labels', S.labels.length),
       shown('labels', S.labels.slice(0, 30), (t) => r.view === 'label' && r.id === t.id).map(labelLink)] : null,
-    canAdd() ? [h('div', { class: 'navgap' }), sec('Add'),
+    canAdd() ? [gap(), sec('Add'),
       link('new', '#/new', 'add', 'New thing', null, r.view === 'new', '--c-blue'),
       link('import', '#/import', 'download', 'Import and export', null, r.view === 'import', '--c-teal')] : null,
     h('div', { class: 'navfoot' }, link('settings', '#/settings', 'settings', 'Settings', null, r.view === 'settings')),
@@ -141,7 +124,6 @@ function drawNav() {
   $('.navmore')?.classList.toggle('on', ['place', 'label', 'person', 'import', 'new', 'settings', 'search', 'places'].includes(r.view));
 }
 function applySidebar() { frame.applySidebar(store); }
-function sidebarButton() { frame.sidebarButton(store); }
 
 /** Phones: what the bottom bar has no room for (the places, the labels, adding, settings). */
 function moreSheet() {
@@ -770,11 +752,11 @@ async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
     ...(adm ? [['things', 'Things']] : []),
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, things: setThings, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, things: setThings, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 
 /** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
@@ -791,7 +773,7 @@ async function setDisplay(el) {
   const ui = await accountUi();
   const sv = h('select', { class: 't', onchange: async (e) => { await saveSettings({ startView: e.target.value }); toast('Saved'); } },
     Object.entries(VIEWS).map(([v, [l]]) => h('option', { value: v, selected: v === (S.settings.startView || 'all') ? true : null }, l)));
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || store.get('theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })),
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(frame.themeChoice(), frame.applyTheme)),
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Things'), h('div', { class: 'grid' }, fld('Open on', sv))));
 }
 
@@ -810,6 +792,9 @@ async function setThings(el) {
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 // ------------------------------------------------------------------ sign-in
@@ -817,13 +802,13 @@ function showSignIn() { frame.signInScreen({ api, name: 'Things', first: !S.stat
 
 // ------------------------------------------------------------------ start
 async function start() {
-  applyTheme();
+  frame.applyTheme();
   document.querySelectorAll('[data-ic]').forEach((el) => el.replaceWith(icon(el.dataset.ic)));
   S.status = await api('api/status');
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  frame.themeFromAccount(S.settings);
   drawUser();
   const nb = $('#newbtn');
   nb.hidden = !canAdd();

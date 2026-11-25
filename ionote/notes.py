@@ -69,6 +69,17 @@ NO_FAMILY, FAMILY_READ, FAMILY_WRITE = 0, 1, 2  # what the one asking may do wit
 current_family = contextvars.ContextVar("ionote_family", default=FAMILY_WRITE)  # as the owner's default: an open install
 
 
+def family_for(user) -> int:
+    """What an account may do with the Family space's notes: editors and admins change them, everyone else with a
+    role reads them; a visitor sees none, and an install without accounts has no family."""
+    from iosuite_shared import users as shared
+    if not user:
+        return NO_FAMILY
+    if shared.can_write(user):
+        return FAMILY_WRITE
+    return FAMILY_READ if shared.is_signed_in(user) else NO_FAMILY
+
+
 def family_read() -> bool:
     return owner() != NOBODY and current_family.get() >= FAMILY_READ
 
@@ -839,11 +850,11 @@ def ensure_standard_templates(user: str = "ioNote") -> int:
         return 0
     key = f"standard_templates:{o}"
     try:
-        if int(db.get_setting(key, "0") or 0) >= STANDARD_VERSION:
+        if int(db.get_state(key, "0") or 0) >= STANDARD_VERSION:
             _seeded.add(o)
             return 0
-        added = _add_standard(user, since=int(db.get_setting(key, "0") or 0))
-        db.set_setting(key, STANDARD_VERSION)
+        added = _add_standard(user, since=int(db.get_state(key, "0") or 0))
+        db.set_state(key, STANDARD_VERSION)
         _seeded.add(o)
         return added
     except Exception:  # never stand in the way of loading notes

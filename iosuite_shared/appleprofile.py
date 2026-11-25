@@ -155,7 +155,7 @@ def router(auth, base_url):
     from fastapi.responses import Response
     from starlette.concurrency import run_in_threadpool
 
-    from iosuite_shared.access import json_body
+    from iosuite_shared.http import json_body
     r = APIRouter()
     here = auth.app
 

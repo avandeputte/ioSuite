@@ -23,11 +23,11 @@ import re
 
 from fastapi import APIRouter, HTTPException, Request
 from iosuite_shared import push
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
 from iohealth import access, db, webapi
-from iohealth.auth import uid as uid_of
+from iohealth.hooks import uid as uid_of
 
 log = logging.getLogger("iohealth.meds")
 router = APIRouter()

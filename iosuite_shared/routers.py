@@ -8,8 +8,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from iosuite_shared import admin as suite_admin, apppasswords, doors, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
-from iosuite_shared.access import UNCLAIMED, json_body, public_user
+from iosuite_shared import admin as suite_admin, apppasswords, db, doors, estate, family, pages, passkeys, persondata, proxyauth, push, sessions, suite, suiteupdates, twostep, users
+from iosuite_shared.access import UNCLAIMED, public_user
+from iosuite_shared.http import json_body
 from iosuite_shared.proxyauth import authlog, peer_of
 
 STATUS_PATH = "/api/status"
@@ -203,6 +204,12 @@ def auth_router(self) -> APIRouter:
         """The frame the apps' pages share (static/frame.js): icons, the note at the foot of the page, dialogs, the
         menu of the suite's apps, the sidebar, the theme: import { ... } from '../api/auth/frame.js'."""
         return pages.send(request, pages.SHARED / "frame.js", "text/javascript")
+
+    @r.get("/api/auth/theme.js", dependencies=[access.public])
+    def api_theme(request: Request):
+        """The two lines that apply the suite's one appearance choice before the page draws (static/theme.js), named
+        in the <head> of every app's page: <script src="api/auth/theme.js"></script>."""
+        return pages.send(request, pages.SHARED / "theme.js", "text/javascript")
 
     @r.get("/api/auth/base.css", dependencies=[access.public])
     def api_base_css(request: Request):
@@ -815,6 +822,53 @@ def admin_router(self) -> APIRouter:
         return {**proxyauth.suite_status(), "here": auth.proxy.status()}
 
     return r
+
+# ---- the app's own settings: one home for them, the same screen in every app
+SETTINGS_PATH = "/api/app-settings"   # its own name: several apps already serve /api/settings themselves
+
+
+def settings_router(self) -> APIRouter:
+    """GET /api/app-settings and PUT /api/app-settings/<NAME>, for this app's admins: the settings the app declares
+    (app.json, iosuite_shared.config.declared) with the value stored now in the Shared ioSuite database. The same
+    values Settings › Apps › All settings shows, so there is one home for them and one way to change them.
+
+        {app, settings: [{name, label, hint, type, default?, choices?, restart?, value, suite?}]}
+
+    A value is read as it is now wherever the app uses it (App.setting), so a change takes hold at once; the ones
+    marked "restart" say so on the screen."""
+    auth, access, app = self, self.access, self.app
+    r = APIRouter(prefix=SETTINGS_PATH)
+
+    def mine() -> dict:
+        from iosuite_shared import config
+        whole = db.settings_of("")
+        own = db.settings_of(app)
+        said = {d["name"] for d in config.declared("")}
+        out = []
+        for d in config.declared(app):
+            one = dict(d, value=own.get(d["name"]) or "")
+            if d["name"] in said and whole.get(d["name"]):
+                one["suite"] = whole[d["name"]]   # what it falls back to while it has none of its own
+            out.append(one)
+        return {"app": app, "settings": out}
+
+    @r.get("", dependencies=[access.admin])
+    def api_settings(request: Request):
+        return mine()
+
+    @r.put("/{name}", dependencies=[access.admin_write])
+    async def api_settings_save(request: Request, name: str):
+        """Body: {value} (empty or absent: back to the default). One setting, cleaned as the suite panel cleans it."""
+        body = await json_body(request)
+        try:
+            suite_admin.set_setting(app, name, body.get("value"))
+        except LookupError as e:
+            raise HTTPException(404, str(e).strip("'\""))
+        authlog.info("%s: the setting %s was changed by %s", app, name, (auth.current_user(request) or {}).get("name"))
+        return mine()
+
+    return r
+
 
 # ---- the status: public, the same shape in every app
 def status_router(self, updater=None, extra=None) -> APIRouter:

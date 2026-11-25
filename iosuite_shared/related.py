@@ -44,7 +44,7 @@ from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
 from iosuite_shared import catalog, db, links, pages, stamp, suite, users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 log = logging.getLogger("iosuite_shared.related")
 

@@ -33,6 +33,13 @@ def need_tool(name: str, available=None, module_level: bool = False):
     pytest.skip(msg, allow_module_level=module_level)
 
 
+def pixsetting(name: str, value):
+    """One of ioPix's settings, in the suite's one home for them (the Shared ioSuite database, declared in
+    iopix/app.json): what Settings and `iosuite set iopix NAME VALUE` write. '' puts the default back."""
+    from iosuite_shared import db as authdb
+    authdb.set_setting(name, value, "iopix")
+
+
 def clear_accounts(db_path=None):
     """Back to the open mode the app has before the first admin exists: every account in the Shared ioSuite database
     goes (the tests use a database of their own, iopix_test_auth). `db_path` is kept for the browser tests' server,
@@ -47,7 +54,7 @@ def clear_accounts(db_path=None):
     testing.restore_stored()  # what ioPix reads as it starts: a job process started later reads it too
     authdb.set_setting("require_login", "0", "iopix")  # sign-in required is on by default; most tests browse as a visitor once accounts exist
     authdb.ex("DELETE FROM ios_apps")
-    from iopix.auth import auth
+    from iopix import auth
     auth._registered = False  # the next request registers iopix in the list of apps again
     shared_users.invalidate()  # the accounts cache must not outlive the rows
     if db_path is not None:  # another process (the browser tests' server) keeps its own cache: let it expire

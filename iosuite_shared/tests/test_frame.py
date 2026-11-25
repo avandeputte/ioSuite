@@ -79,3 +79,42 @@ def test_the_apps_take_the_frame_from_the_suite_and_keep_no_copy_of_it():
 def test_what_frame_uses_of_the_account_panels_is_there():
     used = re.search(r"^import \{([^}]*)\} from './ui.js';", (SHARED / "frame.js").read_text(encoding="utf-8"), re.M).group(1)
     assert {x.strip() for x in used.split(",")} <= _exports(SHARED / "account-panel.js")
+
+
+def test_the_page_is_the_shell_every_app_shares(): 
+    """The nine apps with a sidebar keep no page of their own: it is built from the shell and their manifest
+    (app.json's `page`), so a change to the page reaches them all."""
+    from iosuite_shared import pages
+    for app in FRAME:
+        if app == "iostart":
+            continue
+        own = ROOT / app / "static" / "index.html"
+        assert not own.exists(), f"{app} keeps a page of its own: the shell is iosuite_shared/static/page.html"
+        m = catalog.APPS[app]
+        html = pages.shell(m)
+        assert f"<title>{m['name']}</title>" in html and m["color"] in html
+        assert 'src="api/auth/theme.js"' in html and 'href="api/auth/base.css"' in html, app
+        said = m.get("page") or {}
+        assert ('id="q"' in html) is bool(said.get("search")), app
+        assert ('id="newbtn"' in html) is bool(said.get("new")), app
+        if said.get("search"):
+            assert said["search"] in html and f'aria-label="{said.get("searchLabel") or "Search"}"' in html, app
+        if said.get("new"):
+            assert f'title="{said["new"]}"' in html and f'<span>{said.get("newLabel") or "New"}</span>' in html, app
+            newbtn = [ln for ln in html.splitlines() if 'id="newbtn"' in ln][0]
+            assert ("hidden>" in newbtn) is bool(said.get("newHidden")), app  # ioDNS shows it only where it may be used
+    assert '<div class="grow"></div>' in pages.shell(catalog.APPS["iobackup"]), "no search box, no New button: the bar stretches"
+
+
+def test_the_sidebar_is_made_of_the_parts_every_app_shares():
+    """Each app's drawNav says only its own rows: the head, the rows, the headings and the More button are the
+    frame's (navParts), so none of them drifts."""
+    own = re.compile(r"class: 'navhead'|class: 'navmore'|class: `?navsec|class: 'navgap'")
+    for app in FRAME:
+        if app == "iostart":  # its own page, with no sidebar
+            continue
+        text = "\n".join(f.read_text(encoding="utf-8") for f in _scripts(app))
+        assert "frame.navParts(store, {" in text, f"{app}'s sidebar does not use the shared parts"
+        left = own.findall(text)
+        assert not left, f"{app} draws its own {left} beside the frame's"
+

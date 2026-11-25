@@ -8,10 +8,9 @@ suite.
 """
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from iosuite_shared import application, users as shared_users
+from iosuite_shared import application
 
-from iobackup import __version__, api, config, db, engine, gdrive, model, tasks
-from iobackup.auth import auth, updater
+from iobackup import api, config, engine, gdrive, model, suite_app, tasks
 
 
 def _jobs() -> list:
@@ -21,11 +20,11 @@ def _jobs() -> list:
 
 
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="Backups of MariaDB and Galera servers, on demand or on a schedule, to a local folder or Google Drive, "
                 "keeping the newest N, and a restore of exactly the databases, tables and users picked.",
-    prepare=(db.migrate, shared_users.init), jobs=_jobs, stop=(tasks.stop,),
-    limit_for=lambda path, ctype: config.MAX_JSON_BYTES, not_found=(model.NotFound,),
+    jobs=_jobs, stop=(tasks.stop,),
+    not_found=(model.NotFound,),
     related=False, routers=(api.router,))
 
 

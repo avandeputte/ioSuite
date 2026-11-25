@@ -25,9 +25,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from iosuite_shared import credentials, links
+from iosuite_shared import admin as suite_admin, credentials, db as shared_db, links
 
-from iostart import config, db
+from iostart import config
 
 APP = config.APP
 from iostart.homeassistant.feed import Feed
@@ -97,19 +97,21 @@ def _saved() -> dict:
     c = _conf["v"]
     if c is not None and now - _conf["at"] < SETTINGS_TTL:
         return c
-    rows = {r["name"]: r["value"] for r in db.q("SELECT name, value FROM prt_settings WHERE name IN "
-                                                "('ha_url', 'ha_entities', 'ha_builtin_alerts', 'ha_name')")}
+    try:
+        rows = shared_db.settings_of(APP)   # the suite's one home for an app's settings
+    except Exception:  # noqa: BLE001 - the shared database is away
+        rows = {}
     try:
         tok = credentials.get(APP, "ha_token").strip()
     except Exception:  # noqa: BLE001 - the shared database is away
         tok = ""
     try:
-        items = json.loads(rows["ha_entities"]) if rows.get("ha_entities") else []
+        items = json.loads(rows["HA_ENTITIES"]) if rows.get("HA_ENTITIES") else []
     except ValueError:
         items = []
     chosen = [_clean(e) for e in items if isinstance(e, dict) and _ENTITY_RE.match(str(e.get("id", "")))]
-    c = {"url": rows.get("ha_url") or "", "token": tok, "entities": chosen, "ids": {e["id"] for e in chosen},
-         "builtin": rows.get("ha_builtin_alerts") != "0", "name": rows.get("ha_name") or ""}
+    c = {"url": rows.get("HA_URL") or "", "token": tok, "entities": chosen, "ids": {e["id"] for e in chosen},
+         "builtin": rows.get("HA_BUILTIN_ALERTS") != "0", "name": rows.get("HA_NAME") or ""}
     _conf.update(at=now, v=c)
     return c
 
@@ -166,7 +168,7 @@ def save(changes: dict, by: str = None) -> None:
         u = str(changes["url"] or "").strip().rstrip("/")
         if u and not re.match(r"^https?://[^\s/]+", u):
             raise HAError("The address starts with http:// or https://", 400)
-        db.set_setting("ha_url", u or None)
+        suite_admin.set_setting(config.APP, "HA_URL", u)
     if "token" in changes:
         credentials.put(APP, "ha_token", str(changes["token"] or "").strip(), by=by)
     if "entities" in changes:
@@ -182,9 +184,9 @@ def save(changes: dict, by: str = None) -> None:
                 continue
             seen.add(e["id"])
             out.append(_clean(e))
-        db.set_setting("ha_entities", json.dumps(out))
+        suite_admin.set_setting(config.APP, "HA_ENTITIES", json.dumps(out))
     if "builtinAlerts" in changes:
-        db.set_setting("ha_builtin_alerts", "1" if changes["builtinAlerts"] else "0")
+        suite_admin.set_setting(config.APP, "HA_BUILTIN_ALERTS", bool(changes["builtinAlerts"]))
     reload()
     if "url" in changes or "token" in changes:
         feed.restart()
@@ -301,7 +303,7 @@ def test(base: str = "", tok: str = "") -> dict:
     states = _call("GET", "/api/states", base=base, tok=tok)
     name = str(cfg.get("location_name") or "Home")
     if base == url() and tok == token():
-        db.set_setting("ha_name", name)
+        suite_admin.set_setting(config.APP, "HA_NAME", name)
         reload()
     return {"ok": True, "name": name, "version": cfg.get("version"), "entities": len(states) if isinstance(states, list) else 0}
 

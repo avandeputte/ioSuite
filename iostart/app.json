@@ -76,10 +76,144 @@
       "default": "1"
     },
     {
+      "name": "MAIL_ON",
+      "label": "Suite inbox: read the mailbox",
+      "type": "switch",
+      "default": "1",
+      "byApp": true,
+      "hint": "Set on the start page, under Inbox › Mailbox, with the four below."
+    },
+    {
+      "name": "MAIL_HOST",
+      "label": "Suite inbox: mail server",
+      "type": "text",
+      "byApp": true,
+      "hint": "The IMAP server the suite's mailbox is on, like imap.gmail.com. Its password is under Keys and tokens."
+    },
+    {
+      "name": "MAIL_PORT",
+      "label": "Suite inbox: port",
+      "type": "number",
+      "default": "993",
+      "byApp": true
+    },
+    {
+      "name": "MAIL_USER",
+      "label": "Suite inbox: user name",
+      "type": "text",
+      "byApp": true,
+      "hint": "Usually the mailbox's address."
+    },
+    {
+      "name": "MAIL_FOLDER",
+      "label": "Suite inbox: folder",
+      "type": "text",
+      "default": "INBOX",
+      "byApp": true
+    },
+    {
       "name": "TRMNL_PUSH",
       "label": "Push TRMNL screens",
       "type": "switch",
       "default": "1"
+    },
+    {
+      "name": "PHOTO_STRIP",
+      "label": "Photos under the tiles",
+      "type": "choice",
+      "default": "rediscover",
+      "choices": [
+        [
+          "rediscover",
+          "A row of photos at random"
+        ],
+        [
+          "onthisday",
+          "On this day"
+        ],
+        [
+          "off",
+          "None"
+        ]
+      ],
+      "hint": "What everyone sees under the tiles; each person may pick another in Customize."
+    },
+    {
+      "name": "WEATHER_UNITS",
+      "label": "Weather in",
+      "type": "choice",
+      "default": "metric",
+      "choices": [
+        [
+          "metric",
+          "Celsius and millimetres"
+        ],
+        [
+          "imperial",
+          "Fahrenheit and inches"
+        ]
+      ],
+      "hint": "Each person may pick their own in Customize."
+    },
+    {
+      "name": "WEATHER_LOCATION",
+      "label": "Weather location",
+      "type": "text",
+      "byApp": true,
+      "hint": "The place Settings › Weather picked, as AccuWeather's own key for it."
+    },
+    {
+      "name": "WEATHER_LOCATION_NAME",
+      "label": "Weather location name",
+      "type": "text",
+      "byApp": true,
+      "hint": "What that place is called, as AccuWeather gave it."
+    },
+    {
+      "name": "HA_URL",
+      "label": "Home Assistant address",
+      "type": "text",
+      "hint": "http://homeassistant.local:8123, or wherever it answers. Its token is under Keys and tokens."
+    },
+    {
+      "name": "HA_NAME",
+      "label": "What Home Assistant calls the house",
+      "type": "text",
+      "byApp": true,
+      "hint": "Learned when Settings › Home Assistant tests the connection."
+    },
+    {
+      "name": "HA_ENTITIES",
+      "label": "Home Assistant things shown",
+      "type": "text",
+      "byApp": true,
+      "hint": "The lights, switches and sensors picked in Settings › Home Assistant."
+    },
+    {
+      "name": "HA_BUILTIN_ALERTS",
+      "label": "Home Assistant's own warnings",
+      "type": "switch",
+      "default": "1",
+      "hint": "Show the warnings Home Assistant itself raises on the start page. Off: only the things picked above."
     }
-  ]
+  ],
+  "limits": {
+    "json": 2,
+    "import": 20
+  },
+  "bodies": [
+    {
+      "path": "*/import*",
+      "limit": "import"
+    },
+    {
+      "path": "*/api/news/opml",
+      "limit": "import"
+    },
+    {
+      "path": "/dav/*",
+      "limit": "import"
+    }
+  ],
+  "mcp": "The suite's one MCP server: an AI assistant connected here with an ioStart app password uses every app's tools as you (each app's own MCP server has to be on), and suite admins can update every app at once."
 }

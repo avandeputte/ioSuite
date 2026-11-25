@@ -1,5 +1,5 @@
 import { $, S, api, fail, h, icon, loadList, loadMeta } from './core.js';
-import { applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn } from './shell.js';
+import { applySidebar, applyTheme, closeNav, drawNav, drawUser, loadSuite, openNav, showSignIn, themeFromAccount } from './shell.js';
 import { showCleanup, showImport, showIopix } from './cleanup.js';
 import { showContact } from './contact.js';
 import { showEdit } from './edit.js';
@@ -67,7 +67,7 @@ export async function start() {
   if (!S.status.user) { showSignIn(); return; }
   S.user = S.status.user;
   try { S.settings = (await api('api/auth/me')).settings || {}; } catch { S.settings = {}; }
-  if (S.settings.theme) applyTheme(S.settings.theme);
+  themeFromAccount(S.settings);
   drawUser();
   await loadMeta();
   $('#newbtn').onclick = () => { location.hash = '#/new'; };

@@ -17,28 +17,10 @@ def fresh_db():
     yield
 
 
-@pytest.fixture(autouse=True)
-def one_copy():
-    """What the apps of a copy share (one update.sh run, one answer from GitHub), as a process starts with it."""
-    def reset():
-        updates._Copy.members.clear()
-        updates._Copy.checked.clear()
-        updates._Copy.progress.update(running=False, error=None, log="", started=None, finished=None)
-    reset()
-    yield
-    reset()
-
-
-def asked_again(u):
-    """The next check asks GitHub itself, not what an app of this copy found a moment ago."""
-    updates._Copy.checked.clear()
-    return u
-
-
 def make_updater(tmp_path, monkeypatch, version="1.2.0", **kw):
     monkeypatch.delenv("INVOCATION_ID", raising=False)
     kw.setdefault("result_file", tmp_path / ".update-result")
-    u = updates.Updater("iotest", version, tmp_path, repo="someone/iotest", branch="main", **kw)
+    u = updates.Updater(version, tmp_path, repo="someone/iotest", branch="main", user_agent="iotest", **kw)
     u.in_docker = lambda: False
     return u
 
@@ -74,30 +56,30 @@ def test_commit_from_file_and_check_outcomes(tmp_path, monkeypatch):
     u._commit = None  # as after the restart update.sh does
     assert u.local_commit() == "abcdef0123456789"
 
-    asked_again(u)._get_url = github()
+    u._get_url = github()
     assert u.check()["status"] == "current"  # the same commit
 
-    asked_again(u)._get_url = github(sha="fedcba9876543210")
+    u._get_url = github(sha="fedcba9876543210")
     c = u.check()
     assert c["status"] == "update" and c["remoteVersion"] == "1.3.0" and c["remote"] == "fedcba9" and "remoteDate" not in c
     # github.com's git address away: the API (with the date and the message), and its hourly limit said plainly
-    asked_again(u)._get_url = github(sha="fedcba9876543210", refs=False)
+    u._get_url = github(sha="fedcba9876543210", refs=False)
     c = u.check()
     assert c["status"] == "update" and c["remote"] == "fedcba9" and c["remoteDate"] == "2026-11-05" and c["remoteMessage"] == "v1.3.0: better"
-    asked_again(u)._get_url = github(sha="fedcba9876543210", refs=False, limited=True)
+    u._get_url = github(sha="fedcba9876543210", refs=False, limited=True)
     c = u.check()
     assert c["status"] == "error" and "hourly limit" in c["error"]
     assert updates.head_from_refs(github()("https://github.com/a/b.git/info/refs?service=git-upload-pack"), "feature") == "1" * 40
     assert updates.head_from_refs(b"0000", "main") is None
 
-    asked_again(u)._get_url = github(sha="fedcba9876543210", remote_version="1.2.0")  # another commit, the same version: nothing to install
+    u._get_url = github(sha="fedcba9876543210", remote_version="1.2.0")  # another commit, the same version: nothing to install
     assert u.check()["status"] == "current"
-    asked_again(u)._get_url = github(sha="fedcba9876543210", remote_version="1.1.9")  # this install is ahead of the branch
+    u._get_url = github(sha="fedcba9876543210", remote_version="1.1.9")  # this install is ahead of the branch
     assert u.check()["status"] == "current"
-    asked_again(u)._get_url = github(sha="fedcba9876543210", remote_version=None)  # no version line found: say so, to be safe
+    u._get_url = github(sha="fedcba9876543210", remote_version=None)  # no version line found: say so, to be safe
     c = u.check()
     assert c["status"] == "update" and c["remoteVersion"] is None
-    asked_again(u)._get_url = github(fail=True)
+    u._get_url = github(fail=True)
     c = u.check()
     assert c["status"] == "error" and "no network" in c["error"]
 
@@ -119,22 +101,22 @@ def test_the_daily_check_follows_the_suites_switch(tmp_path, monkeypatch):
 def test_what_it_follows_is_the_machines(tmp_path, monkeypatch):
     monkeypatch.setattr("iosuite_shared.config.REPO", "me/suite")
     monkeypatch.setattr("iosuite_shared.config.BRANCH", "dev")
-    u = updates.Updater("iocalendar", "1", tmp_path)
+    u = updates.Updater("1", tmp_path)
     assert u.repo == "me/suite" and u.branch == "dev"
-    assert updates.Updater("iotask", "1", tmp_path, repo="x/y", branch="z").repo == "x/y"
+    assert updates.Updater("1", tmp_path, repo="x/y", branch="z").repo == "x/y"
 
 
-def test_the_apps_of_a_copy_ask_github_once_and_update_once(tmp_path, monkeypatch):
-    a, b = make_updater(tmp_path, monkeypatch), updates.Updater("iotask", "1.2.0", tmp_path, repo="someone/iotest", branch="main")
-    b.in_docker = lambda: False
-    (tmp_path / "COMMIT").write_text("abcdef0123456789\n")
-    a._commit = b._commit = None
-    asked = []
-    stub = github(sha="fedcba9876543210")
-    a._get_url = lambda url, accept="": asked.append(url) or stub(url, accept)
-    b._get_url = lambda url, accept="": pytest.fail("the second app of the copy asked GitHub again")
-    assert a.check()["status"] == "update" and b.check()["status"] == "update" and len(asked) == 2  # the branch, and its version file
-    assert a.progress is b.progress  # one update.sh run between them
+def test_the_version_is_the_suites_when_none_is_given(tmp_path):
+    from iosuite_shared import __version__
+    assert updates.Updater(root=tmp_path).version == __version__
+
+
+def test_one_updater_per_copy(monkeypatch):
+    """A copy of the program runs several apps and updates as one: they all get the same Updater."""
+    monkeypatch.setattr(updates, "_copy", None)
+    a = updates.copy()
+    assert updates.copy() is a and a.progress is updates.copy().progress
+    monkeypatch.setattr(updates, "_copy", None)
 
 
 def test_run_update_script_and_result(tmp_path, monkeypatch):

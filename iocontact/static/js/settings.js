@@ -1,5 +1,5 @@
 import { S, api, confirmDialog, copyRow, downloadProfile, fail, h, icon, loadMeta, toast } from './core.js';
-import { applyTheme, canOwn, drawUser, newBook } from './shell.js';
+import { applyTheme, canOwn, drawUser, newBook, themeChoice } from './shell.js';
 import { onRoute } from './main.js';
 import { profileScope as scopeSelect } from '../../api/auth/ui.js';
 import * as frame from '../../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
@@ -9,11 +9,11 @@ export { accountUi };
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['books', 'Address books'],
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, books: setBooks, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, devices: setDevices, books: setBooks, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
@@ -29,7 +29,7 @@ export async function setAccount(el) {
 /** Settings › Display: the theme, saved with the account. The sort order and the fields shown are at the top of the list. */
 export async function setDisplay(el) {
   const ui = await accountUi();
-  el.append(ui.box('theme', 'Appearance', ui.themeRow((S.settings && S.settings.theme) || localStorage.getItem('iocontact.theme') || 'system', (t) => { S.settings = { ...S.settings, theme: t }; applyTheme(t); })));
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)));
 }
 
 /** The "Set up" choice of the profile box: this app only, or every app that syncs (iosuite_shared's suite profile),
@@ -100,5 +100,8 @@ export async function setBooks(el) {
     too), app passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by
     iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 export function setSuite(el, r) { return frame.suitePanel(el, r); }
 

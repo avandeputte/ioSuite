@@ -157,7 +157,7 @@ def delete_list(lid: int) -> None:
     gone = [r["id"] for r in db.q("SELECT id FROM tsk_tasks WHERE list_id = %s", (lid,))]
     with db.tx():
         db.ex("DELETE FROM tsk_lists WHERE id = %s", (lid,))
-        db.set_setting(f"{PURGED}{lid}", None)
+        db.set_state(f"{PURGED}{lid}", None)
     _cache_clear()
     related.forget_many("task", gone)  # its tasks' links to other items of the suite go with them
 
@@ -392,7 +392,7 @@ def undo(batch: str, u: dict) -> dict:
     return {"undone": len(steps), "undo": b}
 
 
-PURGED = "purged_token:"  # tsk_settings: per list, the newest change among the deletion markers that were purged
+PURGED = "purged_token:"  # tsk_state: per list, the newest change among the deletion markers that were purged
 
 
 def purge_deleted(days: int | None = None) -> int:
@@ -404,7 +404,7 @@ def purge_deleted(days: int | None = None) -> int:
         old = db.q("SELECT list_id AS lst, max(changed_token) AS tok FROM tsk_tasks WHERE deleted = 1 "
                    "AND updated_at < NOW() - INTERVAL %s DAY GROUP BY list_id", (days,))
         for r in old:
-            db.set_setting(f"{PURGED}{r['lst']}", str(max(r["tok"], purged_before(r["lst"]))))
+            db.set_state(f"{PURGED}{r['lst']}", str(max(r["tok"], purged_before(r["lst"]))))
         db.ex("DELETE FROM tsk_activity WHERE at < UTC_TIMESTAMP() - INTERVAL %s DAY", (days,))  # the log is kept as long
         if not old:
             return 0
@@ -416,7 +416,7 @@ def purge_deleted(days: int | None = None) -> int:
 
 def purged_before(lid: int) -> int:
     """The sync token up to which this list's deletion markers are gone (0: none were purged)."""
-    return int(db.get_setting(f"{PURGED}{lid}") or 0)
+    return int(db.get_state(f"{PURGED}{lid}") or 0)
 
 
 def move(tid: int, to_lid: int, user_id: int | None = None) -> dict:

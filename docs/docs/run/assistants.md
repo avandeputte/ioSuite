@@ -62,7 +62,7 @@ For **Claude Desktop** on a computer in your network, use the `mcp-remote` bridg
 }
 ```
 
-On the server itself, `.venv/bin/python -m iocalendar.mcp --user NAME` in the program folder serves one app's tools
+On the server itself, `iosuite mcp iocalendar --user NAME` in the program folder serves one app's tools
 over stdio. It reads the account and its role once, when it starts: after changing someone's role, restart any stdio
 server running as them. Starting one needs the machine's `config.env` (with the database password), so it is only for
 whoever runs the server.

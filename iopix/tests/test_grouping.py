@@ -5,6 +5,7 @@ import numpy as np
 from iopix.faces import facevecs
 from iopix.data import index, appdb
 from iopix.ai import neardups
+from iopix.tests.helpers import pixsetting
 
 
 def _unknown_faces(n):
@@ -73,7 +74,7 @@ def test_near_duplicate_sets(client, lib):
     finally:
         con.close()
     from iopix.data import state
-    state.set_setting("near_dups_gen", "x"); state.set_setting("near_dups_level", "normal")
+    state.set_state("near_dups_gen", "x"); pixsetting("NEAR_DUPS_LEVEL", "normal")
     g = neardups.groups()
     assert [x["n"] for x in g] == [3, 2] and g[0]["score"] == 0.98
     assert {x["id"] for x in g[0]["items"]} == set(ids[:3]) and all("album" in x and "name" in x for x in g[0]["items"])
@@ -82,5 +83,5 @@ def test_near_duplicate_sets(client, lib):
     assert client.post("/api/neardups", json={"level": "weird"}).status_code == 400
     assert client.post("/api/neardups", json={"level": "normal"}).status_code == 409, "content search is off in the test environment"
     con = appdb.connect(); con.execute("DELETE FROM pix_ai_similar_photos"); con.commit(); con.close()
-    state.set_setting("near_dups_gen", "")
+    state.set_state("near_dups_gen", "")
     assert client.get("/api/neardups").json()["groups"] == []

@@ -1,6 +1,6 @@
 """MariaDB access: one short connection per unit of work, and the schema (created and migrated at start).
 
-The start page keeps prt_settings (the default photo strip, the weather settings and its cached answers, the update
+The start page keeps prt_state (the default photo strip, the weather settings and its cached answers, the update
 switch, each account's layout), prt_schema_version and the bookmarks. What the page grows later gets its tables here
 too. Every table is prt_<name>, the suite's naming convention (the apps can share one database)."""
 
@@ -12,9 +12,9 @@ SCHEMA_VERSION = 11  # 11: the suite inbox by email (prt_inbox, prt_inbox_files:
 PREFIX = "prt"
 
 # Every table is InnoDB/utf8mb4. Accounts and app passwords live in the Shared ioSuite database (iosuite_shared,
-# iostart/auth.py), not here.
+# the app as declared: iosuite_shared.app), not here.
 SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS prt_settings (
+    """CREATE TABLE IF NOT EXISTS prt_state (
         name VARCHAR(191) PRIMARY KEY,
         value MEDIUMTEXT NOT NULL,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -23,7 +23,7 @@ SCHEMA = [
     # extension, the iPhone app) read and write. An id is handed out by the app
     # (never reused: sync clients remember them). `start` picks what the start page shows: on a folder, 1 shows it as a
     # group with its links; on a link, NULL follows its folder, 1 shows it anyway and 0 hides it. `rev` / `created_rev`
-    # are the store's revision (prt_settings bookmarks_rev) when the row last changed and when it was made.
+    # are the store's revision (prt_state bookmarks_rev) when the row last changed and when it was made.
     # `owner` is the account (ios_users.id) whose bookmark it is; `shared` 1: everyone sees it, and only an admin of
     # the start page changes it (iostart/bookmarks/__init__.py has the rules).
     """CREATE TABLE IF NOT EXISTS prt_bookmark_nodes (
@@ -120,5 +120,12 @@ def _tables() -> list:
 _db = shared_db.AppDatabase(config, PREFIX, _tables, SCHEMA_VERSION)
 pool = _db.pool
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
-get_setting, set_setting = _db.get_setting, _db.set_setting
+get_state, set_state = _db.get_state, _db.set_state   # what the app wrote down for itself (<prefix>_state)
 ensure_database, migrate, reset_all = _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iostart check`)."""
+    return {"bookmarks": one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE url IS NOT NULL")["n"],
+            "feeds": one("SELECT count(*) AS n FROM prt_feeds")["n"],
+            "screens": one("SELECT count(*) AS n FROM prt_trmnl_devices")["n"]}

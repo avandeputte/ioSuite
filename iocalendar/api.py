@@ -16,10 +16,10 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
-from iocalendar.auth import auth
+from iocalendar import auth
 from iocalendar import access, bills, config, contacts, holiday, ical, members, model, papers, places, subscribe, tasks, users, weather
 from iosuite_shared import appleprofile, users as shared_users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 from iosuite_shared.errors import Invalid
 
 router = APIRouter()

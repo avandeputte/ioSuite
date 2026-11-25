@@ -7,14 +7,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iocalendar import __version__, config, ical, members, model
+from iocalendar import config, contacts, db, holiday, ical, members, model
 
 # what the tool modules take from here: the suite's pieces (iosuite_shared.mcp) and ioCalendar's own helpers
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who", "event_link", "when",
            "calendars", "find_calendar", "default_calendar", "calendar_names", "find_event", "event_out", "member_names", "member_ids", "occurrence_out"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioCalendar", __version__,
+    config.APP,
     instructions=(
         "The family's calendars (ioCalendar). Start with overview: it says who you are, the calendars you can see and "
         "change, the time zone, and what is on today and in the coming week. agenda lists what happens between two dates "
@@ -29,6 +29,8 @@ server = shared_mcp.make_server(
         "holidays and cannot be changed; neither can calendars of kind 'subscribed' (outside calendars fetched from a web "
         "address, such as a school's or a sports club's). Ask before deleting events or calendars."
     ),
+    counts=db.counts,
+    more=lambda: {"timezone": ical.default_tz(), **_connected()},
 )
 
 def event_link(eid: int) -> str | None:
@@ -145,3 +147,11 @@ def occurrence_out(u: dict, o: dict) -> dict:
            "recurrenceId": o["recurrenceId"] if o["recurring"] else None, "status": o["status"],
            "free": (not o["busy"]) or None}
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
+
+
+def _connected() -> dict:
+    """What ioCalendar fills from the other apps: ioContact's birthdays and the shared Holidays calendars."""
+    s = contacts.public_settings()
+    h = holiday.public_settings()
+    return {"iocontact": {"url": s.get("url") or None, "connected": s["enabled"], "birthdays": s["birthdays"], "lastSync": s["lastSync"]},
+            "holidays": {"countries": [{k: x[k] for k in ("country", "region", "language")} for x in h["items"]], "lastSync": h["lastSync"]}}

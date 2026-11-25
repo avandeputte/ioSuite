@@ -47,7 +47,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iocontact.cli check   # connect to the database and say what is there
+iosuite iocontact check   # connect to the database and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iocontact` makes someone an admin of ioContact only (`iosuite admin NAME`: of
@@ -56,9 +56,10 @@ the whole suite), `iosuite password NAME` sets a password; see [Accounts and rol
 ## Configuration
 
 ioContact has no file of settings. The machine's one file (`config.env` in the program folder) says how to reach the Shared
-ioSuite database and which apps run here; everything else is kept in that database. Suite admins change it under
+ioSuite database and which apps run here; everything else is kept in that database. Its admins change its own settings under
+**Settings › This app**, suite admins every app's under
 **Settings › Apps › All settings**, which has a section for the whole suite and one for ioContact, or from a shell;
-a change applies when the app starts again:
+a change takes hold at once, except for the few the screen marks, which apply when the app starts again:
 
 ```sh
 iosuite settings iocontact        # what may be set, with the value stored now
@@ -154,7 +155,7 @@ claude mcp add --transport http iocontact https://mcp.example.com/contacts/mcp -
 
 Apps that take a JSON configuration and only start local processes (Claude Desktop, for example) can reach it through
 `mcp-remote`: `{"mcpServers": {"iocontact": {"command": "npx", "args": ["-y", "mcp-remote", "https://mcp.example.com/contacts/mcp", "--header", "Authorization: Bearer ioc-…"]}}}`.
-On the server itself, `.venv/bin/python -m iocontact.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iocontact --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_address_books`, `search_contacts`, `get_contact`, `get_contacts`, `get_vcard`, `view_photo`,
 `get_relatives`, `family_tree`, `upcoming_dates`, `birthdays_in_month`, `list_labels`, `relation_types`, `social_services`,

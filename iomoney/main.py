@@ -6,15 +6,9 @@ Who may call a route is declared on the route (iomoney/access.py); iosuite_share
 app password), whether sign-in is required at all, and refuses cross-site writes. The same scheme as every app of the
 suite.
 """
-from iosuite_shared import application, chores, mcp as shared_mcp
+from iosuite_shared import application, chores
 
-from iomoney import __version__, api, config, db, history, holdings, mcp, model, monarch, quotes, suiteitems, users
-from iomoney.auth import auth, updater
-
-# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
-mcp_switch = shared_mcp.Switch(config.APP,
-                               "Lets an AI assistant read the accounts, the transactions, the portfolio and the net worth, and keep them, as you.")
-mcp_enabled = mcp_switch.enabled
+from iomoney import api, config, history, holdings, model, monarch, quotes, suite_app
 
 
 def background() -> None:
@@ -32,24 +26,11 @@ def _jobs() -> list:
     return [chores.start(background, every_s=300, first_s=30, name="Monarch sync and quotes", app=config.APP)] if config.SYNC else []
 
 
-def _limit_for(path: str, ctype: str) -> int:
-    if path.endswith(("/import", "/statement/read")):
-        return config.MAX_IMPORT_BYTES
-    return config.MAX_RECEIPT_BYTES if path.endswith("/receipts") else config.MAX_JSON_BYTES
-
-
-def _status_extra(request) -> dict:
-    """ioMoney's own fields of GET /api/status, beside the suite's."""
-    u = request.state.user
-    return {"mcp": mcp_enabled() if u else None}
-
-
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="The household's finances: accounts and transactions from Monarch Money, a portfolio with its "
                 "quotes, the house and the cars, the net worth. Also served to AI assistants over MCP (/mcp).",
-    prepare=(db.migrate, users.init, monarch.declare),  # the Monarch sign-in is kept with the suite's keys and tokens
+    prepare=(*suite_app.prepare, monarch.declare),  # the Monarch sign-in is kept with the suite's keys and tokens
     jobs=_jobs,
-    mcp=mcp, mcp_enabled=mcp_enabled,
-    limit_for=_limit_for, not_found=(model.NotFound,), forbidden=(model.Forbidden,),
-    status=_status_extra, suite=suiteitems.PROVIDER, routers=(api.router,))
+    not_found=(model.NotFound,), forbidden=(model.Forbidden,),
+    routers=(api.router,))

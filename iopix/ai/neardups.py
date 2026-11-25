@@ -14,9 +14,10 @@ except ImportError:  # numpy comes with the search/objects extras; without it th
     np = None
 
 from iopix.data import index, state, appdb
-from iopix import jobs
+from iopix import config, jobs
 from iopix.ai.semantic import enabled, semantic
 from iopix.digikam.dkdb import in_chunks
+from iosuite_shared import admin as suite_admin
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iopix.ai.neardups")
@@ -31,7 +32,7 @@ def expected_gen(level: str) -> str:
 
 
 def status() -> dict:
-    return {"gen": state.get_setting("near_dups_gen", ""), "level": state.get_setting("near_dups_level", "normal"),
+    return {"gen": state.get_state("near_dups_gen", ""), "level": config.live("NEAR_DUPS_LEVEL", "normal"),
             "progress": dict(progress), "enabled": _enabled()}
 
 
@@ -60,7 +61,7 @@ def _job(gen: int, level: str):
     progress.update(running=True, done=0, total=n, error=None)  # the generation was taken at submit time
     total = 0
     try:
-        state.set_setting("near_dups_gen", "")  # not current until every block is in
+        state.set_state("near_dups_gen", "")  # not current until every block is in
         con = appdb.connect()
         try:
             con.execute("DELETE FROM pix_ai_similar_photos")
@@ -88,8 +89,8 @@ def _job(gen: int, level: str):
                 progress["done"] = min(n, s + block)
         finally:
             con.close()
-        state.set_setting("near_dups_gen", expected_gen(level))
-        state.set_setting("near_dups_level", level)
+        state.set_state("near_dups_gen", expected_gen(level))
+        suite_admin.set_setting(config.APP, "NEAR_DUPS_LEVEL", level)
         log.info("near-duplicates: %d pairs above %.2f among %d photos", total, threshold, n)
     except Exception as e:
         progress.fail(e)

@@ -29,9 +29,6 @@
 
 .suitesec { grid-column: 1 / -1; padding: 8px 6px 2px; border-top: 1px solid var(--line); font-size: var(--fs-s); color: var(--fg2); }
 
-.avatarbtn { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 600; font-size: var(--fs-s); display: inline-flex; align-items: center; justify-content: center; }
-.avatarbtn:hover { filter: brightness(1.1); }
-
 #nav a[data-v="settings"], #nav a[data-v="maint"] { color: var(--fg2); }
 #nav a[data-v="settings"].on, #nav a[data-v="maint"].on { color: var(--accent); }
 
@@ -53,8 +50,6 @@
 .card h3 { margin: 0 0 8px; font-size: var(--fs-m); font-weight: 600; color: var(--fg2); display: flex; align-items: center; gap: 8px; }
 .card h3 .ic { width: 18px; height: 18px; color: var(--hue, var(--brand)); }
 
-.chip .lab { color: var(--fg2); font-size: var(--fs-s); }
-
 .picker { position: relative; flex: 1; min-width: 200px; }
 .picker .drop { position: absolute; left: 0; right: 0; top: 42px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-s); box-shadow: var(--shadow);
   max-height: 280px; overflow-y: auto; z-index: 30; }
@@ -64,8 +59,6 @@
 
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #323232; color: #fff; padding: 12px 18px; border-radius: var(--r-s); z-index: 100;
   box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
-
-.dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 /* ---- narrow screens: one pane at a time, the sidebar slides in */
 @media (max-width: 860px) {
@@ -92,8 +85,6 @@
   #newbtn { padding: 0 8px; }
 }
 
-.pform { display: grid; gap: 10px; max-width: 520px; }
-
 /* ================================================================== the calendar */
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden; flex: none; }
 .seg button { padding: 0 14px; height: 34px; color: var(--fg2); }
@@ -111,7 +102,7 @@
   text-align: right; padding-right: 6px; transform: translateY(-7px); }
 
 /* the event form */
-.chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
 .chip .x { margin-left: 2px; color: var(--fg2); cursor: pointer; display: inline-flex; }
 .chip .x:hover { color: var(--danger); }
 
@@ -124,7 +115,6 @@
 /* family members: a round badge with initials (on event chips, in the sidebar filter and the event form) */
 #nav a.who.picked { background: color-mix(in srgb, var(--mc) var(--mix), transparent); font-weight: 600; }
 button.chip.toggle { border: 1px solid var(--line, transparent); cursor: pointer; font: inherit; color: var(--fg); }
-button.chip.toggle.on { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); font-weight: 600; }
 
 /* ---- tables, badges and server cards */
 .tablewrap { min-width: min-content; border: 1px solid var(--line); border-radius: var(--r-l); }

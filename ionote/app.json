@@ -48,6 +48,13 @@
   ],
   "settings": [
     {
+      "name": "APP_NAME",
+      "label": "What it calls itself",
+      "type": "text",
+      "default": "ioNote",
+      "hint": "The name on its pages and in its notifications. Settings › General shows the same value."
+    },
+    {
       "name": "MAX_IMAGE_MB",
       "label": "Largest image (MB)",
       "type": "number",
@@ -67,6 +74,47 @@
       "type": "number",
       "default": "80",
       "hint": "JPEG quality, 1 to 95."
+    }
+  ],
+  "access": {
+    "writeRole": "member",
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant read, write and search your notes, as you.",
+  "limits": {
+    "json": 8,
+    "import": 4096,
+    "image": {
+      "setting": "MAX_IMAGE_MB",
+      "default": 16
+    }
+  },
+  "bodies": [
+    {
+      "path": "*/api/import*",
+      "limit": "import"
+    },
+    {
+      "path": "*/attachments*",
+      "limit": "image"
+    },
+    {
+      "type": "image/*",
+      "limit": "image"
+    },
+    {
+      "type": "multipart/form-data",
+      "limit": "image"
+    },
+    {
+      "type": "application/octet-stream",
+      "limit": "image"
+    },
+    {
+      "type": "application/zip",
+      "limit": "image"
     }
   ]
 }

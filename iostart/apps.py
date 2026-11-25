@@ -12,9 +12,9 @@ import logging
 import re
 import time
 
-from iosuite_shared import catalog, suite, users
+from iosuite_shared import admin as suite_admin, catalog, suite, users
 
-from iostart import db
+from iostart import config
 from iosuite_shared.errors import Invalid
 
 log = logging.getLogger("iostart.apps")
@@ -85,11 +85,11 @@ STRIPS = ("rediscover", "onthisday", "off")
 def photo_strip() -> str:
     """The photo strip under the tiles for everyone (Settings › Home page): rediscover (a row of photos at random),
     onthisday, or off; each person may pick another in Customize."""
-    v = db.get_setting("photo_strip") or "rediscover"
+    v = config.live("PHOTO_STRIP", "rediscover")
     return v if v in STRIPS else "rediscover"
 
 
 def set_photo_strip(v: str) -> None:
     if v not in STRIPS:
         raise Invalid("The photo strip is rediscover, onthisday or off")
-    db.set_setting("photo_strip", None if v == "rediscover" else v)
+    suite_admin.set_setting(config.APP, "PHOTO_STRIP", "" if v == "rediscover" else v)

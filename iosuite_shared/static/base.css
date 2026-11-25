@@ -4,8 +4,8 @@
    before the app's own static/app.css, which keeps its colours (the --tokens these rules use), its layout and
    everything of its own.
 
-   A rule is here when it was the same in every one of these apps. It is loaded before the app's own rules, so an
-   app that needs something else says so in its app.css and wins. */
+   A rule is here when most of these apps said it in the same words. It is loaded before the app's own rules, so an
+   app that needs something else, or has none of its own, says so in its app.css and wins. */
 
 /* ---- reset and text */
 * { box-sizing: border-box; }
@@ -135,6 +135,14 @@ a.chip:hover { background: var(--accent-bg); color: var(--accent); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .box { border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 20px; margin-bottom: 16px; min-width: min-content; }
+/* one setting a line: its label (and the name `iosuite set` takes) on the left, its field on the right, what it
+   does under the field (frame.appSettings: Settings › This app, the same block in every app) */
+.setrow { display: grid; grid-template-columns: minmax(10rem, 16rem) 1fr; gap: 10px 16px; padding: 10px 0; border-top: 1px solid var(--line); align-items: start; }
+.setrow:first-of-type { border-top: 0; }
+.setrow > label { display: flex; flex-direction: column; gap: 2px; font-weight: 600; }
+.setrow > label > span { font-weight: 400; font-family: var(--mono, ui-monospace, monospace); }
+.setrow .t { width: 100%; max-width: 28rem; }
+@media (max-width: 560px) { .setrow { grid-template-columns: 1fr; } }
 .box h2 .ic { color: var(--brand); }
 .copy { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
@@ -160,3 +168,41 @@ a.chip:hover { background: var(--accent-bg); color: var(--accent); }
 label.check { display: inline-flex; align-items: flex-start; gap: 6px; cursor: pointer; }
 .warn { color: var(--warn); }
 .dialog.wide { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+
+/* ---- and what most of them said in the same words: the suite menu, the sidebar's headings, the key-and-value
+   rows, the forms and the small things. An app that wants its own says so in its app.css. */
+.suitesec { grid-column: 1 / -1; padding: 8px 6px 2px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg2); }
+.apptile.cur { background: var(--bg2); }
+.apptile.cur .appnm { font-weight: 600; }
+.apptile.tool { gap: 4px; padding: 6px 4px; }
+.apptile.tool .appic { width: 28px; height: 28px; border-radius: 8px; }
+.apptile.tool .appic.fb { font-size: 13px; }
+.apptile.tool .appnm { font-size: 12px; }
+.avatarbtn { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 600; font-size: var(--fs-s); display: inline-flex; align-items: center; justify-content: center; }
+.avatarbtn:hover { filter: brightness(1.1); }
+.grow { flex: 1; }
+.navsec { flex: none; display: flex; align-items: center; height: 24px; padding: 0 4px 4px 12px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+.navsec .iconbtn { margin-left: auto; width: 26px; height: 26px; }
+#nav .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hue); }
+#nav a[data-v="settings"] { color: var(--fg2); }
+#nav a[data-v="settings"].on { color: var(--accent); }
+#main { position: fixed; top: var(--topbar); bottom: 0; left: var(--nav); right: 0; overflow: hidden; display: flex; }
+#main:has(> .page) { display: block; overflow: auto; }
+.kv { display: flex; gap: 12px; padding: 5px 0; align-items: baseline; min-width: 0; }
+.kv .k { width: 90px; flex: none; color: var(--fg2); font-size: var(--fs-s); }
+.kv .k::first-letter { text-transform: uppercase; }
+.kv .v { min-width: 0; overflow-wrap: anywhere; }
+.pform { display: grid; gap: 10px; max-width: 520px; }
+.formbar { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; display: flex; gap: 8px; border-top: 1px solid var(--line); margin-top: 24px; }
+.fsec { margin: 22px 0 6px; font-weight: 600; color: var(--fg2); font-size: var(--fs-m); display: flex; align-items: center; gap: 8px; }
+.fsec .ic { width: 18px; height: 18px; color: var(--brand); }
+.chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip .lab { color: var(--fg2); font-size: var(--fs-s); }
+button.chip.toggle.on { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.ic.xs { width: 14px; height: 14px; }
+.field.wide { grid-column: 1 / -1; }
+.menu.pop { position: fixed; right: auto; z-index: 95; }
+.dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #323232; color: #fff; padding: 12px 18px; border-radius: var(--r-s); z-index: 100;
+  box-shadow: var(--shadow); max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 16px; }
+#toast[hidden] { display: none; }

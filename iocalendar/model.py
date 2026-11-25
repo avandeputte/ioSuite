@@ -154,7 +154,7 @@ def delete_calendar(cid: int) -> None:
     gone = [r["id"] for r in db.q("SELECT id FROM cal_events WHERE calendar_id = %s", (cid,))]
     with db.tx():
         db.ex("DELETE FROM cal_calendars WHERE id = %s", (cid,))
-        db.set_setting(f"{PURGED}{cid}", None)
+        db.set_state(f"{PURGED}{cid}", None)
     _cache_clear()
     related.forget_many("event", gone)  # its events' links to other items of the suite go with them
 
@@ -278,7 +278,7 @@ def delete(eid: int, record: bool = True) -> None:
         stamp.touch("iocalendar", "event", eid, "deleted")
 
 
-PURGED = "purged_token:"  # cal_settings: per calendar, the newest change among the deletion markers that were purged
+PURGED = "purged_token:"  # cal_state: per calendar, the newest change among the deletion markers that were purged
 
 
 def purge_deleted(days: int | None = None) -> int:
@@ -290,7 +290,7 @@ def purge_deleted(days: int | None = None) -> int:
         old = db.q("SELECT calendar_id AS cal, max(changed_token) AS tok FROM cal_events WHERE deleted = 1 "
                    "AND updated_at < NOW() - INTERVAL %s DAY GROUP BY calendar_id", (days,))
         for r in old:
-            db.set_setting(f"{PURGED}{r['cal']}", str(max(r["tok"], purged_before(r["cal"]))))
+            db.set_state(f"{PURGED}{r['cal']}", str(max(r["tok"], purged_before(r["cal"]))))
         if not old:
             return 0
         gone = [r["id"] for r in db.q("SELECT id FROM cal_events WHERE deleted = 1 AND updated_at < NOW() - INTERVAL %s DAY", (days,))]
@@ -301,7 +301,7 @@ def purge_deleted(days: int | None = None) -> int:
 
 def purged_before(cid: int) -> int:
     """The sync token up to which this calendar's deletion markers are gone (0: none were purged)."""
-    return int(db.get_setting(f"{PURGED}{cid}") or 0)
+    return int(db.get_state(f"{PURGED}{cid}") or 0)
 
 
 def move(eid: int, to_cid: int) -> dict:

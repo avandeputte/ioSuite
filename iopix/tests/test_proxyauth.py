@@ -7,7 +7,7 @@ import pytest
 
 from iopix import users
 from iosuite_shared import db, proxyauth
-from iopix.auth import auth as auth_shared
+from iopix import auth as auth_shared
 
 
 def opt(name: str, value: str = ""):

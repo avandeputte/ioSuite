@@ -1,5 +1,5 @@
 import { REFRESH_HOURS, S, addDays, api, canOwn, canShared, confirmDialog, copyRow, describeReminder, fail, fill, h, icon, isAuto, loadCals, saveSettings, toast, weekStart, ymd } from './core.js';
-import { applyTheme, colorPicker, drawNav, drawUser, newCalendar } from './shell.js';
+import { applyTheme, colorPicker, drawNav, drawUser, newCalendar, themeChoice } from './shell.js';
 import { TIMED_REMINDERS, zones } from './edit.js';
 import { onRoute } from './main.js';
 import { profileScope as scopeSelect } from '../../api/auth/ui.js';
@@ -10,11 +10,11 @@ export { accountUi };
 // ------------------------------------------------------------------ settings
 export async function showSettings(page, r) {
   const tabs = [['account', 'Account'], ['display', 'Display'], ['devices', 'Apps and devices'], ['calendars', 'Calendars'], ['holidays', 'Holidays and birthdays'],
-    ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, devices: setDevices, calendars: setCalendars, holidays: setHolidays, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, devices: setDevices, calendars: setCalendars, holidays: setHolidays, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 export const kv = (k, v) => h('div', { class: 'kv' }, h('div', { class: 'k' }, k), h('div', { class: 'v', style: { flex: 1 } }, typeof v === 'string' ? copyRow(v) : v));
 
@@ -35,7 +35,7 @@ export async function setDisplay(el) {
   const dv = h('select', { class: 't', onchange: (e) => save({ defaultView: e.target.value }) }, [['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['agenda', 'Agenda']].map(([v, l]) => h('option', { value: v, selected: v === (S.settings.defaultView || 'month') ? true : null }, l)));
   const cur = S.settings.defaultReminder ?? '';
   const dr = h('select', { class: 't', onchange: (e) => save({ defaultReminder: e.target.value }) }, h('option', { value: '' }, 'None'), TIMED_REMINDERS.map((m) => h('option', { value: m, selected: String(m) === String(cur) ? true : null }, describeReminder(m, false))));
-  el.append(ui.box('theme', 'Appearance', ui.themeRow(S.settings.theme || localStorage.getItem('iocalendar.theme') || 'system', (t) => { S.settings.theme = t; applyTheme(t); })),
+  el.append(ui.box('theme', 'Appearance', ui.themeRow(themeChoice(), applyTheme)),
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Calendar'), h('div', { class: 'grid' }, fld('Weeks start on', ws), fld('Open on', dv), fld('Reminder for new events', dr))));
 }
 
@@ -159,6 +159,9 @@ function subscriptionBox(c, sub, manage) {
 /** Settings › People, Apps, Servers and Keys (suite admins): everything the suite keeps in the Shared ioSuite
     database. The same panel in every io app, served by iosuite_shared. */
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
+/** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
+    block in every app, served by iosuite_shared (frame.appSettings). */
+function setApp(el) { return frame.appSettings(el, { toast }); }
 export function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 /** Settings › Holidays and birthdays, for admins: the Birthdays calendar ioContact fills (the suite connects the two by

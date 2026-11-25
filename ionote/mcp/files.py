@@ -1,33 +1,13 @@
-"""The operator's tools, for admins: ioNote's health and its log."""
-import platform
-import sys
+"""The operator's tools, for admins: ioNote's log (its health is the suite's diagnostics tool, iosuite_shared.mcp)."""
 from typing import Literal
 
 from mcp.server.mcpserver.exceptions import ToolError
 
-from ionote import __version__, config, db, images, ocr
-from ionote.auth import updater
-from iosuite_shared import users
+from ionote import config
 from iosuite_shared.updates import tail
 from ionote.mcp.base import READ_ONLY, need_admin, server
 
 LOG_LINES_MAX = 2000
-
-
-@server.tool(annotations=READ_ONLY)
-def diagnostics() -> dict:
-    """ionote' own health: version and commit, Python and platform, the database (server version,
-    reachable), the stored pictures, text recognition, accounts, and the switches that are on."""
-    need_admin()
-    s = db.public_settings()
-    out = {"version": __version__, "commit": updater.local_commit()[:7], "python": sys.version.split()[0], "platform": platform.platform(),
-           "docker": updater.in_docker(), "database": {k: s[k] for k in ("host", "port", "database", "user")},
-           "pictures": images.stats(), "ocr": ocr.status(), "accounts": len(users.list_users(config.APP)), "rev": db.current_rev(),
-           "require_login": users.require_login(config.APP), "data_dir": str(config.DATA_DIR), "app_url": config.BASE_URL}
-    t = db.test({})
-    out["database"].update({"reachable": t["ok"], "server": t.get("version"), "max_allowed_packet": t.get("maxAllowedPacket"),
-                            "warning": t.get("warning"), "error": t.get("error")})
-    return {k: v for k, v in out.items() if v is not None}
 
 
 @server.tool(annotations=READ_ONLY)

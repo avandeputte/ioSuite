@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from iosuite_shared import users as shared_users
-from iosuite_shared.access import json_body
+from iosuite_shared.http import json_body
 
 from iomoney import (access, balancecheck, duplicates, history, importer, model, payees, review, rulecheck, searches,
                      statementfile, statements, tags, transfers)

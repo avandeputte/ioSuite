@@ -1,4 +1,7 @@
 import { api, applyTheme, setNavOn, settings, whenIdle } from './shell.js';
+import { icon } from '../../api/auth/frame.js';  // the icons every app's page has
+import { h } from '../../api/auth/ui.js';  // the element builder every app's page uses
+export { h, icon };
 
 // ---------- basics: the helpers every page uses ----------
 
@@ -7,23 +10,6 @@ export const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 export const DAY = 86400;
 // Axis steps for values in minutes, so ticks land on whole hours.
 export const MINUTE_INCRS = [15, 30, 60, 120, 180, 240, 360, 600, 1200, 1800, 3000, 6000, 12000];
-
-export function h(tag, attrs, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; }
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'html') el.innerHTML = v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat(Infinity)) {
-    if (c == null || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  }
-  return el;
-}
 
 export const svgNS = 'http://www.w3.org/2000/svg';
 export function s(tag, attrs, ...children) {
@@ -267,7 +253,7 @@ export function typeHidden(t) {
 }
 export function applySections() {
   const pageSection = { sleep: 'sleep', glucose: 'glucose', workouts: 'workouts', map: 'workouts', records: 'records' };
-  for (const a of document.querySelectorAll('#nav a')) a.hidden = !!pageSection[a.dataset.page] && !sectionOn(pageSection[a.dataset.page]);
+  for (const a of document.querySelectorAll('#nav a')) a.hidden = !!pageSection[a.dataset.v] && !sectionOn(pageSection[a.dataset.v]);
 }
 applySections();
 export let typeListPromise;

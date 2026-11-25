@@ -31,7 +31,7 @@ def _client(app):
 def client(_client):
     db.reset_all()
     db.migrate()
-    from iomoney.auth import auth
+    from iomoney import auth
     _authtest.clean_shared_tables(auth)
     users.init()  # ioMoney's default role (none), which the clean-up took away
     from iosuite_shared import apppasswords

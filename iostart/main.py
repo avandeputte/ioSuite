@@ -7,15 +7,14 @@ app password), whether sign-in is required at all, and refuses cross-site writes
 suite.
 """
 from fastapi.responses import FileResponse, HTMLResponse
-from iosuite_shared import application, mcp as shared_mcp, pages, users
+from iosuite_shared import application, pages
 
-from iostart import __version__, api, bookmarks, config, db, inbox, keys, mcp, news, timers
+from iostart import api, auth, bookmarks, config, inbox, keys, mcp, news, suite_app, timers
 from iostart.bookmarks import api as bookmarksapi, ext as bookmarkext
 from iostart.homeassistant import api as haapi
 from iostart.inbox import api as inboxapi
 from iostart.news import api as newsapi
 from iostart.trmnl import api as trmnlapi, push as trmnlpush
-from iostart.auth import auth, updater
 
 # a TRMNL e-ink device set to this server (iostart/trmnl/server.py) has no account: it signs its requests with its own key
 TRMNL_DEVICE = {("GET", "/api/setup"), ("GET", "/api/display"), ("GET", "/api/current_screen"), ("POST", "/api/log")}
@@ -25,12 +24,6 @@ def _device_asks(request) -> bool:
     return (request.method, request.url.path) in TRMNL_DEVICE or (request.method == "GET" and request.url.path.startswith("/api/trmnl/image/"))
 
 
-# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
-mcp_switch = shared_mcp.Switch(config.APP,
-                               "The suite's one MCP server: an AI assistant connected here with an ioStart app password uses every "
-                               "app's tools as you (each app's own MCP server has to be on), and suite admins can update every app at once.")
-mcp_enabled = mcp_switch.enabled
-
 
 def _jobs() -> list:
     """The copy's jobs (Settings › Servers › Jobs): the "timer done" notifications (iostart/timers.py), the feeds
@@ -39,26 +32,20 @@ def _jobs() -> list:
     return [j for j in (timers.job(), news.job(), inbox.job(), trmnlpush.job()) if j]
 
 
-def _limit_for(path: str, ctype: str) -> int:
-    return config.MAX_IMPORT_BYTES if "/import" in path or path.endswith("/api/news/opml") or path.startswith("/dav/") else config.MAX_JSON_BYTES
-
-
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="The start page of ioSuite: one place with every io app, and the accounts they share.",
-    prepare=(db.migrate, users.init,
-             bookmarks.claim_unowned,  # bookmarks nobody owns become the first admin's
+    prepare=(*suite_app.prepare, bookmarks.claim_unowned,  # bookmarks nobody owns become the first admin's
              keys.declare),            # the Home Assistant token and AccuWeather key live with the suite's keys and tokens
     jobs=_jobs,
-    mcp=mcp, mcp_enabled=mcp_enabled,
-    before=auth.mcp_gate(mcp_enabled, on_user=mcp.current_user.set, on_request=mcp.remember_sign_in),
+    before=auth.mcp_gate(suite_app.mcp_enabled, on_user=mcp.current_user.set, on_request=mcp.remember_sign_in),
     # what a visitor may still fetch when sign-in is required, beside what app.json lists as sync (/dav/: the
     # extension's sync answers 401 with a Basic challenge itself, and the sign-in flow for apps starts before anyone
     # is signed in): the Bookmarks page; a wall display asks for its pairing code before it has a sign-in (approving
     # one takes a signed-in person: its route says so)
     open_paths=("/bookmarks", "/bookmarks.webmanifest"), open_prefixes=("/api/wall/pair",),
     middleware={"is_open": _device_asks},
-    limit_for=_limit_for, related=False,
+    related=False,
     routers=(api.router,           # the apps and the layout, the weather, the search, the tiles, the timers, the wall display
              haapi.router,         # /api/ha: the Home Assistant card
              bookmarksapi.router,  # /api/bookmarks, /api/groups, /api/links: the bookmarks
