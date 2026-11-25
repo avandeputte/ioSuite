@@ -9,21 +9,20 @@ Apple Reminders writes a due date as DUE (with DTSTART at the same moment when i
 5 (medium) or 9 (low), a subtask as RELATED-TO the parent's UID, and an alert as a VALARM with an absolute trigger.
 """
 import datetime as dt
-import hashlib
 import re
-import uuid as uuidlib
-from zoneinfo import ZoneInfo
+
 
 from dateutil import rrule as du_rrule
 from dateutil.relativedelta import relativedelta
-from icalendar import Alarm, Calendar, Event, Todo, vDDDTypes, vRecur
+from icalendar import Alarm, Calendar, Todo, vDDDTypes
 
-from iotask import __version__
-from iosuite_shared import zones
+from iosuite_shared import ical as shared
 from iosuite_shared.errors import Invalid
 
-PRODID = f"-//iothing//ioTask {__version__}//EN"
-UTC = dt.timezone.utc
+# what reading and writing the file is, whichever app does it (iosuite_shared.ical): the text in, the zones, the
+# moments, one object per UID, the repeat rule, the stamps, the whole feed out
+PRODID = shared.prodid("iotask")
+UTC = shared.UTC
 STATUSES = ("NEEDS-ACTION", "IN-PROCESS", "COMPLETED", "CANCELLED")
 PRIORITIES = {"high": 1, "medium": 5, "low": 9, "none": 0, "": 0}
 EDITABLE = ("title", "notes", "due", "start", "timezone", "priority", "done", "status", "percent", "url", "location",
@@ -37,83 +36,55 @@ APPLE_EPOCH = dt.datetime(2001, 1, 1, tzinfo=UTC)
 UNITS = {"D": "days", "W": "weeks", "M": "months", "Y": "years"}
 
 
-# ------------------------------------------------------------------ time zones
+# ------------------------------------------------------------------ what the suite's iCalendar code gives
 
-# the server's time zone (floating times and new due times without a zone are read in it), whether a name is a zone, and
-# a moment in UTC: the suite's (iosuite_shared.zones), the same in ioCalendar and ioTask
-default_tz, valid_tz, zone, to_utc = zones.server, zones.valid, zones.zone, zones.to_utc
-
-
-def naive_utc(d, tzname: str | None = None) -> dt.datetime | None:
-    """For the DATETIME columns."""
-    return None if d is None else to_utc(d, tzname).replace(tzinfo=None)
-
-
-def iso(d) -> str | None:
-    """A date as YYYY-MM-DD, a datetime as ISO 8601 with its offset (floating: without one)."""
-    if d is None:
-        return None
-    if isinstance(d, dt.datetime):
-        return d.isoformat(timespec="seconds")
-    return d.isoformat()
+# the server's time zone (floating times and new due times without a zone are read in it), whether a name is a zone,
+# and a moment in UTC; then the file itself and the properties every component has
+default_tz, valid_tz, zone, to_utc = shared.default_tz, shared.valid_tz, shared.zone, shared.to_utc
+naive_utc, iso, parse_when, parse, master_of, kinds_of = (shared.naive_utc, shared.iso, shared.parse_when, shared.parse,
+                                                          shared.master_of, shared.kinds_of)
+text, etag_of, safe_url, stamp, _fit_until = shared.text, shared.etag_of, shared.safe_url, shared.stamp, shared.fit_until
+_set = shared.set_prop
 
 
-def parse_when(s: str, tzname: str | None = None):
-    """'2026-11-03' (a date) or '2026-11-03T10:00[:00][Z|+01:00]' (a datetime: without an offset it is wall time in
-    tzname). Invalid when it is neither."""
-    s = (s or "").strip()
-    if not s:
-        raise Invalid("A date or time is missing")
-    try:
-        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
-            return dt.date.fromisoformat(s)
-        d = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except ValueError:
-        raise Invalid(f"Not an ISO date or date-time: {s}")
-    if d.tzinfo is None:
-        d = d.replace(tzinfo=zone(tzname))
-    elif tzname and valid_tz(tzname):
-        d = d.astimezone(ZoneInfo(tzname))
-    return d.replace(microsecond=0)
+def new_uid() -> str:
+    return str(shared.uuid()).upper()
+
+
+def new_calendar() -> Calendar:
+    return shared.new_calendar(PRODID)
+
+
+def finish(cal: Calendar) -> Calendar:
+    """VTIMEZONE definitions for every zone the task uses (reminders apps want them), and the header."""
+    return shared.finish(cal, PRODID)
+
+
+def vtimezone(name: str | None) -> str | None:
+    """A VTIMEZONE for a zone (CalDAV's calendar-timezone)."""
+    return shared.vtimezone(PRODID, name)
+
+
+def _rrule(value):
+    """A task repeats daily at most: nothing within the day."""
+    return shared.rrule(value, daily_at_most=True)
+
+
+def split_by_uid(cal: Calendar) -> list[Calendar]:
+    """A calendar with many to-dos (an import) as one object per UID, each with the VTIMEZONEs it uses."""
+    return shared.split_by_uid(cal, "VTODO", new_uid, PRODID)
+
+
+def feed(objects: list, name: str, color: str | None = None) -> str:
+    """Many task objects (parsed, or as text) as one VCALENDAR (an export)."""
+    return shared.feed(objects, name, PRODID, kinds=("VTODO",), color=color)
 
 
 # ------------------------------------------------------------------ reading
 
-def parse(text: str | bytes) -> Calendar:
-    """One VCALENDAR; Invalid when the text is not iCalendar."""
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", "replace")
-    text = text.lstrip("﻿")
-    if "BEGIN:VCALENDAR" not in text.upper():
-        raise Invalid("Not an iCalendar object (no BEGIN:VCALENDAR)")
-    try:
-        cals = Calendar.from_ical(text, multiple=True)
-    except Exception as e:  # noqa: BLE001 - the library raises several kinds
-        raise Invalid(f"Not valid iCalendar: {e}") from e
-    if not cals:
-        raise Invalid("No VCALENDAR in the text")
-    out = cals[0]
-    for c in cals[1:]:  # several VCALENDARs in one file (some exports): one calendar with all their components
-        for sub in c.subcomponents:
-            out.add_component(sub)
-    return out
-
 
 def todos_of(cal: Calendar) -> list[Todo]:
     return [c for c in cal.subcomponents if c.name == "VTODO"]
-
-
-def kinds_of(cal: Calendar) -> set[str]:
-    """The components in an object besides time zones (a reminders server takes VTODO only)."""
-    return {s.name for s in cal.subcomponents if s.name != "VTIMEZONE"}
-
-
-def master_of(comps: list) -> Todo | None:
-    """The VTODO without a RECURRENCE-ID (the task, or the series); for a lone changed occurrence, that one."""
-    for c in comps:
-        if "RECURRENCE-ID" not in c:
-            return c
-    return comps[0] if comps else None
 
 
 def todo(cal: Calendar) -> Todo:
@@ -121,53 +92,6 @@ def todo(cal: Calendar) -> Todo:
     if t is None:
         raise Invalid("No task (VTODO) in the object")
     return t
-
-
-def split_by_uid(cal: Calendar) -> list[Calendar]:
-    """A calendar with many to-dos (an import) as one object per UID, each with the VTIMEZONEs it uses."""
-    tzs = {str(c.get("TZID")): c for c in cal.subcomponents if c.name == "VTIMEZONE"}
-    groups: dict[str, list] = {}
-    for t in todos_of(cal):
-        uid = str(t.get("UID") or "").strip() or new_uid()
-        if "UID" not in t:
-            t.add("UID", uid)
-        groups.setdefault(uid, []).append(t)
-    out = []
-    for comps in groups.values():
-        c = new_calendar()
-        used = set()
-        for t in comps:
-            for k in ("DTSTART", "DUE", "RECURRENCE-ID", "EXDATE", "RDATE"):
-                vals = t.get(k)
-                for v in (vals if isinstance(vals, list) else [vals]):
-                    if v is not None and getattr(v, "params", None) and v.params.get("TZID"):
-                        used.add(str(v.params["TZID"]))
-        for name in sorted(used):
-            if name in tzs:
-                c.add_component(tzs[name])
-        for t in sorted(comps, key=lambda x: "RECURRENCE-ID" in x):
-            c.add_component(t)
-        out.append(c)
-    return out
-
-
-def new_calendar() -> Calendar:
-    c = Calendar()
-    c.add("PRODID", PRODID)
-    c.add("VERSION", "2.0")
-    return c
-
-
-def new_uid() -> str:
-    return str(uuidlib.uuid4()).upper()
-
-
-def text(cal: Calendar) -> str:
-    return cal.to_ical().decode("utf-8")
-
-
-def etag_of(ics: str) -> str:
-    return hashlib.sha1(ics.encode("utf-8")).hexdigest()[:24]
 
 
 def _val(t: Todo, name: str):
@@ -331,59 +255,13 @@ def todo_json(cal: Calendar, tzname: str | None = None) -> dict:
 
 # ------------------------------------------------------------------ writing
 
-def _set(t, name: str, value, params: dict | None = None) -> None:
-    if name in t:
-        del t[name]
-    if value not in (None, "", []):
-        t.add(name, value, parameters=params)
-
-
-def safe_url(u) -> str | None:
-    """A link on a task: http(s) or mailto only (never javascript: or the like), else none."""
-    u = (u or "").strip()[:2000]
-    return u if re.match(r"^(https?://|mailto:)", u, re.I) else None
-
-
-def _rrule(value: str | dict | None):
-    if not value:
-        return None
-    if isinstance(value, dict):
-        value = ";".join(f"{k.upper()}={','.join(map(str, v)) if isinstance(v, list) else v}" for k, v in value.items())
-    value = str(value).strip()
-    if value.upper().startswith("RRULE:"):
-        value = value[6:]
-    try:
-        r = vRecur.from_ical(value)
-    except Exception as e:  # noqa: BLE001
-        raise Invalid(f"Not a repeat rule (RRULE): {value}") from e
-    if not r.get("FREQ"):
-        raise Invalid("A repeat rule needs FREQ (DAILY, WEEKLY, MONTHLY or YEARLY)")
-    if str(r["FREQ"][0]).upper() in ("SECONDLY", "MINUTELY", "HOURLY"):
-        raise Invalid("A task repeats daily at most")
-    return r
-
-
-def _fit_until(r: vRecur, anchor) -> vRecur:
-    """UNTIL has to be of the anchor's kind (RFC 5545): a date for a date, UTC for a zoned time."""
-    u = r.get("UNTIL")
-    if not u or anchor is None:
-        return r
-    u = u[0] if isinstance(u, list) else u
-    if not isinstance(anchor, dt.datetime):
-        r["UNTIL"] = [u.date() if isinstance(u, dt.datetime) else u]
-    else:
-        if not isinstance(u, dt.datetime):
-            u = dt.datetime.combine(u, dt.time(23, 59, 59), anchor.tzinfo)
-        r["UNTIL"] = [to_utc(u) if anchor.tzinfo else u.replace(tzinfo=None)]
-    return r
-
 
 def _alarm(at: dt.datetime, title: str) -> Alarm:
     a = Alarm()
     a.add("ACTION", "DISPLAY")
     a.add("DESCRIPTION", title or "Reminder")
     a.add("TRIGGER", to_utc(at), parameters={"VALUE": "DATE-TIME"})
-    a.add("UID", str(uuidlib.uuid4()).upper())
+    a.add("UID", shared.uuid().upper())
     return a
 
 
@@ -521,29 +399,6 @@ def apply(t: Todo, data: dict, tzname: str | None = None) -> Todo:
             t.add_component(_alarm(at, _str(t, "SUMMARY")))
     stamp(t)
     return t
-
-
-def stamp(t: Todo, bump: bool = True) -> None:
-    now = dt.datetime.now(UTC).replace(microsecond=0)
-    _set(t, "DTSTAMP", now)
-    _set(t, "LAST-MODIFIED", now)
-    if "CREATED" not in t:
-        t.add("CREATED", now)
-    if bump:
-        _set(t, "SEQUENCE", int(_str(t, "SEQUENCE") or 0) + (1 if "SEQUENCE" in t else 0))
-
-
-def finish(cal: Calendar) -> Calendar:
-    """VTIMEZONE definitions for every zone the task uses (reminders apps want them), and the header."""
-    if "PRODID" not in cal:
-        cal.add("PRODID", PRODID)
-    if "VERSION" not in cal:
-        cal.add("VERSION", "2.0")
-    try:
-        cal.add_missing_timezones()
-    except Exception:  # noqa: BLE001 - a zone the library cannot describe: apps fall back on its name
-        pass
-    return cal
 
 
 def build(data: dict, tzname: str | None = None) -> Calendar:
@@ -691,42 +546,3 @@ def postpone(cal: Calendar, day: dt.date, tzname: str | None = None) -> None:
     stamp(t)
 
 
-def feed(objects: list, name: str, color: str | None = None) -> str:
-    """Many task objects (parsed, or as text) as one VCALENDAR (an export), each VTIMEZONE once."""
-    out = new_calendar()
-    out.add("X-WR-CALNAME", name)
-    if color:
-        out.add("X-APPLE-CALENDAR-COLOR", color)
-    tzs: dict = {}
-    items = []
-    for o in objects:
-        try:
-            c = o if isinstance(o, Calendar) else parse(o)
-        except ValueError:
-            continue
-        for sub in c.subcomponents:
-            if sub.name == "VTIMEZONE":
-                tzs.setdefault(str(sub.get("TZID")), sub)
-            elif sub.name == "VTODO":
-                items.append(sub)
-    for z in tzs.values():
-        out.add_component(z)
-    for i in items:
-        out.add_component(i)
-    return out.to_ical().decode("utf-8")
-
-
-def vtimezone(name: str | None) -> str | None:
-    """A VTIMEZONE for a zone (CalDAV's calendar-timezone)."""
-    if not name:
-        return None
-    cal = new_calendar()
-    ev = Event()
-    ev.add("DTSTART", dt.datetime(2026, 1, 1, tzinfo=zone(name)))
-    cal.add_component(ev)
-    try:
-        cal.add_missing_timezones()
-    except Exception:  # noqa: BLE001
-        return None
-    cal.subcomponents[:] = [c for c in cal.subcomponents if c.name == "VTIMEZONE"]
-    return text(cal) if cal.subcomponents else None
