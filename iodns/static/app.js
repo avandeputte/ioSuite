@@ -4,7 +4,7 @@
    global settings). */
 import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, toast } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, put, toast } from '../api/auth/frame.js';
 const store = frame.storeFor('iodns');  // what this browser remembers for the app
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
@@ -573,7 +573,7 @@ async function setViews(el) {
 async function setData(el) {
   const file = h('input', { type: 'file', accept: '.json,application/json' });
   const replace = h('input', { type: 'checkbox' });
-  el.append(h('div', { class: 'box' }, h('h2', null, icon('download'), 'Export'), h('p', null, 'The master list (views and entries) as a JSON file.'),
+  put(el, h('div', { class: 'box' }, h('h2', null, icon('download'), 'Export'), h('p', null, 'The master list (views and entries) as a JSON file.'),
     h('p', null, h('a', { class: 'pillbtn', href: 'api/export', download: 'iodns.json' }, icon('download', 's'), 'Download'))),
   canEdit() ? h('div', { class: 'box' }, h('h2', null, icon('upload'), 'Import a file'), h('p', null, 'An ioDNS export back in: entries are added, or replaced when the name is already here.'),
     h('div', { class: 'pform' }, file, h('label', { class: 'check' }, replace, ' Remove the entries that are not in the file'),

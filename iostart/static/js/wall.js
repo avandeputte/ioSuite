@@ -1,5 +1,5 @@
 /* The wall display (#/wall) and a display signing in (#/pair/<code>). */
-import { fail, icon, toast } from '../../api/auth/frame.js';
+import { fail, fill, icon, toast } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
 import { api, dayKey, degF, fmtTemp, itemImage, S, wxIcon } from './core.js';
 import { hourRow, nextHours, rainNote, withoutBirthdays, wxImperial } from './cards.js';
@@ -159,7 +159,7 @@ async function wallWeather(el, hoursEl, sky) {
   if (!el.isConnected || !w.enabled || !w.current) { if (w && !w.enabled) { el.replaceChildren(); hoursEl.replaceChildren(); } return; }
   const c = w.current, imp = wxImperial(w), u = imp ? 'imperial' : 'metric', t = (v) => fmtTemp(imp ? degF(v) : v);
   const rain = rainNote(w);
-  el.replaceChildren(h('div', { class: 'wallnow' }, wxIcon(c.icon, 'big'), h('div', null, h('div', { class: 'walltemp' }, fmtTemp(c.temp[u])), h('div', null, c.text), rain ? h('div', { class: 'wxrain' }, rain) : null)),
+  fill(el, h('div', { class: 'wallnow' }, wxIcon(c.icon, 'big'), h('div', null, h('div', { class: 'walltemp' }, fmtTemp(c.temp[u])), h('div', null, c.text), rain ? h('div', { class: 'wxrain' }, rain) : null)),
     w.forecast && w.forecast.days ? h('div', { class: 'wxdays' }, w.forecast.days.slice(1, 5).map((d) => h('div', { class: 'wxday' },
       h('span', null, new Date(`${d.date}T12:00:00`).toLocaleDateString([], { weekday: 'short' })), wxIcon(d.icon), h('span', null, `${t(d.max)} ${t(d.min)}`)))) : null);
   const hs = nextHours(w).slice(0, 8);
@@ -215,7 +215,7 @@ export async function showPair(page, r) {
     const code = h('input', { class: 't', placeholder: 'The code on the display, e.g. K7QM-4ZPA', autocomplete: 'off', autocapitalize: 'characters', value: r.code || '' });
     const go = () => { const c = code.value.replace(/[^a-z0-9]/gi, '').toUpperCase(); if (c) location.hash = `#/pair/${c}`; };
     code.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
-    box.replaceChildren(h('h2', null, icon('wall'), 'The code on the display'), msg ? h('p', { class: 'err' }, msg) : null,
+    fill(box, h('h2', null, icon('wall'), 'The code on the display'), msg ? h('p', { class: 'err' }, msg) : null,
       h('div', { class: 'multi' }, code, h('button', { class: 'pillbtn noic', onclick: go }, 'Next')),
       h('p', { class: 'muted small' }, 'The display shows the code when it starts without a sign-in, with a QR code of this page.'));
   };

@@ -4,7 +4,7 @@
    server, for suite admins security and global settings). */
 import { client, h } from '../api/auth/ui.js';  // the suite's shared helpers (iosuite_shared/static/account-panel.js)
 import * as frame from '../api/auth/frame.js';  // what every app's page has (iosuite_shared/static/frame.js)
-import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, toast } from '../api/auth/frame.js';
+import { accountUi, addIcons, closeDialogs, closeNav, confirmDialog, fail, fld, icon, openNav, put, toast } from '../api/auth/frame.js';
 const store = frame.storeFor('iobackup');  // what this browser remembers for the app
 const api = client(document.baseURI, { signIn: () => showSignIn() });
 
@@ -101,7 +101,7 @@ async function showJobs(page) {
       h('tr', null, h('th', null, 'Job'), h('th', null, 'What'), h('th', null, 'Where'), h('th', null, 'When'), h('th', null, 'Last run'), h('th', null)),
       S.jobs.map(jobRow))));
   }
-  page.append(h('h2', { class: 'sech' }, 'Recent activity'), runsTable(runs), runs.length ? h('p', null, h('a', { class: 'lnk', href: '#/activity' }, 'All activity')) : null);
+  put(page, h('h2', { class: 'sech' }, 'Recent activity'), runsTable(runs), runs.length ? h('p', null, h('a', { class: 'lnk', href: '#/activity' }, 'All activity')) : null);
   if (S.busy) pollTimer = setTimeout(onRoute, 4000);
 }
 function jobRow(j) {
@@ -486,7 +486,7 @@ async function showActivity(page) {
 async function showRun(page, r) {
   const run = await api(`api/runs/${r.id}`);
   const active = ['queued', 'running'].includes(run.status);
-  page.append(h('div', { class: 'pagehead' }, h('a', { class: 'iconbtn', href: '#/activity', title: 'Activity' }, icon('back')), h('h1', null, run.title), pill(run.status),
+  put(page, h('div', { class: 'pagehead' }, h('a', { class: 'iconbtn', href: '#/activity', title: 'Activity' }, icon('back')), h('h1', null, run.title), pill(run.status),
     active && canEdit() ? h('button', { class: 'pillbtn noic danger', onclick: async () => { try { await api(`api/runs/${run.id}/cancel`, { method: 'POST' }); onRoute(); } catch (e) { fail(e); } } }, 'Cancel') : null),
   h('p', { class: 'muted' }, `${run.trigger === 'schedule' ? 'Scheduled' : `Started by ${run.user || 'hand'}`} · queued ${when(run.queued)}${run.finished ? ` · took ${dur(run.started, run.finished)}` : ''}`),
   run.status === 'ok' && run.kind === 'backup' && run.result ? h('p', null, `Backup ${run.result.file} (${size(run.result.size)}) stored. `, h('a', { class: 'lnk', href: `#/backups/${run.result.destinationId}` }, 'See the backups')) : null,

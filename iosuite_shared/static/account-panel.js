@@ -605,7 +605,7 @@ export async function mountFeeds(el, opts = {}) {
         const first = r.links[0];
         shown.replaceChildren(h('p', null, h('b', null, 'Copy the address now, it is shown only once.')),
           ...r.links.map((l) => h('div', { class: 'sv-row' }, h('span', { style: 'min-width:120px' }, l.name), h('code', { class: 'sv-code' }, l.url))),
-          first && opts.open !== false ? h('p', null, h('a', { class: 'sv-btn', href: first.url.replace(/^https?:/, 'webcal:') }, opts.open || 'Open in my calendar app')) : null);
+          ...(first && opts.open !== false ? [h('p', null, h('a', { class: 'sv-btn', href: first.url.replace(/^https?:/, 'webcal:') }, opts.open || 'Open in my calendar app'))] : []));
         label.value = ''; draw(r.feeds);
       } catch (e) { fail(e); }
     } }, 'New link')), shown, list));

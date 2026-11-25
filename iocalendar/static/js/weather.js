@@ -1,4 +1,4 @@
-import { api, h } from './core.js';
+import { api, fill, h } from './core.js';
 
 // ------------------------------------------------------------------ the weather (iocalendar/weather.py)
 // The next seven days at the start page's weather place go on the day headers; an event with a place shows the weather
@@ -59,7 +59,7 @@ export function eventWeather(j) {
     const u = r.units, x = r.hour, d = r.day;
     const parts = x ? [wxText(x.code), temp(x.temp, u), x.rain ? `${x.rain}% chance of rain` : null]
       : [wxText(d.code), `${temp(d.max, u)} / ${temp(d.min, u)}`, d.rain ? `${d.rain}% chance of rain` : null];
-    el.replaceChildren(wxIcon((x || d).code), h('span', null, parts.filter(Boolean).join(' · ')),
+    fill(el, wxIcon((x || d).code), h('span', null, parts.filter(Boolean).join(' · ')),
       r.place ? h('span', { class: 'where' }, `in ${r.place}`) : null);
   }).catch(() => {});
   return el;

@@ -118,3 +118,50 @@ def test_the_sidebar_is_made_of_the_parts_every_app_shares():
         left = own.findall(text)
         assert not left, f"{app} draws its own {left} beside the frame's"
 
+
+
+def _arguments(text: str, at: int) -> list:
+    """The top-level arguments of the call whose opening bracket ends at `at`."""
+    out, start, depth, quote, i = [], at, 0, None, at
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+            elif quote == "`" and text.startswith("${", i):   # an expression inside a template: over it, brackets and all
+                inner, i = 1, i + 2
+                while i < len(text) and inner:
+                    inner += {"{": 1, "}": -1}.get(text[i], 0)
+                    i += 1
+                continue
+        elif c in "'\"`":
+            quote = c
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            if depth == 0:
+                return out + [text[start:i]]
+            depth -= 1
+        elif c == "," and depth == 0:
+            out.append(text[start:i])
+            start = i + 1
+        i += 1
+    return out
+
+
+def test_nothing_that_may_be_null_is_handed_to_the_browsers_own_append():
+    """el.append(x ? node : null) and el.replaceChildren(..., null) write the word "null" on the page (the weather row
+    of the start page did, with no warning in force). fill() and put() of the frame leave such a part out, as h() does."""
+    found, seen = [], 0
+    for f in [f for app in catalog.APPS for f in _scripts(app)] + sorted(SHARED.glob("*.js")):
+        text = f.read_text(encoding="utf-8")
+        for m in re.finditer(r"\.(replaceChildren|append|prepend|before|after|replaceWith)\(", text):
+            seen += 1
+            for arg in _arguments(text, m.end()):
+                if re.search(r":\s*(null|false|undefined)\s*$", arg) and not arg.lstrip().startswith("..."):
+                    found.append(f"{f.relative_to(ROOT)}:{text.count(chr(10), 0, m.start()) + 1}: .{m.group(1)}(… {' '.join(arg.split())[:80]}")
+    assert seen > 300, "the calls were not found: nothing was checked"
+    assert not found, "use fill(el, ...) or put(el, ...) of the frame here:\n" + "\n".join(found)
