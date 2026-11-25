@@ -95,12 +95,12 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iodns.cli check                     # connect to the databases and say what is there
-.venv/bin/python -m iodns.cli compare VIEW              # compare the servers of a view (internal, external…) with the master list
-.venv/bin/python -m iodns.cli push VIEW [--prune]       # make every server of the view hold the master list (--prune: also remove what only they hold)
-.venv/bin/python -m iodns.cli import SERVER-ID [MODE]   # the master list from one server (MODE: merge, overwrite or replace; default merge)
-.venv/bin/python -m iodns.cli ddns [--push]             # find the public address now and update the records that follow it
-.venv/bin/python -m iodns.cli export                    # the master list as JSON, on standard output
+iosuite iodns check                     # connect to the databases and say what is there
+iosuite iodns compare VIEW              # compare the servers of a view (internal, external…) with the master list
+iosuite iodns push VIEW [--prune]       # make every server of the view hold the master list (--prune: also remove what only they hold)
+iosuite iodns import SERVER-ID [MODE]   # the master list from one server (MODE: merge, overwrite or replace; default merge)
+iosuite iodns ddns [--push]             # find the public address now and update the records that follow it
+iosuite iodns export                    # the master list as JSON, on standard output
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iodns` makes someone an admin of ioDNS only (`iosuite admin NAME`: of

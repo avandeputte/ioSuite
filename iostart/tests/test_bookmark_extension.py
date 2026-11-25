@@ -85,7 +85,7 @@ def test_a_viewer_reads_but_does_not_change(client):
     r = testing.add_account(client, {"name": "vera", "password": "secret123", "role": "viewer"})
     assert r.status_code in (200, 201), r.text
     from iosuite_shared import apppasswords
-    from iostart.auth import auth as a
+    from iostart import auth as a
     pw = apppasswords.create(r.json()["id"], a.app, "Extension", apppasswords.DAV)
     anon, auth = _anon(), _basic("vera", pw)
     assert anon.get(EXT, headers=auth).json()["canWrite"] is False

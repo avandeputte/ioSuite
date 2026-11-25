@@ -218,7 +218,7 @@ The viewer is also an [MCP](https://modelcontextprotocol.io) server, on the suit
 
 That is the form behind the reverse proxy; without one, use `http://<server>:8444/pix/mcp` and add `"--allow-http"` to the arguments, since the suite itself speaks plain HTTP. The tools then appear in Claude Desktop's tool menu. Every request signs in, so behind the HTTPS proxy the endpoint can be reached from outside the home network.
 
-Other clients that take an MCP URL use `http://<server>:8444/pix/mcp` directly (set `PUBLIC_URL` if links in results should use a different address). Clients that only spawn stdio servers on the machine running the viewer can use `.venv/bin/python -m iopix.mcp --user NAME` (or the setting `MCP_USER`) in the program folder; it is the same code, acting as that account.
+Other clients that take an MCP URL use `http://<server>:8444/pix/mcp` directly (set `PUBLIC_URL` if links in results should use a different address). Clients that only spawn stdio servers on the machine running the viewer can use `iosuite mcp iopix --user NAME` (or the setting `MCP_USER`) in the program folder; it is the same code, acting as that account.
 
 ## Optional features
 

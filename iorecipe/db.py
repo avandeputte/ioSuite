@@ -96,3 +96,11 @@ connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db
 marks = shared_db.marks
 get_setting, set_setting = _db.get_setting, _db.set_setting
 schema_version, ensure_database, migrate, reset_all = _db.schema_version, _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iorecipe check`, and the app's diagnostics tool)."""
+    return {"recipes": one("SELECT count(*) AS n FROM rcp_recipes")["n"],
+            "photos": one("SELECT count(*) AS n FROM rcp_photos")["n"],
+            "cookbooks": one("SELECT count(*) AS n FROM rcp_books")["n"],
+            "photoBytes": int(one("SELECT COALESCE(SUM(LENGTH(picture) + LENGTH(thumb)), 0) AS n FROM rcp_photos")["n"])}

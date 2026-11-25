@@ -8,7 +8,7 @@ from typing import Literal
 from mcp.server.mcpserver.exceptions import ToolError
 
 from iopix import __version__, config, jobs, thumbs, users
-from iopix.auth import auth as auth_shared, updater
+from iopix import auth as auth_shared, updater
 from iosuite_shared.updates import tail
 from iopix.photos import consistency, edits, repair
 from iopix.data import state as appstate

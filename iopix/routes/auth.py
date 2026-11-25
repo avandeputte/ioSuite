@@ -1,14 +1,13 @@
 """Sign-in: login, logout, the signed-in account's own settings and password, first-run setup (iosuite_shared's
 routes, shared with the other ioSuite apps), plus iopix's own: linking an account to a person."""
 
-from fastapi import HTTPException
-from fastapi import Request
+from fastapi import APIRouter, HTTPException, Request
 
 from iopix import access, users
-from iopix.auth import auth, person_tag
+from iopix.hooks import person_tag
 from iopix.http import json_body
 
-router = auth.router()  # the shared routes, plus iopix's own below
+router = APIRouter()  # beside the routes every app has (iosuite_shared.fastapi.Auth.router)
 
 
 @router.post("/api/auth/person", dependencies=[access.admin])

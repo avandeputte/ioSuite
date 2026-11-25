@@ -5,14 +5,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iomoney import __version__, config, model
+from iomoney import config, db, model, monarch
 
 # what the tool modules take from here: the suite's pieces (iosuite_shared.mcp) and ioMoney's own helpers
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who",
            "find_account", "guard", "link"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioMoney", __version__,
+    config.APP,
     instructions=(
         "The household's finances (ioMoney): accounts (bank, cards, investments, loans, and the house and the cars, "
         "which are accounts too, so the net worth is one sum), their transactions, the portfolio with live quotes, and "
@@ -23,6 +23,8 @@ server = shared_mcp.make_server(
         "left out of spending. A symbol is as Yahoo Finance writes it (AAPL, VWCE.DE, BTC-USD, EURUSD=X). "
         "Ask before deleting anything."
     ),
+    counts=db.counts,
+    more=lambda: {"monarch": monarch.status()},
 )
 
 

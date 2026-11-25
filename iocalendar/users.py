@@ -12,7 +12,7 @@ subscription links. Whether an account may write or is an admin is asked of iosu
 from iosuite_shared import feeds
 from iosuite_shared.users import AppUsers
 
-from iocalendar.auth import APP
+from iocalendar.config import APP
 
 # get and find with the role held here, the accounts by name, and what the app does at start (iosuite_shared.users.AppUsers)
 _users = AppUsers(APP)

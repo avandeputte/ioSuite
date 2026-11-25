@@ -8,10 +8,9 @@ suite.
 """
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from iosuite_shared import application, users as shared_users
+from iosuite_shared import application
 
-from iodns import __version__, api, config, db, ddns, model, sync
-from iodns.auth import auth, updater
+from iodns import api, config, ddns, model, suite_app, sync
 from iodns.providers import ProviderError
 
 
@@ -23,11 +22,11 @@ def _jobs() -> list:
 
 
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="One master list of local DNS records, per view (Internal, External, Tailscale…), kept in sync on "
                 "AdGuard Home, Pi-hole, UniFi and Cloudflare, with dynamic DNS and Tailscale device addresses.",
-    prepare=(db.migrate, shared_users.init), jobs=_jobs,
-    limit_for=lambda path, ctype: config.MAX_JSON_BYTES, not_found=(model.NotFound,),
+    jobs=_jobs,
+    not_found=(model.NotFound,),
     related=False, routers=(api.router,))
 
 

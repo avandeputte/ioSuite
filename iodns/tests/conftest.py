@@ -38,7 +38,7 @@ def _client(app):
 def client(_client):
     from iodns import db
     from iosuite_shared import apppasswords, users as shared_users
-    from iodns.auth import auth
+    from iodns import auth
     db.reset_all()
     db.migrate()
     _authtest.clean_shared_tables(auth)

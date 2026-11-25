@@ -281,9 +281,9 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iomoney.cli check           # connect to the databases and say what is there
-.venv/bin/python -m iomoney.cli sync [--full]   # copy Monarch Money in now (--full: the past two years of transactions again)
-.venv/bin/python -m iomoney.cli quotes          # ask Yahoo Finance for every quote now
+iosuite iomoney check           # connect to the databases and say what is there
+iosuite iomoney sync [--full]   # copy Monarch Money in now (--full: the past two years of transactions again)
+iosuite iomoney quotes          # ask Yahoo Finance for every quote now
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iomoney` makes someone an admin of ioMoney only (`iosuite admin NAME`: of

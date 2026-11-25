@@ -31,7 +31,7 @@ def _client(app):
 def client(_client):
     db.reset_all()
     db.migrate()
-    from iorecipe.auth import auth
+    from iorecipe import auth
     _authtest.clean_shared_tables(auth)
     from iosuite_shared import apppasswords
     apppasswords.forget()

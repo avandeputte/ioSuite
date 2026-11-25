@@ -5,7 +5,7 @@ metadata, browse people / tags / albums, count things, and look at photos
 (all read-only, for any account), plus operator tools for admins: diagnostics,
 the server log, the job queue, a photo's files on disk, and the maintenance
 reports and edits. It is served at /mcp by the web
-app (main.py) and can also run on its own with `python -m iopix.mcp` (stdio
+app (main.py) and can also run on its own with `iosuite mcp iopix` (stdio
 transport), sharing the web app's index and thumbnail cache.
 
 The package is split by who may call a tool, not by subject:
@@ -21,4 +21,15 @@ when the code behind them moves.
 from iopix.mcp.base import server, current_user, db
 from iopix.mcp import read, files, admin  # noqa: F401  importing them registers the tools on `server`
 
-__all__ = ["server", "current_user", "db", "read", "files", "admin"]
+__all__ = ["server", "current_user", "db", "read", "files", "admin", "set_user"]
+
+
+def set_user(user) -> None:
+    """Whose this call is: the account, and with it the private albums and favourites it may see and the name the
+    change log writes. The web app's gate and the stdio server (`iosuite mcp iopix`) both go through here."""
+    from iopix.data import state as appstate
+    from iopix.photos import history
+    current_user.set(user)
+    appstate.viewer.set(user)
+    if user:
+        history.user.set(user["name"])

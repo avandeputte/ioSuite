@@ -39,7 +39,7 @@ def _client(app):
 def client(_client):
     from iobackup import db
     from iosuite_shared import apppasswords, users as shared_users
-    from iobackup.auth import auth
+    from iobackup import auth
     db.reset_all()
     db.migrate()
     _authtest.clean_shared_tables(auth)

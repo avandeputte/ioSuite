@@ -102,8 +102,8 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iothings.cli check                        # connect to the databases and say what is there
-.venv/bin/python -m iothings.cli import-homebox FILE [NAME]   # the things in a Homebox CSV export, added as NAME (or the first admin)
+iosuite iothings check                        # connect to the databases and say what is there
+iosuite iothings import-homebox FILE [NAME]   # the things in a Homebox CSV export, added as NAME (or the first admin)
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iothings` makes someone an admin of ioThings only (`iosuite admin NAME`: of

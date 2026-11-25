@@ -62,5 +62,32 @@
       "type": "text",
       "hint": "The language of the holidays' names."
     }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp",
+      "/dav",
+      "/.well-known/"
+    ],
+    "davScope": [
+      "/dav",
+      "/.well-known/caldav"
+    ]
+  },
+  "mcp": "Lets an AI assistant read the agenda, find free time and add or change events, as you.",
+  "limits": {
+    "json": 4,
+    "import": 32,
+    "event": 2
+  },
+  "bodies": [
+    {
+      "path": "*/import*",
+      "limit": "import"
+    },
+    {
+      "path": "/dav*",
+      "limit": "import"
+    }
   ]
 }

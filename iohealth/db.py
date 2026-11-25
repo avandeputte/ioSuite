@@ -219,3 +219,9 @@ def migrate():
             cur.execute(DELAY_BY_DAY)
             cur.execute("CREATE TABLE IF NOT EXISTS hlt_schema_version (version INT PRIMARY KEY, applied_at DATETIME(3) NOT NULL)" + TABLE_OPTIONS)
             cur.execute("INSERT IGNORE INTO hlt_schema_version VALUES (%s, UTC_TIMESTAMP(3))", (SCHEMA_VERSION,))
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iohealth check`)."""
+    return {"samples": one("SELECT count(*) AS n FROM hlt_samples")["n"],
+            "workouts": one("SELECT count(*) AS n FROM hlt_workouts")["n"]}

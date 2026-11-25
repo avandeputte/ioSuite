@@ -163,3 +163,11 @@ connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db
 marks = shared_db.marks
 get_setting, set_setting = _db.get_setting, _db.set_setting
 schema_version, ensure_database, migrate, reset_all = _db.schema_version, _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iothings check`, and the app's diagnostics tool)."""
+    return {"items": one("SELECT count(*) AS n FROM thg_items")["n"],
+            "locations": one("SELECT count(*) AS n FROM thg_locations")["n"],
+            "files": one("SELECT count(*) AS n FROM thg_files")["n"],
+            "fileBytes": int(one("SELECT COALESCE(SUM(size), 0) AS n FROM thg_files")["n"])}

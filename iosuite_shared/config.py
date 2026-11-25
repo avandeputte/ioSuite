@@ -324,6 +324,27 @@ def own_db(app: str, stored: Settings = None, default_name: str = None) -> dict:
     return {"host": DB_HOST, "port": DB_PORT, "database": s.get("DB_NAME", default_name or app), "user": DB_USER, "password": DB_PASSWORD}
 
 
+def of_app(package: str) -> dict:
+    """Every name an app's config module has without writing it (`globals().update(shared.of_app(__package__))`):
+
+      APP                           its key
+      env, env_flag, env_int        its stored settings, read once, now (Settings.get, .flag, .int)
+      what standard() gives         APP_DIR, DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT, PUBLIC_URL, BASE_URL...
+      DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD    its own database (own_db)
+      MAX_<NAME>_BYTES              the manifest's `limits` (app.json), MAX_JSON_BYTES among them
+
+    The module then holds only what is the app's own."""
+    from iosuite_shared import app as declared
+    key = package.split(".")[0]
+    a = declared.of(key)
+    s = settings(key)
+    own = own_db(key, s)
+    out = {"APP": key, "env": s.get, "env_flag": s.flag, "env_int": s.int, **standard(key, a.dir, s),
+           "DB_HOST": own["host"], "DB_PORT": own["port"], "DB_NAME": own["database"], "DB_USER": own["user"], "DB_PASSWORD": own["password"]}
+    out.update({declared.limit_name(name): n for name, n in a.limits(s).items()})
+    return out
+
+
 # ---- what a person may set: Settings › Apps › All settings, and `iosuite set`
 # {name, label, hint, type: text | number | switch | choice, default?, choices?}; an app's own are in its app.json ("settings")
 COMMON = [

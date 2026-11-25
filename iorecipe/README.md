@@ -52,7 +52,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iorecipe.cli check   # connect to the databases and say what is there
+iosuite iorecipe check   # connect to the databases and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iorecipe` makes someone an admin of ioRecipe only (`iosuite admin NAME`: of
@@ -189,7 +189,7 @@ at all. Every assistant signs in with an **app password** (Settings › Account 
 claude mcp add --transport http iorecipe https://mcp.example.com/recipes/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m iorecipe.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iorecipe --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_recipes`, `search_recipes`, `get_recipe`; `create_recipe`, `update_recipe`,
 `delete_recipe`, `import_recipe`, `mark_recipe`; `list_cookbooks`, `create_cookbook`, `add_to_cookbook`,

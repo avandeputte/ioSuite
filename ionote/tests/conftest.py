@@ -35,7 +35,7 @@ def clean():
         for t in TABLES:
             con.execute(f"DELETE FROM {t}")
         con.commit()
-    from ionote.auth import auth
+    from ionote import auth
     _authtest.clean_shared_tables(auth)  # accounts, sessions, app passwords, settings, the list of apps; the first account is #1 again
     proxyauth.forget_identities()
     notes._tags_seen.clear()

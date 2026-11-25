@@ -26,5 +26,8 @@
       "default": "1",
       "hint": "Off: nothing is compared and no address is updated until someone asks from the pages."
     }
-  ]
+  ],
+  "limits": {
+    "json": 4
+  }
 }

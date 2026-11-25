@@ -124,3 +124,11 @@ def _family_list(cur) -> None:
 
 def migrate() -> None:
     _db.migrate(after=_family_list)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iotask check`, and the app's diagnostics tool)."""
+    return {"lists": one("SELECT count(*) AS n FROM tsk_lists")["n"],
+            "tasks": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 0")["n"],
+            "open": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 0 AND done = 0")["n"],
+            "tombstones": one("SELECT count(*) AS n FROM tsk_tasks WHERE deleted = 1")["n"]}

@@ -57,8 +57,8 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iotask.cli check                     # connect to the databases and say what is there
-.venv/bin/python -m iotask.cli import LIST-ID FILE.ics   # tasks (VTODOs) from an .ics file into a list
+iosuite iotask check                     # connect to the databases and say what is there
+iosuite iotask import LIST-ID FILE.ics   # tasks (VTODOs) from an .ics file into a list
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iotask` makes someone an admin of ioTask only (`iosuite admin NAME`: of
@@ -169,7 +169,7 @@ at all. Every assistant signs in with an **app password** (Settings › Account 
 claude mcp add --transport http iotask https://mcp.example.com/tasks/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m iotask.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iotask --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_lists`, `list_family_members`, `list_tasks`, `search_tasks`, `get_task`, `get_ics`,
 `connection_details`; `create_task`, `update_task`, `complete_task`, `delete_task`, `move_task`, `create_list`,

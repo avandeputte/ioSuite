@@ -108,21 +108,23 @@ class Static(StaticFiles):
         return Response(packed, media_type=r.media_type, headers={**keep, "ETag": "W/" + r.headers["etag"], "Content-Encoding": "gzip"})
 
 
-def mount(app, static_dir: Path, service_worker: bool = False) -> None:
+def mount(app, static_dir: Path, service_worker: bool = False, dependencies=()) -> None:
     """GET / (index.html with a mark on its script and style sheets: stamp()), the manifest, /sw.js at the root when
-    the app has one (its scope is then the whole app), and /static."""
+    the app has one (its scope is then the whole app), and /static. `dependencies`: the access marker these routes
+    declare, like every other route of the app (iosuite_shared.access: the page is public)."""
     static_dir = Path(static_dir)
+    marked = list(dependencies)
 
-    @app.get("/", include_in_schema=False)
+    @app.get("/", include_in_schema=False, dependencies=marked)
     def index():
         return HTMLResponse(stamp((static_dir / "index.html").read_text(encoding="utf-8"), static_dir), headers={"Cache-Control": "no-cache"})
 
-    @app.get("/manifest.webmanifest", include_in_schema=False)
+    @app.get("/manifest.webmanifest", include_in_schema=False, dependencies=marked)
     def manifest():
         return FileResponse(static_dir / "manifest.webmanifest", media_type="application/manifest+json")
 
     if service_worker:
-        @app.get("/sw.js", include_in_schema=False)
+        @app.get("/sw.js", include_in_schema=False, dependencies=marked)
         def sw():
             return FileResponse(static_dir / "sw.js", media_type="text/javascript")
 

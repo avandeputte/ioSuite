@@ -5,6 +5,44 @@
   "tag": "Photos",
   "color": "#3b4a8c",
   "folder": "pix",
+  "access": {
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant search, look at and organize your photos, as you.",
+  "limits": {
+    "json": 4,
+    "upload": 2048,
+    "track": 64
+  },
+  "bodies": [
+    {
+      "path": "/api/import",
+      "type": "multipart/*",
+      "limit": "upload"
+    },
+    {
+      "path": "/api/import/stage",
+      "type": "multipart/*",
+      "limit": "upload"
+    },
+    {
+      "path": "/api/folders/*/upload",
+      "type": "multipart/*",
+      "limit": "upload"
+    },
+    {
+      "path": "/share",
+      "type": "multipart/*",
+      "limit": "upload"
+    },
+    {
+      "path": "/api/gpx/preview",
+      "type": "multipart/*",
+      "limit": "track"
+    }
+  ],
   "media": [
     "/thumb/",
     "/preview/",

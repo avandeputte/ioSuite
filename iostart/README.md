@@ -257,7 +257,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iostart.cli check   # connect to the databases and say what is there
+iosuite iostart check   # connect to the databases and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iostart` makes someone an admin of ioStart only (`iosuite admin NAME`: of
@@ -354,7 +354,6 @@ trmnl/             TRMNL e-ink screens: __init__.py the screens and their data; 
 auth.py            the shared accounts and the updater (iosuite_shared), as ioStart uses them
 db.py              MariaDB access and the schema (the meta settings table, the bookmarks)
 config.py          the settings: the suite's standard names (iosuite_shared.config) and ioStart's own
-cli.py             python -m iostart.cli: migrate, check
 static/            the web app: index.html, app.css, the icons (each app's tile shows the icon it registered, served by that app),
                    and the page's script in js/ (no build step; app.js only starts it): core.js (helpers, state),
                    shell.js (the account menu), main.js (the routes, the start), home.js (the start page) with

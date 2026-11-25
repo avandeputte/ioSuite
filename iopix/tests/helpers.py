@@ -47,7 +47,7 @@ def clear_accounts(db_path=None):
     testing.restore_stored()  # what ioPix reads as it starts: a job process started later reads it too
     authdb.set_setting("require_login", "0", "iopix")  # sign-in required is on by default; most tests browse as a visitor once accounts exist
     authdb.ex("DELETE FROM ios_apps")
-    from iopix.auth import auth
+    from iopix import auth
     auth._registered = False  # the next request registers iopix in the list of apps again
     shared_users.invalidate()  # the accounts cache must not outlive the rows
     if db_path is not None:  # another process (the browser tests' server) keeps its own cache: let it expire

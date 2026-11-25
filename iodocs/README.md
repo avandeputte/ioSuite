@@ -79,8 +79,8 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iodocs.cli check       # connect to the databases and say what is there, and what this server can read off a scan
-.venv/bin/python -m iodocs.cli read FILE   # what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
+iosuite iodocs check       # connect to the databases and say what is there, and what this server can read off a scan
+iosuite iodocs read FILE   # what ioDocs reads off a scan or a PDF (nothing is kept): a test of OCR on this server
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iodocs` makes someone an admin of ioDocs only (`iosuite admin NAME`: of

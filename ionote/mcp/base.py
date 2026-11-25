@@ -3,7 +3,7 @@ from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 from mcp.server.mcpserver.exceptions import ToolError
 
-from ionote import __version__, config, notes
+from ionote import config, db, images, notes, ocr
 
 __all__ = ["ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who", "need_member",
            "server", "APP", "LOG_NAME", "clamp_limit", "resolve_folder", "note_or_fail", "note_to_change", "summary", "iso", "parse_date"]
@@ -11,7 +11,7 @@ __all__ = ["ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "curren
 APP = config.BASE_URL  # for the links in results
 LOG_NAME = "MCP"       # the name the change log shows for a change made through MCP
 
-server = shared_mcp.make_server("ionote", "ioNote", __version__, instructions=(
+server = shared_mcp.make_server("ionote", counts=db.counts, more=lambda: _more(), instructions=(
     "A personal notes library (text, clipboard snippets, screenshots with the text read from them). Start with "
     "notes_overview, use list_folders / list_tags to find exact names, then search_notes and get_note. "
     "view_note_image shows a note's picture, read_attachment a file's text. related_notes, suggest_organization and "
@@ -91,3 +91,8 @@ def parse_date(s: str, end: bool = False) -> float:
     except ValueError:
         raise ToolError(f"Dates are YYYY-MM-DD, got '{s}'")
     return calendar.timegm(t) + (86400 if end else 0)
+
+
+def _more() -> dict:
+    """ioNote's own lines there: the stored pictures and what text recognition can do on this server."""
+    return {"pictures": images.stats(), "ocr": ocr.status()}

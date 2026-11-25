@@ -61,5 +61,24 @@
       "type": "switch",
       "default": "1"
     }
-  ]
+  ],
+  "limits": {
+    "json": 2,
+    "import": 20
+  },
+  "bodies": [
+    {
+      "path": "*/import*",
+      "limit": "import"
+    },
+    {
+      "path": "*/api/news/opml",
+      "limit": "import"
+    },
+    {
+      "path": "/dav/*",
+      "limit": "import"
+    }
+  ],
+  "mcp": "The suite's one MCP server: an AI assistant connected here with an ioStart app password uses every app's tools as you (each app's own MCP server has to be on), and suite admins can update every app at once."
 }

@@ -31,7 +31,7 @@ def _client(app):
 def client(_client):
     db.reset_all()
     db.migrate()
-    from iocontact.auth import auth
+    from iocontact import auth
     _authtest.clean_shared_tables(auth)
     _client.cookies.clear()
     r = _client.post("/api/auth/setup", json={"name": "alex", "password": "secret123"})

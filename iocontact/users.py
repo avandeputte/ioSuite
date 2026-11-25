@@ -14,7 +14,8 @@ import secrets
 from iosuite_shared import apppasswords, db as authdb, feeds, users as shared
 
 from iocontact import db
-from iocontact.auth import APP, row_of
+from iocontact.config import APP
+from iocontact.hooks import row_of
 
 
 def public(u: dict | None) -> dict | None:

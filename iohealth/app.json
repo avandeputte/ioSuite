@@ -51,5 +51,11 @@
       "type": "text",
       "hint": "Shown on the maps (HTML). Empty: OpenStreetMap's."
     }
-  ]
+  ],
+  "access": {
+    "writeRole": "member"
+  },
+  "limits": {
+    "json": 4
+  }
 }

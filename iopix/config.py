@@ -1,6 +1,6 @@
-"""Paths and tunables: ioPix's own settings are kept in the Shared ioSuite database and read once, as it starts
-(Settings › Apps › All settings changes them; app.json lists them). The settings every app of the suite shares come from
-iosuite_shared.config.standard; the machine's file says only where that database is and where the server listens.
+"""Settings: ioPix's own are kept in the Shared ioSuite database and read once, as it starts (Settings › Apps › All
+settings changes them; app.json lists them). The settings every app of the suite shares come from
+iosuite_shared.config.standard.
 
 Everything this app writes on its own (index, caches, state, models, backups)
 lives under DATA_DIR, inside the app's own folder by default. The library is
@@ -13,16 +13,14 @@ from pathlib import Path
 
 from iosuite_shared import config as shared
 
-APP = "iopix"
-APP_DIR = Path(__file__).resolve().parent
-_s = shared.settings(APP)  # what is stored for this app in the Shared ioSuite database, read once, now
-env, env_flag, env_int = _s.get, _s.flag, _s.int
-# APP_DIR, DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT, PUBLIC_URL, BASE_URL, TLS_CERT_FILE, TLS_KEY_FILE,
-# KEEP_DELETED_DAYS: the same names in every app (iosuite_shared.config.standard says what each is)
-_std = shared.standard(APP, APP_DIR, _s)
-DATA_DIR, STATIC_DIR, LOG_FILE, HOST, PORT = _std["DATA_DIR"], _std["STATIC_DIR"], _std["LOG_FILE"], _std["HOST"], _std["PORT"]
-PUBLIC_URL, BASE_URL = _std["PUBLIC_URL"], _std["BASE_URL"]
-TLS_CERT_FILE, TLS_KEY_FILE, MCP_USER = _std["TLS_CERT_FILE"], _std["TLS_KEY_FILE"], _std["MCP_USER"]  # MCP_USER: the account `python -m iopix.mcp` (stdio) acts as
+# APP, env, env_flag, env_int, what every app has (APP_DIR, DATA_DIR, PUBLIC_URL...), DB_* and the MAX_<NAME>_BYTES of
+# app.json's limits: iosuite_shared.config.of_app says what each is
+_own = shared.of_app(__package__)
+globals().update(_own)
+env, env_flag, env_int = _own["env"], _own["env_flag"], _own["env_int"]
+DATA_DIR = _own["DATA_DIR"]
+DB_HOST, DB_PORT, DB_NAME = _own["DB_HOST"], _own["DB_PORT"], _own["DB_NAME"]
+DB_USER, DB_PASSWORD = _own["DB_USER"], _own["DB_PASSWORD"]
 
 
 def _path(name: str, default: Path) -> Path:
@@ -152,4 +150,4 @@ def mysql_dates_env() -> str:
 
 def own_db() -> dict:
     """ioPix's own database: beside the Shared ioSuite database, under the same login (DB_NAME names another than iopix)."""
-    return shared.own_db(APP, _s)
+    return {"host": DB_HOST, "port": DB_PORT, "database": DB_NAME, "user": DB_USER, "password": DB_PASSWORD}

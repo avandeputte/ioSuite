@@ -5,14 +5,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iorecipe import __version__, config, model
+from iorecipe import config, db, model
 
 # what the tool modules take from here: the suite's pieces (iosuite_shared.mcp) and ioRecipe's own helpers
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who",
            "find_book", "find_recipe", "recipe_out", "summary"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioRecipe", __version__,
+    config.APP,
     instructions=(
         "The family's recipes (ioRecipe). Start with overview: it says who you are, how many recipes there are and "
         "the tags in use. list_recipes lists them (by tag, the family's or your own); search_recipes finds them by "
@@ -25,6 +25,7 @@ server = shared_mcp.make_server(
         "list_cookbooks, create_cookbook, add_to_cookbook, remove_from_cookbook. "
         "Ask before deleting a recipe or a cookbook."
     ),
+    counts=db.counts,
 )
 
 

@@ -250,6 +250,6 @@ def test_custom_access_marker_is_declared_and_enforced():
 def test_mcp_session_manager_can_be_started_again():
     """mcp.running resets a private attribute of the MCP library; this fails the day the library renames it."""
     from iosuite_shared import mcp
-    s = mcp.make_server("t", "T", "1", "")
+    s = mcp.make_server("t", instructions="", app_tools=False)
     s.streamable_http_app()  # the session manager exists once the app is built
     assert hasattr(s.session_manager, "_has_started")

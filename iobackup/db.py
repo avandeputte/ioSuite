@@ -87,3 +87,10 @@ _db = shared_db.AppDatabase(config, PREFIX, SCHEMA, SCHEMA_VERSION)
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 marks = shared_db.marks
 ensure_database, migrate, reset_all = _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iobackup check`)."""
+    return {"servers": one("SELECT count(*) AS n FROM bkp_servers")["n"],
+            "destinations": one("SELECT count(*) AS n FROM bkp_destinations")["n"],
+            "jobs": one("SELECT count(*) AS n FROM bkp_jobs")["n"]}

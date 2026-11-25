@@ -8,7 +8,7 @@ open, so a fresh install is not locked out. Accounts, passwords and sessions liv
 """
 from iosuite_shared import db as authdb, users as shared
 
-from iopix.auth import APP, decorate, person_tag, set_person
+from iopix.hooks import APP, decorate, person_tag, set_person
 
 __all__ = ["person_tag", "set_person", "decorate", "APP"]  # re-exported for the rest of the app
 

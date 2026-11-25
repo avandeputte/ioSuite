@@ -6,23 +6,22 @@ import json
 import pytest
 from pathlib import Path
 
-from fastapi.routing import APIRoute
+from iosuite_shared import testing
 
 from iopix import access
-from iopix.routes import albums, auth, backup, browse, editing, faces, geo, images, tools, organize, review, settings
 
 TABLE = json.loads((Path(__file__).parent / "access_table.json").read_text())
 
 
 def _api_routes():
-    """Every route of the route modules, whatever its address, and the ones iopix/main.py serves itself."""
+    """Every route of the app, whatever its address: its own, the ones every app of the suite answers, and the page."""
     from iopix.main import app
     seen = set()
-    for routes in [mod.router.routes for mod in (browse, images, albums, editing, settings, tools, auth, geo, backup, review, organize, faces)] + [app.routes]:
-        for r in routes:
-            if isinstance(r, APIRoute) and (r.path, tuple(sorted(r.methods))) not in seen:
-                seen.add((r.path, tuple(sorted(r.methods))))
-                yield r
+    for methods, path, r in testing.api_routes(app):
+        key = (path, tuple(sorted(methods)))
+        if key not in seen:
+            seen.add(key)
+            yield r
 
 
 def test_every_api_route_declares_its_access():
@@ -30,9 +29,16 @@ def test_every_api_route_declares_its_access():
     assert not missing, "routes without exactly one access marker (dependencies=[access.<level>]):\n" + "\n".join(missing)
 
 
+# the panel every app of the suite serves (Settings › People, Apps, Servers and Keys, the Linked panel, the live
+# stream, /api/suite): the shared tests check those, and the table below is ioPix's own routes
+SUITE = ("/api/suite-admin", "/api/live", "/api/related", "/api/suite")
+
+
 def test_declared_access_matches_the_table():
     seen = {}
     for r in _api_routes():
+        if r.path.startswith(SUITE):
+            continue
         role, write = access.declared(r)
         for m in r.methods - {"HEAD", "OPTIONS"}:
             seen[f"{m} {r.path}"] = role + ("+write" if write else "")

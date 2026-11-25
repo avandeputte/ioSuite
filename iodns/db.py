@@ -107,3 +107,10 @@ def _views(cur) -> None:
 
 def migrate() -> None:
     _db.migrate(after=_views)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iodns check`)."""
+    return {"entries": one("SELECT count(*) AS n FROM dns_entries")["n"],
+            "views": one("SELECT count(*) AS n FROM dns_views")["n"],
+            "servers": one("SELECT count(*) AS n FROM dns_servers")["n"]}

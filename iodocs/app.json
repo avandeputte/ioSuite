@@ -61,5 +61,25 @@
       "default": "eng",
       "hint": "Tesseract's languages (eng+fra+deu); each needs its tesseract-ocr-<lang> package."
     }
+  ],
+  "access": {
+    "defaultRole": "none",
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant look up your documents and when they expire, and add them, as you.",
+  "limits": {
+    "json": 2,
+    "file": {
+      "setting": "MAX_FILE_MB",
+      "default": 100
+    }
+  },
+  "bodies": [
+    {
+      "path": "*/files",
+      "limit": "file"
+    }
   ]
 }

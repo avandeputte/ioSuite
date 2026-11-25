@@ -43,5 +43,29 @@
       "default": "100",
       "hint": "One manual, receipt or photo as uploaded."
     }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant look things up, add them and log their upkeep, as you.",
+  "limits": {
+    "json": 2,
+    "import": 20,
+    "file": {
+      "setting": "MAX_FILE_MB",
+      "default": 100
+    }
+  },
+  "bodies": [
+    {
+      "path": "/api/import/homebox",
+      "limit": "import"
+    },
+    {
+      "path": "*/files",
+      "limit": "file"
+    }
   ]
 }

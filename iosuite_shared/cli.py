@@ -13,6 +13,8 @@
     iosuite provision                             make the databases and the one login (iosuite_shared.provision)
     iosuite stack                                 a container's first start (iosuite_shared.stack)
     iosuite install                               set this machine up, or change the apps it runs (iosuite_shared.install)
+    iosuite <app> <command>                       one app from a shell: check, migrate, and its own (iosuite_shared.appcli)
+    iosuite mcp <app> [--user NAME]               an app's MCP server over stdio, as that account
 
 Everything reads the machine's file (config.env in the program folder; --config names another one, or a folder that
 holds it), which says how to reach the Shared ioSuite database. `set` and `settings` are the Settings screen
@@ -27,6 +29,8 @@ import sys
 def _parser():
     p = argparse.ArgumentParser(prog="iosuite", description="ioSuite: one program that runs the apps it is told to")
     p.add_argument("--config", default=None, help="the machine's file, or a folder that holds config.env (default: the program folder)")
+    p.epilog = ("one app from a shell: iosuite <app> <command> (check, migrate, and the app's own; "
+                "iosuite <app> --help says which)")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("serve", help="run the apps until stopped")
     s.add_argument("--apps", default=None, help="the apps of this copy, comma-separated (default: APPS in the machine's file, else every app installed)")
@@ -70,6 +74,8 @@ def _parser():
     ce.add_argument("--cloudflare", action="store_true", help="the proof through Cloudflare's DNS: for a name with a star, or one the internet cannot reach")
     ce.add_argument("--token-file", default=None, help="Cloudflare's API token (Zone, DNS, Edit), read from this file ('-': standard input)")
     ce.add_argument("--names", default=None, help="names beside the ones the suite's addresses say, comma-separated ('' : none)")
+    m = sub.add_parser("mcp", help="an app's MCP server over stdio, for a client that starts a local process")
+    m.add_argument("rest", nargs=argparse.REMAINDER, help="<app> [--user NAME]")
     from iosuite_shared import demo, install, provision, stack
     demo.add_parser(sub)
     provision.add_parser(sub)
@@ -189,10 +195,15 @@ def apps_cmd(a, out=print) -> int:
 
 
 def main(argv=None):
+    from iosuite_shared import appcli, catalog, config
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] in catalog.APPS:   # iosuite <app> <command>: that app from a shell
+        return appcli.run(argv[0], argv[1:])
     a = _parser().parse_args(argv)
-    from iosuite_shared import config
     if a.config:
         config.load_file(a.config)
+    if a.cmd == "mcp":   # an app's MCP server over stdio
+        return appcli.stdio(a.rest)
 
     if a.cmd == "serve":
         from iosuite_shared import host

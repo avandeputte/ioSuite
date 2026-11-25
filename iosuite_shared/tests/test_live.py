@@ -86,7 +86,7 @@ def test_a_tool_that_changed_something_over_mcp_is_heard():
     from mcp.server.mcpserver.exceptions import ToolError
 
     from iosuite_shared import mcp as shared_mcp
-    server = shared_mcp.make_server("iotest", "ioTest", "1.2.3", "")
+    server = shared_mcp.make_server("iotest", instructions="", app_tools=False)
 
     @server.tool(annotations=shared_mcp.READ_ONLY)
     def look() -> dict:

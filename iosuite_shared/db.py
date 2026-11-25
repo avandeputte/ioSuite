@@ -157,10 +157,10 @@ SCHEMA = [
         updated_at BIGINT NOT NULL,
         last_seen_at BIGINT NULL
     )""",
-    # updating the apps from one place (iosuite_shared.suiteupdates): a suite admin leaves an action for an app, the
-    # app takes it off and runs it, and writes back what it knows about its own version and its last update
-    """CREATE TABLE IF NOT EXISTS ios_updates (
-        app VARCHAR(32) PRIMARY KEY,
+    # updating the suite from one place (iosuite_shared.suiteupdates): a suite admin leaves an action for a copy of the
+    # program, the copy takes it off and runs it, and writes back what it knows about its version and its last update
+    """CREATE TABLE IF NOT EXISTS ios_copies (
+        copy VARCHAR(64) PRIMARY KEY,
         action VARCHAR(16) NULL,
         requested_at BIGINT NULL,
         requested_by VARCHAR(64) NULL,

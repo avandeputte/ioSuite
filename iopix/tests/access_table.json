@@ -179,5 +179,6 @@
   "DELETE /api/auth/passkeys/{passkey_id}": "signed_in",
   "POST /api/auth/two-step/begin": "signed_in",
   "POST /api/auth/two-step": "signed_in",
-  "POST /api/auth/two-step/off": "signed_in"
+  "POST /api/auth/two-step/off": "signed_in",
+  "GET /api/status": "public"
 }

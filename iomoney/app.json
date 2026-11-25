@@ -40,5 +40,31 @@
       "default": "1",
       "hint": "Monarch, quotes and notifications on their own. Off: only when asked."
     }
+  ],
+  "access": {
+    "defaultRole": "none",
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant read the accounts, the transactions, the portfolio and the net worth, and keep them, as you.",
+  "limits": {
+    "json": 2,
+    "import": 20,
+    "receipt": 20
+  },
+  "bodies": [
+    {
+      "path": "*/import",
+      "limit": "import"
+    },
+    {
+      "path": "*/statement/read",
+      "limit": "import"
+    },
+    {
+      "path": "*/receipts",
+      "limit": "receipt"
+    }
   ]
 }

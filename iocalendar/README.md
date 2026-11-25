@@ -57,10 +57,10 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iocalendar.cli check                         # connect to the databases and say what is there
-.venv/bin/python -m iocalendar.cli import CALENDAR-ID FILE.ics   # events from an .ics file into a calendar
-.venv/bin/python -m iocalendar.cli sync-birthdays                # bring the Birthdays calendar up to date from ioContact
-.venv/bin/python -m iocalendar.cli sync-holidays                 # bring the Holidays calendars up to date (Settings › Holidays and birthdays)
+iosuite iocalendar check                         # connect to the databases and say what is there
+iosuite iocalendar import CALENDAR-ID FILE.ics   # events from an .ics file into a calendar
+iosuite iocalendar sync-birthdays                # bring the Birthdays calendar up to date from ioContact
+iosuite iocalendar sync-holidays                 # bring the Holidays calendars up to date (Settings › Holidays and birthdays)
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iocalendar` makes someone an admin of ioCalendar only (`iosuite admin NAME`: of
@@ -97,7 +97,7 @@ it from the server as its own service account (`iocalendar-app`) with a read-onl
 first use and listed on the start page's Settings › People, where a suite admin can revoke them (a new one is made the
 next time). Behind Cloudflare Access, the suite's Cloudflare Access service token (Settings › Keys)
 goes along. The Birthdays calendar is filled from ioContact's birthday feed and brought up to date every six hours
-(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `python -m iocalendar.cli sync-birthdays`).
+(and on request from Settings › Holidays and birthdays, which has the Birthdays switch, or `iosuite iocalendar sync-birthdays`).
 
 ### ioTask
 
@@ -195,7 +195,7 @@ at all. Every assistant signs in with an **app password** (Settings › Account 
 claude mcp add --transport http iocalendar https://mcp.example.com/calendar/mcp --header "Authorization: Bearer APP-PASSWORD"
 ```
 
-On the server itself, `.venv/bin/python -m iocalendar.mcp --user NAME` serves the same tools over stdio.
+On the server itself, `iosuite mcp iocalendar --user NAME` serves the same tools over stdio.
 
 The tools: `overview`, `list_calendars`, `list_family_members`, `agenda`, `search_events`, `get_event`, `get_ics`,
 `free_busy`, `connection_details`; `create_event`, `update_event`, `delete_event`, `move_event`, `create_calendar`,

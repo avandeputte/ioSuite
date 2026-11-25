@@ -112,3 +112,10 @@ def _family_calendar(cur) -> None:
 
 def migrate() -> None:
     _db.migrate(after=_family_calendar)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iocalendar check`, and the app's diagnostics tool)."""
+    return {"calendars": one("SELECT count(*) AS n FROM cal_calendars")["n"],
+            "events": one("SELECT count(*) AS n FROM cal_events WHERE deleted = 0")["n"],
+            "tombstones": one("SELECT count(*) AS n FROM cal_events WHERE deleted = 1")["n"]}

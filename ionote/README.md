@@ -77,7 +77,7 @@ and [one app or all of them](../docs/docs/start/one-or-all.md).
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m ionote.cli check   # connect to the databases and say what is there
+iosuite ionote check   # connect to the databases and say what is there
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app ionote` makes someone an admin of ioNote only (`iosuite admin NAME`: of
@@ -228,7 +228,7 @@ claude mcp add --transport http ionote https://mcp.example.com/notes/mcp --heade
 
 Apps that take a JSON configuration and only start local processes (Claude Desktop, for example) can reach it through
 `mcp-remote`: `{"mcpServers": {"ionote": {"command": "npx", "args": ["-y", "mcp-remote", "https://mcp.example.com/notes/mcp", "--header", "Authorization: Bearer ionote-…"]}}}`.
-`python -m ionote.mcp --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
+`iosuite mcp ionote --user NAME` (or `MCP_USER`) serves the same tools on stdio, as that account.
 
 ## Export, import and backups
 

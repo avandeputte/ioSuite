@@ -166,7 +166,7 @@ def asker(uid: int):
     user = apppasswords.authenticate(None, pw, apppasswords.HUB)
     if not user:
         raise Invalid("The TRMNL app password was revoked: open Settings › TRMNL and save it again")
-    from iostart.auth import auth
+    from iostart import auth
     return Asker(auth.decorate(user), pw)
 
 

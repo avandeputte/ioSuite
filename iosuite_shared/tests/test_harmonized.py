@@ -151,7 +151,7 @@ def test_mcp_helpers():
 
 
 def test_mcp_server_mounts_ahead_of_the_routes():
-    server = shared_mcp.make_server("iotest", "ioTest", "1.2.3", instructions="Testing.")
+    server = shared_mcp.make_server("iotest", instructions="Testing.", app_tools=False)
 
     @server.tool(annotations=shared_mcp.READ_ONLY)
     def hello() -> str:
@@ -204,7 +204,7 @@ def test_clean_shared_tables():
 
 
 def test_updater_is_what_status_router_expects(tmp_path):
-    u = Updater("iotest", "1.0", tmp_path)
+    u = Updater("1.0", tmp_path)
     for name in ("local_commit", "can_run", "in_docker"):
         assert callable(getattr(u, name))
     assert json.dumps(u.status())
@@ -233,3 +233,38 @@ def test_check_access_declared_sees_through_included_routers():
     with pytest.raises(AssertionError, match="nothing was checked"):
         testing.check_access_declared(app, auth.access.declared, prefix="/nothing/")
     testing.check_access_declared(app, auth.access.declared, ignore=("/api/open",))
+
+
+# ---- one command line: iosuite <app> <command> (iosuite_shared.appcli)
+def test_every_app_answers_check_and_migrate_and_its_own_commands():
+    """Each app had a cli.py that repeated migrate and check; they are the shared ones now, and an app's own
+    commands come from its commands.py."""
+    from iosuite_shared import appcli, catalog
+    for key in catalog.APPS:
+        names = set(appcli._parser(key)._subparsers._group_actions[0].choices)
+        assert {"migrate", "check"} <= names, key
+    assert "import" in set(appcli._parser("iotask")._subparsers._group_actions[0].choices)
+    assert "sync-holidays" in set(appcli._parser("iocalendar")._subparsers._group_actions[0].choices)
+
+
+def test_the_suite_command_hands_an_app_key_to_the_app(monkeypatch):
+    from iosuite_shared import appcli, cli
+    seen = []
+    monkeypatch.setattr(appcli, "run", lambda key, argv: seen.append((key, argv)) or 0)
+    assert cli.main(["iocalendar", "check"]) == 0 and seen == [("iocalendar", ["check"])]
+
+
+def test_check_says_the_accounts_and_what_the_app_has(capsys):
+    from iosuite_shared import appcli
+    said = appcli._check(testing.StandIn("iotest", counts=lambda: {"notes": 3, "warning": "packets are small", "rev": None}))
+    out = capsys.readouterr().out
+    assert said == 0 and "0 account(s), 3 notes" in out and "note: packets are small" in out and "rev" not in out
+
+
+def test_an_app_declares_what_it_has_in_its_tables_once():
+    """`iosuite <app> check` and the app's diagnostics tool read the same numbers (<app>/db.py: counts)."""
+    from iosuite_shared import app as declared, catalog
+    for key in catalog.APPS:
+        a = declared.of(key)
+        if a.has("db"):
+            assert callable(a.counts), f"{key}/db.py has no counts()"

@@ -10,19 +10,13 @@ import logging
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from iosuite_shared import application, chores, mcp as shared_mcp, users
+from iosuite_shared import application, chores, users
 
-from ionote import __version__, config, db, mcp, suitedb, suiteitems
+from ionote import auth, config, db, mcp, suite_app, suitedb
 from ionote import notes as notes_mod
-from ionote.auth import auth, updater
 from ionote.routes import notes as notes_routes, settings
 
 log = logging.getLogger("ionote")
-
-# Settings › Apps › MCP: this app's switch in the Shared ioSuite database, the suite's one unless it says otherwise
-mcp_switch = shared_mcp.Switch(config.APP,
-                               "Lets an AI assistant search, read and write your notes, as you.")
-mcp_enabled = mcp_switch.enabled
 
 
 def _open() -> None:
@@ -55,25 +49,7 @@ def _owner_of(request: Request) -> int:
     return 0 if not users.any_users() else notes_mod.NOBODY
 
 
-def _family_of(user) -> int:
-    """What this account may do with the Family space's notes: editors and admins change them, everyone else with a
-    role reads them; a visitor sees none, and an install without accounts has no family."""
-    if not user:
-        return notes_mod.NO_FAMILY
-    if users.can_write(user):
-        return notes_mod.FAMILY_WRITE
-    return notes_mod.FAMILY_READ if users.is_signed_in(user) else notes_mod.NO_FAMILY
-
-
-def _mcp_user(u: dict) -> None:
-    """The MCP endpoint, once its gate let the request through: every tool acts as this account, on its own notes and
-    the family's."""
-    mcp.current_user.set(u)
-    notes_mod.current_owner.set(int(u["id"]))
-    notes_mod.current_family.set(_family_of(u))
-
-
-_mcp_gate = auth.mcp_gate(mcp_enabled, on_user=_mcp_user)
+_mcp_gate = auth.mcp_gate(suite_app.mcp_enabled, on_user=mcp.set_user)  # whose the call is: ionote/mcp
 
 
 def _before(request: Request):
@@ -84,18 +60,8 @@ def _before(request: Request):
         return refused
     if not request.url.path.startswith("/mcp"):
         notes_mod.current_owner.set(_owner_of(request))
-        notes_mod.current_family.set(_family_of(request.state.user))
+        notes_mod.current_family.set(notes_mod.family_for(request.state.user))
     return None
-
-
-def _limit_for(path: str, ctype: str) -> int:
-    if "/api/import" in path:
-        return config.MAX_IMPORT_BYTES
-    if "/attachments" in path:
-        return config.MAX_IMAGE_BYTES
-    if ctype.startswith("image/") or ctype in ("multipart/form-data", "application/octet-stream", "application/zip"):
-        return config.MAX_IMAGE_BYTES
-    return config.MAX_JSON_BYTES
 
 
 def _status_extra(request: Request) -> dict:
@@ -108,16 +74,16 @@ def _status_extra(request: Request) -> dict:
 
 
 app = application.create(
-    auth, updater, __version__, config,
+    suite_app,
     description="Notes for the family: each account's own, and the Family space's. The API the Mac and iPhone apps use, and an MCP "
                 "endpoint (/mcp) for AI assistants.",
-    prepare=(_open, users.init), jobs=_jobs, where=_where,
-    mcp=mcp, mcp_enabled=mcp_enabled, before=_before,  # whose notes a request works on, and the MCP endpoint's gate
+    prepare=(_open, suite_app.users.init), jobs=_jobs, where=_where,
+     before=_before,  # whose notes a request works on, and the MCP endpoint's gate
     open_paths=("/sw.js",),
     # the body cap is counted as the body arrives, so nothing large is ever held in memory; another account's note
     # answers the same 404 as none at all
-    limit_for=_limit_for, not_found=(notes_mod.NotFound,),
-    status=_status_extra, suite=suiteitems.PROVIDER,
+    not_found=(notes_mod.NotFound,),
+    status=_status_extra, 
     routers=(notes_routes.router, settings.router),
     service_worker=True)  # /, the manifest, /sw.js and /static
 

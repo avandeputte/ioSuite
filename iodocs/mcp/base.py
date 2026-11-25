@@ -5,13 +5,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 from iosuite_shared import mcp as shared_mcp
 from iosuite_shared.mcp import ADDS, DELETES, READ_ONLY, UPDATES, WRITES, clamp, current_user, need_admin, who
 
-from iodocs import __version__, config, model
+from iodocs import config, db, model, ocr
 
 __all__ = ["server", "ADDS", "DELETES", "READ_ONLY", "UPDATES", "WRITES", "clamp", "current_user", "need_admin", "who",
            "find_doc", "doc_out", "summary", "guard"]
 
 server = shared_mcp.make_server(
-    config.APP, "ioDocs", __version__,
+    config.APP,
     instructions=(
         "The family's important papers (ioDocs): passports, ID cards, driver's licenses, visas, insurance policies, "
         "vehicle registrations, birth and marriage certificates. Each has a kind, the family members it belongs to, "
@@ -22,6 +22,8 @@ server = shared_mcp.make_server(
         "Dates are YYYY-MM-DD. A document's number is sensitive: give it only when asked. Ask before deleting; "
         "archiving keeps an old one (archived=true), and renew_document puts the new one in its place."
     ),
+    counts=db.counts,
+    more=lambda: {"reads": ocr.available()},  # what this server can read off a scan
 )
 
 

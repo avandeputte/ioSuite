@@ -22,7 +22,7 @@ STATE = {"on": True, "added": []}
 
 def _fake_app():
     auth = Auth("iotask", app_label="ioTask", register=False)
-    server = shared_mcp.make_server("iotask", "ioTask", "1.0", instructions="ioTask: tasks. add_task adds one.")
+    server = shared_mcp.make_server("iotask", app_tools=False, instructions="ioTask: tasks. add_task adds one.")
 
     @server.tool(annotations=shared_mcp.READ_ONLY)
     def whoami() -> dict:

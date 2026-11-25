@@ -63,5 +63,34 @@
       "default": "dc=iocontact",
       "hint": "The search base a client is given."
     }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp",
+      "/dav",
+      "/.well-known/",
+      "/cal/"
+    ],
+    "davScope": [
+      "/dav",
+      "/.well-known/caldav",
+      "/.well-known/carddav",
+      "/cal/"
+    ]
+  },
+  "mcp": "Lets an AI assistant look up, add and correct contacts, as you.",
+  "limits": {
+    "json": 16,
+    "import": 64
+  },
+  "bodies": [
+    {
+      "path": "*/import*",
+      "limit": "import"
+    },
+    {
+      "path": "/dav*",
+      "limit": "import"
+    }
   ]
 }

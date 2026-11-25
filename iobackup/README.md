@@ -154,10 +154,10 @@ Local backups go to the folder `BACKUP_DIR` names (`/var/backups/iobackup`; `/ba
 From a shell, in the program folder (`/opt/iosuite` when installed as root):
 
 ```sh
-.venv/bin/python -m iobackup.cli check     # connect to the databases and say what is there
-.venv/bin/python -m iobackup.cli jobs      # the jobs, with their schedule and next run
-.venv/bin/python -m iobackup.cli run JOB   # back up now (the job's name or number), here, without the web app; prints the log
-.venv/bin/python -m iobackup.cli runs      # the last runs
+iosuite iobackup check     # connect to the databases and say what is there
+iosuite iobackup jobs      # the jobs, with their schedule and next run
+iosuite iobackup run JOB   # back up now (the job's name or number), here, without the web app; prints the log
+iosuite iobackup runs      # the last runs
 ```
 
 Accounts are the suite's: `iosuite admin NAME --app iobackup` makes someone an admin of ioBackup only (`iosuite admin NAME`: of

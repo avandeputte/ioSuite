@@ -12,7 +12,7 @@ SCHEMA_VERSION = 10  # 10: feeds, the reader (prt_feeds, prt_feed_items, prt_fee
 PREFIX = "prt"
 
 # Every table is InnoDB/utf8mb4. Accounts and app passwords live in the Shared ioSuite database (iosuite_shared,
-# iostart/auth.py), not here.
+# the app as declared: iosuite_shared.app), not here.
 SCHEMA = [
     """CREATE TABLE IF NOT EXISTS prt_settings (
         name VARCHAR(191) PRIMARY KEY,
@@ -122,3 +122,10 @@ pool = _db.pool
 connect, tx, q, one, ex, many = _db.connect, _db.tx, _db.q, _db.one, _db.ex, _db.many
 get_setting, set_setting = _db.get_setting, _db.set_setting
 ensure_database, migrate, reset_all = _db.ensure_database, _db.migrate, _db.reset_all
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite iostart check`)."""
+    return {"bookmarks": one("SELECT count(*) AS n FROM prt_bookmark_nodes WHERE url IS NOT NULL")["n"],
+            "feeds": one("SELECT count(*) AS n FROM prt_feeds")["n"],
+            "screens": one("SELECT count(*) AS n FROM prt_trmnl_devices")["n"]}

@@ -40,5 +40,32 @@
       "label": "Tasks",
       "hint": "A task’s alert when it goes off, and in the morning what is due today"
     }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp",
+      "/dav",
+      "/.well-known/"
+    ],
+    "davScope": [
+      "/dav",
+      "/.well-known/caldav"
+    ]
+  },
+  "mcp": "Lets an AI assistant read the lists, add tasks and tick them off, as you.",
+  "limits": {
+    "json": 2,
+    "import": 16,
+    "task": 1
+  },
+  "bodies": [
+    {
+      "path": "*/import*",
+      "limit": "import"
+    },
+    {
+      "path": "/dav*",
+      "limit": "task"
+    }
   ]
 }

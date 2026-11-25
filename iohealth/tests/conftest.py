@@ -35,7 +35,7 @@ def _client(app):
 @pytest.fixture(autouse=True)
 def clean(_client):
     from iohealth import webapi
-    from iohealth.auth import auth
+    from iohealth import auth
     # what the last test's finished sync started may still be at work (the hourly rollup of a type seen for the first
     # time, its notifications): their writes would deadlock with the deletes below
     for t in threading.enumerate():

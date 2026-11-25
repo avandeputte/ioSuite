@@ -1,6 +1,6 @@
 """The MCP server: lets an AI assistant (Claude, for example) read and keep the family's calendars.
 
-Served at /mcp by the web app (main.py) over streamable HTTP, and with `python -m iocalendar.mcp` over stdio. Every call acts as
+Served at /mcp by the web app (main.py) over streamable HTTP, and with `iosuite mcp iocalendar` over stdio. Every call acts as
 one ioCalendar account, so it sees that account's calendars (the shared ones and its own private ones) and may change
 what the account may change in the web app; the server tools need an admin.
 
@@ -8,7 +8,7 @@ what the account may change in the web app; the server tools need an admin.
   read.py   the read-only tools: overview, calendars, the agenda, search, one event, free/busy, connection details
   write.py  the tools that change events and calendars: create, update (series, one occurrence, or from one on),
             delete, move, new calendar, import
-  admin.py  the server: diagnostics, the Birthdays calendar from ioContact
+  admin.py  the Birthdays calendar from ioContact and the Holidays calendars
 """
 from iocalendar.mcp.base import server, current_user
 from iocalendar.mcp import read, write, admin  # noqa: F401  importing them registers the tools on `server`

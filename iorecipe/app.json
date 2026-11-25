@@ -58,5 +58,31 @@
       "default": "300",
       "hint": ""
     }
+  ],
+  "access": {
+    "proxyExempt": [
+      "/mcp"
+    ]
+  },
+  "mcp": "Lets an AI assistant look recipes up, add them and import them from the web, as you.",
+  "limits": {
+    "json": 2,
+    "import": 300,
+    "photo": 20,
+    "page": 5
+  },
+  "bodies": [
+    {
+      "path": "/api/import/file",
+      "limit": "import"
+    },
+    {
+      "path": "*/photos",
+      "limit": "photo"
+    },
+    {
+      "path": "*/import/photo",
+      "limit": "photo"
+    }
   ]
 }

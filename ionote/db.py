@@ -290,3 +290,13 @@ def current_rev() -> int:
     with connect() as con:
         r = con.execute("SELECT max(rev) FROM nts_change_counter").fetchone()
     return int(r[0] or 0)
+
+
+def counts() -> dict:
+    """What is in the tables (`iosuite ionote check`, and the app's diagnostics tool). Pictures are kept in the
+    database, so what a connection may send in one go matters here (test): it is said with the numbers."""
+    with connect() as con:
+        n = con.execute("SELECT count(*) FROM nts_notes WHERE deleted = 0").fetchone()[0]
+        trash = con.execute("SELECT count(*) FROM nts_notes WHERE deleted = 1").fetchone()[0]
+    t = test({})
+    return {"notes": n, "trash": trash, "rev": current_rev(), "maxAllowedPacket": t.get("maxAllowedPacket"), "warning": t.get("warning")}

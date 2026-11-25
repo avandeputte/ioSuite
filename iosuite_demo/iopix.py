@@ -206,7 +206,7 @@ def seed(people: dict) -> None:
     from iopix.photos import scanner
     res = scanner.scan(require_digikam_closed=False)
     log.info("demo: %d photos written, the scanner added %s", n, res.get("added"))
-    from iopix.auth import set_person
+    from iopix.hooks import set_person
     from iopix.digikam import library
     con = library.connect()
     try:

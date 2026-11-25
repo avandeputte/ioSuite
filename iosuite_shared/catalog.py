@@ -42,6 +42,16 @@ A new app: its package folder and its app.json (copy one). The manifest's fields
   items                    [{kind, label, plural, href, id}]: the kinds of items it has; href opens one in the app
                            ("#/event/{id}"); id "uuid" for UUIDs (default: a number)
   notifications            [{kind, label, hint, admin}]: what Account › Notifications offers from it
+  access                   who gets in, where it differs from the suite's usual (iosuite_shared.app): defaultRole (the
+                           role an account holds while nobody gave it one: "none" for an app that is not for everyone),
+                           writeRole (what `canWrite` stands for: "member" where everything is one's own), proxyExempt
+                           (path prefixes that sign in themselves, whatever a reverse proxy let through: ["/mcp", "/dav"]),
+                           davScope (what a sync-only app password opens: ["/dav", "/.well-known/caldav"])
+  mcp                      one line on what an AI assistant may do in it (its MCP switch under Settings › Apps)
+  limits, bodies           how large a request body may be: limits {name: MiB, or {setting, default} for a size
+                           that is one of its settings}, always with `json` (any body no rule names); bodies
+                           [{path, type, limit}]: the first whose path and content type fit (shell patterns, either
+                           may be left out) names the limit. The app's config has them as MAX_<NAME>_BYTES
   start                    the start page: rank (where its tile comes; none: after those that have one, by name),
                            tile (it answers /api/suite/tile), find {head, rank} (it answers /api/suite/search: the
                            search box's section for it), searchUrl (its own search, "#/search/{q}": the "Search in" row)
@@ -57,6 +67,7 @@ MANIFEST = "app.json"
 KEY = re.compile(r"^io[a-z]{2,20}$")
 KIND = re.compile(r"^[a-z_]{2,30}$")
 COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+ROLES = ("none", "viewer", "member", "editor", "admin")
 # a call the sync door serves: its methods, then its path under /api/ with * for one part ("GET,PUT /api/notes/*/image")
 CALL = re.compile(r"^(GET|POST|PUT|PATCH|DELETE)(,(GET|POST|PUT|PATCH|DELETE))* /api(/(\*|[A-Za-z0-9._~-]+))+$")
 # of an account (/api/auth/), the sync door serves a native app's own sign-in and what it reads and keeps of its person,
@@ -126,6 +137,20 @@ def validate(apps: list[dict]) -> list[dict]:
             if d["type"] == "choice" and not d.get("choices"):
                 raise ValueError(f"{k}/{MANIFEST}: the choice {d['name']} has no choices")
         names = {d["name"] for d in m.get("settings") or []}
+        acc = m.get("access") or {}
+        if set(acc) - {"defaultRole", "writeRole", "proxyExempt", "davScope"} or acc.get("defaultRole", "none") not in ROLES \
+                or acc.get("writeRole", "member") not in ROLES:
+            raise ValueError(f"{k}/{MANIFEST}: access is defaultRole, writeRole (a role), proxyExempt, davScope (path prefixes): {acc}")
+        lim = m.get("limits") or {}
+        for name, v in lim.items():
+            ok = isinstance(v, (int, float)) and v > 0 or (isinstance(v, dict) and v.get("setting") in names and isinstance(v.get("default"), int))
+            if not re.fullmatch(r"[a-z]{2,20}", str(name)) or not ok:
+                raise ValueError(f"{k}/{MANIFEST}: a limit is a name and its MiB, or {{setting, default}}: {name}: {v}")
+        if (lim or m.get("bodies")) and "json" not in lim:
+            raise ValueError(f"{k}/{MANIFEST}: limits needs json, the size of any body no rule names")
+        for rule in m.get("bodies") or []:
+            if rule.get("limit") not in lim or not (rule.get("path") or rule.get("type")) or set(rule) - {"path", "type", "limit"}:
+                raise ValueError(f"{k}/{MANIFEST}: a body rule is a path or a type (or both) and one of its limits: {rule}")
         for q in m.get("ask") or []:
             if q.get("name") not in names or not q.get("question") or any(n not in names for n in q.get("also") or {}):
                 raise ValueError(f"{k}/{MANIFEST}: ask needs the name of one of its settings and a question: {q}")

@@ -12,7 +12,7 @@ open to everyone by mistake. The markers come from iosuite_shared (ionote/auth.p
 - admin: settings, users, logs, backups
 - admin_write: a change to the notes only admins make (an import that replaces, emptying the trash)
 """
-from ionote.auth import auth
+from ionote import auth
 
 ROLES = ("public", "signed_in", "member", "admin")
 

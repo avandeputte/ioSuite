@@ -18,7 +18,7 @@ from fastapi.responses import ORJSONResponse, Response
 from iosuite_shared.errors import Invalid
 
 from iohealth import access, analytics as an, config, db, glucose as gl, rollup
-from iohealth.auth import uid as uid_of
+from iohealth.hooks import uid as uid_of
 
 log = logging.getLogger("iohealth.webapi")
 
