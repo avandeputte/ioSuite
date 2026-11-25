@@ -1,7 +1,7 @@
 import { empty, h, pages, showError } from './core.js';
 import { pageTitle } from './shell.js';
 import { card } from './charts.js';
-import { SEVERITY, fill, medApi, schedule } from './medicines.js';
+import { SEVERITY, fill, howOften, medApi } from './medicines.js';
 
 // ---------- the emergency card: a wallet-size card to print, cut out and fold ----------
 // Front: name, date of birth, blood type, allergies, conditions, organ donation. Back: medicines, doctors, people to
@@ -33,7 +33,7 @@ export function cardSheet(c) {
   const who = (x, org = true) => h('div', { class: 'ec-line' }, h('b', {}, x.name), org && x.org ? `, ${x.org}` : '', x.relation ? `, ${x.relation.toLowerCase()}` : '', x.phone ? h('span', { class: 'ec-tel' }, ` ${x.phone}`) : null);
   const back = h('div', { class: 'ec-side ec-back' },
     h('div', { class: 'ec-body' },
-      sec('Medicines', c.medicines.length ? c.medicines.map((m) => h('div', { class: 'ec-line' }, h('b', {}, m.name), m.dose ? ` ${m.dose}` : '', h('span', { class: 'ec-dim' }, ` ${schedule(m).replace(', every day', '')}`)))
+      sec('Medicines', c.medicines.length ? c.medicines.map((m) => h('div', { class: 'ec-line' }, h('b', {}, m.name), m.dose ? ` ${m.dose}` : '', h('span', { class: 'ec-dim' }, ` ${howOften(m)}`)))
         : h('div', { class: 'ec-line' }, 'None')),
       found(c.doctors).length ? sec(found(c.doctors).length > 1 ? 'Doctors' : 'Doctor', found(c.doctors).map((x) => who(x))) : null,
       found(c.contacts).length ? sec('In an emergency, call', found(c.contacts).map((x) => who(x, false))) : null,
