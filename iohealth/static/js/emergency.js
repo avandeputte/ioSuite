@@ -104,8 +104,33 @@ pages.emergency = async (main) => {
     const problem = c.problems.find((p) => p.app === 'iocontact');
     fill(peopleCard, h('h2', {}, 'Doctors and people to call'),
       problem ? h('p', { class: 'error small' }, problem.message) : null,
-      picked('Doctors', 'doctors', c.doctors), picked('In an emergency, call', 'contacts', c.contacts),
+      mine(), picked('Doctors', 'doctors', c.doctors), picked('In an emergency, call', 'contacts', c.contacts),
       h('p', { class: 'small muted' }, 'From ', app.url ? h('a', { href: app.url, target: '_blank', rel: 'noopener' }, 'ioContact') : 'ioContact', ': the name and first phone number of each contact you pick, and for the people to call what they are to you, where your own card there says so.'));
+  }
+
+  // which card in ioContact is the person themselves: their full name and what the people to call are to them come from it
+  function mine() {
+    const box = h('div', { class: 'picks' });
+    const setMe = async (id) => { try { await medApi('emergency/me', { method: 'PUT', body: { contactId: id } }); } catch (e) { alertIn(peopleCard, e); return; } await load(); };
+    box.append(h('h3', {}, 'You'));
+    if (c.me) {
+      box.append(h('div', { class: 'pick' }, h('span', {}, h('b', {}, c.me.name), h('span', { class: 'muted' }, ' · your own card in ioContact')),
+        h('button', { class: 'small-btn', title: 'This card is not me', onclick: () => setMe(null) }, '×')));
+      return box;
+    }
+    const results = h('div', { class: 'results' });
+    let timer;
+    const q = h('input', { type: 'search', placeholder: 'Find your own card…', oninput: () => { clearTimeout(timer); timer = setTimeout(find, 250); } });
+    async function find() {
+      if (!q.value.trim()) { fill(results); return; }
+      try {
+        const r = await medApi('emergency/contacts', { params: { q: q.value } });
+        fill(results, ...(r.items.length ? r.items.slice(0, 8).map((x) => h('button', { class: 'result', onclick: () => setMe(x.id) },
+          h('b', {}, x.name), x.org ? `, ${x.org}` : '', x.phone ? h('span', { class: 'muted' }, ` · ${x.phone}`) : '')) : [h('p', { class: 'small muted' }, 'No contact found.')]));
+      } catch (e) { fill(results, h('p', { class: 'error small' }, e.message)); }
+    }
+    box.append(h('p', { class: 'small muted' }, 'Pick your own card in ioContact: the card then carries your full name, and says what each person to call is to you (wife, son) from the relations on it.'), q, results);
+    return box;
   }
 
   function picked(title, key, items) {

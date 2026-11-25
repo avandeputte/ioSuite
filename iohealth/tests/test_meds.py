@@ -180,6 +180,9 @@ def test_the_emergency_card(client, admin, monkeypatch):
 
     def ask(self, request, path, params=None, body=None, method=None):
         asked.append((self.provider, path, params))
+        if path == "/api/me-contact":
+            assert method == "PUT"
+            return {"user": {"meContactId": body["contactId"]}}
         if path == "/api/contacts":
             return {"items": [contacts[11]]}
         if path == "/api/documents":
@@ -204,7 +207,7 @@ def test_the_emergency_card(client, admin, monkeypatch):
     assert [a["name"] for a in c["allergies"]] == ["Penicillin"] and [m["name"] for m in c["medicines"]] == ["Lisinopril"]
     assert c["doctors"] == [{"id": 11, "name": "Dr. Helen Park", "org": "Juniper Family Medicine", "title": "", "phone": "+1 541 555 0160", "found": True}]
     assert c["contacts"][0]["name"] == "Riley Calloway" and c["contacts"][1] == {"id": 99, "found": False}, "no longer seen: marked"
-    assert c["contacts"][0]["relation"] == "", "no card of their own in ioContact: nothing is said"
+    assert c["contacts"][0]["relation"] == "" and c["me"] is None, "no card of their own in ioContact: nothing is said"
     # with their own card there ("This is me"), what each person to call is to them: stated first, then what the family implies
     from iosuite_shared import users as shared_users
     contacts[5] = {**_contact(5, "Morgan Calloway", "+1 541 555 0101"), "relations": [{"type": "spouse", "relatedId": 12, "typeLabel": "Wife"},
@@ -215,6 +218,11 @@ def test_the_emergency_card(client, admin, monkeypatch):
     client.put("/api/emergency", json={"contacts": [12, 13, 99]})
     c = client.get("/api/emergency", params={"tz": TZ}).json()
     assert [x.get("relation") for x in c["contacts"]] == ["Wife", "Uncle", None]
+    assert c["person"]["name"] == "Morgan Calloway" and c["me"] == {"id": 5, "name": "Morgan Calloway"}, "the full name, from their own card"
+    asked.clear()
+    assert client.put("/api/emergency/me", json={"contactId": 12}).status_code == 200, "picked here: ioContact keeps it, asked as the person"
+    assert ("iocontact", "/api/me-contact", None) in asked
+    assert client.put("/api/emergency/me", json={"contactId": "x"}).status_code == 400
     assert "relation" not in c["doctors"][0]
     assert c["documents"][0]["number"] == "WCH900217" and c["documents"][0]["fields"] == [{"name": "Group", "value": "GRP-55120"}]
     assert ("iodocs", "/api/documents/21", None) in asked, "asked as the viewer, one by one"
