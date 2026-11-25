@@ -1,7 +1,8 @@
 """A document's scans and files: the front and back of a license, the photo page of a passport, a policy's PDF.
 
-The bytes are kept in the database (doc_file_parts, in parts of PART_BYTES), so the suite's database backup (ioBackup)
-holds them too and nothing lives beside the app (how: iosuite_shared.stored, the same in every app that keeps files). A picture (and a PDF's first page) also gets a small JPEG for the
+The bytes are kept in the database (doc_file_parts, in parts), so the suite's database backup (ioBackup) holds them
+too and nothing lives beside the app; the keeping itself is the suite's (iosuite_shared.attachments, the same in
+every app that keeps files in its database). A picture (and a PDF's first page) also gets a small JPEG for the
 cards (thumb); the first file with one is the document's cover. Each file can be read (iodocs/ocr.py): its text goes
 into the search, and the facts made of it fill in the document (iodocs/model.py apply_found). A file is served as it
 came, with its own type, except for the kinds a page could run (HTML, SVG, XML...), which are sent as a download.
@@ -9,45 +10,28 @@ A file gets a name of its own here, made of its number with the extension of its
 name it was uploaded under is never kept, and a file is not renamed.
 """
 import datetime as dt
-import hashlib
 import json
 import logging
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 
-from iosuite_shared import helper, stamp, stored
+from iosuite_shared import attachments, helper, stamp
 from iosuite_shared.errors import Invalid
 
 from iodocs import config, db, ocr
 from iodocs.model import NotFound, need_write, rewords
 
 log = logging.getLogger("iodocs.files")
-PART_BYTES = stored.PART_BYTES
 MAX_FILES = 100           # of one document
 THUMB_SIDE = 640
 READ_TIMEOUT = 600  # seconds one file may take to read (each run of tesseract may take ocr.TIMEOUT; a scan gets several)
-MAX_PIXELS = 80_000_000
-Image.MAX_IMAGE_PIXELS = MAX_PIXELS
-INLINE = {"application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/avif", "text/plain"}
+Image.MAX_IMAGE_PIXELS = attachments.MAX_PIXELS
 
-
-PREFIX = "iodocs-"
-
-
-def assigned(fid: int, ext: str) -> str:
-    """The name a file gets here, made of its number: the name it was uploaded under is never kept."""
-    return stored.assigned(PREFIX, fid, ext)
-
-
-def thumb(raw: bytes, mime: str) -> bytes | None:
-    """A small JPEG of a picture (turned upright) or of a PDF's first page; None otherwise."""
-    if mime != "application/pdf":
-        return stored.picture(raw, THUMB_SIDE, MAX_PIXELS)
-    try:
-        pages = ocr.pdf_pages(raw, pages=1, dpi=72)
-        return stored.small_jpeg(pages[0], THUMB_SIDE) if pages else None
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
-        return None
+# the suite's way of keeping files in the app's database (iosuite_shared.attachments)
+files = attachments.Store(db, "doc_files", "doc_id", parts="doc_file_parts", prefix="iodocs-",
+                          max_files=MAX_FILES, thumb_side=THUMB_SIDE, full="A document holds at most {n} files")
+assigned = files.assigned
+inline = files.inline
 
 
 def _public(r: dict) -> dict:
@@ -76,24 +60,10 @@ def _cover(doc_id: int) -> None:
 @stamp.records("iodocs", "document", "file added", item=lambda u, d, *a, **k: d["id"])
 def add(u: dict, d: dict, raw: bytes, hint: str | None, mime: str | None) -> dict:
     need_write(u, d)
-    if not raw:
-        raise Invalid("The file is empty")
-    if len(raw) > config.MAX_FILE_BYTES:
-        raise Invalid(f"Files up to {config.MAX_FILE_BYTES // (1024 * 1024)} MB")
-    mime = stored.mime_of(hint or "", mime, raw)
-    ext = stored.extension(hint, mime)
-    # made in the helper (iosuite_shared.helper): a scan that crashes Pillow or pdftoppm is kept without a small picture
-    small = helper.call_or(None, thumb, raw, mime, timeout=120) if mime.startswith("image/") or mime == "application/pdf" else None
+    mime, ext = files.look(raw, hint, mime, config.MAX_FILE_BYTES)
+    small = files.small(raw, mime, pages=ocr.pdf_pages)   # a scan that crashes Pillow or Poppler is kept without one
     with db.tx():
-        n = db.one("SELECT COUNT(*) AS n, COALESCE(MAX(position), -1) AS last FROM doc_files WHERE doc_id = %s", (d["id"],))
-        if n["n"] >= MAX_FILES:
-            raise Invalid(f"A document holds at most {MAX_FILES} files")
-        fid = db.ex("INSERT INTO doc_files (doc_id, name, mime, size, sha256, thumb, position, created_by) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                    (d["id"], "", mime, len(raw), hashlib.sha256(raw).hexdigest(), small, n["last"] + 1, u.get("id")))
-        db.ex("UPDATE doc_files SET name = %s WHERE id = %s", (assigned(fid, ext), fid))
-        for n, part in stored.parts(raw):
-            db.ex("INSERT INTO doc_file_parts (file_id, n, data) VALUES (%s, %s, %s)", (fid, n, part))
+        fid = files.store(d["id"], raw, mime=mime, ext=ext, thumb=small, user=u)
         _cover(d["id"])
     return one(d["id"], fid)
 
@@ -113,7 +83,7 @@ def content(doc_id: int, fid, small: bool = False) -> tuple[bytes, str, str]:
             raise NotFound("This file has no small picture")
         return bytes(r["thumb"]), "image/jpeg", r["name"]
     f = one(doc_id, fid)
-    return stored.join(db.q("SELECT data FROM doc_file_parts WHERE file_id = %s ORDER BY n", (f["id"],))), f["mime"], f["name"]
+    return files.bytes_of(f["id"]), f["mime"], f["name"]
 
 
 def text_of(doc_id: int, fid) -> str:
@@ -121,10 +91,6 @@ def text_of(doc_id: int, fid) -> str:
     if not r:
         raise NotFound("This document has no such file")
     return r["text"] or ""
-
-
-def inline(mime: str) -> bool:
-    return mime in INLINE
 
 
 def _json(v):
@@ -163,8 +129,7 @@ def change(u: dict, d: dict, fid, data: dict) -> dict:
     f = one(d["id"], fid)
     sets = {}
     if data.get("first"):
-        low = db.one("SELECT COALESCE(MIN(position), 0) AS p FROM doc_files WHERE doc_id = %s", (d["id"],))["p"]
-        sets["position"] = low - 1
+        sets["position"] = files.before_all(d["id"])
     with db.tx():
         if sets:
             db.ex(f"UPDATE doc_files SET {', '.join(k + ' = %s' for k in sets)} WHERE id = %s", [*sets.values(), f["id"]])

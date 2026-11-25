@@ -1,24 +1,31 @@
 """The receipts of a transaction: a picture of the till slip, the PDF of the invoice.
 
-The bytes are kept in the database (mny_receipt_parts, in parts of PART_BYTES), so the suite's database backup
-(ioBackup) holds them too and nothing lives beside the app. A receipt is a picture or a PDF, told by its first bytes
+The bytes are kept in the database (mny_receipt_parts, in parts), so the suite's database backup (ioBackup) holds
+them too and nothing lives beside the app; the keeping itself is the suite's (iosuite_shared.attachments), except
+that a receipt keeps the name it was sent under. A receipt is a picture or a PDF, told by its first bytes
 (not by what the upload says it is), and is served as it came. Whoever sees the transaction sees its receipts; whoever
 may change it adds and removes them. They go with the transaction when it is deleted; when Monarch gives a
 transaction a new id (a card's hold that posted), the sync carries them over to it (carry)."""
 import mimetypes
 import re
 
-from iosuite_shared import related, stamp, stored
+from iosuite_shared import attachments, related, stamp
 from iosuite_shared.errors import Invalid
 
 from iomoney import config, db, model
 
-PART_BYTES = stored.PART_BYTES
+PART_BYTES = attachments.PART_BYTES
 MAX_RECEIPTS = 20   # of one transaction
 KIND = "transaction"  # what a transaction is called among the suite's linked items (iosuite_shared.related)
 CARRY_DAYS = 10     # how far from the old one's day the transaction that took its place may be
 # shown in the browser as they are; a picture the browser may not draw (HEIC) is a download
 INLINE = {"application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"}
+
+# the suite's way of keeping files in the app's database (iosuite_shared.attachments). A receipt keeps the name it
+# was sent under, has no small picture and is not put in an order of its own, so only the plumbing is shared.
+files = attachments.Store(db, "mny_receipts", "transaction_id", parts="mny_receipt_parts", part_key="receipt_id",
+                          max_files=MAX_RECEIPTS, ordered=False, sha=False, inline=INLINE,
+                          full="A transaction holds at most {n} receipts")
 
 
 def sniff(raw: bytes) -> str | None:
@@ -80,12 +87,7 @@ def add(u: dict, t: dict, raw: bytes, name: str | None) -> dict:
     if not mime:
         raise Invalid("A receipt is a picture (JPEG, PNG, WebP, GIF, HEIC) or a PDF")
     with db.tx():
-        if db.one("SELECT COUNT(*) AS n FROM mny_receipts WHERE transaction_id = %s", (t["id"],))["n"] >= MAX_RECEIPTS:
-            raise Invalid(f"A transaction holds at most {MAX_RECEIPTS} receipts")
-        rid = db.ex("INSERT INTO mny_receipts (transaction_id, name, mime, size, created_by) VALUES (%s, %s, %s, %s, %s)",
-                    (t["id"], _name(name, mime), mime, len(raw), u.get("id")))
-        for n, part in stored.parts(raw):
-            db.ex("INSERT INTO mny_receipt_parts (receipt_id, n, data) VALUES (%s, %s, %s)", (rid, n, part))
+        rid = files.store(t["id"], raw, mime=mime, name=_name(name, mime), user=u)
     return _public(db.one("SELECT id, name, mime, size, created_at FROM mny_receipts WHERE id = %s", (rid,)))
 
 
@@ -103,7 +105,7 @@ def _row(u: dict, rid) -> tuple[dict, dict]:
 def content(u: dict, rid) -> tuple[bytes, str, str]:
     """(bytes, type, name) of a receipt."""
     r, _t = _row(u, rid)
-    return stored.join(db.q("SELECT data FROM mny_receipt_parts WHERE receipt_id = %s ORDER BY n", (r["id"],))), r["mime"], r["name"]
+    return files.bytes_of(r["id"]), r["mime"], r["name"]
 
 
 def remove(u: dict, rid) -> None:

@@ -1,8 +1,10 @@
 """Files attached to a note beside its picture: PDFs, more pictures, documents (nts_attachments).
 
-The bytes are kept as sent, in the database like the pictures. What search needs is pulled out as the file arrives:
-a PDF's text (pypdf), a text file's text; a picture gets a small JPEG for the lists and
-its text read in the background (ionote/ocr.py). Each change gives the note a new rev, and the note lists its
+The bytes are kept as sent, in the database like the pictures: in one row, under the id a device chose and with the
+name it was sent under, which is what tells these apart from the files ioDocs and ioThings keep
+(iosuite_shared.attachments). What search needs is pulled out as the file arrives, the suite's way
+(iosuite_shared.attachments.text_of: a PDF's own words, a text file's text); a picture gets a small JPEG for the
+lists and its text read in the background (ionote/ocr.py). Each change gives the note a new rev, and the note lists its
 attachments (notes.with_attachments), so the devices learn of them with the note itself and fetch the bytes when
 they are wanted.
 """
@@ -14,18 +16,14 @@ import time
 
 from PIL import Image
 
-from iosuite_shared import helper
+from iosuite_shared import attachments as shared, helper, stamp
 
 from ionote import config, db, images
-from iosuite_shared import stamp
 from ionote.notes import NotFound, check_uuid, display_title, get_note, log_change, need_write, new_uuid, owner
 
 log = logging.getLogger("ionote.attachments")
 MAX_PER_NOTE = 50
-MAX_TEXT = 2 << 20      # the text kept from one file (a long PDF's)
-MAX_PDF_PAGES = 500
-TEXT_TYPES = ("text/plain", "text/markdown", "text/csv", "application/json", "text/x-python", "application/xml", "text/xml")
-TEXT_EXT = (".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log", ".xml", ".yaml", ".yml", ".py", ".js", ".sh", ".swift")
+MAX_TEXT = shared.MAX_TEXT      # the text kept from one file (a long PDF's)
 # shown in the browser instead of downloaded: never HTML or SVG (a page of someone's could run as this site)
 INLINE = ("image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain")
 
@@ -70,32 +68,7 @@ def _looked_at(data: bytes, name: str, hint: str, read_text: bool):
     if img is not None:
         w, h = img.size
         thumb = images._thumb(img)
-    return mime, w, h, thumb, _text_of(data, mime, name) if read_text else ""
-
-
-def _pdf_text(data: bytes) -> str:
-    try:
-        from pypdf import PdfReader
-        r = PdfReader(io.BytesIO(data))
-        out, size = [], 0
-        for i, page in enumerate(r.pages):
-            if i >= MAX_PDF_PAGES or size > MAX_TEXT:
-                break
-            t = page.extract_text() or ""
-            out.append(t)
-            size += len(t)
-        return "\n".join(out).strip()[:MAX_TEXT]
-    except Exception as e:  # a damaged or encrypted PDF: kept, without its text
-        log.info("no text from a PDF: %s", e)
-        return ""
-
-
-def _text_of(data: bytes, mime: str, name: str) -> str:
-    if mime == "application/pdf":
-        return _pdf_text(data)
-    if mime.startswith("text/") or mime in TEXT_TYPES or name.lower().endswith(TEXT_EXT):
-        return data[:MAX_TEXT].decode("utf-8", "replace").replace("\x00", "")
-    return ""
+    return mime, w, h, thumb, shared.text_of(data, mime, name) if read_text else ""
 
 
 @stamp.records("ionote", "note", "attachment", item=lambda uid, *a, **k: str(uid).upper())
