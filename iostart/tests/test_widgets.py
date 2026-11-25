@@ -16,12 +16,36 @@ def _fake_accuweather(calls):
                      "Wind": {"Speed": {"Metric": {"Value": 10.0}, "Imperial": {"Value": 6.2}}}}]
         if path.startswith("/forecasts/v1/daily/5day/"):
             return {"Headline": {"Text": "Sunny week"}, "DailyForecasts": [
-                {"Date": "2026-11-04T07:00:00-05:00", "Temperature": {"Minimum": {"Value": 10.0}, "Maximum": {"Value": 18.0}}, "Day": {"Icon": 2, "IconPhrase": "Mostly sunny", "PrecipitationProbability": 5}}]}
+                {"Date": "2026-11-04T07:00:00-05:00", "Temperature": {"Minimum": {"Value": 10.0}, "Maximum": {"Value": 18.0}}, "Day": {"Icon": 2, "IconPhrase": "Mostly sunny", "PrecipitationProbability": 5},
+                 "Sun": {"Rise": "2026-11-04T06:32:00-05:00", "Set": "2026-11-04T16:47:00-05:00"},
+                 "AirAndPollen": [{"Name": "AirQuality", "Value": 41, "Category": "Good", "CategoryValue": 1, "Type": "Ozone"},
+                                  {"Name": "Grass", "Value": 12, "Category": "Moderate", "CategoryValue": 2},
+                                  {"Name": "Mold", "Value": 0, "Category": "Low", "CategoryValue": 1},
+                                  {"Name": "Ragweed", "Value": 3, "Category": "Low", "CategoryValue": 1},
+                                  {"Name": "Tree", "Value": 90, "Category": "High", "CategoryValue": 3},
+                                  {"Name": "UVIndex", "Value": 3, "Category": "Moderate", "CategoryValue": 2}]}]}
         if path.startswith("/forecasts/v1/hourly/12hour/"):
             return [{"DateTime": "2026-11-04T15:00:00-05:00", "WeatherIcon": 12, "IconPhrase": "Showers", "Temperature": {"Value": 14.0},
                      "PrecipitationProbability": 70, "HasPrecipitation": True, "PrecipitationType": "Rain"}]
+        if path == "/locations/v1/349727":
+            return {"Key": "349727", "GeoPosition": {"Latitude": 40.713, "Longitude": -74.006}, "Country": {"ID": "US"}}
         raise AssertionError(path)
     return get
+
+
+def _fake_nws(calls, features):
+    def get(path, **params):
+        calls.append((path, params))
+        assert path == "/alerts/active" and params == {"point": "40.713,-74.006"}
+        return {"features": features}
+    return get
+
+
+def _alert(event, severity, ends="2099-01-01T00:00:00-05:00", **more):
+    return {"id": f"urn:{event}", "properties": {"id": f"urn:{event}", "event": event, "headline": f"{event} until tonight", "severity": severity,
+                                                  "urgency": "Expected", "onset": "2026-11-04T12:00:00-05:00", "ends": ends, "description": "Snow.",
+                                                  "instruction": "Stay off the roads.", "senderName": "NWS New York NY", "areaDesc": "Manhattan",
+                                                  "status": "Actual", "messageType": "Alert", **more}}
 
 
 def test_weather_off_until_set_up(client):
@@ -46,7 +70,13 @@ def test_weather_setup_and_cache(client, monkeypatch):
     assert len(calls) == n, "the place for the other apps never asks AccuWeather"
     w = client.get("/api/weather").json()
     assert w["enabled"] and w["units"] == "imperial" and w["current"]["text"] == "Sunny" and w["current"]["temp"] == {"metric": 20.0, "imperial": 68.0}
-    assert w["forecast"]["days"][0] == {"date": "2026-11-04", "min": 10.0, "max": 18.0, "icon": 2, "text": "Mostly sunny", "rain": 5}
+    assert w["forecast"]["days"][0] == {"date": "2026-11-04", "min": 10.0, "max": 18.0, "icon": 2, "text": "Mostly sunny", "rain": 5,
+                                        "sunrise": "2026-11-04T06:32:00-05:00", "sunset": "2026-11-04T16:47:00-05:00",
+                                        "air": {"value": 41, "category": "Good", "level": 1, "kind": "Ozone"},
+                                        "pollen": [{"name": "Tree", "value": 90, "category": "High", "level": 3},
+                                                   {"name": "Grass", "value": 12, "category": "Moderate", "level": 2},
+                                                   {"name": "Ragweed", "value": 3, "category": "Low", "level": 1},
+                                                   {"name": "Mold", "value": 0, "category": "Low", "level": 1}]}
     assert w["hourly"] == [{"t": "2026-11-04T15:00:00-05:00", "icon": 12, "text": "Showers", "temp": 14.0, "rain": 70, "wet": True, "kind": "Rain"}]
     n = len(calls)
     assert client.get("/api/weather").json()["current"]["text"] == "Sunny"
@@ -64,6 +94,40 @@ def test_weather_setup_and_cache(client, monkeypatch):
     client.post("/api/auth/login", json={"name": "kid", "password": "secret123"})
     assert client.get("/api/weather").json()["enabled"]
     assert client.get("/api/weather/settings").status_code == 403
+
+
+def test_weather_warnings(client, monkeypatch):
+    """Warnings from the US weather service at the place's coordinates (asked of AccuWeather once per place), most
+    serious first, kept 10 minutes; ended or test messages left out; none outside the United States."""
+    from iostart import db
+    calls, asked = [], []
+    monkeypatch.setattr(weather, "_get", _fake_accuweather(calls))
+    feats = [_alert("Wind Advisory", "Moderate"), _alert("Winter Storm Warning", "Severe"),
+             _alert("Old Warning", "Severe", ends="2020-01-01T00:00:00-05:00"), _alert("Test Message", "Minor", status="Test")]
+    monkeypatch.setattr(weather, "_nws", _fake_nws(asked, feats))
+    client.post("/api/weather/settings", json={"key": "abc", "locationKey": "349727", "locationName": "New York"})
+    w = client.get("/api/weather").json()["warnings"]
+    assert [x["event"] for x in w["items"]] == ["Winter Storm Warning", "Wind Advisory"]
+    assert w["items"][0] == {"id": "urn:Winter Storm Warning", "event": "Winter Storm Warning", "headline": "Winter Storm Warning until tonight",
+                             "severity": "Severe", "urgency": "Expected", "starts": "2026-11-04T12:00:00-05:00", "ends": "2099-01-01T00:00:00-05:00",
+                             "text": "Snow.", "instruction": "Stay off the roads.", "source": "NWS New York NY", "area": "Manhattan"}
+    assert w["link"].startswith("https://forecast.weather.gov/MapClick.php?lat=40.713")
+    client.get("/api/weather")
+    assert calls.count("/locations/v1/349727") == 1 and len(asked) == 1, "the coordinates once, the warnings kept 10 minutes"
+    # the weather service away: no warnings and a note, and not asked again on the next visit
+    db.set_setting("weather_warnings", None)
+    monkeypatch.setattr(weather, "_nws", lambda *a, **k: (_ for _ in ()).throw(weather.WeatherError("The weather service answered 500")))
+    w = client.get("/api/weather").json()
+    assert w["current"]["text"] == "Sunny" and w["warnings"]["items"] == [] and "500" in w["warnings"]["error"]
+    monkeypatch.setattr(weather, "_nws", _fake_nws(asked, feats))
+    assert client.get("/api/weather").json()["warnings"]["items"] == [] and len(asked) == 1
+    # another place, outside the United States: its coordinates asked anew, no warnings and why
+    fake = _fake_accuweather(calls)
+    monkeypatch.setattr(weather, "_get", lambda path, **k: {"GeoPosition": {"Latitude": 51.2, "Longitude": 4.4}, "Country": {"ID": "BE"}}
+                        if path == "/locations/v1/27581" else fake(path, **k))
+    client.post("/api/weather/settings", json={"locationKey": "27581", "locationName": "Antwerp"})
+    w = client.get("/api/weather").json()["warnings"]
+    assert w["items"] == [] and "United States" in w["none"] and len(asked) == 1
 
 
 def test_bookmarks(client):

@@ -27,12 +27,13 @@ WALL_PHOTOS = re.compile(r"rediscover|onthisday|favorites|album:[1-9][0-9]{0,12}
 SIZES = ("card", "tile")  # an app in the cards layout: always a full card, always a low tile with one line (not named: by itself)
 TODAY_PARTS = ("events", "tasks", "birthdays", "bills", "health", "photos")  # what the Today layout shows, each one to switch off
 TODAY_DAYS = (0, 1, 2, 3)  # how many of the coming days the Today card lists under today (null: the week)
+WEATHER_PARTS = ("warnings", "sun", "air", "pollen")  # the weather's extras, each one to switch off: severe weather warnings, sunrise and sunset, air quality, pollen
 UNITS = ("metric", "imperial")  # the weather's, for this person (null: as the admin set them)
 ACCENTS = ("blue", "teal", "green", "amber", "red", "pink", "purple", "graphite")  # the page's colour (null: the suite's night blue)
 TEXTS = ("compact", "large")  # the size of the type (null: as it comes)
 BOOKMARKS = ("icons", "folded")  # the bookmarks on the page: icons only, or folders shut until tapped (null: the full list)
 EMPTY = {"hidden": [], "order": [], "cards": [], "strip": None, "search": None, "stripMove": None, "stripEvery": None,
-         "wallBg": None, "wallEvery": None, "wallPhotos": None, "style": None, "sizes": {}, "todayOff": [], "todayDays": None,
+         "wallBg": None, "wallEvery": None, "wallPhotos": None, "style": None, "sizes": {}, "todayOff": [], "todayDays": None, "weatherOff": [],
          "units": None, "accent": None, "text": None, "bookmarks": None}
 DEVICE = re.compile(r"[A-Za-z0-9]{8,32}")  # a device's id, as the browser made it up
 DEVICES_MOST = 12  # a person's devices with a setup of their own
@@ -117,6 +118,7 @@ FIELDS = {
     "sizes": _sizes,
     "todayOff": _keys("todayOff", lambda k: isinstance(k, str) and k in TODAY_PARTS, f"a list of {', '.join(TODAY_PARTS)}", once=False),
     "todayDays": _today_days,
+    "weatherOff": _keys("weatherOff", lambda k: isinstance(k, str) and k in WEATHER_PARTS, f"a list of {', '.join(WEATHER_PARTS)}", once=False),
     "units": _one_of("units", UNITS, ", or nothing (as the weather is set up)"),
     "accent": _one_of("accent", ACCENTS, ", or nothing (the suite's blue)"),
     "text": _one_of("text", TEXTS, ", or nothing (the usual size)"),
@@ -207,7 +209,7 @@ def get(user_id: int, device: str | None = None) -> dict:
     wallBg: photos|sky|black|null, wallEvery: seconds (WALL_EVERY) | null,
     wallPhotos: rediscover|onthisday|favorites|album:<ioPix album id>|null, style: cards|today|null,
     sizes: {app key: card|tile}, todayOff: [events|tasks|birthdays|bills|health|photos], todayDays: 0-3|null,
-    units: metric|imperial|null, accent: a colour (ACCENTS) | null, text: compact|large|null, bookmarks: icons|folded|null}:
+    weatherOff: [warnings|sun|air|pollen], units: metric|imperial|null, accent: a colour (ACCENTS) | null, text: compact|large|null, bookmarks: icons|folded|null}:
     the device's own when it has one, else the account's, else the family's starting point."""
     return where(user_id, device)["layout"]
 

@@ -53,6 +53,13 @@ def client(_client):
     return _client
 
 
+@pytest.fixture(autouse=True)
+def _no_weather_service(monkeypatch):
+    """The US weather service's warnings never asked over the network: none, unless a test stands in its own."""
+    from iostart import weather
+    monkeypatch.setattr(weather, "_nws", lambda path, **params: {"features": []})
+
+
 _PROVIDERS = {}
 
 

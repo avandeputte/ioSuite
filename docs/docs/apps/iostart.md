@@ -63,6 +63,6 @@ ioStart is the suite's start page, and it answers at the suite's address itself.
 | | |
 | --- | --- |
 | Address | the suite's address itself (`https://home.example.com/`) |
-| Devices | bookmark sync and the iPhone app's widgets at `/dav/…` (the browser extension, the iPhone app), at the [address for devices](../reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
+| Devices | bookmark sync and the iPhone app's Today screen and widgets at `/dav/…` (the browser extension, the iPhone app), and the iPhone app's feed reader at `/api/news…`, at the [address for devices](../reference/configuration.md#the-three-ports), which serves nothing else of the start page. E-ink screens, the wall display and scripts ask `/api/…` at the pages' address |
 | MCP | `/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
 | Source | [iosuite/iostart](https://github.com/avandeputte/iosuite/tree/main/iostart) |

@@ -41,7 +41,11 @@ def test_what_each_app_serves_to_devices():
     assert doors.home_only_paths("iocalendar") == ("/.well-known/", "/ics/") and doors.home_only_paths("iocontact") == ("/.well-known/",)
     # of /api/, the calls the native apps make: the apps that have one, and no other
     assert {k for k, m in catalog.APPS.items() if m.get("devices")} == {"iopix", "ionote", "iohealth", "iostart"}
-    assert catalog.APPS["iohealth"]["devices"] == catalog.APPS["iostart"]["devices"] == ["POST,DELETE /api/auth/device"]
+    assert catalog.APPS["iohealth"]["devices"] == ["POST,DELETE /api/auth/device"]
+    # the start page: its sign-in, and the feed reader of its iPhone app (with the feeds' site icons)
+    assert all(c in ("POST,DELETE /api/auth/device", "GET /api/bookmarks/site-icon") or c.split(" ")[1].startswith("/api/news") for c in catalog.APPS["iostart"]["devices"])
+    assert doors.device_call("iostart", "/api/news/items/7") and doors.device_call("iostart", "/api/news/read", "POST")
+    assert not doors.device_call("iostart", "/api/news/opml") and not doors.device_call("iostart", "/api/me/layout")
 
 
 def test_validate_refuses_a_home_only_path_outside_the_sync_paths():
