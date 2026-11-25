@@ -10,7 +10,5 @@ _own = shared.of_app(__package__)
 globals().update(_own)
 env = _own["env"]
 
-TESSERACT = env("TESSERACT", "tesseract")  # the OCR program that reads the scans (iodocs/ocr.py); "off": never read them
-OCR_LANGS = env("OCR_LANGS", "eng")        # Tesseract's languages, eng+fra+deu say (each needs its tesseract-ocr-<lang> package)
 
 # MCP_USER (iosuite_shared.config.standard): the account `iosuite mcp iodocs` (stdio) acts as

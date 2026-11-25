@@ -11,7 +11,6 @@ env, env_flag, env_int = _own["env"], _own["env_flag"], _own["env_int"]
 
 # reading a photo of a recipe (iorecipe/ocr.py): the languages Tesseract tries, as its codes with + between (eng+nld+fra);
 # empty: every language installed
-OCR_LANGUAGES = env("OCR_LANGUAGES")
 
 # reading a web page that has no recipe data with AI (iorecipe/ai.py): a small model that runs on this server, inside the
 # app. AI=0 turns it off; AI_MODEL is another model than the one the app fetches (a GGUF file here, or the address of

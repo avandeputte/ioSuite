@@ -247,7 +247,7 @@ def standard(app: str, app_dir, stored: Settings = None) -> dict:
       BASE_URL              PUBLIC_URL, else http://localhost:PORT/folder (the links in MCP results)
       TLS_CERT_FILE, TLS_KEY_FILE   the machine's: HTTPS served directly instead of behind a reverse proxy
       KEEP_DELETED_DAYS     how long what was deleted is kept before it is purged for good (90)
-      MCP_USER              the account `python -m <app>.mcp` (stdio) acts as
+      MCP_USER              the account `iosuite mcp <app>` (stdio) acts as
       ADMIN_USER, ADMIN_PASSWORD    the first admin account, created on a first start with no accounts"""
     from iosuite_shared import catalog
     s = stored or settings(app)
@@ -376,7 +376,11 @@ SUITE = [
     {"name": "KEEP_DELETED_DAYS", "label": "Days deleted items are kept", "type": "number", "default": "90",
      "hint": "How long the marker of a deleted item is kept for the apps that sync, before it is gone for good."},
     {"name": "MCP_USER", "label": "Account for a local MCP client", "type": "text",
-     "hint": "The account `python -m <app>.mcp` (stdio) acts as."},
+     "hint": "The account `iosuite mcp <app>` (stdio) acts as."},
+    {"name": "OCR_PROGRAM", "label": "Program that reads text in pictures", "type": "text", "default": "tesseract",
+     "hint": "Tesseract reads the text on a scan or a photo for ioDocs, ioNote and ioRecipe. Another path, or off to never read them."},
+    {"name": "OCR_LANGUAGES", "label": "Languages of that text", "type": "text",
+     "hint": "eng+nld+fra, each needing its tesseract-ocr-<lang> package. Empty: every language installed, English first."},
 ]
 
 

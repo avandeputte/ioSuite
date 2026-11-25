@@ -46,20 +46,6 @@
       "type": "number",
       "default": "100",
       "hint": "One scan, photo or PDF as uploaded."
-    },
-    {
-      "name": "TESSERACT",
-      "label": "OCR program",
-      "type": "text",
-      "default": "tesseract",
-      "hint": "The program that reads the scans; off: never read them."
-    },
-    {
-      "name": "OCR_LANGS",
-      "label": "OCR languages",
-      "type": "text",
-      "default": "eng",
-      "hint": "Tesseract's languages (eng+fra+deu); each needs its tesseract-ocr-<lang> package."
     }
   ],
   "access": {

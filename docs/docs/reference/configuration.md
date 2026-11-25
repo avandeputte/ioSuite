@@ -122,6 +122,8 @@ A change takes effect when the app starts again; the screen has a Restart button
 | `TZ` | the time zone (`Europe/Brussels`) |
 | `KEEP_DELETED_DAYS` | how long what a deletion leaves behind is kept (90) |
 | `MCP_USER` | the account a local MCP client (stdio) acts as |
+| `OCR_PROGRAM` | the program that reads the text on a scan or a photo, for ioDocs, ioNote and ioRecipe (`tesseract`). Another path, or `off` to never read them |
+| `OCR_LANGUAGES` | the languages that text is in (`eng+nld+fra`), each needing its `tesseract-ocr-<lang>` package; empty: every language installed, English first |
 
 Every app has `PUBLIC_URL`, `SYNC_URL` and `MCP_URL` of its own (an address of its own beside its folder:
 `https://calendar.example.com`), `DATA_DIR` and `DB_NAME`, and then what only it needs: the photos folder and digiKam

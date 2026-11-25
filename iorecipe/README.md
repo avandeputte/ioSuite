@@ -75,13 +75,14 @@ iosuite set iorecipe PUBLIC_URL https://recipes.example.com    # no value: back 
 | `PUBLIC_URL`, `SYNC_URL`, `MCP_URL` | an address of its own for the pages, for devices and for MCP clients (`https://recipes.example.com`), beside its folder at the suite's address |
 | `DATA_DIR` | where the app writes on its own (`iorecipe/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iorecipe`) |
-| `OCR_LANGUAGES` | reading photos of recipes: languages. The languages Tesseract tries, as its codes with + between (eng+nld+fra). Empty: every language installed |
 | `AI` | read web pages without recipe data with AI (`1` or `0`; on by default). A small model that runs on this server, inside the app |
 | `AI_MODEL` | AI model. Another model than the one the app fetches: a GGUF file on the server, or the address of one |
 | `AI_TIMEOUT` | AI: seconds one page may take (`300`) |
 
-The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
-machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are
+kept, and `OCR_PROGRAM` and `OCR_LANGUAGES`: the program that reads the text on a photo of a recipe and the languages
+it reads in, shared with ioDocs and ioNote), the machine's file and the three ports are in the guide's
+[Configuration](../docs/docs/reference/configuration.md).
 
 ### Reading a page with AI
 

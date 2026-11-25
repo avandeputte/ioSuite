@@ -104,11 +104,11 @@ iosuite set iodocs PUBLIC_URL https://docs.example.com    # no value: back to th
 | `DATA_DIR` | where the app writes on its own (`iodocs/` in the machine's `DATA_DIR`) |
 | `DB_NAME` | the name of its database (`iodocs`) |
 | `MAX_FILE_MB` | largest file (MB) (`100`). One scan, photo or PDF as uploaded |
-| `TESSERACT` | OCR program (`tesseract`). The program that reads the scans; off: never read them |
-| `OCR_LANGS` | OCR languages (`eng`). Tesseract's languages (eng+fra+deu); each needs its tesseract-ocr-<lang> package |
 
-The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are kept), the
-machine's file and the three ports are in the guide's [Configuration](../docs/docs/reference/configuration.md).
+The suite's own settings (its address, the domain the sign-in is shared on, the time zone, how long deletions are
+kept, and `OCR_PROGRAM` and `OCR_LANGUAGES`: the program that reads the text in a scan or a photo and the languages it
+reads in, shared with ioNote and ioRecipe), the machine's file and the three ports are in the guide's
+[Configuration](../docs/docs/reference/configuration.md).
 
 ## Updates
 
