@@ -728,12 +728,12 @@ async function settings(el, ctx) {
   try { d = await api('settings'); } catch (e) { el.replaceChildren(h('p', { class: 'sa-err' }, e.message)); return; }
   const changed = new Set();
   const bar = h('div');
-  const drawBar = () => bar.replaceChildren(changed.size ? h('div', { class: 'sa-admins' },
+  const drawBar = () => bar.replaceChildren(...(changed.size ? [h('div', { class: 'sa-admins' },
     h('span', null, 'Saved. The change applies when ', changed.has('') ? 'the apps start' : [...changed].map((k) => appLabel(ctx.o, k)).join(', ') + (changed.size === 1 ? ' starts' : ' start'), ' again.'),
     h('button', { class: 'sa-btn primary', onclick: async () => {
       if (!await confirmDialog('Restart', 'Start the apps again now? An app restarts together with the others on its server; they are back within seconds.', 'Restart')) return;
       try { await api('restart', { method: 'POST', json: { apps: changed.has('') ? [] : [...changed] } }); changed.clear(); drawBar(); toast('Restarting…'); } catch (e) { fail(e); }
-    } }, 'Restart now')) : null);
+    } }, 'Restart now'))] : []));
   const field = (app, st) => {
     const where = app === '' ? '_suite' : app;
     const save = async (value) => {

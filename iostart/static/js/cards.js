@@ -1,6 +1,6 @@
 /* The cards of the start page beside the apps' tiles: the weather, the bookmarks, the coming days and birthdays, the
    strip of photos. */
-import { icon } from '../../api/auth/frame.js';
+import { fill, icon } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
 import { api, bmIcon, bmIconsLater, contactFace, degF, fmtTemp, itemImage, S, wxIcon } from './core.js';
 import { openAll } from './bookmarks.js';
@@ -12,7 +12,7 @@ export async function drawWeather(el, again = false) {
   let w;
   try { w = await api('api/weather'); } catch (e) { if (!again) el.replaceChildren(h('div', { class: 'muted small' }, e.message)); return; }
   if (!el.isConnected) return;
-  if (!w.enabled) { el.replaceChildren(S.user.role === 'admin' ? h('a', { class: 'lnk small', href: '#/settings/weather' }, 'Add the weather') : null); return; }
+  if (!w.enabled) { fill(el, S.user.role === 'admin' ? h('a', { class: 'lnk small', href: '#/settings/weather' }, 'Add the weather') : null); return; }
   if (!w.current) { el.replaceChildren(h('div', { class: 'wxerr' }, wxIcon(7, 'big'), h('div', null, h('div', null, 'No weather right now'), h('div', { class: 'muted small' }, w.error || '')))); return; }
   S.wxUnits = w.units;  // what the weather is set up with: Customize names it
   const c = w.current, imp = wxImperial(w), u = imp ? 'imperial' : 'metric';
@@ -54,7 +54,7 @@ export async function drawWeather(el, again = false) {
   const warn = w0 ? h('button', { class: `wxwarn ${sevClass(w0.severity)}`, title: w0.headline || w0.event, onclick: openPop },
     icon('warn', 's'), h('span', null, w0.event), w0.ends ? h('span', { class: 'wxwhen' }, `until ${when(w0.ends)}`) : null,
     extra.warnings.length > 1 ? h('span', { class: 'wxmore' }, `+${extra.warnings.length - 1}`) : null) : null;
-  el.replaceChildren(now,
+  fill(el, now,
     w.forecast && w.forecast.days && w.forecast.days.length ? h('div', { class: 'wxdays' }, w.forecast.days.map((d) =>
       h('div', { class: 'wxday', title: `${d.text || ''}${d.rain != null ? ` · ${d.rain}% chance of rain` : ''}` }, h('span', { class: 'muted small' }, day(d)), wxIcon(d.icon), h('span', { class: 'small wxhi' }, t(d.max)), h('span', { class: 'muted small' }, t(d.min))))) : null,
     w.stale ? h('span', { class: 'muted small', title: w.error || 'AccuWeather did not answer' }, 'older') : h('span'), warn);

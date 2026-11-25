@@ -1,5 +1,5 @@
 /* Rules (rename and categorize as transactions come in) and transfers between accounts. */
-import { confirmDialog, dialog, fail, icon, put, toast } from '../../api/auth/frame.js';
+import { confirmDialog, dialog, fail, fill, icon, put, toast } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
 import { amt, api, fld, fmtDay, followsTx, inp, may, money, S, store } from './core.js';
 import { onRoute, route } from './main.js';
@@ -202,7 +202,7 @@ export async function ruleDialog(x, preset) {
       try {
         const r = await api('api/rules/test', { method: 'POST', json: when() });
         if (n !== seq) return;
-        found.replaceChildren(h('p', null, r.count ? `Matches ${r.count} transaction${r.count === 1 ? '' : 's'}${r.edited ? ` (${r.edited} changed by hand stay as they are)` : ''}:` : 'Matches no transaction yet.'),
+        fill(found, h('p', null, r.count ? `Matches ${r.count} transaction${r.count === 1 ? '' : 's'}${r.edited ? ` (${r.edited} changed by hand stay as they are)` : ''}:` : 'Matches no transaction yet.'),
           r.sample.length ? h('ul', { class: 'rows flat' }, r.sample.map((t) => h('li', null, h('div', { class: 'r' }, h('span', { class: 'day' }, fmtDay(t.day)),
             h('span', { class: 'main' }, h('b', null, t.merchant || t.description || '(no payee)'), h('small', null, [t.description !== t.merchant ? t.description : null, t.category, t.account].filter(Boolean).join(' · '))),
             h('span', { class: 'end' }, amt(t.amount, t.currency)))))) : null);

@@ -1,4 +1,5 @@
 import { $, S, addDays, api, calOf, colorOf, fill, fmtTime, h, icon, isAuto, loadCals, parseDay, toast, writable } from './core.js';
+import { put } from '../../api/auth/frame.js';
 
 // ------------------------------------------------------------------ search
 export async function showSearch(page, r) {
@@ -45,7 +46,7 @@ export async function showImport(page) {
       tot.errors.length ? h('details', null, h('summary', { class: 'lnk' }, `${tot.errors.length} could not be read`), h('ul', null, tot.errors.slice(0, 50).map((x) => h('li', null, x)))) : null);
     await loadCals();
   };
-  page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Import')),
+  put(page, h('div', { class: 'pagehead' }, h('h1', null, 'Import')),
     w.length ? h('div', { class: 'box' }, h('h2', null, icon('upload'), 'Import'),
       h('p', null, 'An iCalendar file (.ics) from Google Calendar (Settings › Import & export › Export, then unzip), Apple Calendar (File › Export), Outlook or any other calendar. Repeating events, exceptions, reminders and time zones come along.'),
       h('div', { class: 'pform' }, h('label', { class: 'field' }, h('span', null, 'Into the calendar'), sel), file,

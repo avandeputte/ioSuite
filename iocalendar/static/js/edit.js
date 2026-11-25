@@ -1,4 +1,5 @@
 import { DOW, LOCAL_TZ, RDAY, S, addDays, addMonths, api, calOf, dayStart, describeReminder, describeRule, fail, fill, h, icon, isAuto, loadCals, memberBadge, ordinal, pad2, parseDay, sameDay, saveSettings, toast, weekStart, writable, ymd } from './core.js';
+import { put } from '../../api/auth/frame.js';
 import { deleteEvent, forOccurrence, linkedBox, ridQ } from './event.js';
 import { go } from './main.js';
 import { askScope, daysBetween } from './views.js';
@@ -280,7 +281,7 @@ export async function showEdit(page, r) {
     } catch (e) { fail(e); }
   };
   page.classList.add('form');
-  page.append(h('div', { class: 'pagehead' }, h('a', { class: 'iconbtn', href: `#/${S.view}/${ymd(S.date)}`, title: 'Cancel' }, icon('close')),
+  put(page, h('div', { class: 'pagehead' }, h('a', { class: 'iconbtn', href: `#/${S.view}/${ymd(S.date)}`, title: 'Cancel' }, icon('close')),
     h('h1', null, editing ? 'Change event' : 'New event')),
   title,
   h('div', { class: 'fsec' }, icon('clock'), 'When'),
