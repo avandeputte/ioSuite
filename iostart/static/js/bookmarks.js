@@ -299,7 +299,7 @@ export async function setBookmarkSettings(el) {
       h('p', { class: 'muted' }, 'The ioStart Bookmarks extension keeps a browser\'s own bookmarks the same as these, both ways: the bookmarks bar is the folder "Bookmarks bar" here, Firefox\'s bookmarks menu the folder "Bookmarks menu", and Other bookmarks everything else at the top (in Vivaldi, which keeps one tree: the folder set as its bookmark bar, and the rest of its Bookmarks). What is added, changed or deleted here or in one browser is so in every browser, within a minute. It signs in with one click.'),
       h('div', { class: 'multi' },
         h('a', { class: 'pillbtn primary', href: 'https://chromewebstore.google.com/detail/iosuite-bookmarks/nldealkpbjiholobfadimblcmdlphkoe', target: '_blank', rel: 'noopener' }, icon('download', 's'), 'Chrome Web Store (Chrome, Edge, Vivaldi, Brave)'),
-        h('a', { class: 'pillbtn', href: 'https://github.com/avandeputte/iosuite-old/releases?q=extension', target: '_blank', rel: 'noopener' }, 'For Firefox'),
+        h('a', { class: 'pillbtn', href: 'https://github.com/avandeputte/iosuite/releases?q=extension', target: '_blank', rel: 'noopener' }, 'For Firefox'),
         !sync.extension ? null : h('a', { class: 'pillbtn', href: 'api/bookmarks/extension.zip', download: '' }, `.zip ${sync.extension}`)),
       h('p', { class: 'muted small' }, 'Chromium browsers: add it from the Chrome Web Store; it keeps itself up to date. Firefox: open the signed .xpi file of the release. The .zip is for loading it unpacked (chrome://extensions, Developer mode, Load unpacked). Then type the address below in the extension and say yes.'),
       sync.server ? addr('Address for the extension and the ioStart app', sync.server) : null),
