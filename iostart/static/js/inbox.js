@@ -140,7 +140,8 @@ export async function showInbox(page, r) {
     try { cals = (await api('api/inbox/calendars')).items; } catch { /* no ioCalendar */ }
     const cal = h('select', { class: 't' }, h('option', { value: '' }, 'My own (the first)'), cals.map((c) => h('option', { value: c.id, selected: c.id === me.calendar ? true : null }, c.name)));
     await dialog('Your addresses', h('div', null,
-      h('p', { class: 'muted small' }, 'Mail from these addresses is yours: nobody else sees it. ', me.email ? ['Your account\'s address, ', h('b', null, me.email), ', counts too.'] : 'Your account has no address yet (Settings › Account).'),
+      h('p', { class: 'muted small' }, 'Mail from these addresses is yours: nobody else sees it. ', me.email ? ['Your account\'s address, ', h('b', null, me.email), ', counts too.'] : 'Your account has no address yet (Settings › Account).',
+        (me.card || []).length ? [' So do the addresses on your own card in ioContact: ', me.card.join(', '), '.'] : ' So do the addresses on your own card in ioContact, once a card there is marked “This is me”.'),
       fld('Other addresses you send from', addrs),
       h('label', { class: 'check' }, auto, ' File what is clear by itself (only when the mail server vouches that it is from you)'),
       cals.length ? fld('Invitations go to', cal) : null),
