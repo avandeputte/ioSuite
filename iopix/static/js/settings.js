@@ -484,7 +484,7 @@ function backupButton(which, label) {
 /** Settings › This app (its admins): every setting ioPix declares, in the suite's one home for them. The same block
  *  in every app, served by iosuite_shared (frame.appSettings). */
 function appSection() {
-  const box = h('section', { class: 'sbox' });
+  const box = h('div');
   appSettings(box, { toast }).catch((e) => fill(box, errorBox(e)));
   return box;
 }
