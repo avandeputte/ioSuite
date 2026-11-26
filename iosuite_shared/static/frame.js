@@ -262,7 +262,9 @@ const SET_CSS = `
 .io-set > label { min-height: 36px; display: flex; flex-direction: column; justify-content: center; gap: 0; margin: 0; font-size: inherit; font-weight: 500; color: inherit; overflow-wrap: anywhere; }
 .io-set > label > span { font-weight: 400; font-size: 11px; color: var(--fg2, #888); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .io-set > div { min-width: 0; }
-.io-set input.t, .io-set select.t { display: block; width: 100%; max-width: 420px; height: 36px; margin: 0; box-sizing: border-box; }
+.io-set input.t, .io-set select.t { display: block; width: 100%; max-width: 420px; height: 36px; margin: 0; box-sizing: border-box; padding: 0 12px; font: inherit; color: inherit;
+  border: 1px solid var(--line, #8884); border-radius: var(--r-s, 8px); background: var(--bg, transparent); outline: 0; }
+.io-set input.t:focus, .io-set select.t:focus { border-color: var(--accent, #68c); }
 .io-set input[type="checkbox"] { display: block; width: 18px; height: 18px; margin: 9px 0; }
 .io-set-shown { min-height: 36px; display: flex; align-items: center; color: var(--fg2, #888); overflow-wrap: anywhere; word-break: break-word; }
 .io-set-note { margin-top: 3px; max-width: 640px; font-size: 12px; color: var(--fg2, #888); }

@@ -3,6 +3,7 @@
 import { PREF, UNITS, act, api, dfDayLocal, errorBox, fill, fmtBytes, fmtWhen, h, icon, loadingBox, main, nf, plural, post, regionUsesMiles, store } from './core.js';
 import { S, THEMES, applyBadgePref, applyTheme, avatarOf, hashFor, infoPrefsEditor, photosWith, pollSoon, themeChoice, toast, toastError } from './state.js';
 import { confirmDialog } from './actions.js';
+import { appSettings } from '../../api/auth/frame.js';
 import { dbDialog, templatesSection } from './editing.js';
 import { pageTitle } from './pages.js';
 import { renderUserMenu, setupDialog, suiteSection } from './users.js';
@@ -200,7 +201,7 @@ const OPEN_COMPARE = new Set();  // model groups whose "Compare the models" fold
 // Settings is split into tabs, in the order every io app uses: each stab() marks where one begins; what comes before
 // the first is always shown
 const STABS = {
-  settings: [['account', 'Account'], ['display', 'Display'], ['editing', 'Editing'], ['library', 'Library'], ['ai', 'AI'],
+  settings: [['account', 'Account'], ['display', 'Display'], ['editing', 'Editing'], ['library', 'Library'], ['ai', 'AI'], ['app', 'This app'],
     ['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']],
 };
 const stab = (k) => h('span', { class: 'stab-mark', 'data-tab': k, hidden: true });
@@ -480,6 +481,14 @@ function backupButton(which, label) {
     h('button', { class: 'pillbtn', type: 'submit' }, icon('download'), h('span', null, label)));
 }
 
+/** Settings › This app (its admins): every setting ioPix declares, in the suite's one home for them. The same block
+ *  in every app, served by iosuite_shared (frame.appSettings). */
+function appSection() {
+  const box = h('section', { class: 'sbox' });
+  appSettings(box, { toast }).catch((e) => fill(box, errorBox(e)));
+  return box;
+}
+
 async function settingsPage(view) {
   let m;
   if (!main.querySelector('.spage:not(.tpage)')) main.replaceChildren(h('div', { class: 'page spage' }, loadingBox('Loading the settings…')));
@@ -496,6 +505,7 @@ async function settingsPage(view) {
     S.IS_ADMIN && S.EDITING ? editingTab(c) : null,
     S.IS_ADMIN ? libraryTab(c) : null,
     S.IS_ADMIN ? [stab('ai'), aiSection(view)] : null,
+    S.IS_ADMIN ? [stab('app'), appSection()] : null,
     ...(suite ? ['people', 'apps', 'servers', 'keys'].map((k) => [stab(k), suiteSection(k)]) : []),
   ));
   settingsTabs(main.querySelector('.spage'), view);
