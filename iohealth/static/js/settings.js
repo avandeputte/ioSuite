@@ -2,6 +2,7 @@ import { ALERT_DEFAULTS, SECTIONS, applySections, fmtCompact, forgetTypeList, h,
 import { api, apiCache, applyTheme, pageTitle, saveSettings, settings, themeChoice } from './shell.js';
 import { card, seg } from './charts.js';
 import { accountUi, me, setAccount, suitePanel } from './accounts.js';
+import { appSettings } from '../../api/auth/frame.js';
 
 // ---------- settings: tabs, as in every ioSuite app (#/settings/account … #/settings/apps) ----------
 // One Settings page for everything, in every ioSuite app. Each tab loads only what it shows. The account's own tabs
@@ -10,7 +11,7 @@ import { accountUi, me, setAccount, suitePanel } from './accounts.js';
 
 export const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 export const SETTINGS_TABS = () => [['account', 'Account'], ['display', 'Display'], ['health', 'Health'], ['goals', 'Goals and alerts'],
-  ...(me.isSuiteAdmin ? Object.entries(SUITE_TABS) : [])];
+  ...(me.isAdmin ? [['app', 'This app']] : []), ...(me.isSuiteAdmin ? Object.entries(SUITE_TABS) : [])];
 
 /** The page title and a row of tabs linking to #/<view>/<tab>.
  *  Draws at once; the tab fills the returned body when its data is in. */
@@ -29,11 +30,15 @@ export function tabbedPage(main, view, ic, title, tabs, arg) {
 pages.settings = async (main, arg, params) => {
   const [t, sub] = (arg || '').split('/');  // #/settings/people/<part>
   const { tab, body } = tabbedPage(main, 'settings', 'settings', 'Settings', SETTINGS_TABS(), t);
-  const els = await ({ account: setAccount, display: setDisplay, health: setHealth, goals: setGoals,
+  const els = await ({ account: setAccount, display: setDisplay, health: setHealth, goals: setGoals, app: setApp,
     people: () => suitePanel(tab, sub), apps: () => suitePanel(tab, sub), servers: () => suitePanel(tab, sub),
     keys: () => suitePanel(tab, sub) }[tab])(body);
   if (els) body.replaceChildren(...els.filter(Boolean));
 };
+
+/** Settings › This app (its admins): every setting ioHealth declares, in the suite's one home for them. The same
+ *  block in every app, served by iosuite_shared (frame.appSettings). */
+async function setApp() { const el = h('div'); await appSettings(el); return [el]; }
 
 export const sortedTypeList = async () => (await api('types').catch(() => [])).slice().sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)));
 

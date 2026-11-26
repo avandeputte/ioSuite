@@ -1,7 +1,7 @@
 /** Settings, one page as in every ioSuite app (Account and Display for accounts; Server for admins;
  *  People, Apps, Servers and Keys for suite admins), the Import and export page and the change log. */
 import { $, h, api, state, icon, toast, fail, canWrite, fmtDate } from './core.js';
-import { applyTheme, themeChoice } from '../../api/auth/frame.js';  // the appearance: the suite's one choice
+import { appSettings, applyTheme, themeChoice } from '../../api/auth/frame.js';  // the appearance: the suite's one choice
 
 /** Settings › Account (with the app passwords) and Display: iosuite_shared's panels, the same in every io app. */
 const accountUi = () => import(new URL('api/auth/ui.js', document.baseURI).href);
@@ -37,12 +37,14 @@ async function tabbedPage(base, title, ic, hue, tabs, tab) {
   try { for (const b of await cur[2]()) if (b) inner.append(b); } catch (e) { inner.append(h('p.err', e.message)); }
 }
 
-/** Settings: Account and Display for accounts; and the suite's own tabs (People, Apps, Servers, Keys) for
+/** Settings: Account and Display for accounts; This app for its admins; and the suite's own tabs (People, Apps, Servers, Keys) for
  *  suite admins. Before any account exists, only Display. */
 export function renderSettings(tab, sub) {
   const tabs = [];
   if (state.me.user) tabs.push(['account', 'Account', accountPanel]);
   tabs.push(['display', 'Display', async () => [await displayPanel()]]);
+  // This app (its admins): every setting ioNote declares, the same block in every app (frame.appSettings)
+  if (state.me.isAdmin) tabs.push(['app', 'This app', async () => { const el = h('div'); await appSettings(el, { toast }); return [el]; }]);
   if (state.me.isSuiteAdmin) {
     for (const [k, l] of [['people', 'People'], ['apps', 'Apps'], ['servers', 'Servers'], ['keys', 'Keys']]) {
       tabs.push([k, l, async () => [await suitePanel(k, sub)]]);

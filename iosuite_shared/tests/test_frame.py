@@ -165,3 +165,13 @@ def test_nothing_that_may_be_null_is_handed_to_the_browsers_own_append():
                     found.append(f"{f.relative_to(ROOT)}:{text.count(chr(10), 0, m.start()) + 1}: .{m.group(1)}(… {' '.join(arg.split())[:80]}")
     assert seen > 300, "the calls were not found: nothing was checked"
     assert not found, "use fill(el, ...) or put(el, ...) of the frame here:\n" + "\n".join(found)
+
+
+def test_every_app_has_settings_this_app_and_shows_it_to_its_admins():
+    """Settings › This app is in every app, and the page asks who its admins are of a value that exists: whether the
+    viewer is one is on the status answer (isAdmin), not on the account (which has role and suiteAdmin). Asked of the
+    account, the tab was never shown."""
+    for app in catalog.APPS:
+        js = "".join(f.read_text(encoding="utf-8") for f in (ROOT / app / "static").rglob("*.js") if "vendor" not in f.parts)
+        assert "appSettings(" in js and "'This app'" in js, app
+        assert ".user.isAdmin" not in js, app
