@@ -62,9 +62,9 @@ def count(request: Request):
 @router.get("/api/inbox/me", dependencies=[access.signed_in])
 def get_own(request: Request):
     """{addresses (the other addresses you send from), auto (file what is clear by itself), calendar, email (your
-    account's)}."""
+    account's), card (the addresses on your own card in ioContact, which count too)}."""
     u = request.state.user
-    return {**inbox.own(u["id"]), "email": u.get("email") or ""}
+    return {**inbox.own(u["id"]), "email": u.get("email") or "", "card": inbox.card_addresses(u["id"])}
 
 
 @router.put("/api/inbox/me", dependencies=[access.signed_in])

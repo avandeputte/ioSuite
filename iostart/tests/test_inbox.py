@@ -145,6 +145,26 @@ def test_whose_mail_it_is_and_who_sees_it(client):
     assert client.get(f"/api/inbox/{mine}").status_code == 404
 
 
+def test_the_addresses_on_a_persons_own_card_in_iocontact_are_theirs(client, apps):
+    table, calls = apps
+    uid = alex_email()
+    inbox._cards.clear()
+    table[("iocontact", "GET", "/api/contacts/7")] = {"id": 7, "fn": "Alex Example", "emails": [{"value": "Alex@Other.example"}, {"value": ALEX}]}
+    early = inbox.keep(mail.parse(message(sender="alex@other.example", subject="Before the card")))
+    assert client.get(f"/api/inbox/{early}").json()["person"] is None, "no card of their own yet"
+    users.set_value(uid, "iocontact", "me_contact_id", 7)
+    later = inbox.keep(mail.parse(message(sender="alex@other.example", subject="From my other address")))
+    assert client.get(f"/api/inbox/{later}").json()["person"] == uid
+    assert calls[-1][:3] == ("iocontact", "GET", "/api/contacts/7") and calls[-1][-1], "read as the person, with a sign-in of theirs"
+    n = len(calls)
+    assert inbox.claim() == 1 and client.get(f"/api/inbox/{early}").json()["person"] == uid, "what waited as nobody's is theirs too"
+    assert len(calls) == n, "the card is not read again for every message"
+    assert client.get("/api/inbox/me").json()["card"] == ["alex@other.example", ALEX.lower()]
+    assert inbox.keep(mail.parse(message(sender="stranger@else.example", subject="Still nobody's"))) and client.get("/api/inbox").json()["unclaimed"] == 1
+    users.set_value(uid, "iocontact", "me_contact_id", None)
+    inbox._cards.clear()
+
+
 def test_files_are_served_safely(client):
     alex_email()
     iid = inbox.keep(mail.parse(message(subject="Scan", files=[("scan.pdf", "application/pdf", PDF), ("x.png", "image/png", b"\x89PNG\r\n\x1a\nxx")])))

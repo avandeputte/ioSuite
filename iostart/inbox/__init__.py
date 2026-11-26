@@ -5,8 +5,9 @@
     an invitation in ioCalendar (its .ics), in the sender's own calendar
     the rest      waits on the Inbox page (#/inbox) to be filed by hand, or let go
 
-Whose mail it is: the sender's address, matched against the accounts' email addresses and the other addresses each
-person adds on the Inbox page (Your addresses). Mail from an address nobody has waits for a suite admin, who gives it
+Whose mail it is: the sender's address, matched against the accounts' email addresses, the other addresses each
+person adds on the Inbox page (Your addresses), and the addresses on each person's own card in ioContact (the one
+their account is tied to, "This is me" there; read as that person, card_addresses). Mail from an address nobody has waits for a suite admin, who gives it
 to someone or lets it go. Nobody else sees a person's mail, admins included.
 
 Filing happens as that person: the suite asks the other app with a sign-in of theirs made for the moment (a session
@@ -57,6 +58,8 @@ TAGS = {"money": "receipt", "receipt": "receipt", "receipts": "receipt", "iomone
         "inbox": "other", "hold": "other"}
 APP_OF = {"receipt": "iomoney", "document": "iodocs", "invite": "iocalendar"}
 STATE = "inbox_state"  # what the last look at the mailbox found (prt_state)
+CONTACTS = "iocontact"
+CARD_S = 10 * 60        # a person's own card in ioContact is read again after this long
 PASSWORD = "mail_password"  # with the start page's keys and tokens (iostart/keys.py)
 
 SCHEMA = [
@@ -221,8 +224,60 @@ def addresses() -> dict:
     return out
 
 
+_cards: dict = {}  # account id: (card id, read at, [addresses])
+
+
+def card_addresses(uid: int) -> list:
+    """The addresses on the person's own card in ioContact (the card their account is tied to), read as that person
+    and kept for CARD_S seconds; [] without such a card or without ioContact. When ioContact does not answer, the ones
+    read last."""
+    try:
+        cid = int(users.get_value(uid, CONTACTS, "me_contact_id") or 0)
+    except (TypeError, ValueError):
+        cid = 0
+    if not cid or not links.available(CONTACTS):
+        return []
+    had = _cards.get(uid)
+    if had and had[0] == cid and time.time() - had[1] < CARD_S:
+        return had[2]
+    try:
+        with as_person(uid) as req:
+            c = _ask(req, CONTACTS, f"/api/contacts/{cid}")
+    except NotFiled:
+        return had[2] if had and had[0] == cid else []
+    out = []
+    for e in c.get("emails") or []:
+        a = str((e or {}).get("value") or "").strip().lower()
+        if "@" in a and a not in out:
+            out.append(a)
+    _cards[uid] = (cid, time.time(), out)
+    return out
+
+
 def _owner_of(addr: str) -> int | None:
-    return addresses().get((addr or "").strip().lower())
+    """Whose address this is: an account's own or one they added first, then one on a person's own card in ioContact."""
+    a = (addr or "").strip().lower()
+    if not a:
+        return None
+    uid = addresses().get(a)
+    if uid is not None:
+        return uid
+    for u in users.list_users():
+        if not u.get("service") and a in card_addresses(u["id"]):
+            return u["id"]
+    return None
+
+
+def claim() -> int:
+    """Mail that waits as nobody's and is from an address somebody has by now (added since, or on their card): theirs."""
+    n = 0
+    for r in db.q("SELECT id, from_addr FROM prt_inbox WHERE status = 'waiting' AND person_id IS NULL LIMIT 50"):
+        uid = _owner_of(r["from_addr"])
+        if uid is not None:
+            db.ex("UPDATE prt_inbox SET person_id = %s, note = NULL WHERE id = %s AND person_id IS NULL", (uid, r["id"]))
+            by_itself(r["id"])
+            n += 1
+    return n
 
 
 # ------------------------------------------------------------------ what a message is
@@ -774,6 +829,7 @@ def tick() -> None:
             check()
         except mail.MailError as e:
             log.info("inbox: %s", e)
+    claim()
     retry_due()
 
 
