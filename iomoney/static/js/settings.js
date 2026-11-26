@@ -13,7 +13,7 @@ export async function showSettings(page, r) {
   const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
     ...(adm ? [['money', 'Money']] : []),
-    ...(S.user.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
+    ...(S.status.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   put(page, h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div', { style: { maxWidth: '900px' } }); put(page, body);
