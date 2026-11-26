@@ -26,9 +26,9 @@ def test_the_settings_page(page, server):
     page.wait_for_selector("h1:has-text('Settings')", timeout=10000)
     page.wait_for_selector(".stabs", timeout=10000)  # the sections arrive with /api/tools
     tabs = page.locator(".stabs button").all_inner_texts()
-    # the app's own tabs, in the order every io app uses; the suite's four (People, Apps, Servers, Keys) are a suite
+    # the app's own tabs (This app last, for its admins), in the order every io app uses; the suite's four (People, Apps, Servers, Keys) are a suite
     # admin's and are tested where one signs in (test_accounts.py)
-    assert [t for t in tabs if t not in ("Account",)] == ["Display", "Editing", "Library", "AI"], "the order every io app uses"
+    assert [t for t in tabs if t not in ("Account",)] == ["Display", "Editing", "Library", "AI", "This app"], "the order every io app uses"
     heads = page.locator("h2").evaluate_all("els => els.map((e) => e.textContent)")
     for h in ("Display", "AI analysis and models", "Editing", "Metadata templates", "Library", "Backups"):
         assert any(x.startswith(h) for x in heads), (h, heads)
