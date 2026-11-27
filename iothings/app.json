@@ -50,9 +50,28 @@
     {
       "name": "CURRENCY",
       "label": "Currency",
-      "type": "text",
+      "type": "choice",
       "default": "USD",
-      "hint": "The three-letter code prices and costs are in (USD, EUR). Settings › Things shows the same value."
+      "hint": "Prices are kept as plain amounts: changing the currency changes how they show, not what they are.",
+      "choices": [
+        "USD",
+        "EUR",
+        "GBP",
+        "CHF",
+        "CAD",
+        "AUD",
+        "NZD",
+        "SEK",
+        "NOK",
+        "DKK",
+        "PLN",
+        "CZK",
+        "JPY",
+        "INR",
+        "ZAR",
+        "BRL",
+        "MXN"
+      ]
     }
   ],
   "access": {

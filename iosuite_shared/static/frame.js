@@ -204,9 +204,10 @@ export async function suitePanel(el, r, cls = 'warn') {
   await ui.mount(el, { tab: r.tab, sub: r.sub, toast, onSub: (x) => history.replaceState(null, '', `#/settings/${r.tab}/${x}`) });
 }
 /** Settings › This app (the app's admins): the settings the app declares (its app.json), kept in the suite's one
-    home for them and read as they are now, so a change takes hold without a restart. The same block in every app,
-    beside the app's own screens for the ones that need a picker or a list (those say so and are shown here only). */
-export async function appSettings(el, { toast: say = toast } = {}) {
+    home for them and read as they are now, so a change takes hold without a restart. The same block in every app.
+    A setting has one place: one that the app changes on a screen of its own (`byApp`: a picker, a list, a tab of the
+    app's) is left out here. `onSaved(name, value)`: for a page that shows the value somewhere. */
+export async function appSettings(el, { toast: say = toast, onSaved } = {}) {
   const url = new URL('api/app-settings', document.baseURI).href;
   let d;
   try { d = await (await fetch(url, { headers: { Accept: 'application/json' } })).json(); } catch (e) { el.append(h('p', { class: 'warn' }, `The settings did not load: ${e.message}`)); return; }
@@ -218,6 +219,7 @@ export async function appSettings(el, { toast: say = toast } = {}) {
       if (!r.ok) throw new Error(n.detail || r.statusText);
       st.value = (n.settings || []).find((x) => x.name === st.name)?.value ?? '';
       say(st.value === '' ? 'Back to the default' : 'Saved');
+      if (onSaved) onSaved(st.name, st.value);
     } catch (e) { say(e.message); if (back) back(); }
   };
   const yes = (v) => /^(1|true|yes|on)$/i.test(v || '');
@@ -225,10 +227,7 @@ export async function appSettings(el, { toast: say = toast } = {}) {
     const fallback = st.suite ? `the suite’s: ${st.suite}` : st.default ? `default: ${st.default}` : '';
     const id = `io-set-${st.name}`;
     let input;
-    if (st.byApp) {   // its own screen is the editor for it (a list, a picker); here it is only shown
-      const now = st.value !== '' ? st.value : (st.suite || st.default || '');
-      input = h('div', { class: 'io-set-shown' }, st.type === 'switch' ? (yes(now) ? 'On' : 'Off') : st.value !== '' ? st.value.replace(/,(?=\S)/g, ', ') : now ? `${now} (default)` : 'not set');
-    } else if (st.type === 'switch') {
+    if (st.type === 'switch') {
       const on = st.value !== '' ? yes(st.value) : yes(st.suite || st.default);
       input = h('input', { id, type: 'checkbox', checked: on, onchange: (e) => save(st, e.target.checked, () => { e.target.checked = !e.target.checked; }) });
     } else if (st.type === 'choice') {
@@ -241,18 +240,15 @@ export async function appSettings(el, { toast: say = toast } = {}) {
         onchange: (e) => save(st, e.target.value.trim(), () => { e.target.value = st.value; }) });
     }
     // one line: the label (and the name `iosuite set` takes) on the left, the field on the right, what it does below it
-    const note = [st.hint, st.byApp ? '' : st.restart ? 'Applies when the app starts again.' : ''].filter(Boolean).join(' ');
-    return h('div', { class: 'io-set' }, h('label', { for: st.byApp ? null : id }, st.label, h('span', null, st.name)),
+    const note = [st.hint, st.restart ? 'Applies when the app starts again.' : ''].filter(Boolean).join(' ');
+    return h('div', { class: 'io-set' }, h('label', { for: id }, st.label, h('span', null, st.name)),
       h('div', null, input, note ? h('div', { class: 'io-set-note' }, note) : null));
   };
   if (!document.getElementById('io-set-css')) document.head.append(h('style', { id: 'io-set-css' }, SET_CSS));
-  const here = d.settings.filter((st) => !st.byApp), shown = d.settings.filter((st) => st.byApp);
+  const here = d.settings.filter((st) => !st.byApp), own = d.settings.length - here.length;
   el.append(h('div', { class: 'box' }, h('h2', null, 'This app'),
-    h('p', { class: 'muted small' }, 'Every setting of this app, kept with the suite in one place: the same values Settings › Apps › All settings shows. A field left empty takes the default.'),
-    h('div', { class: 'io-sets' }, here.map(row)),
-    shown.length ? [h('h3', { class: 'io-set-head' }, 'Changed on their own screens'),
-      h('p', { class: 'muted small' }, 'These have a screen of their own in this app; here they are only shown.'),
-      h('div', { class: 'io-sets' }, shown.map(row))] : null));
+    h('p', { class: 'muted small' }, `The settings of this app that have no screen of their own${own ? ': what the other tabs here change is changed there' : ''}. A field left empty takes the default.`),
+    h('div', { class: 'io-sets' }, here.map(row))));
 }
 /* Settings › This app: one line per setting, as Settings › Apps › All settings draws them. Carried here, not in a
    stylesheet, so the block looks the same in an app with its own stylesheet (the start page, ioPix). */
@@ -266,9 +262,7 @@ const SET_CSS = `
   border: 1px solid var(--line, #8884); border-radius: var(--r-s, 8px); background: var(--bg, transparent); outline: 0; }
 .io-set input.t:focus, .io-set select.t:focus { border-color: var(--accent, #68c); }
 .io-set input[type="checkbox"] { display: block; width: 18px; height: 18px; margin: 9px 0; }
-.io-set-shown { min-height: 36px; display: flex; align-items: center; color: var(--fg2, #888); overflow-wrap: anywhere; word-break: break-word; }
 .io-set-note { margin-top: 3px; max-width: 640px; font-size: 12px; color: var(--fg2, #888); }
-.io-set-head { margin: 22px 0 2px; font-size: 14px; font-weight: 600; }
 @media (max-width: 600px) { .io-set { grid-template-columns: minmax(0, 1fr); } .io-set > label { min-height: 0; } .io-set input.t, .io-set select.t { max-width: none; } }
 `;
 

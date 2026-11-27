@@ -136,7 +136,8 @@
           "None"
         ]
       ],
-      "hint": "What everyone sees under the tiles; each person may pick another in Customize."
+      "hint": "What everyone sees under the tiles; each person may pick another in Customize. Set in Settings › Home page.",
+      "byApp": true
     },
     {
       "name": "WEATHER_UNITS",
@@ -153,7 +154,8 @@
           "Fahrenheit and inches"
         ]
       ],
-      "hint": "Each person may pick their own in Customize."
+      "hint": "Each person may pick their own in Customize. Set in Settings › Home page.",
+      "byApp": true
     },
     {
       "name": "WEATHER_LOCATION",
@@ -173,7 +175,8 @@
       "name": "HA_URL",
       "label": "Home Assistant address",
       "type": "text",
-      "hint": "http://homeassistant.local:8123, or wherever it answers. Its token is under Keys and tokens."
+      "hint": "http://homeassistant.local:8123, or wherever it answers. Its token is under Keys and tokens. Set in Settings › Home page.",
+      "byApp": true
     },
     {
       "name": "HA_NAME",
@@ -194,7 +197,8 @@
       "label": "Home Assistant's own warnings",
       "type": "switch",
       "default": "1",
-      "hint": "Show the warnings Home Assistant itself raises on the start page. Off: only the things picked above."
+      "hint": "Show the warnings Home Assistant itself raises on the start page. Off: only the things picked above. Set in Settings › Home page.",
+      "byApp": true
     }
   ],
   "limits": {

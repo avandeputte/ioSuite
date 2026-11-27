@@ -31,7 +31,7 @@ SCHEMA = [
         color VARCHAR(16) NULL,
         UNIQUE KEY uq_hom_labels_name (name)
     )""",
-    # a thing. Dates are days; prices are in the currency of Settings › Things. fields: the thing's
+    # a thing. Dates are days; prices are in the currency of Settings › This app. fields: the thing's
     # own details as a JSON list of {name, value}. photo: the id in thg_files of the picture the cards show (0: none).
     # words: everything a search looks in, in lower case. import_ref: Homebox's HB.import_ref, so that importing the
     # same export again changes the things it brought instead of adding them twice.

@@ -346,9 +346,3 @@ def export_pdf_file():
 def home_settings(request: Request):
     """{currency, currencies}: the currency prices and costs are in."""
     return model.settings()
-
-
-@router.put("/api/things-settings", dependencies=[access.admin])
-async def set_home_settings(request: Request):
-    """{currency}: a three-letter code (admins)."""
-    return model.set_settings(await json_body(request))

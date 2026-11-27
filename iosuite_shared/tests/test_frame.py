@@ -175,3 +175,16 @@ def test_every_app_has_settings_this_app_and_shows_it_to_its_admins():
         js = "".join(f.read_text(encoding="utf-8") for f in (ROOT / app / "static").rglob("*.js") if "vendor" not in f.parts)
         assert "appSettings(" in js and "'This app'" in js, app
         assert ".user.isAdmin" not in js, app
+
+
+def test_a_setting_has_one_place_to_change_it():
+    """A setting an app changes on a screen of its own says so (`byApp` in its app.json), and Settings › This app
+    leaves it out: nothing is offered twice. Found by what the app's code writes."""
+    import json
+    wrote = re.compile(r'(?:set_setting\(config\.APP, |\b_save\(|\b_switch\(|\b_text\()"([A-Z_]*[A-Z])"[,)]')
+    for app in catalog.APPS:
+        by_app = {s["name"] for s in json.loads((ROOT / app / "app.json").read_text(encoding="utf-8")).get("settings", []) if s.get("byApp")}
+        py = "".join(f.read_text(encoding="utf-8") for f in (ROOT / app).rglob("*.py") if "tests" not in f.parts)
+        assert set(wrote.findall(py)) <= by_app, (app, sorted(set(wrote.findall(py)) - by_app))
+    js = (SHARED / "frame.js").read_text(encoding="utf-8")
+    assert "d.settings.filter((st) => !st.byApp)" in js and "shown.map" not in js

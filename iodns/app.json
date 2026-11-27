@@ -37,14 +37,16 @@
       "label": "How the public address is found",
       "type": "text",
       "default": "auto",
-      "hint": "auto (a few public services), unifi:<server id> (a UniFi gateway), or the address of a page that answers with the IP."
+      "hint": "auto (a few public services), unifi:<server id> (a UniFi gateway), or the address of a page that answers with the IP.",
+      "byApp": true
     },
     {
       "name": "DDNS_MINUTES",
       "label": "Minutes between address checks",
       "type": "number",
       "default": "5",
-      "hint": "How often the public address is looked up for the records that follow it; 0: only when someone asks."
+      "hint": "How often the public address is looked up for the records that follow it; 0: only when someone asks.",
+      "byApp": true
     }
   ],
   "limits": {

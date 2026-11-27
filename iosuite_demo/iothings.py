@@ -71,7 +71,6 @@ def _receipt(name: str, price: str, shop: str, when) -> bytes:
 def seed(people: dict) -> None:
     m = users.get(people["morgan"]["id"])
     r = users.get(people["riley"]["id"])
-    model.set_settings({"currency": "USD"})
     for parent, rooms in PLACES.items():
         pid = model.save_location(m, {"name": parent})["id"]
         for room in rooms:

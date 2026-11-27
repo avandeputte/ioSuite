@@ -66,7 +66,7 @@ single-page vanilla JS app, with everything stored in MariaDB / MySQL (the files
   shows the amount, the day and the account, and the transaction shows the thing with how long its warranty runs.
 - **Roles as in the other io apps**: viewers look; members (the default) add things, attach files and keep the upkeep
   and the log; editors change and delete everything, and keep the places and labels in order; admins also choose the
-  currency (Settings › Things) and run the server. The same accounts, passwords and app passwords as the other io apps.
+  currency (Settings › This app) and run the server. The same accounts, passwords and app passwords as the other io apps.
 - **Settings › People, Apps, Servers and Keys** (suite admins): the suite's people, their role in every app, app
   passwords and sign-in at the proxy; the apps, keys and tokens (iosuite_shared's panel, the same in every app).
 - Light and dark, phone-sized screens, installable as an app.

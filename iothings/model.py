@@ -12,7 +12,7 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 
-from iosuite_shared import admin as suite_admin, family as suite_family, related, stamp, users as shared_users
+from iosuite_shared import family as suite_family, related, stamp, users as shared_users
 from iosuite_shared.errors import Invalid
 
 from iothings import config, db
@@ -730,12 +730,3 @@ def currency() -> str:
 
 def settings() -> dict:
     return {"currency": currency(), "currencies": list(CURRENCIES)}
-
-
-def set_settings(data: dict) -> dict:
-    if "currency" in data:
-        c = str(data.get("currency") or "").strip().upper()
-        if not re.fullmatch(r"[A-Z]{3}", c):
-            raise Invalid("currency: a three-letter code such as USD or EUR")
-        suite_admin.set_setting(config.APP, "CURRENCY", c)
-    return settings()
