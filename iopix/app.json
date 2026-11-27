@@ -183,37 +183,43 @@
         "mysql"
       ],
       "default": "none",
-      "hint": "none: no digiKam at all, ioPix keeps the library itself. sqlite: digikam4.db in the folder below. mysql: the server below."
+      "hint": "none: no digiKam at all, ioPix keeps the library itself. sqlite: digikam4.db in the folder below. mysql: the server below.",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_DIR",
       "label": "Folder with digikam4.db",
-      "type": "text"
+      "type": "text",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_HOST",
       "label": "digiKam MySQL host",
       "type": "text",
-      "default": "127.0.0.1"
+      "default": "127.0.0.1",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_PORT",
       "label": "digiKam MySQL port",
       "type": "number",
-      "default": "3306"
+      "default": "3306",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_NAME",
       "label": "digiKam MySQL database",
       "type": "text",
-      "default": "digikam"
+      "default": "digikam",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_USER",
       "label": "digiKam MySQL user",
       "type": "text",
       "default": "digikam",
-      "hint": "Its password is set in ioPix under Settings › Library › digiKam database."
+      "hint": "Its password is set in ioPix under Settings › Library › digiKam database.",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_BACKUP",
@@ -223,7 +229,8 @@
         "auto",
         "skip"
       ],
-      "default": "auto"
+      "default": "auto",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_DB_DUMP",
@@ -257,7 +264,8 @@
       "name": "SIDECAR_COMPAT",
       "label": "Name new sidecars photo.xmp",
       "type": "switch",
-      "default": "0"
+      "default": "0",
+      "byApp": true
     },
     {
       "name": "EDITING",
@@ -305,7 +313,8 @@
       "name": "BG_THREADS",
       "label": "Cores a background job may use",
       "type": "number",
-      "hint": "Empty: half the machine."
+      "hint": "Empty: half the machine.",
+      "byApp": true
     },
     {
       "name": "PREWARM_WORKERS",
@@ -407,64 +416,74 @@
       "name": "APP_NAME",
       "label": "What it calls itself",
       "type": "text",
-      "hint": "The name on its pages. Empty: ioPix."
+      "hint": "The name on its pages. Empty: ioPix.",
+      "byApp": true
     },
     {
       "name": "WRITE_FILES",
       "label": "Write metadata into the picture files",
       "type": "switch",
       "default": "0",
-      "hint": "Tags, names and dates go into the files themselves as well, not only into the sidecars."
+      "hint": "Tags, names and dates go into the files themselves as well, not only into the sidecars.",
+      "byApp": true
     },
     {
       "name": "DIGIKAM_SYNC",
       "label": "Read and write digiKam's database",
       "type": "switch",
       "default": "1",
-      "hint": "Off: ioPix works from its own copy of the library and never opens digiKam's database."
+      "hint": "Off: ioPix works from its own copy of the library and never opens digiKam's database.",
+      "byApp": true
     },
     {
       "name": "FILE_SCANNER",
       "label": "Watch the album folders",
       "type": "switch",
-      "hint": "Find files added, changed or removed outside ioPix. Empty: on where there is no digiKam, since nothing else finds new photos."
+      "hint": "Find files added, changed or removed outside ioPix. Empty: on where there is no digiKam, since nothing else finds new photos.",
+      "byApp": true
     },
     {
       "name": "SCAN_INTERVAL",
       "label": "Minutes between folder passes",
       "type": "number",
-      "default": "15"
+      "default": "15",
+      "byApp": true
     },
     {
       "name": "SEARCH_MODEL",
       "label": "Model behind search",
       "type": "text",
       "default": "clip",
-      "hint": "clip, siglip2 or jinaclip; Settings › Search picks one of the models installed here."
+      "hint": "clip, siglip2 or jinaclip; Settings › Search picks one of the models installed here.",
+      "byApp": true
     },
     {
       "name": "FACE_DETECTOR",
       "label": "Model that finds faces",
       "type": "text",
-      "hint": "Empty: the first one installed. Settings › People picks one."
+      "hint": "Empty: the first one installed. Settings › People picks one.",
+      "byApp": true
     },
     {
       "name": "OBJECT_MODEL",
       "label": "Model that names what is in a photo",
       "type": "text",
-      "hint": "Empty: the first one installed."
+      "hint": "Empty: the first one installed.",
+      "byApp": true
     },
     {
       "name": "CAPTION_MODEL",
       "label": "Model that describes a photo",
       "type": "text",
-      "hint": "Empty: the first one installed."
+      "hint": "Empty: the first one installed.",
+      "byApp": true
     },
     {
       "name": "FACE_VECTORS",
       "label": "Model that tells faces apart",
       "type": "text",
-      "hint": "Empty: the first one installed. A change rebuilds the stored vectors."
+      "hint": "Empty: the first one installed. A change rebuilds the stored vectors.",
+      "byApp": true
     },
     {
       "name": "SPEECH_MODEL",
@@ -490,13 +509,15 @@
           "Roughly alike"
         ]
       ],
-      "default": "normal"
+      "default": "normal",
+      "byApp": true
     },
     {
       "name": "IMPORT_LAYOUT",
       "label": "Folder layout imports go into",
       "type": "text",
-      "hint": "Empty: the first layout ioPix offers."
+      "hint": "Empty: the first layout ioPix offers.",
+      "byApp": true
     },
     {
       "name": "MAP_PROVIDER",
@@ -512,7 +533,8 @@
           "Google Maps (needs a key)"
         ]
       ],
-      "default": "osm"
+      "default": "osm",
+      "byApp": true
     },
     {
       "name": "ALBUM_ROOTS",

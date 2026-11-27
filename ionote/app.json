@@ -52,7 +52,7 @@
       "label": "What it calls itself",
       "type": "text",
       "default": "ioNote",
-      "hint": "The name on its pages and in its notifications. Settings › General shows the same value."
+      "hint": "The name on its pages and in its notifications."
     },
     {
       "name": "MAX_IMAGE_MB",

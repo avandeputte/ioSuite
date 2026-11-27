@@ -169,14 +169,17 @@ def test_who_may_do_what(client, as_user):
     sign_in(client, "alex")
     as_user("ed", "editor")
     assert client.patch(f"/api/items/{it['id']}", json={"name": "Big fridge"}).status_code == 200
-    assert client.put("/api/things-settings", json={"currency": "USD"}).status_code == 403
+    assert client.put("/api/app-settings/CURRENCY", json={"value": "USD"}).status_code == 403  # Settings › This app: its admins
 
 
 def test_settings_currency(client):
+    """The currency has one place, Settings › This app (the suite's one home for an app's settings): one of a list."""
     assert client.get("/api/things-settings").json()["currency"] == "USD"
-    assert client.put("/api/things-settings", json={"currency": "eur"}).json()["currency"] == "EUR"
+    assert client.put("/api/app-settings/CURRENCY", json={"value": "EUR"}).status_code == 200
     assert client.get("/api/summary").json()["currency"] == "EUR"
-    assert client.put("/api/things-settings", json={"currency": "dollars"}).status_code == 400
+    assert client.put("/api/app-settings/CURRENCY", json={"value": "dollars"}).status_code == 400
+    assert client.put("/api/things-settings", json={"currency": "USD"}).status_code == 405, "no second way in"
+    assert client.put("/api/app-settings/CURRENCY", json={"value": ""}).status_code == 200
 
 
 def test_photos_are_made_small_in_the_helper(client, monkeypatch):

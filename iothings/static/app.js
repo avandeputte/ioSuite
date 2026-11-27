@@ -749,14 +749,12 @@ async function showImport(page) {
 
 // ------------------------------------------------------------------ settings
 async function showSettings(page, r) {
-  const adm = S.user.role === 'admin';
   const tabs = [['account', 'Account'], ['display', 'Display'],
-    ...(adm ? [['things', 'Things']] : []),
     ...(S.status.isAdmin ? [['app', 'This app']] : []), ...(S.user.suiteAdmin ? Object.entries(SUITE_TABS) : [])];
   page.append(h('div', { class: 'pagehead' }, h('h1', null, 'Settings')),
     h('div', { class: 'tabs' }, tabs.map(([k, l]) => h('button', { class: r.tab === k ? 'on' : '', onclick: () => { location.hash = `#/settings/${k}`; } }, l))));
   const body = h('div'); page.append(body);
-  await ({ account: setAccount, display: setDisplay, app: setApp, things: setThings, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
+  await ({ account: setAccount, display: setDisplay, app: setApp, people: setSuite, apps: setSuite, servers: setSuite, keys: setSuite }[r.tab] || setAccount)(body, r);
 }
 
 /** Settings › Account: display name, email and password, then the app passwords: iosuite_shared's panels (the same in every io app). */
@@ -777,24 +775,13 @@ async function setDisplay(el) {
     h('div', { class: 'box' }, h('h2', null, icon('tune'), 'Things'), h('div', { class: 'grid' }, fld('Open on', sv))));
 }
 
-/** Settings › Things (admins): the currency, for prices and what the things are worth together. */
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'CAD', 'AUD', 'NZD', 'JPY'];
-async function setThings(el) {
-  const cur = (await api('api/things-settings')).currency || S.currency;
-  const list = CURRENCIES.includes(cur) ? CURRENCIES : [cur, ...CURRENCIES];
-  const sel = h('select', { class: 't', onchange: async (e) => {
-    try { await api('api/things-settings', { method: 'PUT', json: { currency: e.target.value } }); S.currency = e.target.value; toast('Saved'); } catch (x) { fail(x); }
-  } }, list.map((c) => h('option', { value: c, selected: c === cur ? true : null }, c)));
-  el.append(h('div', { class: 'box' }, h('h2', null, icon('money'), 'Money'), h('div', { class: 'grid' }, fld('Currency', sel)),
-    h('p', { class: 'muted small' }, 'Prices are kept as plain amounts: changing the currency changes how they show, not what they are.')));
-}
 
 /** Settings › People, Apps, Servers and Keys (suite admins): the people, their role in every app, app
     passwords, sign-in at the proxy; the apps, keys and tokens. The same panel in every io app, served by iosuite_shared. */
 const SUITE_TABS = { people: 'People', apps: 'Apps', servers: 'Servers', keys: 'Keys' };
 /** Settings › This app (its admins): every setting this app declares, in the suite's one home for them. The same
     block in every app, served by iosuite_shared (frame.appSettings). */
-function setApp(el) { return frame.appSettings(el, { toast }); }
+function setApp(el) { return frame.appSettings(el, { toast, onSaved: refreshAround }); }  // the currency is one of them
 function setSuite(el, r) { return frame.suitePanel(el, r); }
 
 // ------------------------------------------------------------------ sign-in

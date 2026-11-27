@@ -78,7 +78,8 @@
       "label": "Birthdays from ioContact",
       "type": "switch",
       "default": "1",
-      "hint": "Keep a Birthdays calendar from the family's address books. Off: no birthdays are read."
+      "hint": "Keep a Birthdays calendar from the family's address books. Off: no birthdays are read. Set in Settings › Holidays and birthdays.",
+      "byApp": true
     }
   ],
   "access": {
