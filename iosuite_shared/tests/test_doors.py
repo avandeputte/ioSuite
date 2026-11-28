@@ -132,7 +132,7 @@ def test_of_an_app_s_api_the_sync_door_serves_the_calls_its_native_apps_make(mon
     assert doors.home("ionote", "/api/auth/device", "POST") == ("web", "sync")
     assert doors.home("ionote", "/api/auth/password", "POST") == ("web",) and doors.home("ionote", "/api/auth/login", "POST") == ("web",)
     # an app whose manifest names no call has none of its API at this port
-    for app in ("iomoney", "iodocs", "iothings", "iorecipe", "iodns", "iobackup", "iocalendar", "iocontact", "iotask"):
+    for app in ("iodocs", "iothings", "iodns", "iobackup", "iocalendar", "iocontact", "iotask"):
         assert not catalog.APPS[app].get("devices"), app
         for path, method in (("/api/status", "GET"), ("/api/auth/me", "GET"), ("/api/auth/device", "POST"), ("/api/suite-admin", "GET")):
             assert doors.home(app, path, method) == ("web",), (app, path)
@@ -354,15 +354,17 @@ def test_the_sync_door_sends_nothing_on(monkeypatch):
     """The port for devices refuses what is not its own, the same way whatever was asked, and says nothing of where
     the pages are."""
     machine(monkeypatch)
-    h = a_host("iostart", "iocalendar", "iomoney")
+    h = a_host("iostart", "iocalendar", "iodocs", "iomoney")
     refused = set()
     for path in ("/", "/calendar/", "/calendar/api/events", "/calendar/api/docs", "/calendar/api/openapi.json", "/api/docs", "/api/openapi.json",
                  "/api/auth/ui.js", "/api/live.js", "/api/push/sw.js", "/static/frame.js", "/static/base.css", "/api/status", "/api/wall",
-                 "/api/trmnl/today", "/api/display", "/api/suite-admin", "/money/", "/money/api/status", "/money/api/accounts", "/nothing/here"):
+                 "/api/trmnl/today", "/api/display", "/api/suite-admin", "/docs/", "/docs/api/status", "/docs/api/documents", "/money/", "/money/api/status",
+                 "/money/api/rules", "/money/api/monarch", "/nothing/here"):
         s, hd, b = ask(h, path, port=8443, name="home.example.com:8443")
         assert s == 404 and "location" not in hd and b["door"] == "sync", path
         refused.add(b["detail"])
-    assert len(refused) == 1 and "ioMoney" not in refused.pop()  # one answer: it does not tell which apps are there
+    said = refused.pop() if len(refused) == 1 else ""
+    assert said and "ioMoney" not in said and "ioDocs" not in said  # one answer: it does not tell which apps are there
     s, hd, _ = ask(h, "/dav/nextcloud/index.php/login/v2/flow/abc", port=8443, name="home.example.com:8443")
     assert s == 404 and "location" not in hd
     # nobody signs in by a session here

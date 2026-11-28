@@ -98,7 +98,7 @@ A copy of the program opens three ports, so that each kind of traffic can have f
 | Port | Who comes in | Signed in with |
 | --- | --- | --- |
 | `PORT` (80) | people, in a browser: the pages and what the pages ask for | the session cookie, a passkey, the proxy's sign-in |
-| `SYNC_PORT` (8443) | phones and native apps, and nothing else: CalDAV and CardDAV, calendar feeds, bookmark sync and the iPhone widgets, ioHealth's uploads, and of each app's API the calls its native apps make (ioPix, ioNote), with ioPix's pictures and videos. No page, no reference of the API, nothing of an app without a native app | an app password or a token; cookies are not read here. A native app or the browser extension gets its app password here with the name and password typed in it (`/api/auth/device`) |
+| `SYNC_PORT` (8443) | phones and native apps, and nothing else: CalDAV and CardDAV, calendar feeds, bookmark sync and the iPhone widgets, ioHealth's uploads, and of each app's API the calls its native apps make (ioPix, ioNote, ioStart, ioRecipe, ioMoney), with ioPix's pictures and videos. No page, no reference of the API, nothing of an app without a native app | an app password or a token; cookies are not read here. A native app or the browser extension gets its app password here with the name and password typed in it (`/api/auth/device`) |
 | `MCP_PORT` (8444) | AI assistants (MCP) | an app password |
 
 The app is chosen the same way on all three: by its own host name (`calendar.example.com`) or by its folder at the

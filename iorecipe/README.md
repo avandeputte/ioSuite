@@ -140,7 +140,7 @@ Cloudflare's edge ([cloudflare/edge-auth](../cloudflare/edge-auth/README.md)).
 
 ## API
 
-The paths below are ioRecipe's own: at the suite's address they are inside its folder (`https://home.example.com/recipes/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443), the one to open to the internet for phones and native apps, serves nothing of ioRecipe. MCP clients use the address for MCP (port 8444).
+The paths below are ioRecipe's own: at the suite's address they are inside its folder (`https://home.example.com/recipes/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443), the one to open to the internet for phones and native apps, serves only what the [iPhone and iPad app](https://github.com/avandeputte/iosuite-apps/tree/main/iorecipe) asks for: sign-in, the recipes and their photos, your favourites and ratings, cookbooks, import from a web page, pasted text or a photo (`devices` in [app.json](app.json)); export, import from a file and the shopping list are asked at the pages' address. MCP clients use the address for MCP (port 8444).
 
 | For | Standard | Where |
 | --- | --- | --- |

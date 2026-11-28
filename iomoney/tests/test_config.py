@@ -15,6 +15,10 @@ def test_every_api_route_declares_who_may_call_it(app):
     testing.check_access_declared(app, access.declared)
 
 
+def test_the_port_for_devices_serves_calls_the_app_has_and_no_admin_s(app):
+    testing.check_device_calls(app, "iomoney", access.declared)
+
+
 def test_standard_paths():
     assert config.APP_DIR == ROOT and config.STATIC_DIR == ROOT / "static" and config.DATA_DIR.name == "iomoney"
     assert config.LOG_FILE is None  # LOG_FILE=off in the tests' stored settings
