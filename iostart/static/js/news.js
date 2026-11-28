@@ -5,7 +5,7 @@
    itself for it. */
 import { confirmDialog, dialog, fail, fld, icon, toast } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
-import { api, S } from './core.js';
+import { api, quiet, S } from './core.js';
 
 /** "5 min", "3 h", "2 d", "12 Nov": how long ago, short. */
 function ago(at) {
@@ -24,11 +24,14 @@ const feedIcon = (f) => (f && f.icon ? h('img', { class: 'nwico', src: f.icon, a
     follows no feed (the gear menu's Feeds is where to start). */
 export async function drawNewsCard(el, keep = false) {
   let d;
-  try { d = await api('api/news/card?n=8'); } catch { d = { feeds: 0, items: [], unread: 0 }; }
+  // a block of the person's own grid can be one folder of feeds (el.folder) and hold more lines (el.lines)
+  const name = el.folder || 'Headlines';
+  try { d = await api(`api/news/card?${new URLSearchParams({ n: el.lines || 8, ...(el.folder ? { folder: el.folder } : {}) })}`); } catch { d = { feeds: 0, items: [], unread: 0 }; }
   if (!el.isConnected) return;
   el.hidden = !d.feeds && !keep;  // keep: the page is being arranged, and the card has to be there to be moved or taken off
-  if (!d.feeds) { el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, 'Headlines')), h('div', { class: 'muted small' }, 'The newest articles of the feeds you follow (gear menu, Feeds).')); return; }
-  const head = h('div', { class: 'wghead' }, h('span', null, 'Headlines'),
+  quiet(el, !d.items.length, !d.feeds);
+  if (!d.feeds) { el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, name)), h('div', { class: 'muted small' }, el.folder ? 'No feeds in that folder any more.' : 'The newest articles of the feeds you follow (gear menu, Feeds).')); return; }
+  const head = h('div', { class: 'wghead' }, h('span', null, name),
     h('a', { class: 'showall', href: '#/news', title: 'Open the reader' }, d.unread > d.items.length ? `${d.unread} unread` : 'All feeds'));
   const rows = d.items.map((it) => h('a', { class: 'nwline', href: `#/news/a/${it.id}`, title: it.text || it.title },
     h('span', { class: 'nwline-title' }, it.title), h('span', { class: 'nwline-by muted' }, `${it.feed} · ${ago(it.at)}`)));

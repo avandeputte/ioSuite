@@ -29,3 +29,18 @@ def test_tile_events_carry_their_details(client):
     start, end = day.isoformat(), (day + dt.timedelta(days=1)).isoformat()
     assert "notes" not in client.get("/api/occurrences", params={"start": start, "end": end}).json()["items"][0]
     assert client.get("/api/occurrences", params={"start": start, "end": end, "notes": 1}).json()["items"][0]["notes"] == "Bring goggles"
+
+
+def test_the_week_of_one_member(client, family_id):
+    """The start page's "This week" card for one member of the family: kind week:<their id>."""
+    import datetime as dt
+    from iosuite_shared import testing
+    from iocalendar import members
+    members.tags.ttl = 0
+    assert testing.add_account(client, {"name": "emma", "password": "emmapass99", "role": "viewer", "displayName": "Emma"}).status_code == 200
+    emma = next(m for m in client.get("/api/members").json()["items"] if m["name"] == "emma")
+    day = (dt.date.today() + dt.timedelta(days=2)).isoformat()
+    client.post(f"/api/events?calendar={family_id}", json={"title": "Swimming", "start": f"{day}T16:00", "members": ["emma"]})
+    client.post(f"/api/events?calendar={family_id}", json={"title": "Dinner", "start": f"{day}T19:00"})
+    titles = lambda kind: [o["title"] for d in client.get("/api/suite/tile", params={"kind": kind}).json()["days"] for o in d["items"]]  # noqa: E731
+    assert titles("week") == ["Swimming", "Dinner"] and titles(f"week:{emma['id']}") == ["Swimming"] and titles("week:987654") == []

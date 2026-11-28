@@ -24,6 +24,8 @@ addIcons({
   update: 'M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1a6.875 6.875 0 0 0 0 9.79 7.02 7.02 0 0 0 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 1.98-.88 4.55-2.64 6.29-3.51 3.48-9.21 3.48-12.72 0-3.5-3.47-3.53-9.11-.02-12.58a8.987 8.987 0 0 1 12.65 0L21 3v7.12z',
   cloud: 'M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z',
   note: 'M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z',
+  schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z',
+  resize: 'M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z',
   up: 'M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z',
   down: 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z',
   eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
@@ -205,4 +207,15 @@ export function money(v, cur, opts = {}) {
   try { return new Intl.NumberFormat([], cur ? { style: 'currency', currency: cur, ...opts } : { minimumFractionDigits: 2, maximumFractionDigits: 2, ...opts }).format(v); } catch { return `${(+v).toFixed(2)}${cur ? ` ${cur}` : ''}`; }
 }
 export const pad2 = (n) => String(n).padStart(2, '0');
+/** A card says whether it has anything to say right now (and, with `gone`, that it is not there at all: its app does
+    not answer, nothing is set up). Whoever put it on the page listens (el.onquiet) and can keep it off meanwhile. */
+export function quiet(el, isQuiet, gone = false) {
+  el.quiet = !!isQuiet; el.gone = !!gone;
+  if (el.onquiet) el.onquiet(el.quiet, el.gone);
+}
+/** An id for a block, a section, a badge or a page: small letters and digits (iostart/layout.py ID). */
+export function newId(n = 8) {
+  const a = new Uint8Array(n); crypto.getRandomValues(a);
+  return [...a].map((b) => (b % 36).toString(36)).join('');
+}
 export const viewerTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } };

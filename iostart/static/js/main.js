@@ -20,6 +20,7 @@ export function route() {
   if (a === 'inbox') return { view: 'inbox', b };  // the suite's inbox by email (static/js/inbox.js)
   if (a === 'wall') return { view: 'wall' };
   if (a === 'pair') return { view: 'pair', code: b || '' };
+  if (a === 'p') return { view: 'home', page: b || '' };  // another page of the start page (static/js/pages.js)
   if (BM_APP && !a) return { view: 'bookmarks' };  // the Bookmarks app opens on them
   return { view: 'home' };
 }
@@ -29,7 +30,7 @@ export async function onRoute() {
   // the start page has no top bar: the account menu sits in its first row instead (showHome moves it there)
   document.body.classList.toggle('home', r.view === 'home');
   document.body.classList.toggle('wall', r.view === 'wall');
-  S.refresh = null; S.shownDay = null;  // the view drawn next says how it refreshes itself (liveRefresh)
+  S.refresh = null; S.shownDay = null; S.whenCheck = null;  // the view drawn next says how it refreshes itself (liveRefresh)
   if (r.view !== 'home') { S.arrange = null; S.arrangeNext = false; document.body.classList.remove('arranging'); }  // arranging is the start page's: going elsewhere drops what was not saved
   if (S.wallStop) { S.wallStop(); S.wallStop = null; }
   haStreamStop();  // the view opens its own stream of Home Assistant changes when it needs one
@@ -101,8 +102,14 @@ async function start() {
     }
   });
   // back from an app: the page again as it is now (in place); and every few minutes while it stays open (liveRefresh)
-  document.addEventListener('visibilitychange', () => liveRefresh(true));
+  // what shows only at some hours or on some screens (static/js/when.js): looked at each minute, on coming back to the
+  // tab, and when the window changes its size
+  const rules = () => { if (!document.hidden && S.whenCheck) S.whenCheck(); };
+  document.addEventListener('visibilitychange', () => { rules(); liveRefresh(true); });
   setInterval(() => liveRefresh(), 60 * 1000);
+  setInterval(rules, 60 * 1000);
+  let sized = 0;
+  addEventListener('resize', () => { clearTimeout(sized); sized = setTimeout(rules, 250); });
   // and the moment anything changes in any app of the suite: the one live-refresh stream (iosuite_shared/live.py), so a
   // task ticked off in ioTask or an event moved in ioCalendar shows here at once, without a timer to wait for
   import(new URL('api/live.js', document.baseURI).href)

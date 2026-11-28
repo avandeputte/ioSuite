@@ -2,7 +2,7 @@
    strip of photos. */
 import { fill, icon } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
-import { api, bmIcon, bmIconsLater, contactFace, degF, fmtTemp, itemImage, S, wxIcon } from './core.js';
+import { api, bmIcon, bmIconsLater, contactFace, degF, fmtTemp, itemImage, quiet, S, wxIcon } from './core.js';
 import { openAll } from './bookmarks.js';
 import { drawBookmarkStatus } from './home.js';
 import { evRow, evTime, inDays, pixPhotoUrl, widget } from './tiles.js';
@@ -134,15 +134,18 @@ export function hourRow(w, hours) {
 // ------------------------------------------------------------------ the bookmarks
 /** The bookmarks, as homepage lays them out: a column per group, a row per link with its abbreviation (or icon), name and host.
     As the person likes them (Customize, layout bookmarks): that full list; "icons": each group's links as a row of
-    icons, the name in the tooltip; "folded": the groups' names alone, each opening on a tap (this browser remembers which). */
+    icons, the name in the tooltip; "folded": the groups' names alone, each opening on a tap (this browser remembers which).
+    A block of the person's own grid can be one group alone (el.group: its id) and have a look of its own (el.look). */
 export async function drawBookmarks(el) {
   let gs;
-  try { gs = (await api('api/bookmarks')).groups; } catch (e) { el.replaceChildren(h('div', { class: 'muted small' }, e.message)); return; }
+  try { gs = (await bookmarkGroups()).groups; } catch (e) { el.replaceChildren(h('div', { class: 'muted small' }, e.message)); return; }
   if (!el.isConnected) return;
   const canEdit = ['editor', 'admin'].includes(S.user.role);
   S.bookmarks = gs.flatMap((g) => g.links);  // the search box looks through them
-  if (!gs.length) { el.replaceChildren(h('a', { class: 'lnk small', href: '#/bookmarks' }, canEdit ? 'Add bookmarks, or pick some for this page' : 'All bookmarks')); return; }
-  const look = (S.layout && S.layout.bookmarks) || 'list';
+  if (el.group != null) gs = gs.filter((g) => String(g.id != null ? g.id : g.name) === String(el.group));
+  quiet(el, !gs.some((g) => g.links.length));
+  if (!gs.length) { el.replaceChildren(h('a', { class: 'lnk small', href: '#/bookmarks' }, el.group != null ? 'That group of bookmarks is not on the page any more' : canEdit ? 'Add bookmarks, or pick some for this page' : 'All bookmarks')); return; }
+  const look = el.look || (S.layout && S.layout.bookmarks) || 'list';
   el.classList.toggle('bmicons', look === 'icons'); el.classList.toggle('bmfolded', look === 'folded');
   const open = bmUnfolded();
   const link = (l) => {
@@ -170,6 +173,12 @@ export async function drawBookmarks(el) {
   packBookmarks(el, groups);
   drawBookmarkStatus(el);
   bmIconsLater(el, S.bookmarks, async () => (await api('api/bookmarks')).groups.flatMap((g) => g.links));
+}
+/** The groups of bookmarks on the page; cards drawn together (a block per group) ask once. */
+let bmAsked = null;
+export function bookmarkGroups() {
+  if (!bmAsked) { bmAsked = api('api/bookmarks'); const forget = () => { bmAsked = null; }; bmAsked.then(() => setTimeout(forget, 1500), forget); }
+  return bmAsked;
 }
 /** The folded groups this browser has open; with an id, notes that one as open or shut. */
 function bmUnfolded(id, isOpen) {
@@ -234,7 +243,8 @@ export const withoutBirthdays = (items) => (S.birthdaysCard ? items.filter((o) =
 /** Birthdays (and the other dates ioContact keeps) in the next 30 days, a line each; a row opens the contact. */
 export async function drawBirthdays(el, again = false) {
   const app = S.apps.find((a) => a.key === 'iocontact'), d = await widget('iocontact');
-  if (!d || !d.items || !el.isConnected) { if (!again) el.remove(); return; }
+  if (!d || !d.items || !el.isConnected) { if (!again) { quiet(el, true, true); el.remove(); } return; }
+  quiet(el, !d.items.length);
   const what = (it) => (it.label === 'birthday' ? (it.turns ? String(it.turns) : '') : it.label + (it.turns ? ` · ${it.turns} years` : ''));
   el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, 'Birthdays'), showAll(el), h('a', { class: 'muted', href: app.url, title: app.url }, d.more ? `+${d.more} more · ioContact` : 'ioContact')),
     d.items.length ? h('div', { class: 'rows bdrows' }, d.items.map((it) => h('a', { class: 'bday', href: `${app.url}/#/c/${it.id}`, title: it.turns && it.label === 'birthday' ? `${it.name} turns ${it.turns}` : it.name }, contactFace(it),
@@ -243,14 +253,16 @@ export async function drawBirthdays(el, again = false) {
       : h('div', { class: 'muted small' }, 'No birthdays in the next 30 days'));
 }
 
-/** The coming week from ioCalendar, day by day (today lives on the ioCalendar tile); a day opens in ioCalendar. */
+/** The coming week from ioCalendar, day by day (today lives on the ioCalendar tile); a day opens in ioCalendar.
+    A block of the person's own grid can be the week of one member of the family (el.who: {id, name}). */
 export async function drawWeek(el, again = false) {
-  const app = S.apps.find((a) => a.key === 'iocalendar'), d = await widget('iocalendar', { kind: 'week' });
-  if (!d || !d.days || !el.isConnected) { if (!again) el.remove(); return; }
+  const app = S.apps.find((a) => a.key === 'iocalendar'), d = await widget('iocalendar', { kind: el.who ? `week:${el.who.id}` : 'week' });
+  if (!d || !d.days || !el.isConnected) { if (!again) { quiet(el, true, true); el.remove(); } return; }
   const head = (date) => { const s = new Date(`${date}T12:00:00`); const days = Math.round((s - new Date().setHours(12, 0, 0, 0)) / 86400000);
     return days === 1 ? 'Tomorrow' : s.toLocaleDateString([], { weekday: 'long' }); };
   const days = d.days.map((day) => ({ ...day, items: withoutBirthdays(day.items) })).filter((day) => day.items.length);
-  el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, 'This week'), showAll(el), h('a', { class: 'muted', href: app.url, title: app.url }, d.more ? `+${d.more} more · ioCalendar` : 'ioCalendar')),
+  quiet(el, !days.length);
+  el.replaceChildren(h('div', { class: 'wghead' }, h('span', null, el.who ? `${el.who.name}’s week` : 'This week'), showAll(el), h('a', { class: 'muted', href: app.url, title: app.url }, d.more ? `+${d.more} more · ioCalendar` : 'ioCalendar')),
     days.length ? h('div', { class: 'rows wkrows' }, days.map((day) => h('div', { class: 'wkday' },
       h('a', { class: 'wkhead', href: `${app.url}/#/day/${day.date}`, title: new Date(`${day.date}T12:00:00`).toLocaleDateString([], { month: 'long', day: 'numeric' }) },
         head(day.date), h('span', { class: 'muted small' }, new Date(`${day.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }))),
@@ -262,7 +274,8 @@ export async function drawWeek(el, again = false) {
 export async function drawStrip(el, kind) {
   const pix = S.apps.find((a) => a.key === 'iopix');
   const d = await widget('iopix', { kind, n: 16 });
-  if (!d || !d.items || !d.items.length || !el.isConnected) { el.remove(); return; }
+  if (!d || !d.items || !d.items.length || !el.isConnected) { quiet(el, true, true); el.remove(); return; }
+  quiet(el, false);
   const otd = d.kind === 'onthisday';
   const cap = (it) => (otd ? (it.yearsAgo === 1 ? '1 year ago' : `${it.yearsAgo} years ago`) : (it.year || ''));
   // Shuffle, as ioPix has: a fresh row, picked again at random (On this day is the day's photos: nothing to shuffle)
