@@ -40,9 +40,9 @@ def test_a_grid_of_blocks(client):
     assert two["blocks"][2] == {"id": "b006", "kind": "bookmarks", "look": "icons", "group": "12"}  # the same card twice is the point: two Home cards above
     assert two["blocks"][3] == {"id": "b007", "kind": "week", "who": 3} and two["blocks"][4]["folder"] == "Tech"
     assert client.get("/api/apps").json()["layout"]["grid"] == got["grid"]
-    # a width of one and a height of one are what a block has anyway
-    g = put(client, {"grid": {"sections": [{"id": "sec1", "blocks": [{"id": "b001", "kind": "birthdays", "w": 1, "h": 1}]}]}}).json()["grid"]
-    assert g == {"cols": None, "sections": [{"id": "sec1", "title": None, "blocks": [{"id": "b001", "kind": "birthdays"}]}]}
+    # a width of one is what a block has anyway; a height of one is a choice (no taller than a row), nothing is as tall as what it shows
+    g = put(client, {"grid": {"sections": [{"id": "sec1", "blocks": [{"id": "b001", "kind": "birthdays", "w": 1, "h": 1}, {"id": "b002", "kind": "week", "h": None}]}]}}).json()["grid"]
+    assert g == {"cols": None, "sections": [{"id": "sec1", "title": None, "blocks": [{"id": "b001", "kind": "birthdays", "h": 1}, {"id": "b002", "kind": "week"}]}]}
     assert put(client, {"grid": {}}).json()["grid"] is None
 
 

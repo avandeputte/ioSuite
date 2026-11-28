@@ -48,8 +48,8 @@ BLOCKS = {  # kind: what a block of it takes besides
     "news": ("folder",),         # headlines, of every feed on the page or of one folder
     "bookmarks": ("group", "look"),  # the bookmarks, or one group of them (group: its id)
 }
-WIDTHS = (1, 2, 3, 4)   # columns a block takes (null: 1); never more than the screen has
-HEIGHTS = (1, 2, 3)     # rows it takes (null: 1)
+WIDTHS = (1, 2, 3, 4)   # columns a block takes (null: 1); never more than the screen has, so 4 is the full width
+HEIGHTS = (1, 2, 3)     # rows it takes, and no taller than that (what does not fit scrolls); null: one row, as tall as what it shows
 GRID_COLS = (2, 3, 4)   # no more than this many across (null: 3)
 APPS_LOOKS = ("dock", "list")  # a block of apps: icons in a row, or one under the other with a line each (null: dock)
 SCREENS = ("phone", "tablet", "wide")  # a rule's screens: narrower than 640px, up to 1100px, wider
@@ -229,12 +229,12 @@ def _block(b, seen: set, strict: bool):
     if not bid:
         return None
     out = {"id": bid, "kind": kind}
-    for k, allowed in (("w", WIDTHS), ("h", HEIGHTS)):
-        x = _one_of(k, allowed, "")(b.get(k), strict)
-        if x and x != 1:
-            out[k] = x
-    if w := _when(b.get("when"), strict):
-        out["when"] = w
+    if (w := _one_of("w", WIDTHS, "")(b.get("w"), strict)) and w != 1:
+        out["w"] = w
+    if h := _one_of("h", HEIGHTS, "")(b.get("h"), strict):
+        out["h"] = h
+    if rule := _when(b.get("when"), strict):
+        out["when"] = rule
     if kind == "app":
         if not apps.is_key(b.get("app")):
             return bad("app: the key of the app whose card it is")

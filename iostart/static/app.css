@@ -1013,3 +1013,140 @@ body.arranging .dock .arr[data-arr="tile"] { outline-offset: -1px; }
 .ibmatch { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-s); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ibmatch:hover { background: var(--accent-bg); }
 @media (max-width: 600px) { .ibrow { padding: 12px; } .ibhint code { display: inline-block; margin: 2px 0; } }
+
+/* ---- several pages: a tab each under the top row (static/js/pages.js) */
+.pagetabs { display: flex; align-items: center; gap: 6px; margin: -4px 0 16px; overflow-x: auto; scrollbar-width: none; }
+.pagetabs::-webkit-scrollbar { display: none; }
+.ptab { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: var(--r-pill); color: var(--fg2); font-size: var(--fs-m); font-weight: 500; white-space: nowrap; flex: none; }
+.ptab:hover { background: var(--bg2); color: var(--fg); }
+.ptab.on { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.ptab .ic { width: 15px; height: 15px; }
+.ptabwrap { display: inline-flex; align-items: center; flex: none; border-radius: var(--r-pill); background: var(--accent-bg); }
+.ptabwrap .ptab { padding-right: 4px; }
+.ptabmore { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; color: var(--accent); }
+.ptabmore:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.ptabadd { border: 1px dashed var(--line); padding: 0 12px 0 8px; }
+/* a menu that drops from a button anywhere on the page (frame.js popMenu) */
+.menu.pop { position: fixed; right: auto; z-index: 95; }
+
+/* ---- the badges: small chips under the top row, one fact each (static/js/badges.js) */
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 8px; border-radius: var(--r-pill); border: 1px solid var(--line); font-size: var(--fs-m); white-space: nowrap; min-width: 0; max-width: 100%; cursor: pointer; }
+.badge:hover { background: var(--bg2); }
+.badge img { width: 18px; height: 18px; border-radius: 22%; flex: none; }
+.badge .ic { width: 16px; height: 16px; }
+.badgeic { display: inline-flex; color: var(--fg2); }
+.badgetext { overflow: hidden; text-overflow: ellipsis; }
+.badgename { color: var(--fg2); }
+.badge.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.badge.on { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+.badge.on .badgeic, .badge.on .badgename { color: inherit; }
+.badge.off { color: var(--fg2); }
+.badge.busy { opacity: .55; }
+.badgewhen { display: inline-flex; color: var(--fg2); }
+.badgewhen .ic { width: 14px; height: 14px; }
+.badgeadd { border-style: dashed; color: var(--fg2); padding-left: 6px; }
+body.arranging .badge.arr { outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+@media (max-width: 600px) { .badges { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 12px; } .badges::-webkit-scrollbar { display: none; } .badge { flex: none; } }
+
+/* ---- the person's own grid (static/js/grid.js): sections of blocks, each as wide (--w columns of the --n there are on
+   this screen) and as tall (--h rows) as the person made it; what follows fills the gaps (dense) */
+body.home .page.gridpage.g4 { max-width: 1500px; }
+.gsecs { display: flex; flex-direction: column; gap: 22px; }
+.gsec { min-width: 0; }
+.gsechead { margin: 0 0 8px; font-size: var(--fs-l); font-weight: 500; }
+.gsecfold { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 2px; border-radius: var(--r-s); color: var(--fg2); }
+.gsecfold:hover { background: var(--bg2); color: var(--fg); }
+.gsecfold .ic { transition: transform .12s ease; }
+.gsecfold[aria-expanded="true"] .ic { transform: rotate(90deg); }
+.gsec.shut .gsechead { margin-bottom: 0; }
+.ggrid { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); grid-auto-flow: row dense; gap: 16px; }
+.gblock { grid-column: span var(--w, 1); min-width: 0; position: relative; display: flex; flex-direction: column; container-type: inline-size; }
+.gblock.gset { grid-row: span var(--h, 1); }
+.gblock > * { margin-top: 0; }
+.gblock > :not(.arrctl):not(.gresize) { flex: 1 1 auto; min-width: 0; }
+.gblock:not(.arr):has(> [hidden]) { display: none; }
+/* a list with a set height: the cell asks for what the list needs, up to its rows (--want, capBlock); the list fills
+   the cell, and what does not fit scrolls inside it */
+.gblock.gcap { min-height: var(--want, 120px); }
+.gblock.gcap > :not(.arrctl):not(.gresize) { position: absolute; inset: 0; overflow: auto; scrollbar-width: thin; }
+.gblock > .bookmarks.bmone { padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--r-l); }
+.gblock > .bookmarks .bmall { display: none; }  /* the way to every bookmark is the gear menu's */
+.gblock > .bookmarks.bmone .bmgroup h2 { margin-top: 0; }
+.glist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 16px; align-content: start; }
+.gph { justify-content: center; min-height: 64px; border-style: dashed; }
+/* inside a block, a card goes by the block's width, not the window's */
+@container (max-width: 720px) {
+  .glance { grid-template-columns: minmax(0, 1fr); }
+  .gside.flat { flex-direction: column; }
+}
+@container (max-width: 520px) {
+  .todaycols { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .newscard .nwlines { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) { .ggrid { gap: 12px; } .gsecs { gap: 18px; } }
+/* arranging it: a block's handle, its cog and its cross on top, a corner to pull, a cell to add one, a bar per section */
+body.arranging .gblock.arr { outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; border-radius: var(--r-l); }
+body.arranging .gblock.arr:not(.gcap) { min-height: 64px; }
+body.arranging .gblock.arr > :not(.arrctl):not(.gresize) { pointer-events: none; }
+@media (hover: hover) { body.arranging .gblock.arr { cursor: grab; } }
+body.arranging .gblock.arr > .card > .wghead, body.arranging .gblock.arr > .strip > .wghead, body.arranging .gblock.arr > .app .who, body.arranging .arr[data-arr="card"] > .wghead { padding-right: 100px; }
+.gresize { position: absolute; right: 3px; bottom: 3px; z-index: 5; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: var(--r-s); background: var(--bg);
+  border: 1px solid var(--line); color: var(--fg2); cursor: nwse-resize; touch-action: none; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.gresize:hover, .gresize:focus-visible { color: var(--accent); border-color: var(--accent); }
+.gresize .ic { width: 16px; height: 16px; }
+.gghost { position: fixed; z-index: 70; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: flex-end; padding: 6px 10px; border: 2px solid var(--accent); border-radius: var(--r-l);
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: var(--fs-s); font-weight: 600; pointer-events: none; }
+.gadd { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 64px; border: 1px dashed var(--line); border-radius: var(--r-l); color: var(--fg2); font-size: var(--fs-m); }
+.gadd:hover, .gaddsec:hover { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+.gaddsec { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 10px; border: 1px dashed var(--line); border-radius: var(--r-pill); color: var(--fg2); font-size: var(--fs-m); }
+.gsecbar { display: flex; align-items: center; gap: 2px; margin: 0 0 10px; }
+input.t.gsectitle { flex: 0 1 320px; height: 32px; margin-right: 6px; font-weight: 500; }
+.gsecbar .arrbtn { min-width: 30px; height: 30px; }
+.arrbtn.set, .iconbtn.set { color: var(--accent); background: var(--accent-bg); }
+.arrbtn:disabled { opacity: .3; pointer-events: none; }
+.arracross { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- when a thing shows (static/js/when.js), the lists to pick a badge or a block from, a block's options */
+.whenform label.check { align-items: center; }
+.whenform label.check input { margin-top: 0; }
+.whenrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.whenrow input.t { width: auto; height: 36px; }
+.whendays button { min-width: 46px; padding: 0 8px; }
+.whenha { display: flex; flex-wrap: wrap; gap: 8px; }
+.whenha select.t, .whenha input.t { width: auto; flex: 1 1 120px; height: 36px; }
+.whenha select.t:first-child { flex: 2 1 200px; }
+.pickrows { display: flex; flex-direction: column; gap: 2px; }
+.pickrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--r-s); text-align: left; min-width: 0; }
+.pickrow:hover { background: var(--bg2); }
+.pickrow img { width: 22px; height: 22px; border-radius: 22%; flex: none; }
+.pickrow > .ic { color: var(--fg2); }
+.pickrow > span:not(.ic):not(.muted) { flex: none; font-weight: 500; }
+.pickrow > .muted { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.dialog:has(> .pickblock) { max-width: 860px; }
+.pickblock { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pickcard { display: flex; flex-direction: column; gap: 3px; padding: 8px 8px 10px; border: 1px solid var(--line); border-radius: var(--r-l); text-align: left; min-width: 0; }
+.pickcard:hover, .pickcard:focus-visible { border-color: var(--accent); background: var(--accent-bg); }
+.pickprev { height: 116px; margin-bottom: 4px; overflow: hidden; border-radius: var(--r-m); background: var(--bg); border: 1px solid var(--line); pointer-events: none; }
+.pickin { width: 200%; padding: 12px; box-sizing: border-box; transform: scale(.5); transform-origin: 0 0; }
+.pickname { font-weight: 600; padding: 0 4px; }
+.pickcard > .muted { padding: 0 4px; }
+.blockform { display: flex; flex-direction: column; gap: 8px; }
+.blockform h3 { margin-bottom: 0; }
+.blockform p { margin: 0; }
+.blockform label.check { align-items: center; padding: 3px 0; }
+.blockform label.check input { margin-top: 0; }
+.gticks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 14px; max-height: 240px; overflow: auto; }
+.blockform > .lnk { align-self: flex-start; text-align: left; }
+/* Customize: its pages, the note of what was copied in, the setup as text */
+.cusnote { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border-radius: var(--r-m); background: var(--accent-bg); color: var(--accent); font-size: var(--fs-m); }
+.cuspages .layrow input.t { flex: 1 1 140px; height: 34px; }
+.cuspages .iconbtn { width: 32px; height: 32px; }
+.cuspages .cusfirst { flex: 1 1 140px; }
+.cuspages > .lnk { align-self: flex-start; margin-top: 4px; }
+.customize .cusgrid .grid { margin-top: 0; }
+textarea.t.custext { min-height: 200px; font-size: 12px; line-height: 1.4; white-space: pre; }
+.arr[data-arr="top"] > .arrctl { top: -20px; right: -14px; }
+.gresize .ic { transform: scaleX(-1); }
+.pickprev .arrparts { display: none; }
+.customize .cusfrom select.t { flex: 1 1 260px; }

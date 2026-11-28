@@ -122,7 +122,7 @@ what the app will show on the start page later (today's events, the newest photo
   owner has Pair again open. Fonts: TRMNL's own and Inter (iostart/trmnl/fonts, SIL Open Font License).
 - **A dot by each app's name**: green when the app answers its `/api/status`, red when it does not. Bookmarks the
   server cannot reach get a red dot too. The server asks each app once a minute and pings each bookmark every five (HEAD, redirects not followed; never its own address or a link-local one).
-- **Two layouts** (Customize the page › Layout, per person or per device). *A card for each app*: each app with something to show
+- **Three layouts** (Customize the page › Layout, per person or per device; the third is *My own grid*, below). *A card for each app*: each app with something to show
   gets a card, as many across as fit at 300px or more (three on a wide screen, one on a phone), so its lines are not
   cut short; the apps without a card are low tiles that share the free cell after the last card (or a row of their
   own). A card with nothing to show today (nothing planned, nothing due) becomes a low tile with that one line, and a
@@ -138,6 +138,36 @@ what the app will show on the start page later (today's events, the newest photo
   (events, tasks, birthdays, bills, Health and On this day beside it, how many days ahead), the weather in °C or °F
   (the wall and the TRMNL weather follow) and which weather extras it shows, the page's colour and the size of its type (the start page only), and the
   bookmarks as the full list, icons only, or folders shut until tapped.
+- **Your own grid** (Arrange the page › My grid): everything on the page becomes a block of the same kind, placed in
+  the order you give them on a grid of two, three or four columns. A block is one to four columns wide (four: the full
+  width; never wider than the screen has columns, so a phone shows them one under the other) and as tall as what it
+  shows, or one to three rows of 275px, in which a list scrolls. Drag a block by its handle (or the arrow keys on
+  it), pull its corner to make it wider or taller, the cog sets what it shows. The grid starts as the page stood, block
+  for block, and "Start over" makes it that again. The other two layouts stay as they are and lay themselves out.
+- **Sections**: the grid's blocks stand in sections, each with a heading of its own (or none). A heading folds its
+  section shut and open, and the browser remembers which; while arranging, a section moves up and down as a whole.
+- **The same card more than once**: "Add a block" lists what the page can hold, each with a small look at it: Today,
+  the apps in a row or as a list (all, or the ones you tick), an app's card, This week (everyone's, or one member of
+  the family's), Birthdays, a Home card (everything picked for the page, or a few things under a name of their own: a
+  room), the photos, Headlines (the feeds kept on the page, or one folder of them), the bookmarks (all groups, or one
+  as a card).
+- **Several pages**: Arrange the page › "+ Page" (or Customize › Page) adds a page that is laid out by itself: its own
+  layout, tiles, cards, grid and badges; the colour, the units and the photos are the same on all. Each has a tab under
+  the top row and an address (`#/p/<id>`) a tablet can open on; on a touch screen a swipe to the side goes to the next.
+  The tab's menu renames, moves and removes a page.
+- **Show when**: a tile, a card, a part of the top row, a badge, a block, a section or a page's tab can have a rule
+  (the clock on it while arranging): on phones, tablets or wide screens (under 640px, up to 1100px, wider), on
+  some days, between two times (through the night too), only while it has something to show, and while one of the
+  Home Assistant things picked for the page says a state ("on", "home", "open") or does not. Every part set must
+  hold. The page looks at its rules each minute, when the window changes its size and when Home Assistant reports a
+  change, and draws itself again when one has turned. A state the page cannot know counts as not holding.
+- **Badges**: a row of small chips under the top row, one fact each, twelve at most: an app's one line ("2 due today",
+  "3 today · next 2:30 PM", "4 to renew"; a tap opens the app) or one Home Assistant thing with its state (a tap switches it
+  when the page may control it). Arrange the page › "+ Badge" adds one; each can have a rule.
+- **Copy a setup** (Customize the page › Copy): a ready-made page to start from (the usual page, the day in one card,
+  a family board in sections, a page for a phone), another device's setup or someone else's whole setup, and the setup
+  as text to keep, send or change by hand and read back. Each opens the dialog on what was taken; nothing is kept
+  until Save.
 - **A setup per device**: Customize the page › "This device only" gives the phone or the kitchen tablet a page of
   its own, with a name; the other devices keep the account's. Three places a setup comes from, the nearest first:
   the device's own, the account's, the family's. Admins set the family's starting point in Customize the page ›
@@ -364,7 +394,7 @@ api.py             the page's own routes: the apps and the layout, the weather, 
                    (sign-in, accounts, status, the server, updates and the log are iosuite_shared's routers)
 apps.py            the suite's apps as they registered (iosuite_shared.suite) and the order of their tiles
 status.py          is each app up (its /api/status) and does it have an update; is each bookmark reachable
-layout.py          each account's own layout: hidden tiles and cards, the tiles' order, the photo strip
+layout.py          each person's own setup: the layout, the tiles and cards, a grid of blocks, pages, rules, badges
 search.py          one search: every app asked at once as the viewer, the finds ranked together
 widgets.py         what the tiles and cards show, what the search box finds and adds: ioPix, ioCalendar, ioTask, ioHealth, ioMoney, ioDocs, ioNote and ioContact asked over their APIs with the viewer's sign-in
 weather.py         AccuWeather: the settings, the place search, the cached conditions and forecast
@@ -389,7 +419,8 @@ config.py          the settings: the suite's standard names (iosuite_shared.conf
 static/            the web app: index.html, app.css, the icons (each app's tile shows the icon it registered, served by that app),
                    and the page's script in js/ (no build step; app.js only starts it): core.js (helpers, state),
                    shell.js (the account menu), main.js (the routes, the start), home.js (the start page) with
-                   search.js, tiles.js, cards.js, homeassistant.js, timers.js and customize.js, then wall.js,
+                   search.js, tiles.js, cards.js, homeassistant.js, timers.js, customize.js, grid.js (the person's
+                   own grid), pages.js, badges.js and when.js (when a thing shows), then wall.js,
                    bookmarks.js, news.js, settings.js and trmnl.js
 tests/             pytest, against a MariaDB of its own
 ```

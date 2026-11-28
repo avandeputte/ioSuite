@@ -1,7 +1,7 @@
 /* What each app's tile shows under its name (/api/widgets/<app>), and the Today card. */
 import { fail, icon, toast } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
-import { api, itemImage, money, S, viewerTz } from './core.js';
+import { api, appName, itemImage, money, quiet, S, viewerTz } from './core.js';
 import { isBirthdayEvent, withoutBirthdays } from './cards.js';
 import { arrangeToday } from './customize.js';
 import { sizeOf } from './home.js';
@@ -18,6 +18,12 @@ export const pixPhotoUrl = (pix, id) => `${pix.url}/#/photos?p=${id}`;
 /* Apps whose tile is a low one in the shared column, with one line under the name rather than a column of its own:
    draw(d) gives [text, warn, tooltip, idle] (idle: nothing to report). */
 export const LOW = { iodocs: drawDocsLine };
+
+/** An app's tile: its icon, its name with the dot that says whether it answers, a line under the name (a low tile's),
+    and room for what the app shows here (drawWidgets; a block of the person's own grid fills it itself). */
+export const tileOf = (a, small) => h('a', { class: `app${small ? ' small' : ''}`, href: a.url, 'data-app': a.key, title: a.url },
+  h('img', { src: a.icon, alt: '' }), h('span', { class: 'who' }, h('span', { class: 'nmrow' }, appName(a.name, a.color), h('span', { class: 'st' })), h('span', { class: 'line muted small' })),
+  h('div', { class: 'more' }));
 
 export function drawWidgets(page, again = false) {
   const tz = viewerTz();
@@ -41,6 +47,7 @@ export function drawWidgets(page, again = false) {
         else box.replaceChildren();
         card(!kids && size !== 'card');
         if (!size) quietKeys(key, !kids);
+        quiet(tile, !kids);
       })
       .catch((e) => { if (again && (tile.classList.contains('small') || box.querySelector('.wg .wghead'))) return; why(e.message); card(false); });  // the app is down, or not open to this account: the tile says so (a refresh that fails keeps what it showed)
   }
@@ -80,7 +87,7 @@ export function arrangeTiles(grid) {
 export function fitStack(grid) {
   const stack = grid.querySelector(':scope > .stack');
   if (!stack) return;
-  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length, cards = grid.querySelectorAll(':scope > .app').length, n = stack.children.length;
+  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length, cards = grid.querySelectorAll(':scope > .app:not([hidden])').length, n = stack.querySelectorAll(':scope > :not([hidden])').length;
   const across = cols < 2 || !cards || cards % cols === 0 || n > 6;  // more than six would make their row taller than its cards
   stack.classList.toggle('across', across);
   stack.classList.toggle('dense', !across && n > 3);
@@ -290,13 +297,14 @@ function fitGlance(el, plans, shown, later, beyond) {
 }
 
 /** A low tile's one line (LOW); an app that is down or closed to this account leaves the line empty. */
-function drawLowLine(tile, line, tz, of = LOW[tile.dataset.app]) {
+export function drawLowLine(tile, line, tz, of = LOW[tile.dataset.app]) {
   wget(`api/widgets/${tile.dataset.app}?tz=${encodeURIComponent(tz)}`)
     .then((r) => (r.ok ? r.body : null))
     .then((d) => {
       if (!d || !line.isConnected) return;
       const [text, warn, title, idle] = of(d);
       tile.classList.toggle('idle', !!idle);  // nothing to report: the dock leaves the line out
+      quiet(tile, !!idle);
       line.classList.toggle('wgwarn', !!warn); line.classList.toggle('muted', !warn);
       line.replaceChildren(warn ? icon('warn', 's') : '', text);
       tile.title = title || tile.href;
@@ -315,8 +323,10 @@ function drawDocsLine(d) {
 }
 
 /* An app the person keeps as a low tile (layout sizes: tile): what its card would show, in one line.
-   Each gives [text, warn, tooltip, idle] as LOW's do. */
-const LINES = {
+   Each gives [text, warn, tooltip, idle] as LOW's do. A badge says the same (static/js/badges.js). */
+export const LINES = {
+  iocontact: (d) => { const it = (d.items || [])[0]; if (!it) return ['No birthdays soon', false, '', true];
+    return [`${it.name.split(/\s+/)[0]}: ${inDays(it.in).toLowerCase()}`, false, (d.items || []).map((x) => `${x.name}: ${inDays(x.in).toLowerCase()}`).join('\n'), it.in > 7]; },
   iopix: (d) => { const n = (d.items || []).length; if (!n) return [EMPTY.iopix, false, '', true];
     return [d.kind === 'onthisday' ? `${d.count || n} from this day` : 'Photos to rediscover', false, '']; },
   iocalendar: (d) => {
@@ -425,12 +435,20 @@ export async function widget(key, params = {}) {
   } catch { return null; }
 }
 /** GET of what an app shows on the page: {ok, status, body (its JSON, or null)}. While the page is being arranged, what
-    each answered is kept (S.arrange.seen), so moving a tile draws the page again without asking every app again. */
-function wget(url) {
-  const A = S.arrange;
-  if (A && A.seen.has(url)) return A.seen.get(url);
+    each answered is kept (S.arrange.seen), so moving a tile draws the page again without asking every app again.
+    Otherwise an answer serves whoever asks the same within a moment: a card, a badge and a second card of the
+    same app drawn together are one question. */
+const asked = new Map(), ASKED_FOR = 1500;
+/** Before the page brings itself up to date: every app is asked anew. */
+export const askAgain = () => asked.clear();
+export function wget(url) {
+  const A = S.arrange, seen = A ? A.seen : asked;
+  const was = seen.get(url);
+  if (was && (A || Date.now() - was.at < ASKED_FOR)) return was.got;
   const got = fetch(url, { credentials: 'same-origin' }).then(async (r) => { let body = null; try { body = await r.json(); } catch { /* no JSON */ } return { ok: r.ok, status: r.status, body }; });
-  if (A) { A.seen.set(url, got); got.catch(() => A.seen.delete(url)); }
+  seen.set(url, { got, at: Date.now() });
+  got.catch(() => seen.delete(url));
+  if (!A) for (const [k, v] of asked) if (Date.now() - v.at > ASKED_FOR) asked.delete(k);
   return got;
 }
 export const inDays = (n) => (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`);

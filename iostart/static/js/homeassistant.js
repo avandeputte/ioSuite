@@ -1,7 +1,7 @@
 /* Home Assistant on the start page: the Home card and the alerts. */
 import { dialog, fail, icon } from '../../api/auth/frame.js';
 import { h } from '../../api/auth/ui.js';
-import { api, S } from './core.js';
+import { api, quiet, S } from './core.js';
 import { wgHead } from './tiles.js';
 
 // ------------------------------------------------------------------ Home Assistant: the Home card, the alerts
@@ -139,9 +139,17 @@ export async function drawHomeCard(el, again = false) {
 }
 function renderHomeCard(el, d) {
   S.ha = d.enabled ? d : false;
-  if (!d.enabled) { el.hidden = true; el.replaceChildren(); return; }  // no Home Assistant set up: no Home card at all (Settings › Home Assistant adds it)
+  if (!d.enabled) { el.hidden = true; el.replaceChildren(); quiet(el, true, true); return; }  // no Home Assistant set up: no Home card at all (Settings › Home Assistant adds it)
   el.hidden = false;
-  const title = wgHead(d.name || 'Home', null);
+  // a block of the person's own grid can be a few of the entities, in its own order, under its own name (el.haOpts:
+  // {title, entities}): a room. Its alerts are those of its entities
+  const o = el.haOpts || {};
+  if (o.entities && o.entities.length) {
+    const at = (x) => o.entities.indexOf(x.id);
+    d = { ...d, items: (d.items || []).filter((x) => at(x) >= 0).sort((a, b) => at(a) - at(b)), alerts: (d.alerts || []).filter((x) => at(x) >= 0) };
+  }
+  quiet(el, !(d.items || []).length && !(d.alerts || []).length);
+  const title = wgHead(o.title || d.name || 'Home', null);
   title.append(h('a', { class: 'muted', href: d.url, title: d.url, target: '_blank', rel: 'noreferrer' }, 'Home Assistant'));
   if (d.error) { el.replaceChildren(title, h('div', { class: 'muted small' }, d.error)); return; }
   // what needs attention (a leak, a problem, a low battery, a chosen entity's "alert when"), inside the card above its tiles
