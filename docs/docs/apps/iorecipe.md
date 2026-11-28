@@ -61,4 +61,5 @@ iosuite install --add iorecipe
 | --- | --- |
 | Address | `/recipes/` at the suite's address (`https://home.example.com/recipes/`), and a name of its own if you give it one |
 | MCP | `/recipes/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite/iorecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe) |
+| Devices | the iPhone and iPad app, at the [address for devices](../reference/configuration.md#the-three-ports): of `/recipes/api/…` it serves the calls the iPhone and iPad app makes (sign-in, the recipes and their photos, your favourites and ratings, cookbooks, import from a web page, pasted text or a photo) and nothing else |
+| Source | [iosuite/iorecipe](https://github.com/avandeputte/iosuite/tree/main/iorecipe) (server), [iosuite-apps/iorecipe](https://github.com/avandeputte/iosuite-apps/tree/main/iorecipe) (iPhone, iPad) |

@@ -14,7 +14,7 @@ HTTPS (or `localhost`).
 
 People open the suite's pages at one address, and what syncs in the background uses another: the **address for
 devices** (port 8443 of the server, or the name your reverse proxy gives it: `SYNC_URL`). That goes for calendar,
-reminders and contacts accounts, the ioPix, ioNote, ioStart and ioHealthSync apps, the iPhone widgets and the browser
+reminders and contacts accounts, the ioPix, ioNote, ioStart, ioRecipe, ioMoney and ioHealthSync apps, the iPhone widgets and the browser
 extension. They sign in there with an app password; a browser's sign-in is not read on that port. An app that asks
 for your name and password (the browser extension; a native app) sends them there once, with the code of two-step
 sign-in when your account has it, and gets an app password of its own, which it keeps in place of what you typed:
@@ -24,8 +24,7 @@ address, for MCP (port 8444).
 That port is the one to open to the internet for phones, and it serves what they use and nothing else: calendar,
 reminders and contacts sync, bookmark sync, ioHealth's uploads, and of each app's API only the calls its native apps
 make, each one named in the app's manifest (`devices` in its `app.json`). No page, no script of the pages, no
-reference of the API, no suite settings, and nothing at all of an app that has no native app (ioMoney, ioDocs,
-ioThings, ioRecipe, ioDNS, ioBackup). Everything else is answered "not served at this port".
+reference of the API, no suite settings, and nothing at all of an app that has no native app (ioDocs, ioThings, ioDNS, ioBackup). Everything else is answered "not served at this port".
 
 **Settings › Apps and devices** in each app shows the exact addresses to type. A calendar or contacts account set up
 with the pages' address is answered there too. An e-ink screen, the wall display or a script is given the pages'
@@ -40,6 +39,8 @@ address: an app password or the device's own key is taken for an app's `/api/` t
 | **ioNote** | Mac, iPhone, iPad | the clipboard Inbox and screenshots on the Mac, notes everywhere, synced with the ioNote server and usable offline | [iosuite-apps/ionote](https://github.com/avandeputte/iosuite-apps/tree/main/ionote) |
 | **ioHealthSync** | iPhone | copies Apple Health data to the ioHealth server: everything or the types you pick, incremental, in the background | [iosuite-apps/iohealth](https://github.com/avandeputte/iosuite-apps/tree/main/iohealth) |
 | **ioStart** | iPhone, iPad | the start page's bookmarks: browse, search and edit them, and bookmark a page from any browser's share sheet; your day (events, tasks, birthdays, bills) and your news feeds | [iosuite-apps/iostart](https://github.com/avandeputte/iosuite-apps/tree/main/iostart) |
+| **ioRecipe** | iPhone, iPad | the family's recipes to cook from: amounts for the servings you want, ingredients to tick off, the screen kept on; add, edit and photograph a recipe, import one from a web page (also from a browser's share sheet), pasted text or a photo | [iosuite-apps/iorecipe](https://github.com/avandeputte/iosuite-apps/tree/main/iorecipe) |
+| **ioMoney** | iPhone, iPad | the household's money to look at: net worth, accounts and their forecast, transactions (search, category, notes, tags, receipts from the camera), spending, bills and the portfolio, behind Face ID | [iosuite-apps/iomoney](https://github.com/avandeputte/iosuite-apps/tree/main/iomoney) |
 
 They are built from source with Xcode and XcodeGen (`brew install xcodegen`, then `xcodegen generate`) from the
 [iosuite-apps](https://github.com/avandeputte/iosuite-apps) repository; each app's README has the steps. They sign in with your suite account. Behind Cloudflare, the address for devices stays outside Access (see

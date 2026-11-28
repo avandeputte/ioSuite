@@ -9,6 +9,22 @@
     "new": "New recipe"
   },
   "folder": "recipes",
+  "devices": [
+    "POST,DELETE /api/auth/device",
+    "GET /api/auth/me",
+    "GET /api/summary",
+    "GET,POST /api/recipes",
+    "GET,PATCH,DELETE /api/recipes/*",
+    "POST /api/recipes/*/photos",
+    "GET,DELETE /api/recipes/*/photos/*",
+    "PUT /api/recipes/*/photos/order",
+    "PUT /api/recipes/*/mark",
+    "GET /api/books",
+    "PUT,DELETE /api/books/*/recipes/*",
+    "GET,POST /api/import",
+    "POST /api/import/text",
+    "POST /api/import/photo"
+  ],
   "order": 60,
   "system": [
     "tesseract-ocr"

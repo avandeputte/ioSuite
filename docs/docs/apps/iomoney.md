@@ -145,4 +145,5 @@ iosuite install --add iomoney
 | --- | --- |
 | Address | `/money/` at the suite's address (`https://home.example.com/money/`), and a name of its own if you give it one |
 | MCP | `/money/mcp` at the address for MCP ([AI assistants](../run/assistants.md)) |
-| Source | [iosuite/iomoney](https://github.com/avandeputte/iosuite/tree/main/iomoney) |
+| Devices | the iPhone and iPad app, at the [address for devices](../reference/configuration.md#the-three-ports): of `/money/api/…` it serves the calls the iPhone and iPad app makes (sign-in, the net worth, the accounts with their history and forecast, the transactions and what is changed of one, receipts, spending, bills, the portfolio) and nothing else: no rules, no import, no Monarch Money settings |
+| Source | [iosuite/iomoney](https://github.com/avandeputte/iosuite/tree/main/iomoney) (server), [iosuite-apps/iomoney](https://github.com/avandeputte/iosuite-apps/tree/main/iomoney) (iPhone, iPad) |

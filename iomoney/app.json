@@ -10,6 +10,28 @@
     "newLabel": "Add"
   },
   "folder": "money",
+  "devices": [
+    "POST,DELETE /api/auth/device",
+    "GET /api/auth/me",
+    "GET /api/summary",
+    "GET /api/networth",
+    "GET /api/accounts",
+    "GET /api/accounts/*",
+    "GET /api/accounts/*/history",
+    "GET /api/accounts/*/forecast",
+    "GET /api/forecast",
+    "GET /api/transactions",
+    "GET,PATCH /api/transactions/*",
+    "POST /api/transactions/review",
+    "POST /api/transactions/*/receipts",
+    "GET,DELETE /api/receipts/*",
+    "GET /api/categories",
+    "GET /api/tags",
+    "GET /api/spending",
+    "GET /api/cashflow",
+    "GET /api/bills",
+    "GET /api/portfolio"
+  ],
   "order": 80,
   "compose": {
     "name": "money",

@@ -319,7 +319,7 @@ Updates, releases, the reverse proxy and Cloudflare Access work as in every app 
 
 ## API
 
-The paths below are ioMoney's own: at the suite's address they are inside its folder (`https://home.example.com/money/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443), the one to open to the internet for phones and native apps, serves nothing of ioMoney. MCP clients use the address for MCP (port 8444).
+The paths below are ioMoney's own: at the suite's address they are inside its folder (`https://home.example.com/money/api/…`), at a name of its own they are as written. A script signs in with an app password at the pages' address. The [address for devices](../docs/docs/reference/configuration.md#the-three-ports) (port 8443), the one to open to the internet for phones and native apps, serves only what the [iPhone and iPad app](https://github.com/avandeputte/iosuite-apps/tree/main/iomoney) asks for: sign-in, the net worth, the accounts with their history and forecast, the transactions and what is changed of one, receipts, spending, bills and the portfolio (`devices` in [app.json](app.json)); rules, transfers, Tidy up, statements, imports and Monarch Money's settings are asked at the pages' address. MCP clients use the address for MCP (port 8444).
 
 | For | Where |
 | --- | --- |

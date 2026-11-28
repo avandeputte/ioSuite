@@ -40,12 +40,27 @@ def test_what_each_app_serves_to_devices():
     assert not any(doors.page_paths(k) for k in catalog.APPS)  # no page below a sync path: nothing is sent on to the pages
     assert doors.home_only_paths("iocalendar") == ("/.well-known/", "/ics/") and doors.home_only_paths("iocontact") == ("/.well-known/",)
     # of /api/, the calls the native apps make: the apps that have one, and no other
-    assert {k for k, m in catalog.APPS.items() if m.get("devices")} == {"iopix", "ionote", "iohealth", "iostart"}
+    assert {k for k, m in catalog.APPS.items() if m.get("devices")} == {"iopix", "ionote", "iohealth", "iostart", "iorecipe", "iomoney"}
     assert catalog.APPS["iohealth"]["devices"] == ["POST,DELETE /api/auth/device"]
     # the start page: its sign-in, and the feed reader of its iPhone app (with the feeds' site icons)
     assert all(c in ("POST,DELETE /api/auth/device", "GET /api/bookmarks/site-icon") or c.split(" ")[1].startswith("/api/news") for c in catalog.APPS["iostart"]["devices"])
     assert doors.device_call("iostart", "/api/news/items/7") and doors.device_call("iostart", "/api/news/read", "POST")
     assert not doors.device_call("iostart", "/api/news/opml") and not doors.device_call("iostart", "/api/me/layout")
+    # ioRecipe's iPhone app: the recipes, their photos, one's marks, import; no file in or out, and not the shopping list
+    assert doors.device_call("iorecipe", "/api/recipes/7", "PATCH") and doors.device_call("iorecipe", "/api/recipes/7/photos/3")
+    assert doors.device_call("iorecipe", "/api/import", "POST") and doors.device_call("iorecipe", "/api/books/2/recipes/7", "PUT")
+    for path, method in (("/api/export", "GET"), ("/api/recipes/7/export", "GET"), ("/api/import/file", "POST"), ("/api/books", "POST"),
+                         ("/api/shopping", "GET"), ("/api/recipes/7/shopping", "POST")):
+        assert not doors.device_call("iorecipe", path, method), path
+    # ioMoney's iPhone app looks: of what it changes, a transaction's own fields, looked at, and its receipts
+    writes = {c for c in catalog.APPS["iomoney"]["devices"] if c.split(" ")[0] != "GET"}
+    assert writes == {"POST,DELETE /api/auth/device", "GET,PATCH /api/transactions/*", "POST /api/transactions/review",
+                      "POST /api/transactions/*/receipts", "GET,DELETE /api/receipts/*"}
+    assert doors.device_call("iomoney", "/api/accounts/3/forecast") and doors.device_call("iomoney", "/api/transactions/9", "PATCH")
+    for path, method in (("/api/accounts", "POST"), ("/api/accounts/3", "PATCH"), ("/api/accounts/3/info", "GET"), ("/api/transactions/9", "DELETE"),
+                         ("/api/transactions/bulk", "POST"), ("/api/rules", "GET"), ("/api/monarch", "GET"), ("/api/monarch/sync", "POST"),
+                         ("/api/settings", "GET"), ("/api/accounts/3/import", "POST"), ("/api/people", "GET"), ("/api/changes/undo", "POST")):
+        assert not doors.device_call("iomoney", path, method), path
 
 
 def test_validate_refuses_a_home_only_path_outside_the_sync_paths():
