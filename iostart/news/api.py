@@ -30,11 +30,12 @@ def overview(request: Request):
 
 
 @router.get("/api/news/card", dependencies=[access.signed_in])
-def card(request: Request, n: int = 5):
-    """The headlines card: the newest unread articles of the feeds you keep on the start page. {items, unread, feeds}."""
+def card(request: Request, n: int = 5, folder: str = ""):
+    """The headlines card: the newest unread articles of the feeds you keep on the start page, or with `folder` of the
+    feeds in that folder of yours. {items, unread, feeds}."""
     u = request.state.user
     from iosuite_shared import users
-    return news.card(u["id"], n) if users.is_member(u) else {"items": [], "unread": 0, "feeds": 0}
+    return news.card(u["id"], n, folder.strip()[:60] or None) if users.is_member(u) else {"items": [], "unread": 0, "feeds": 0}
 
 
 @router.post("/api/news/feeds", dependencies=[access.member])

@@ -74,6 +74,49 @@ def my_layout_forget_device(device: str, request: Request):
     return {"devices": layout.devices(u["id"])}
 
 
+def _others(u: dict) -> list:
+    """The other people of the start page whose account has a setup of its own: [{id, name}]."""
+    from iosuite_shared import users
+    return [{"id": p["id"], "name": p.get("displayName") or p["name"]} for p in users.list_users(config.APP)
+            if p.get("role") != "none" and p["id"] != u["id"] and layout.has_own(p["id"])]
+
+
+@router.get("/api/me/layout/sources", dependencies=[access.signed_in])
+def my_layout_sources(request: Request):
+    """Where a setup can be copied from: {account: whether yours has one, devices: [{id, name}] of yours with one of
+    their own, family: whether there is a starting point for everyone, people: [{id, name}] with a setup of their own}.
+    A setup says how a page is laid out, nothing of what the page shows."""
+    u = request.state.user
+    return {"account": layout.has_own(u["id"]), "devices": layout.devices(u["id"]), "family": layout.family() is not None, "people": _others(u)}
+
+
+@router.get("/api/me/layout/copy", dependencies=[access.signed_in])
+def my_layout_copy(request: Request, source: str = ""):
+    """A setup to start from, nothing is saved: source = account (yours), family, device:<id> (one of your devices) or
+    person:<id> (someone else's account). {layout}; 404 when there is none there."""
+    u = request.state.user
+    kind, _, which = source.partition(":")
+    got = None
+    if kind == "account":
+        got = layout.of_account(u["id"])
+    elif kind == "family":
+        got = layout.family()
+    elif kind == "device":
+        got = layout.of_device(u["id"], which)
+    elif kind == "person" and which.isdigit() and any(p["id"] == int(which) for p in _others(u)):
+        got = layout.of_account(int(which))
+    if got is None:
+        raise HTTPException(404, "No setup there to copy")
+    return {"layout": got}
+
+
+@router.post("/api/layout/check", dependencies=[access.signed_in])
+async def layout_check(request: Request):
+    """Body: a setup, as text someone pasted in. {layout}: the same, checked and with every key, or 400 with what is
+    wrong in it. Nothing is saved."""
+    return {"layout": layout.clean(await json_body(request))}
+
+
 @router.get("/api/layout/family", dependencies=[access.admin])
 def family_layout(request: Request):
     """Admins: the setup everyone starts from (null: none), and the people with whether each has a setup of their own."""

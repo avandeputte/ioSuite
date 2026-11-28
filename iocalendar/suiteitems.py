@@ -162,9 +162,10 @@ def today(local, tz: str, n: int) -> dict:
     return out
 
 
-def week(local, tz: str, days: int = 7, n: int = 12) -> dict:
+def week(local, tz: str, days: int = 7, n: int = 12, who: int | None = None) -> dict:
     """{days: [{date, items: [occurrence]}], more}: the coming `days` days after today, each with its events (cancelled
-    ones left out), up to n events in all; days without any are left out."""
+    ones left out), up to n events in all; days without any are left out. who: only the events that are for that member
+    of the family."""
     zone = _zone(tz)
     start = (dt.datetime.now(zone) + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + dt.timedelta(days=days)
@@ -173,7 +174,7 @@ def week(local, tz: str, days: int = 7, n: int = 12) -> dict:
     total = 0
     first, last = start.date(), (end - dt.timedelta(days=1)).date()
     for o in occ.get("items", []):
-        if _cancelled(o):
+        if _cancelled(o) or (who is not None and who not in (o.get("members") or [])):
             continue
         day = str(o.get("start") or "")[:10]
         if not day:
@@ -191,7 +192,9 @@ def week(local, tz: str, days: int = 7, n: int = 12) -> dict:
 
 
 def tile(local, tz, n, kind):
-    return week(local, tz) if kind == "week" else today(local, tz, n or 3)
+    """kind: nothing (today), "week", or "week:<id>" (the week of one member of the family)."""
+    what, _, who = (kind or "").partition(":")
+    return week(local, tz, who=int(who) if who.isdigit() else None) if what == "week" else today(local, tz, n or 3)
 
 
 PROVIDER = Provider(search=search, get=get, tile=tile)

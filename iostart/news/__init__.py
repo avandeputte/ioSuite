@@ -488,10 +488,16 @@ def mark_all(user_id: int, b: dict) -> dict:
     return {"ok": True, "feeds": len(subs)}
 
 
-def card(user_id: int, n: int = 5) -> dict:
+def card(user_id: int, n: int = 5, folder: str | None = None) -> dict:
     """The start page's headlines card: {items: the newest unread articles of the feeds the person keeps on it, unread:
-    how many there are in all of them, feeds: how many feeds the person follows}."""
+    how many there are in all of them, feeds: how many feeds the person follows}. With a folder: the feeds in that
+    folder of theirs, whether they are on the usual card or not."""
     n = max(1, min(int(n or 5), 12))
+    if folder:
+        where, args = _scope(user_id, None, folder)
+        got = items(user_id, folder=folder, show="unread", limit=n)
+        return {"items": got["items"], "unread": db.one(f"SELECT COUNT(*) AS n {JOIN} WHERE {where} AND NOT {READ}", tuple(args))["n"],
+                "feeds": db.one(f"SELECT COUNT(*) AS n FROM prt_feed_subs s WHERE {where}", tuple(args))["n"]}
     feeds = db.one("SELECT COUNT(*) AS n, COALESCE(SUM(on_start), 0) AS shown FROM prt_feed_subs WHERE user_id = %s", (user_id,))
     got = items(user_id, show="unread", limit=n, start=True) if feeds["shown"] else {"items": []}
     unread = db.one(f"SELECT COUNT(*) AS n {JOIN} WHERE s.user_id = %s AND s.on_start = 1 AND NOT {READ}", (user_id,))["n"] if feeds["shown"] else 0
